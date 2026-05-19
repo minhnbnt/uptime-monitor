@@ -5,6 +5,7 @@ package main
 import (
 	"net/http"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -23,17 +24,24 @@ import (
 
 func main() {
 
+	waitgroup := sync.WaitGroup{}
+	defer waitgroup.Wait()
+
 	injector := do.New(
+
 		config.RegisterZapLogger,
 		config.RegisterGORMDB,
+		config.RegisterTemporalClient,
+
 		logger.RegisterLogger,
 		repo.RegisterServerRepository,
+		repo.RegisterPingSchedulerRepository,
+
 		service.RegisterServerService,
 		handler.RegisterMockServer,
 	)
 
-	waitgroup := sync.WaitGroup{}
-	defer waitgroup.Wait()
+	waitgroup.Go(func() { injector.ShutdownOnSignals(syscall.SIGTERM) })
 
 	waitgroup.Go(func() {
 

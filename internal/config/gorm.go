@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/minhnbnt/uptime-monitor/internal/server/domain"
 	"github.com/samber/do/v2"
@@ -14,16 +15,46 @@ import (
 
 func newPostgresDriver(i do.Injector) (gorm.Dialector, error) {
 
-	dsn := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"), os.Getenv("DB_NAME"),
-	)
+	config := map[string]string{
+		"host":     os.Getenv("DB_HOST"),
+		"port":     os.Getenv("DB_PORT"),
+		"user":     os.Getenv("DB_USER"),
+		"password": os.Getenv("DB_PASSWORD"),
+		"dbname":   os.Getenv("DB_NAME"),
+		"sslmode":  "disable",
+	}
 
+	tokens := make([]string, 0, len(config))
+	for k, v := range config {
+		if len(v) > 0 {
+			token := fmt.Sprintf("%s=%s", k, v)
+			tokens = append(tokens, token)
+		}
+	}
+
+	dsn := strings.Join(tokens, " ")
 	return postgres.Open(dsn), nil
 }
 
-func newGORMDatabase(i do.Injector) (*gorm.DB, error) {
+type GORMWrapper struct {
+	db *gorm.DB
+}
+
+func (gw *GORMWrapper) GetDB() *gorm.DB {
+	return gw.db
+}
+
+func (gw *GORMWrapper) Shutdown() error {
+
+	sqlDB, err := gw.db.DB()
+	if err != nil {
+		return err
+	}
+
+	return sqlDB.Close()
+}
+
+func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 
 	dialector := do.MustInvoke[gorm.Dialector](i)
 	logger := do.MustInvoke[*zap.Logger](i)
@@ -39,7 +70,7 @@ func newGORMDatabase(i do.Injector) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	return db, nil
+	return &GORMWrapper{db: db}, nil
 }
 
 func RegisterGORMDB(i do.Injector) {

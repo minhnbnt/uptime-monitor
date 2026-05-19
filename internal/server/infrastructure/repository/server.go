@@ -8,6 +8,7 @@ import (
 	"github.com/samber/do/v2"
 	"gorm.io/gorm"
 
+	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/server/domain"
 )
 
@@ -17,7 +18,8 @@ type ServerRepository struct {
 
 func RegisterServerRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ServerRepository, error) {
-		return &ServerRepository{db: do.MustInvoke[*gorm.DB](i)}, nil
+		dbWrapper := do.MustInvoke[*config.GORMWrapper](i)
+		return &ServerRepository{db: dbWrapper.GetDB()}, nil
 	})
 }
 
