@@ -32,7 +32,7 @@ func newGORMDatabase(i do.Injector) (*gorm.DB, error) {
 	return gorm.Open(dialector, &gorm.Config{Logger: gormLogger})
 }
 
-func RegisterPostgresDriver(i do.Injector) {
+func RegisterGORMDB(i do.Injector) {
 	do.Provide(i, newPostgresDriver)
 	do.Provide(i, newGORMDatabase)
 }

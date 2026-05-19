@@ -1,8 +1,6 @@
 package utils
 
-import (
-	"fmt"
-)
+import "fmt"
 
 type PageValidatorError error
 

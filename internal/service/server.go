@@ -5,11 +5,12 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/samber/do/v2"
+	"github.com/samber/lo"
+
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/dto"
 	repo "github.com/minhnbnt/uptime-monitor/internal/infrastructure/repository"
-	"github.com/samber/do/v2"
-	"github.com/samber/lo"
 )
 
 type ServerService struct {

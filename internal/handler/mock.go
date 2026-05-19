@@ -4,13 +4,15 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	openapi_types "github.com/oapi-codegen/runtime/types"
+	"github.com/samber/do/v2"
+	"github.com/samber/lo"
+
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/service"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
-	openapi_types "github.com/oapi-codegen/runtime/types"
-	"github.com/samber/lo"
 )
 
 type MockServer struct {
@@ -18,8 +20,14 @@ type MockServer struct {
 	pageValidator *utils.PageValidator
 }
 
-func NewMockServer(svc *service.ServerService, validator *utils.PageValidator) *MockServer {
-	return &MockServer{service: svc, pageValidator: validator}
+func RegisterMockServer(i do.Injector) {
+
+	do.Provide(i, func(i do.Injector) (*MockServer, error) {
+		return &MockServer{
+			service:       do.MustInvoke[*service.ServerService](i),
+			pageValidator: utils.NewPageValidator(30),
+		}, nil
+	})
 }
 
 func (m *MockServer) ListServers(c *gin.Context, params api.ListServersParams) {

@@ -5,12 +5,20 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	"github.com/samber/do/v2"
 	"gorm.io/gorm"
+
+	"github.com/minhnbnt/uptime-monitor/internal/domain"
 )
 
 type ServerRepository struct {
 	db *gorm.DB
+}
+
+func RegisterServerRepository(i do.Injector) {
+	do.Provide(i, func(i do.Injector) (*ServerRepository, error) {
+		return &ServerRepository{db: do.MustInvoke[*gorm.DB](i)}, nil
+	})
 }
 
 func (sr *ServerRepository) List(ctx context.Context, limit, offset int) ([]domain.Server, error) {
