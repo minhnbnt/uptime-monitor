@@ -9,6 +9,10 @@ import (
 
 func newZapLogger(i do.Injector) (*zap.Logger, error) {
 
+	if os.Getenv("APP_ENV") == "development" {
+		return zap.NewDevelopment()
+	}
+
 	level := os.Getenv("LOG_LEVEL")
 	if level == "" {
 		level = "info"

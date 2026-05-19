@@ -8,7 +8,7 @@ import (
 	"github.com/samber/do/v2"
 	"gorm.io/gorm"
 
-	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/server/domain"
 )
 
 type ServerRepository struct {

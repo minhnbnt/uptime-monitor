@@ -4,8 +4,10 @@ package main
 
 import (
 	"net/http"
+	"sync"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	"github.com/samber/do/v2"
@@ -13,10 +15,10 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	"github.com/minhnbnt/uptime-monitor/internal/config"
-	"github.com/minhnbnt/uptime-monitor/internal/handler"
-	"github.com/minhnbnt/uptime-monitor/internal/infrastructure/logger"
-	repo "github.com/minhnbnt/uptime-monitor/internal/infrastructure/repository"
-	"github.com/minhnbnt/uptime-monitor/internal/service"
+	"github.com/minhnbnt/uptime-monitor/internal/server/handler"
+	"github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/logger"
+	repo "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/repository"
+	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 )
 
 func main() {
@@ -30,19 +32,26 @@ func main() {
 		handler.RegisterMockServer,
 	)
 
-	router := gin.Default()
+	waitgroup := sync.WaitGroup{}
+	defer waitgroup.Wait()
 
-	logger := do.MustInvoke[*zap.Logger](injector)
+	waitgroup.Go(func() {
 
-	router.Use(ginzap.Ginzap(logger, time.RFC3339, true))
-	router.Use(ginzap.RecoveryWithZap(logger, true))
+		router := gin.Default()
+		router.Use(cors.Default())
 
-	router.GET("/api/v1/hello", func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Hello, world!"})
+		logger := do.MustInvoke[*zap.Logger](injector)
+
+		router.Use(ginzap.Ginzap(logger, time.RFC3339, true))
+		router.Use(ginzap.RecoveryWithZap(logger, true))
+
+		router.GET("/api/v1/hello", func(ctx *gin.Context) {
+			ctx.JSON(http.StatusOK, gin.H{"message": "Hello, world!"})
+		})
+
+		server := do.MustInvoke[*handler.MockServer](injector)
+		api.RegisterHandlers(router, server)
+
+		http.ListenAndServe(":8080", router)
 	})
-
-	server := do.MustInvoke[*handler.MockServer](injector)
-	api.RegisterHandlers(router, server)
-
-	http.ListenAndServe(":8080", router)
 }

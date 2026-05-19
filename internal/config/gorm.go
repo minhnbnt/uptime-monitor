@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/minhnbnt/uptime-monitor/internal/server/domain"
 	"github.com/samber/do/v2"
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
@@ -29,7 +30,16 @@ func newGORMDatabase(i do.Injector) (*gorm.DB, error) {
 
 	gormLogger := zapgorm2.New(logger)
 
-	return gorm.Open(dialector, &gorm.Config{Logger: gormLogger})
+	db, err := gorm.Open(dialector, &gorm.Config{Logger: gormLogger})
+	if err != nil {
+		return nil, err
+	}
+
+	if err := db.AutoMigrate(&domain.Server{}); err != nil {
+		return nil, err
+	}
+
+	return db, nil
 }
 
 func RegisterGORMDB(i do.Injector) {
