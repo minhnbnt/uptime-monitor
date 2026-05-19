@@ -25,7 +25,6 @@ func newZapLogger(i do.Injector) (*zap.Logger, error) {
 
 	cfg := zap.Config{
 		Level:            zapLevel,
-		Development:      os.Getenv("APP_ENV") == "development",
 		Encoding:         "json",
 		EncoderConfig:    zap.NewProductionEncoderConfig(),
 		OutputPaths:      []string{"stdout"},

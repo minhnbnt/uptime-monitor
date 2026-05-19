@@ -36,24 +36,6 @@ func newPostgresDriver(i do.Injector) (gorm.Dialector, error) {
 	return postgres.Open(dsn), nil
 }
 
-type GORMWrapper struct {
-	db *gorm.DB
-}
-
-func (gw *GORMWrapper) GetDB() *gorm.DB {
-	return gw.db
-}
-
-func (gw *GORMWrapper) Shutdown() error {
-
-	sqlDB, err := gw.db.DB()
-	if err != nil {
-		return err
-	}
-
-	return sqlDB.Close()
-}
-
 func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 
 	dialector := do.MustInvoke[gorm.Dialector](i)
@@ -76,4 +58,22 @@ func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 func RegisterGORMDB(i do.Injector) {
 	do.Provide(i, newPostgresDriver)
 	do.Provide(i, newGORMDatabase)
+}
+
+type GORMWrapper struct {
+	db *gorm.DB
+}
+
+func (gw *GORMWrapper) GetDB() *gorm.DB {
+	return gw.db
+}
+
+func (gw *GORMWrapper) Shutdown() error {
+
+	sqlDB, err := gw.db.DB()
+	if err != nil {
+		return err
+	}
+
+	return sqlDB.Close()
 }

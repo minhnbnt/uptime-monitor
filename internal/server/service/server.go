@@ -99,6 +99,7 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uuid.UUID, req dto
 	if req.URL != nil {
 		server.URL = *req.URL
 	}
+
 	if req.Status != nil {
 		server.Status = *req.Status
 	}

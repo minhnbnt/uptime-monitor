@@ -15,22 +15,22 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
-type MockServer struct {
+type ServerHandler struct {
 	service       *service.ServerService
 	pageValidator *utils.PageValidator
 }
 
-func RegisterMockServer(i do.Injector) {
+func RegisterServerHandler(i do.Injector) {
 
-	do.Provide(i, func(i do.Injector) (*MockServer, error) {
-		return &MockServer{
+	do.Provide(i, func(i do.Injector) (*ServerHandler, error) {
+		return &ServerHandler{
 			service:       do.MustInvoke[*service.ServerService](i),
 			pageValidator: utils.NewPageValidator(30),
 		}, nil
 	})
 }
 
-func (m *MockServer) ListServers(c *gin.Context, params api.ListServersParams) {
+func (m *ServerHandler) ListServers(c *gin.Context, params api.ListServersParams) {
 
 	page := 1
 	if params.Page != nil {
@@ -66,7 +66,7 @@ func (m *MockServer) ListServers(c *gin.Context, params api.ListServersParams) {
 	})
 }
 
-func (m *MockServer) CreateServer(c *gin.Context) {
+func (m *ServerHandler) CreateServer(c *gin.Context) {
 
 	var req api.CreateServerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -87,7 +87,7 @@ func (m *MockServer) CreateServer(c *gin.Context) {
 	c.JSON(http.StatusCreated, api.ServerResponse{Data: toAPIServer(*result)})
 }
 
-func (m *MockServer) GetServer(c *gin.Context, id openapi_types.UUID) {
+func (m *ServerHandler) GetServer(c *gin.Context, id openapi_types.UUID) {
 
 	ctx := c.Request.Context()
 	result, err := m.service.GetServer(ctx, id)
@@ -99,7 +99,7 @@ func (m *MockServer) GetServer(c *gin.Context, id openapi_types.UUID) {
 	c.JSON(http.StatusOK, api.ServerResponse{Data: toAPIServer(*result)})
 }
 
-func (m *MockServer) UpdateServer(c *gin.Context, id openapi_types.UUID) {
+func (m *ServerHandler) UpdateServer(c *gin.Context, id openapi_types.UUID) {
 
 	var req api.UpdateServerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -124,7 +124,7 @@ func (m *MockServer) UpdateServer(c *gin.Context, id openapi_types.UUID) {
 	c.JSON(http.StatusOK, api.ServerResponse{Data: toAPIServer(*result)})
 }
 
-func (m *MockServer) DeleteServer(c *gin.Context, id openapi_types.UUID) {
+func (m *ServerHandler) DeleteServer(c *gin.Context, id openapi_types.UUID) {
 
 	ctx := c.Request.Context()
 	if err := m.service.DeleteServer(ctx, id); err != nil {

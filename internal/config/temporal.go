@@ -5,18 +5,6 @@ import (
 	temporalclient "go.temporal.io/sdk/client"
 )
 
-type TemporalClientWrapper struct {
-	client temporalclient.Client
-}
-
-func (tcw *TemporalClientWrapper) Shutdown() {
-	tcw.client.Close()
-}
-
-func (tcw *TemporalClientWrapper) GetClient() temporalclient.Client {
-	return tcw.client
-}
-
 func newTemporalOption(i do.Injector) (*temporalclient.Options, error) {
 	return &temporalclient.Options{}, nil
 }
@@ -36,4 +24,16 @@ func newTemporalClient(i do.Injector) (*TemporalClientWrapper, error) {
 func RegisterTemporalClient(i do.Injector) {
 	do.Provide(i, newTemporalOption)
 	do.Provide(i, newTemporalClient)
+}
+
+type TemporalClientWrapper struct {
+	client temporalclient.Client
+}
+
+func (tcw *TemporalClientWrapper) Shutdown() {
+	tcw.client.Close()
+}
+
+func (tcw *TemporalClientWrapper) GetClient() temporalclient.Client {
+	return tcw.client
 }

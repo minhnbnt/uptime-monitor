@@ -38,7 +38,7 @@ func main() {
 		repo.RegisterPingSchedulerRepository,
 
 		service.RegisterServerService,
-		handler.RegisterMockServer,
+		handler.RegisterServerHandler,
 	)
 
 	waitgroup.Go(func() { injector.ShutdownOnSignals(syscall.SIGTERM) })
@@ -57,7 +57,7 @@ func main() {
 			ctx.JSON(http.StatusOK, gin.H{"message": "Hello, world!"})
 		})
 
-		server := do.MustInvoke[*handler.MockServer](injector)
+		server := do.MustInvoke[*handler.ServerHandler](injector)
 		api.RegisterHandlers(router, server)
 
 		http.ListenAndServe(":8080", router)
