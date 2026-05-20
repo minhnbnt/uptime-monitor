@@ -4,12 +4,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
-	"github.com/minhnbnt/uptime-monitor/internal/server/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
@@ -56,7 +54,7 @@ func (m *ServerHandler) ListServers(c *gin.Context, params api.ListServersParams
 
 	c.JSON(http.StatusOK, api.ServerListResponse{
 		Data: lo.Map(result, func(item dto.Server, _ int) api.Server {
-			return toAPIServer(item)
+			return toAPIServer(&item)
 		}),
 		Meta: api.PaginationMeta{
 			Page:    &page,
@@ -77,29 +75,28 @@ func (m *ServerHandler) CreateServer(c *gin.Context) {
 	ctx := c.Request.Context()
 	result, err := m.service.CreateServer(ctx, dto.CreateServerRequest{
 		Name: req.Name,
-		URL:  req.Url,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errResponse("INTERNAL_ERROR", err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusCreated, api.ServerResponse{Data: toAPIServer(*result)})
+	c.JSON(http.StatusCreated, api.ServerResponse{Data: toAPIServer(result)})
 }
 
-func (m *ServerHandler) GetServer(c *gin.Context, id openapi_types.UUID) {
+func (m *ServerHandler) GetServer(c *gin.Context, id int) {
 
 	ctx := c.Request.Context()
-	result, err := m.service.GetServer(ctx, id)
+	result, err := m.service.GetServer(ctx, uint(id))
 	if err != nil {
 		c.JSON(http.StatusNotFound, errResponse("NOT_FOUND", "Server not found"))
 		return
 	}
 
-	c.JSON(http.StatusOK, api.ServerResponse{Data: toAPIServer(*result)})
+	c.JSON(http.StatusOK, api.ServerResponse{Data: toAPIServer(result)})
 }
 
-func (m *ServerHandler) UpdateServer(c *gin.Context, id openapi_types.UUID) {
+func (m *ServerHandler) UpdateServer(c *gin.Context, id int) {
 
 	var req api.UpdateServerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -107,13 +104,9 @@ func (m *ServerHandler) UpdateServer(c *gin.Context, id openapi_types.UUID) {
 		return
 	}
 
-	status := (*domain.Status)(req.Status)
-
 	ctx := c.Request.Context()
-	result, err := m.service.UpdateServer(ctx, id, dto.UpdateServerRequest{
+	result, err := m.service.UpdateServer(ctx, uint(id), dto.UpdateServerRequest{
 		Name:   req.Name,
-		URL:    req.Url,
-		Status: status,
 	})
 
 	if err != nil {
@@ -121,13 +114,17 @@ func (m *ServerHandler) UpdateServer(c *gin.Context, id openapi_types.UUID) {
 		return
 	}
 
-	c.JSON(http.StatusOK, api.ServerResponse{Data: toAPIServer(*result)})
+	c.JSON(http.StatusOK, api.ServerResponse{Data: toAPIServer(result)})
 }
 
-func (m *ServerHandler) DeleteServer(c *gin.Context, id openapi_types.UUID) {
+func (m *ServerHandler) SetCheckMethod(c *gin.Context, id int) {
+	c.Status(http.StatusNotImplemented)
+}
+
+func (m *ServerHandler) DeleteServer(c *gin.Context, id int) {
 
 	ctx := c.Request.Context()
-	if err := m.service.DeleteServer(ctx, id); err != nil {
+	if err := m.service.DeleteServer(ctx, uint(id)); err != nil {
 		c.JSON(http.StatusNotFound, errResponse("NOT_FOUND", "Server not found"))
 		return
 	}
@@ -135,12 +132,30 @@ func (m *ServerHandler) DeleteServer(c *gin.Context, id openapi_types.UUID) {
 	c.Status(http.StatusNoContent)
 }
 
-func toAPIServer(s dto.Server) api.Server {
+func toAPIEndpoint(e *dto.Endpoint) *api.Endpoint {
+	if e == nil {
+		return nil
+	}
+
+	interval := int(e.Interval.Seconds())
+	timeout := int(e.Timeout.Seconds())
+	expectedCode := e.ExpectedCode
+
+	return &api.Endpoint{
+		Url:          &e.URL,
+		Interval:     &interval,
+		Timeout:      &timeout,
+		Method:       &e.Method,
+		ExpectedCode: &expectedCode,
+	}
+}
+
+func toAPIServer(s *dto.Server) api.Server {
 	return api.Server{
-		Id:        s.ID,
+		Id:        int(s.ID),
 		Name:      s.Name,
-		Url:       s.URL,
 		Status:    api.ServerStatus(s.Status),
+		Endpoint:  toAPIEndpoint(s.Endpoint),
 		CreatedAt: s.CreatedAt,
 		UpdatedAt: s.UpdatedAt,
 	}

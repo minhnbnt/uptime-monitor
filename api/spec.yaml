@@ -77,8 +77,7 @@ paths:
           in: path
           required: true
           schema:
-            type: string
-            format: uuid
+            type: integer
       responses:
         "200":
           description: Server details
@@ -103,8 +102,7 @@ paths:
           in: path
           required: true
           schema:
-            type: string
-            format: uuid
+            type: integer
       requestBody:
         required: true
         content:
@@ -141,13 +139,44 @@ paths:
           in: path
           required: true
           schema:
-            type: string
-            format: uuid
+            type: integer
       responses:
         "204":
           description: Server deleted successfully
         "404":
           description: Server not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/servers/{id}/check_method:
+    put:
+      summary: Set check method for a server
+      operationId: SetCheckMethod
+      tags:
+        - servers
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetCheckMethodRequest"
+      responses:
+        "200":
+          description: Check method updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerResponse"
+        "400":
+          description: Invalid request
           content:
             application/json:
               schema:
@@ -166,23 +195,20 @@ components:
       required:
         - id
         - name
-        - url
         - status
         - created_at
         - updated_at
       properties:
         id:
-          type: string
-          format: uuid
+          type: integer
         name:
           type: string
           minLength: 1
           maxLength: 255
-        url:
-          type: string
-          format: uri
         status:
           $ref: "#/components/schemas/ServerStatus"
+        endpoint:
+          $ref: "#/components/schemas/Endpoint"
         created_at:
           type: string
           format: date-time
@@ -194,15 +220,11 @@ components:
       type: object
       required:
         - name
-        - url
       properties:
         name:
           type: string
           minLength: 1
           maxLength: 255
-        url:
-          type: string
-          format: uri
 
     UpdateServerRequest:
       type: object
@@ -211,11 +233,6 @@ components:
           type: string
           minLength: 1
           maxLength: 255
-        url:
-          type: string
-          format: uri
-        status:
-          $ref: "#/components/schemas/ServerStatus"
 
     PaginationMeta:
       type: object
@@ -247,6 +264,43 @@ components:
             $ref: "#/components/schemas/Server"
         meta:
           $ref: "#/components/schemas/PaginationMeta"
+
+    CheckMethodType:
+      type: string
+      enum:
+        - push
+        - pull
+
+    Endpoint:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+        status:
+          $ref: "#/components/schemas/ServerStatus"
+        interval:
+          type: integer
+          description: Interval in seconds (default 30)
+        timeout:
+          type: integer
+          description: Timeout in seconds (default 10)
+        method:
+          type: string
+          description: HTTP method (default GET)
+        expected_code:
+          type: integer
+          description: Expected HTTP status code (default 200)
+
+    SetCheckMethodRequest:
+      type: object
+      required:
+        - method
+      properties:
+        method:
+          $ref: "#/components/schemas/CheckMethodType"
+        endpoint:
+          $ref: "#/components/schemas/Endpoint"
 
     ErrorResponse:
       type: object

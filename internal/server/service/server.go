@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 
@@ -26,6 +25,31 @@ func RegisterServerService(i do.Injector) {
 	})
 }
 
+func toDTOEndpoint(e *domain.Endpoint) *dto.Endpoint {
+	if e == nil {
+		return nil
+	}
+	return &dto.Endpoint{
+		URL:          e.URL,
+		Status:       domain.Status(e.Status),
+		Interval:     e.Interval,
+		Timeout:      e.Timeout,
+		Method:       e.Method,
+		ExpectedCode: e.ExpectedCode,
+	}
+}
+
+func toDTOServer(s domain.Server) dto.Server {
+	return dto.Server{
+		ID:        s.ID,
+		Name:      s.Name,
+		Status:    s.Status,
+		Endpoint:  toDTOEndpoint(s.Endpoint),
+		CreatedAt: s.CreatedAt,
+		UpdatedAt: s.UpdatedAt,
+	}
+}
+
 func (ss *ServerService) ListServers(ctx context.Context, page, perPage int) ([]dto.Server, error) {
 
 	limit, offset := perPage, (page-1)*perPage
@@ -36,14 +60,7 @@ func (ss *ServerService) ListServers(ctx context.Context, page, perPage int) ([]
 	}
 
 	return lo.Map(result, func(item domain.Server, index int) dto.Server {
-		return dto.Server{
-			ID:        item.ID,
-			Name:      item.Name,
-			URL:       item.URL,
-			Status:    item.Status,
-			CreatedAt: item.CreatedAt,
-			UpdatedAt: item.UpdatedAt,
-		}
+		return toDTOServer(item)
 	}), nil
 }
 
@@ -51,7 +68,6 @@ func (ss *ServerService) CreateServer(ctx context.Context, req dto.CreateServerR
 
 	server := domain.Server{
 		Name:   req.Name,
-		URL:    req.URL,
 		Status: domain.StatusActive,
 	}
 
@@ -59,34 +75,22 @@ func (ss *ServerService) CreateServer(ctx context.Context, req dto.CreateServerR
 		return nil, fmt.Errorf("failed to create server: %w", err)
 	}
 
-	return &dto.Server{
-		ID:        server.ID,
-		Name:      server.Name,
-		URL:       server.URL,
-		Status:    server.Status,
-		CreatedAt: server.CreatedAt,
-		UpdatedAt: server.UpdatedAt,
-	}, nil
+	result := toDTOServer(server)
+	return &result, nil
 }
 
-func (ss *ServerService) GetServer(ctx context.Context, id uuid.UUID) (*dto.Server, error) {
+func (ss *ServerService) GetServer(ctx context.Context, id uint) (*dto.Server, error) {
 
 	server, err := ss.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get server: %w", err)
 	}
 
-	return &dto.Server{
-		ID:        server.ID,
-		Name:      server.Name,
-		URL:       server.URL,
-		Status:    server.Status,
-		CreatedAt: server.CreatedAt,
-		UpdatedAt: server.UpdatedAt,
-	}, nil
+	result := toDTOServer(*server)
+	return &result, nil
 }
 
-func (ss *ServerService) UpdateServer(ctx context.Context, id uuid.UUID, req dto.UpdateServerRequest) (*dto.Server, error) {
+func (ss *ServerService) UpdateServer(ctx context.Context, id uint, req dto.UpdateServerRequest) (*dto.Server, error) {
 
 	server, err := ss.repo.GetByID(ctx, id)
 	if err != nil {
@@ -95,9 +99,6 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uuid.UUID, req dto
 
 	if req.Name != nil {
 		server.Name = *req.Name
-	}
-	if req.URL != nil {
-		server.URL = *req.URL
 	}
 
 	if req.Status != nil {
@@ -108,17 +109,11 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uuid.UUID, req dto
 		return nil, fmt.Errorf("failed to update server: %w", err)
 	}
 
-	return &dto.Server{
-		ID:        server.ID,
-		Name:      server.Name,
-		URL:       server.URL,
-		Status:    server.Status,
-		CreatedAt: server.CreatedAt,
-		UpdatedAt: server.UpdatedAt,
-	}, nil
+	result := toDTOServer(*server)
+	return &result, nil
 }
 
-func (ss *ServerService) DeleteServer(ctx context.Context, id uuid.UUID) error {
+func (ss *ServerService) DeleteServer(ctx context.Context, id uint) error {
 
 	if err := ss.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("failed to delete server: %w", err)

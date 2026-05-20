@@ -56,7 +56,7 @@ func (sr *ServerRepository) Update(ctx context.Context, s *domain.Server) error 
 	return err
 }
 
-func (sr *ServerRepository) Delete(ctx context.Context, id uuid.UUID) error {
+func (sr *ServerRepository) Delete(ctx context.Context, id uint) error {
 	_, err := gorm.G[domain.Server](sr.db).Where("id = ?", id).Delete(ctx)
 	return err
 }
