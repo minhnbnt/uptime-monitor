@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/samber/do/v2"
 
@@ -25,32 +24,15 @@ func RegisterEndpointService(i do.Injector) {
 }
 
 func toDomainEndpoint(serverID uint, req dto.SetCheckMethodRequest) domain.Endpoint {
-
-	endpoint := domain.Endpoint{
-		ServerID: serverID,
-		Status:   domain.StatusActive,
-		Interval: 30 * time.Second,
-		Timeout:  10 * time.Second,
-		Method:   "GET",
+	return domain.Endpoint{
+		ServerID:     serverID,
+		Status:       domain.StatusActive,
+		URL:          req.URL,
+		Interval:     req.Interval,
+		Timeout:      req.Timeout,
+		Method:       req.HTTPMethod,
+		ExpectedCode: req.ExpectedCode,
 	}
-
-	if req.URL != "" {
-		endpoint.URL = req.URL
-	}
-	if req.Interval > 0 {
-		endpoint.Interval = req.Interval
-	}
-	if req.Timeout > 0 {
-		endpoint.Timeout = req.Timeout
-	}
-	if req.Method != "" {
-		endpoint.Method = string(req.Method)
-	}
-	if req.ExpectedCode > 0 {
-		endpoint.ExpectedCode = req.ExpectedCode
-	}
-
-	return endpoint
 }
 
 func (es *EndpointService) SetCheckMethod(ctx context.Context, serverID uint, req dto.SetCheckMethodRequest) error {

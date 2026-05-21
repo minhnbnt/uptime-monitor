@@ -41,6 +41,7 @@ func main() {
 
 		service.RegisterServerService,
 		service.RegisterEndpointService,
+		handler.RegisterRequestValidator,
 		handler.RegisterServerHandler,
 		handler.RegisterEndpointHandler,
 		server.RegisterCompositeHandler,

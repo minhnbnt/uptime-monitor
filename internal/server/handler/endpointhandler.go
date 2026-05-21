@@ -14,17 +14,20 @@ import (
 
 type EndpointHandler struct {
 	endpointService *service.EndpointService
+	validator       *RequestValidator
 }
 
 func RegisterEndpointHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointHandler, error) {
 		return &EndpointHandler{
 			endpointService: do.MustInvoke[*service.EndpointService](i),
+			validator:       do.MustInvoke[*RequestValidator](i),
 		}, nil
 	})
 }
 
 func (h *EndpointHandler) SetCheckMethod(c *gin.Context, id int) {
+
 	var req api.SetCheckMethodRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, errResponse("INVALID_REQUEST", err.Error()))
@@ -33,25 +36,16 @@ func (h *EndpointHandler) SetCheckMethod(c *gin.Context, id int) {
 
 	ctx := c.Request.Context()
 	dtoReq := dto.SetCheckMethodRequest{
-		Method: dto.CheckMethodType(req.Method),
+		Method:       dto.CheckMethodType(req.Method),
+		HTTPMethod:   req.Endpoint.Method,
+		Interval:     time.Duration(req.Endpoint.Interval) * time.Second,
+		Timeout:      time.Duration(req.Endpoint.Timeout) * time.Second,
+		URL:          req.Endpoint.Url,
+		ExpectedCode: req.Endpoint.ExpectedCode,
 	}
 
-	if req.Endpoint != nil {
-		if req.Endpoint.Url != nil {
-			dtoReq.URL = *req.Endpoint.Url
-		}
-		if req.Endpoint.Interval != nil {
-			dtoReq.Interval = time.Duration(*req.Endpoint.Interval) * time.Second
-		}
-		if req.Endpoint.Timeout != nil {
-			dtoReq.Timeout = time.Duration(*req.Endpoint.Timeout) * time.Second
-		}
-		if req.Endpoint.Method != nil {
-			dtoReq.Method = dto.CheckMethodType(*req.Endpoint.Method)
-		}
-		if req.Endpoint.ExpectedCode != nil {
-			dtoReq.ExpectedCode = *req.Endpoint.ExpectedCode
-		}
+	if !h.validator.Validate(c, dtoReq) {
+		return
 	}
 
 	if err := h.endpointService.SetCheckMethod(ctx, uint(id), dtoReq); err != nil {

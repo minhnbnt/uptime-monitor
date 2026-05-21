@@ -16,6 +16,7 @@ import (
 type ServerHandler struct {
 	service       *service.ServerService
 	pageValidator *utils.PageValidator
+	validator     *RequestValidator
 }
 
 func RegisterServerHandler(i do.Injector) {
@@ -24,6 +25,7 @@ func RegisterServerHandler(i do.Injector) {
 		return &ServerHandler{
 			service:       do.MustInvoke[*service.ServerService](i),
 			pageValidator: utils.NewPageValidator(30),
+			validator:     do.MustInvoke[*RequestValidator](i),
 		}, nil
 	})
 }
@@ -73,9 +75,12 @@ func (m *ServerHandler) CreateServer(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	result, err := m.service.CreateServer(ctx, dto.CreateServerRequest{
-		Name: req.Name,
-	})
+	dtoReq := dto.CreateServerRequest{Name: req.Name}
+	if !m.validator.Validate(c, dtoReq) {
+		return
+	}
+
+	result, err := m.service.CreateServer(ctx, dtoReq)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errResponse("INTERNAL_ERROR", err.Error()))
 		return
@@ -105,10 +110,12 @@ func (m *ServerHandler) UpdateServer(c *gin.Context, id int) {
 	}
 
 	ctx := c.Request.Context()
-	result, err := m.service.UpdateServer(ctx, uint(id), dto.UpdateServerRequest{
-		Name: req.Name,
-	})
+	dtoReq := dto.UpdateServerRequest{Name: req.Name}
+	if !m.validator.Validate(c, dtoReq) {
+		return
+	}
 
+	result, err := m.service.UpdateServer(ctx, uint(id), dtoReq)
 	if err != nil {
 		c.JSON(http.StatusNotFound, errResponse("NOT_FOUND", "Server not found"))
 		return
@@ -133,16 +140,12 @@ func toAPIEndpoint(e *dto.Endpoint) *api.Endpoint {
 		return nil
 	}
 
-	interval := int(e.Interval.Seconds())
-	timeout := int(e.Timeout.Seconds())
-	expectedCode := e.ExpectedCode
-
 	return &api.Endpoint{
-		Url:          &e.URL,
-		Interval:     &interval,
-		Timeout:      &timeout,
-		Method:       &e.Method,
-		ExpectedCode: &expectedCode,
+		Url:          e.URL,
+		Interval:     int(e.Interval.Seconds()),
+		Timeout:      int(e.Timeout.Seconds()),
+		Method:       e.Method,
+		ExpectedCode: e.ExpectedCode,
 	}
 }
 

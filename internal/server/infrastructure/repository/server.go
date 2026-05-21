@@ -51,11 +51,29 @@ func (sr *ServerRepository) GetByID(ctx context.Context, id uint) (*domain.Serve
 }
 
 func (sr *ServerRepository) Update(ctx context.Context, s *domain.Server) error {
-	_, err := gorm.G[domain.Server](sr.db).Where("id = ?", s.ID).Updates(ctx, *s)
-	return err
+
+	rowAffected, err := gorm.G[domain.Server](sr.db).Where("id = ?", s.ID).Updates(ctx, *s)
+	if err != nil {
+		return err
+	}
+
+	if rowAffected == 0 {
+		return fmt.Errorf("server with id %d does not found", s.ID)
+	}
+
+	return nil
 }
 
 func (sr *ServerRepository) Delete(ctx context.Context, id uint) error {
-	_, err := gorm.G[domain.Server](sr.db).Where("id = ?", id).Delete(ctx)
-	return err
+
+	rowAffected, err := gorm.G[domain.Server](sr.db).Where("id = ?", id).Delete(ctx)
+	if err != nil {
+		return err
+	}
+
+	if rowAffected == 0 {
+		return fmt.Errorf("server with id %d does not found", id)
+	}
+
+	return nil
 }

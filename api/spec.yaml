@@ -273,6 +273,12 @@ components:
 
     Endpoint:
       type: object
+      required:
+        - url
+        - interval
+        - timeout
+        - method
+        - expected_code
       properties:
         url:
           type: string
@@ -296,6 +302,7 @@ components:
       type: object
       required:
         - method
+        - endpoint
       properties:
         method:
           $ref: "#/components/schemas/CheckMethodType"

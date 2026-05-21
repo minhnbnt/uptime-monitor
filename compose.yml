@@ -12,6 +12,8 @@ services:
       DB_NAME: alerts
       LOG_LEVEL: info
       APP_ENV: development
+      TEMPORAL_TASK_QUEUE: ping-task-queue
+      TEMPORAL_WORKFLOW_NAME: ping-workflow
 
     depends_on:
       postgres:

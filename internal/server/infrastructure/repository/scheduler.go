@@ -33,8 +33,8 @@ func RegisterPingSchedulerRepository(i do.Injector) {
 	})
 }
 
-func toSchredulerID(serverID string) string {
-	return "ping-scheduler" + serverID
+func toScheduleID(serverID string) string {
+	return "ping-schedule-" + serverID
 }
 
 func calculateOffset(id string, interval time.Duration) time.Duration {
@@ -52,7 +52,7 @@ func (psr *PingSchedulerRepository) NewScheduler(ctx context.Context, id string,
 
 	scheduleOptions := temporalclient.ScheduleOptions{
 
-		ID: toSchredulerID(id),
+		ID: toScheduleID(id),
 
 		Spec: temporalclient.ScheduleSpec{
 			Intervals: []temporalclient.ScheduleIntervalSpec{
