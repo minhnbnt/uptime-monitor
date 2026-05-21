@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"os"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -25,12 +24,12 @@ func RegisterTemporalWorkerRunner(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*TemporalWorkerRunner, error) {
 
 		clientWrapper := do.MustInvoke[*config.TemporalClientWrapper](i)
+		temporalCfg := do.MustInvoke[*config.TemporalConfig](i)
 		pingWorker := do.MustInvoke[*infra.PingWorker](i)
 		logger := do.MustInvoke[logger.Logger](i)
 
 		client := clientWrapper.GetClient()
-		taskQueue := os.Getenv("TEMPORAL_TASK_QUEUE")
-		worker := temporalworker.New(client, taskQueue, temporalworker.Options{})
+		worker := temporalworker.New(client, temporalCfg.TaskQueue, temporalworker.Options{})
 
 		channel := make(chan any, 1)
 

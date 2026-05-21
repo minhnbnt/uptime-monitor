@@ -34,6 +34,7 @@ func main() {
 
 		config.RegisterZapLogger,
 		config.RegisterGORMDB,
+		config.RegisterTemporalConfig,
 		config.RegisterTemporalClient,
 
 		logger.RegisterLogger,

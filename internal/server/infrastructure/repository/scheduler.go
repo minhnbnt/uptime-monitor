@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
-	"os"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -25,12 +24,13 @@ func RegisterPingSchedulerRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*PingSchedulerRepository, error) {
 
 		clientWrapper := do.MustInvoke[*config.TemporalClientWrapper](i)
+		temporalCfg := do.MustInvoke[*config.TemporalConfig](i)
 		schedulerClient := clientWrapper.GetClient().ScheduleClient()
 
 		return &PingSchedulerRepository{
 			client:    schedulerClient,
-			taskQueue: os.Getenv("TEMPORAL_TASK_QUEUE"),
-			workflow:  os.Getenv("TEMPORAL_WORKFLOW_NAME"),
+			taskQueue: temporalCfg.TaskQueue,
+			workflow:  temporalCfg.Workflow,
 		}, nil
 	})
 }

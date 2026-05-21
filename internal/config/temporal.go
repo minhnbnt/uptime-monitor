@@ -7,13 +7,40 @@ import (
 	temporalclient "go.temporal.io/sdk/client"
 )
 
-func newTemporalOption(i do.Injector) (*temporalclient.Options, error) {
+type TemporalConfig struct {
+	Host       string
+	TaskQueue  string
+	Workflow   string
+}
+
+func newTemporalConfig(i do.Injector) (*TemporalConfig, error) {
 	host := os.Getenv("TEMPORAL_HOST")
 	if host == "" {
 		host = "localhost:7233"
 	}
+	taskQueue := os.Getenv("TEMPORAL_TASK_QUEUE")
+	if taskQueue == "" {
+		taskQueue = "ping-task-queue"
+	}
+	workflow := os.Getenv("TEMPORAL_WORKFLOW_NAME")
+	if workflow == "" {
+		workflow = "ping-workflow"
+	}
+	return &TemporalConfig{
+		Host:      host,
+		TaskQueue: taskQueue,
+		Workflow:  workflow,
+	}, nil
+}
+
+func RegisterTemporalConfig(i do.Injector) {
+	do.Provide(i, newTemporalConfig)
+}
+
+func newTemporalOption(i do.Injector) (*temporalclient.Options, error) {
+	cfg := do.MustInvoke[*TemporalConfig](i)
 	return &temporalclient.Options{
-		HostPort: host,
+		HostPort: cfg.Host,
 	}, nil
 }
 
