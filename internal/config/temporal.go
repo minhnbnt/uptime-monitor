@@ -1,12 +1,20 @@
 package config
 
 import (
+	"os"
+
 	"github.com/samber/do/v2"
 	temporalclient "go.temporal.io/sdk/client"
 )
 
 func newTemporalOption(i do.Injector) (*temporalclient.Options, error) {
-	return &temporalclient.Options{}, nil
+	host := os.Getenv("TEMPORAL_HOST")
+	if host == "" {
+		host = "localhost:7233"
+	}
+	return &temporalclient.Options{
+		HostPort: host,
+	}, nil
 }
 
 func newTemporalClient(i do.Injector) (*TemporalClientWrapper, error) {

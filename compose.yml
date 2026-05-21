@@ -14,10 +14,13 @@ services:
       APP_ENV: development
       TEMPORAL_TASK_QUEUE: ping-task-queue
       TEMPORAL_WORKFLOW_NAME: ping-workflow
+      TEMPORAL_HOST: temporal:7233
 
     depends_on:
       postgres:
         condition: service_healthy
+      temporal:
+        condition: service_started
 
   postgres:
     image: postgres:17-alpine

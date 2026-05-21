@@ -4,13 +4,19 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+
+	"github.com/samber/do/v2"
 )
 
 type PingWorker struct {
 	httpClient *http.Client
 }
 
-// TODO: add Register function by do
+func RegisterPingWorker(i do.Injector) {
+	do.Provide(i, func(i do.Injector) (*PingWorker, error) {
+		return &PingWorker{httpClient: http.DefaultClient}, nil
+	})
+}
 
 func (p *PingWorker) Ping(ctx context.Context,method, url string) (statusCode int, err error) {
 

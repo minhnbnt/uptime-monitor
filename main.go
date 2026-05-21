@@ -16,6 +16,8 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	"github.com/minhnbnt/uptime-monitor/internal/config"
+	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure"
+	monitorhandler "github.com/minhnbnt/uptime-monitor/internal/monitor/handler"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/handler"
 	"github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/logger"
@@ -39,18 +41,23 @@ func main() {
 		repo.RegisterEndpointRepository,
 		repo.RegisterPingSchedulerRepository,
 
+		infra.RegisterPingWorker,
+
 		service.RegisterServerService,
 		service.RegisterEndpointService,
 		handler.RegisterRequestValidator,
 		handler.RegisterServerHandler,
 		handler.RegisterEndpointHandler,
 		server.RegisterCompositeHandler,
+
+		monitorhandler.RegisterTemporalWorkerRunner,
 	)
 
 	waitgroup.Go(func() { injector.ShutdownOnSignals(syscall.SIGTERM) })
 
 	waitgroup.Go(func() {
-		// TODO: run ping worker
+		runner := do.MustInvoke[*monitorhandler.TemporalWorkerRunner](injector)
+		runner.RunTemporalWorker()
 	})
 
 	waitgroup.Go(func() {
