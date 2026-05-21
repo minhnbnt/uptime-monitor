@@ -43,7 +43,5 @@ func (es *EndpointService) SetCheckMethod(ctx context.Context, serverID uint, re
 		return fmt.Errorf("failed to upsert endpoint: %w", err)
 	}
 
-	// TODO: register scheduler
-
 	return nil
 }

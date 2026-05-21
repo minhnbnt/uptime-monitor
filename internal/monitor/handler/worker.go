@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"context"
+	"fmt"
 
 	temporalworker "go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
@@ -14,23 +14,25 @@ type TemporalWorkerRunner struct {
 	pingWorker infra.PingWorker
 }
 
-func (wr *TemporalWorkerRunner) RunPingWorker() {
+// TODO: add Register function by do
+
+func (wr *TemporalWorkerRunner) RunTemporalWorker() {
 
 	worker := wr.worker
 
-	worker.RegisterWorkflow(func(ctx workflow.Context, id uint) error {
+	worker.RegisterWorkflow(func(ctx workflow.Context, method string, url string, expectedCode int) error {
 
-		result := ""
-		if err := workflow.ExecuteActivity(ctx, fetchEndpointInfo, id).Get(ctx, &result); err != nil {
+		statusCode := 0
+		if err := workflow.ExecuteActivity(ctx, wr.pingWorker.Ping, method, url).Get(ctx, &statusCode); err != nil {
 			return err
+		}
+
+		if statusCode != expectedCode {
+			return fmt.Errorf("unexpected status code, expected: %d, got: %d", expectedCode, statusCode)
 		}
 
 		return nil
 	})
 
-	worker.RegisterActivity(fetchEndpointInfo)
-}
-
-func fetchEndpointInfo(ctx context.Context, id uint) (string, error) {
-	return "https://echo.hoppscotch.io", nil
+	worker.RegisterActivity(wr.pingWorker.Ping)
 }

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"hash/fnv"
 	"os"
 	"time"
@@ -10,6 +11,7 @@ import (
 	temporalclient "go.temporal.io/sdk/client"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
+	"github.com/minhnbnt/uptime-monitor/internal/server/domain"
 )
 
 type PingSchedulerRepository struct {
@@ -46,9 +48,10 @@ func calculateOffset(id string, interval time.Duration) time.Duration {
 	return time.Duration(offset)
 }
 
-func (psr *PingSchedulerRepository) NewScheduler(ctx context.Context, id string, interval time.Duration) error {
+func (psr *PingSchedulerRepository) NewScheduler(ctx context.Context, endpoint *domain.Endpoint) error {
 
-	offset := calculateOffset(id, interval)
+	id := fmt.Sprintf("%d", endpoint.ID)
+	offset := calculateOffset(id, endpoint.Interval)
 
 	scheduleOptions := temporalclient.ScheduleOptions{
 
@@ -56,14 +59,18 @@ func (psr *PingSchedulerRepository) NewScheduler(ctx context.Context, id string,
 
 		Spec: temporalclient.ScheduleSpec{
 			Intervals: []temporalclient.ScheduleIntervalSpec{
-				{Every: interval, Offset: offset},
+				{Every: endpoint.Interval, Offset: offset},
 			},
 		},
 
 		Action: &temporalclient.ScheduleWorkflowAction{
 			TaskQueue: psr.taskQueue,
 			Workflow:  psr.workflow,
-			Args:      []any{id},
+			Args:      []any{
+				endpoint.Method,
+				endpoint.URL,
+				endpoint.ExpectedCode,
+			},
 		},
 	}
 

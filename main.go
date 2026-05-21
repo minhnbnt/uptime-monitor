@@ -50,6 +50,10 @@ func main() {
 	waitgroup.Go(func() { injector.ShutdownOnSignals(syscall.SIGTERM) })
 
 	waitgroup.Go(func() {
+		// TODO: run ping worker
+	})
+
+	waitgroup.Go(func() {
 
 		router := gin.Default()
 		router.Use(cors.Default())

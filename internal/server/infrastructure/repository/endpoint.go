@@ -13,12 +13,17 @@ import (
 
 type EndpointRepository struct {
 	db *gorm.DB
+	schedulerRepository *PingSchedulerRepository
 }
 
 func RegisterEndpointRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointRepository, error) {
 		dbWrapper := do.MustInvoke[*config.GORMWrapper](i)
-		return &EndpointRepository{db: dbWrapper.GetDB()}, nil
+		schedulerRepo := do.MustInvoke[*PingSchedulerRepository](i)
+		return &EndpointRepository{
+			db:                  dbWrapper.GetDB(),
+			schedulerRepository: schedulerRepo,
+		}, nil
 	})
 }
 
@@ -34,5 +39,16 @@ func (er *EndpointRepository) GetByServerID(ctx context.Context, serverID uint) 
 }
 
 func (er *EndpointRepository) UpsertEndpoint(ctx context.Context, endpoint domain.Endpoint) error {
-	return gorm.G[domain.Endpoint](er.db).Create(ctx, &endpoint)
+
+	return er.db.Transaction(func(tx *gorm.DB) error {
+
+		err :=  gorm.G[domain.Endpoint](er.db).Create(ctx, &endpoint)
+		if err != nil {
+			return err
+		}
+
+		er.schedulerRepository.NewScheduler(ctx, &endpoint)
+
+		return nil
+	})
 }
