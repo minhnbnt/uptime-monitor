@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 	"gorm.io/gorm"
 
@@ -41,7 +40,7 @@ func (sr *ServerRepository) Create(ctx context.Context, s *domain.Server) error 
 	return gorm.G[domain.Server](sr.db).Create(ctx, s)
 }
 
-func (sr *ServerRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Server, error) {
+func (sr *ServerRepository) GetByID(ctx context.Context, id uint) (*domain.Server, error) {
 
 	server, err := gorm.G[domain.Server](sr.db).Where("id = ?", id).First(ctx)
 	if err != nil {

@@ -2,11 +2,14 @@ package repository
 
 import (
 	"context"
+	"hash/fnv"
+	"os"
 	"time"
 
-	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/samber/do/v2"
 	temporalclient "go.temporal.io/sdk/client"
+
+	"github.com/minhnbnt/uptime-monitor/internal/config"
 )
 
 type PingSchedulerRepository struct {
@@ -19,12 +22,13 @@ type PingSchedulerRepository struct {
 func RegisterPingSchedulerRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*PingSchedulerRepository, error) {
 
-		clientWrapper := do.MustInvoke[config.TemporalClientWrapper](i)
+		clientWrapper := do.MustInvoke[*config.TemporalClientWrapper](i)
 		schedulerClient := clientWrapper.GetClient().ScheduleClient()
 
 		return &PingSchedulerRepository{
-			client: schedulerClient,
-			// TODO: fill others fields
+			client:    schedulerClient,
+			taskQueue: os.Getenv("TEMPORAL_TASK_QUEUE"),
+			workflow:  os.Getenv("TEMPORAL_WORKFLOW_NAME"),
 		}, nil
 	})
 }
@@ -33,7 +37,18 @@ func toSchredulerID(serverID string) string {
 	return "ping-scheduler" + serverID
 }
 
-func (psr *PingSchedulerRepository) NewScheduler(ctx context.Context, id string, duration time.Duration) error {
+func calculateOffset(id string, interval time.Duration) time.Duration {
+
+	hasher := fnv.New64a()
+	hasher.Write([]byte(id))
+
+	offset := hasher.Sum64() % uint64(interval)
+	return time.Duration(offset)
+}
+
+func (psr *PingSchedulerRepository) NewScheduler(ctx context.Context, id string, interval time.Duration) error {
+
+	offset := calculateOffset(id, interval)
 
 	scheduleOptions := temporalclient.ScheduleOptions{
 
@@ -41,7 +56,7 @@ func (psr *PingSchedulerRepository) NewScheduler(ctx context.Context, id string,
 
 		Spec: temporalclient.ScheduleSpec{
 			Intervals: []temporalclient.ScheduleIntervalSpec{
-				{Every: duration},
+				{Every: interval, Offset: offset},
 			},
 		},
 

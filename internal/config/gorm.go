@@ -5,12 +5,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/minhnbnt/uptime-monitor/internal/server/domain"
 	"github.com/samber/do/v2"
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"moul.io/zapgorm2"
+
+	"github.com/minhnbnt/uptime-monitor/internal/server/domain"
 )
 
 func newPostgresDriver(i do.Injector) (gorm.Dialector, error) {

@@ -106,7 +106,7 @@ func (m *ServerHandler) UpdateServer(c *gin.Context, id int) {
 
 	ctx := c.Request.Context()
 	result, err := m.service.UpdateServer(ctx, uint(id), dto.UpdateServerRequest{
-		Name:   req.Name,
+		Name: req.Name,
 	})
 
 	if err != nil {
@@ -115,10 +115,6 @@ func (m *ServerHandler) UpdateServer(c *gin.Context, id int) {
 	}
 
 	c.JSON(http.StatusOK, api.ServerResponse{Data: toAPIServer(result)})
-}
-
-func (m *ServerHandler) SetCheckMethod(c *gin.Context, id int) {
-	c.Status(http.StatusNotImplemented)
 }
 
 func (m *ServerHandler) DeleteServer(c *gin.Context, id int) {

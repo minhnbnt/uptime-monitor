@@ -16,6 +16,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	"github.com/minhnbnt/uptime-monitor/internal/config"
+	"github.com/minhnbnt/uptime-monitor/internal/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/handler"
 	"github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/logger"
 	repo "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/repository"
@@ -35,10 +36,14 @@ func main() {
 
 		logger.RegisterLogger,
 		repo.RegisterServerRepository,
+		repo.RegisterEndpointRepository,
 		repo.RegisterPingSchedulerRepository,
 
 		service.RegisterServerService,
+		service.RegisterEndpointService,
 		handler.RegisterServerHandler,
+		handler.RegisterEndpointHandler,
+		server.RegisterCompositeHandler,
 	)
 
 	waitgroup.Go(func() { injector.ShutdownOnSignals(syscall.SIGTERM) })
@@ -57,7 +62,7 @@ func main() {
 			ctx.JSON(http.StatusOK, gin.H{"message": "Hello, world!"})
 		})
 
-		server := do.MustInvoke[*handler.ServerHandler](injector)
+		server := do.MustInvoke[*server.CompositeHandler](injector)
 		api.RegisterHandlers(router, server)
 
 		http.ListenAndServe(":8080", router)

@@ -24,6 +24,13 @@ type Server struct {
 	UpdatedAt time.Time
 }
 
+type CheckMethodType string
+
+const (
+	CheckMethodPull CheckMethodType = "pull"
+	CheckMethodPush CheckMethodType = "push"
+)
+
 type CreateServerRequest struct {
 	Name string
 }
@@ -31,4 +38,12 @@ type CreateServerRequest struct {
 type UpdateServerRequest struct {
 	Name   *string
 	Status *domain.Status
+}
+
+type SetCheckMethodRequest struct {
+	URL          string
+	Method       CheckMethodType
+	Interval     time.Duration
+	Timeout      time.Duration
+	ExpectedCode int
 }
