@@ -12,7 +12,7 @@ import (
 )
 
 type EndpointRepository struct {
-	db *gorm.DB
+	db                  *gorm.DB
 	schedulerRepository *PingSchedulerRepository
 }
 
@@ -42,7 +42,7 @@ func (er *EndpointRepository) UpsertEndpoint(ctx context.Context, endpoint domai
 
 	return er.db.Transaction(func(tx *gorm.DB) error {
 
-		err :=  gorm.G[domain.Endpoint](er.db).Create(ctx, &endpoint)
+		err := gorm.G[domain.Endpoint](er.db).Create(ctx, &endpoint)
 		if err != nil {
 			return err
 		}

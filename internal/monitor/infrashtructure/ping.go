@@ -18,9 +18,9 @@ func RegisterPingWorker(i do.Injector) {
 	})
 }
 
-func (p *PingWorker) Ping(ctx context.Context,method, url string) (statusCode int, err error) {
+func (p *PingWorker) Ping(ctx context.Context, method, url string) (statusCode int, err error) {
 
-	request, err := http.NewRequestWithContext(ctx,method, url, nil)
+	request, err := http.NewRequestWithContext(ctx, method, url, nil)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create request: %w", err)
 	}

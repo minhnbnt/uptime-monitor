@@ -16,11 +16,12 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	"github.com/minhnbnt/uptime-monitor/internal/config"
-	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure"
+	temporalcfg "github.com/minhnbnt/uptime-monitor/internal/config/temporal"
+	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	monitorhandler "github.com/minhnbnt/uptime-monitor/internal/monitor/handler"
+	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/handler"
-	"github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/logger"
 	repo "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 )
@@ -34,8 +35,8 @@ func main() {
 
 		config.RegisterZapLogger,
 		config.RegisterGORMDB,
-		config.RegisterTemporalConfig,
-		config.RegisterTemporalClient,
+		temporalcfg.RegisterConfig,
+		temporalcfg.RegisterClient,
 
 		logger.RegisterLogger,
 		repo.RegisterServerRepository,

@@ -9,7 +9,7 @@ import (
 	"github.com/samber/do/v2"
 	temporalclient "go.temporal.io/sdk/client"
 
-	"github.com/minhnbnt/uptime-monitor/internal/config"
+	temporalcfg "github.com/minhnbnt/uptime-monitor/internal/config/temporal"
 	"github.com/minhnbnt/uptime-monitor/internal/server/domain"
 )
 
@@ -23,8 +23,8 @@ type PingSchedulerRepository struct {
 func RegisterPingSchedulerRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*PingSchedulerRepository, error) {
 
-		clientWrapper := do.MustInvoke[*config.TemporalClientWrapper](i)
-		temporalCfg := do.MustInvoke[*config.TemporalConfig](i)
+		clientWrapper := do.MustInvoke[*temporalcfg.ClientWrapper](i)
+		temporalCfg := do.MustInvoke[*temporalcfg.Config](i)
 		schedulerClient := clientWrapper.GetClient().ScheduleClient()
 
 		return &PingSchedulerRepository{
@@ -66,7 +66,7 @@ func (psr *PingSchedulerRepository) NewScheduler(ctx context.Context, endpoint *
 		Action: &temporalclient.ScheduleWorkflowAction{
 			TaskQueue: psr.taskQueue,
 			Workflow:  psr.workflow,
-			Args:      []any{
+			Args: []any{
 				endpoint.Method,
 				endpoint.URL,
 				endpoint.ExpectedCode,

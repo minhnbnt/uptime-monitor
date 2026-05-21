@@ -7,9 +7,9 @@ import (
 	temporalworker "go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 
-	"github.com/minhnbnt/uptime-monitor/internal/config"
+	temporalcfg "github.com/minhnbnt/uptime-monitor/internal/config/temporal"
+	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure"
-	"github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/logger"
 )
 
 type TemporalWorkerRunner struct {
@@ -23,8 +23,8 @@ type TemporalWorkerRunner struct {
 func RegisterTemporalWorkerRunner(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*TemporalWorkerRunner, error) {
 
-		clientWrapper := do.MustInvoke[*config.TemporalClientWrapper](i)
-		temporalCfg := do.MustInvoke[*config.TemporalConfig](i)
+		clientWrapper := do.MustInvoke[*temporalcfg.ClientWrapper](i)
+		temporalCfg := do.MustInvoke[*temporalcfg.Config](i)
 		pingWorker := do.MustInvoke[*infra.PingWorker](i)
 		logger := do.MustInvoke[logger.Logger](i)
 
@@ -54,17 +54,16 @@ func (wr *TemporalWorkerRunner) PingWorkflow(ctx workflow.Context, method string
 
 	statusCode := 0
 	if err := workflow.ExecuteActivity(ctx, wr.pingWorker.Ping, method, url).Get(ctx, &statusCode); err != nil {
-		wr.logger.Warn(
-			"failed to ping server",
+		wr.logger.Warn("failed to ping server",
 			logger.String("method", method),
+			logger.String("url", url),
 			logger.Error(err),
 		)
 		return nil
 	}
 
 	if statusCode != expectedCode {
-		wr.logger.Warn(
-			"unexpected status code",
+		wr.logger.Warn("unexpected status code",
 			logger.Int("expected", expectedCode),
 			logger.Int("got", statusCode),
 		)
