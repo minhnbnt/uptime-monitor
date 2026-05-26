@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -13,9 +14,8 @@ import (
 )
 
 type TemporalWorkerRunner struct {
-	worker       temporalworker.Worker
-	pingWorker   *infra.PingWorker
-	shutdownChan chan any
+	worker     temporalworker.Worker
+	pingWorker *infra.PingWorker
 
 	logger logger.Logger
 }
@@ -31,19 +31,12 @@ func RegisterTemporalWorkerRunner(i do.Injector) {
 		client := clientWrapper.GetClient()
 		worker := temporalworker.New(client, temporalCfg.TaskQueue, temporalworker.Options{})
 
-		channel := make(chan any, 1)
-
 		return &TemporalWorkerRunner{
-			worker:       worker,
-			pingWorker:   pingWorker,
-			shutdownChan: channel,
-			logger:       logger,
+			worker:     worker,
+			pingWorker: pingWorker,
+			logger:     logger,
 		}, nil
 	})
-}
-
-func (wr *TemporalWorkerRunner) Shutdown() {
-	wr.shutdownChan <- nil
 }
 
 func (wr *TemporalWorkerRunner) PingWorkflow(ctx workflow.Context, method string, url string, expectedCode int) error {
@@ -54,7 +47,8 @@ func (wr *TemporalWorkerRunner) PingWorkflow(ctx workflow.Context, method string
 
 	statusCode := 0
 	if err := workflow.ExecuteActivity(ctx, wr.pingWorker.Ping, method, url).Get(ctx, &statusCode); err != nil {
-		wr.logger.Warn("failed to ping server",
+		wr.logger.Warn(
+			"failed to ping server",
 			logger.String("method", method),
 			logger.String("url", url),
 			logger.Error(err),
@@ -63,7 +57,8 @@ func (wr *TemporalWorkerRunner) PingWorkflow(ctx workflow.Context, method string
 	}
 
 	if statusCode != expectedCode {
-		wr.logger.Warn("unexpected status code",
+		wr.logger.Warn(
+			"unexpected status code",
 			logger.Int("expected", expectedCode),
 			logger.Int("got", statusCode),
 		)
@@ -73,7 +68,7 @@ func (wr *TemporalWorkerRunner) PingWorkflow(ctx workflow.Context, method string
 	return nil
 }
 
-func (wr *TemporalWorkerRunner) RunTemporalWorker() {
+func (wr *TemporalWorkerRunner) RunTemporalWorker(ctx context.Context) {
 
 	worker := wr.worker
 
@@ -84,5 +79,12 @@ func (wr *TemporalWorkerRunner) RunTemporalWorker() {
 
 	worker.RegisterActivity(wr.pingWorker.Ping)
 
-	worker.Run(wr.shutdownChan)
+	shutdownChan := make(chan any)
+
+	go func() {
+		defer close(shutdownChan)
+		<-ctx.Done()
+	}()
+
+	worker.Run(shutdownChan)
 }

@@ -13,7 +13,9 @@ type ClientWrapper struct {
 func newClientOption(i do.Injector) (*temporalclient.Options, error) {
 
 	cfg := do.MustInvoke[*Config](i)
+
 	logger := do.MustInvoke[*zap.Logger](i)
+	logger = logger.WithOptions(zap.AddCallerSkip(1))
 
 	return &temporalclient.Options{
 		HostPort: cfg.Host,

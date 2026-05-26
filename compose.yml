@@ -1,32 +1,111 @@
 services:
-  app:
+  server:
     build: .
     ports:
       - 8080:8080
+    command: ["./app", "--worker=false"]
 
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: postgres
-      DB_NAME: alerts
+      DB_NAME: uptime_monitor
       LOG_LEVEL: info
       APP_ENV: development
       TEMPORAL_TASK_QUEUE: ping-task-queue
       TEMPORAL_WORKFLOW_NAME: ping-workflow
-      TEMPORAL_HOST: temporal:7233
+      TEMPORAL_HOST: host.docker.internal:7233
 
     depends_on:
       postgres:
         condition: service_healthy
-      temporal:
-        condition: service_started
+
+  worker:
+    build: .
+    command: ["./app", "--server=false"]
+
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: uptime_monitor
+      LOG_LEVEL: info
+      APP_ENV: development
+      TEMPORAL_TASK_QUEUE: ping-task-queue
+      TEMPORAL_WORKFLOW_NAME: ping-workflow
+      TEMPORAL_HOST: host.docker.internal:7233
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker-1:
+    build: .
+    command: ["./app", "--server=false"]
+
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: uptime_monitor
+      LOG_LEVEL: info
+      APP_ENV: development
+      TEMPORAL_TASK_QUEUE: ping-task-queue
+      TEMPORAL_WORKFLOW_NAME: ping-workflow
+      TEMPORAL_HOST: host.docker.internal:7233
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker-2:
+    build: .
+    command: ["./app", "--server=false"]
+
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: uptime_monitor
+      LOG_LEVEL: info
+      APP_ENV: development
+      TEMPORAL_TASK_QUEUE: ping-task-queue
+      TEMPORAL_WORKFLOW_NAME: ping-workflow
+      TEMPORAL_HOST: host.docker.internal:7233
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker-3:
+    build: .
+    command: ["./app", "--server=false"]
+
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: uptime_monitor
+      LOG_LEVEL: info
+      APP_ENV: development
+      TEMPORAL_TASK_QUEUE: ping-task-queue
+      TEMPORAL_WORKFLOW_NAME: ping-workflow
+      TEMPORAL_HOST: host.docker.internal:7233
+
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   postgres:
     image: postgres:17-alpine
 
     environment:
-      POSTGRES_DB: alerts
+      POSTGRES_DB: uptime_monitor
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
 
@@ -39,18 +118,17 @@ services:
       timeout: 5s
       retries: 5
 
-  temporal:
-    image: temporalio/temporal:1.7.0
-    container_name: temporal
-
-    ports:
-      - 7233:7233
-      - 8233:8233
-
-    volumes:
-      - temporal-data:/home/temporal
-
-    command: server start-dev --ip 0.0.0.0 --db-filename /home/temporal/temporal.db
+  # temporal:
+  #   image: temporalio/temporal:latest
+  #
+  #   ports:
+  #     - 7233:7233
+  #     - 8233:8233
+  #
+  #   volumes:
+  #     - temporal-data:/home/temporal
+  #
+  #   command: server start-dev --ip 0.0.0.0 --db-filename /home/temporal/temporal.db
 
 volumes:
   temporal-data:

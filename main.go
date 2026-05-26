@@ -3,7 +3,11 @@ package main
 //go:generate go tool oapi-codegen -config=oapi-codegen.yml api/spec.yaml
 
 import (
+	"context"
+	"flag"
 	"net/http"
+	"os"
+	"os/signal"
 	"sync"
 	"syscall"
 	"time"
@@ -28,8 +32,9 @@ import (
 
 func main() {
 
-	waitgroup := sync.WaitGroup{}
-	defer waitgroup.Wait()
+	enableServer := flag.Bool("server", true, "start HTTP API server")
+	enableWorker := flag.Bool("worker", true, "start Temporal worker")
+	flag.Parse()
 
 	injector := do.New(
 
@@ -50,35 +55,70 @@ func main() {
 		handler.RegisterRequestValidator,
 		handler.RegisterServerHandler,
 		handler.RegisterEndpointHandler,
-		server.RegisterCompositeHandler,
 
+		server.RegisterCompositeHandler,
 		monitorhandler.RegisterTemporalWorkerRunner,
 	)
 
-	waitgroup.Go(func() { injector.ShutdownOnSignals(syscall.SIGTERM) })
+	ctx, stop := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt,
+		syscall.SIGTERM,
+	)
 
-	waitgroup.Go(func() {
-		runner := do.MustInvoke[*monitorhandler.TemporalWorkerRunner](injector)
-		runner.RunTemporalWorker()
+	defer stop()
+
+	waitgroup := sync.WaitGroup{}
+	defer waitgroup.Wait()
+
+	waitgroup.Go(func() { injector.ShutdownOnSignalsWithContext(ctx) })
+
+	if *enableWorker {
+		waitgroup.Go(func() { runWorker(ctx, injector) })
+	}
+
+	if *enableServer {
+		waitgroup.Go(func() { runWebServer(ctx, injector) })
+	}
+}
+
+func runWorker(ctx context.Context, i do.Injector) {
+	runner := do.MustInvoke[*monitorhandler.TemporalWorkerRunner](i)
+	runner.RunTemporalWorker(ctx)
+}
+
+func runWebServer(ctx context.Context, i do.Injector) {
+
+	router := gin.Default()
+	router.Use(cors.Default())
+
+	logger := do.MustInvoke[*zap.Logger](i)
+
+	router.Use(ginzap.Ginzap(logger, time.RFC3339, true))
+	router.Use(ginzap.RecoveryWithZap(logger, true))
+
+	router.GET("/api/v1/hello", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Hello, world!"})
 	})
 
-	waitgroup.Go(func() {
+	httpServer := http.Server{
+		Addr:    ":8080",
+		Handler: router,
+	}
 
-		router := gin.Default()
-		router.Use(cors.Default())
+	go func() {
 
-		logger := do.MustInvoke[*zap.Logger](injector)
+		<-ctx.Done()
 
-		router.Use(ginzap.Ginzap(logger, time.RFC3339, true))
-		router.Use(ginzap.RecoveryWithZap(logger, true))
+		if err := httpServer.Close(); err != nil {
+			logger.Panic("failed to shutdown server", zap.Error(err))
+		}
+	}()
 
-		router.GET("/api/v1/hello", func(ctx *gin.Context) {
-			ctx.JSON(http.StatusOK, gin.H{"message": "Hello, world!"})
-		})
+	handler := do.MustInvoke[*server.CompositeHandler](i)
+	api.RegisterHandlers(router, handler)
 
-		server := do.MustInvoke[*server.CompositeHandler](injector)
-		api.RegisterHandlers(router, server)
-
-		http.ListenAndServe(":8080", router)
-	})
+	if err := httpServer.ListenAndServe(); err != nil {
+		logger.Panic("failed to run server", zap.Error(err))
+	}
 }

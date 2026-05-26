@@ -24,14 +24,14 @@ RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
 
 # -----------------------------------------------------
 
-FROM alpine:3.22 AS upx
-
-RUN --mount=type=cache,target=/var/cache/apk \
-    apk add --no-cache upx
-
-COPY --from=builder /app/app /app/app
-
-RUN upx --best --lzma /app/app
+# FROM alpine:3.22 AS upx
+#
+# RUN --mount=type=cache,target=/var/cache/apk \
+#     apk add --no-cache upx
+#
+# COPY --from=builder /app/app /app/app
+#
+# RUN upx --best --lzma /app/app
 
 # -----------------------------------------------------
 
@@ -39,7 +39,7 @@ FROM gcr.io/distroless/static:latest
 
 WORKDIR /app
 
-COPY --from=upx /app/app .
+COPY --from=builder /app/app .
 
 EXPOSE 8080
 
