@@ -16,11 +16,11 @@ COPY . .
 
 RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
     --mount=type=cache,id=go-build,target=/root/.cache/go-build \
-    go generate ./main.go
+    go generate ./cmd/main.go
 
 RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
     --mount=type=cache,id=go-build,target=/root/.cache/go-build \
-    go build -ldflags="-s -w" -o app ./main.go
+    go build -ldflags="-s -w" -o app ./cmd/main.go
 
 # -----------------------------------------------------
 

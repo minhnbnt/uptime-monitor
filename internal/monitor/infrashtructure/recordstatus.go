@@ -6,15 +6,15 @@ import (
 
 	"github.com/samber/do/v2"
 
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	"github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure/repository"
 )
 
 type RecordPingStatusWorker struct {
 	redisRepo *repository.RedisServerEventRepository
 	dbRepo    *repository.ServerEventRepository
-	logger logger.Logger
+	logger    logger.Logger
 }
 
 func RegisterRecordPingStatusWorker(i do.Injector) {

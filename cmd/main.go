@@ -1,6 +1,6 @@
 package main
 
-//go:generate go tool oapi-codegen -config=oapi-codegen.yml api/spec.yaml
+//go:generate go tool oapi-codegen -config=../oapi-codegen.yml ../api/spec.yaml
 
 import (
 	"context"
@@ -54,11 +54,14 @@ func main() {
 		monitorrepo.RegisterServerEventRepository,
 		monitorrepo.RegisterRedisServerEventRepository,
 
+		repo.RegisterOntimeCacheRepository,
+
 		infra.RegisterPingWorker,
 		infra.RegisterRecordPingStatusWorker,
 
 		service.RegisterServerService,
 		service.RegisterEndpointService,
+		service.RegisterOntimeService,
 		monitorservices.RegisterPingService,
 
 		handler.RegisterRequestValidator,

@@ -2,7 +2,7 @@
 
 package: api
 
-output: generated/api/gen.go
+output: ../generated/api/gen.go
 
 generate:
   gin-server: true
