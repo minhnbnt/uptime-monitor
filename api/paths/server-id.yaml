@@ -1,0 +1,82 @@
+get:
+  summary: Get server by ID
+  operationId: GetServer
+  tags:
+    - servers
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+  responses:
+    "200":
+      description: Server details
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ServerResponse"
+    "404":
+      description: Server not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+put:
+  summary: Update server
+  operationId: UpdateServer
+  tags:
+    - servers
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "#/components/schemas/UpdateServerRequest"
+  responses:
+    "200":
+      description: Server updated successfully
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ServerResponse"
+    "400":
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    "404":
+      description: Server not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+delete:
+  summary: Delete server
+  operationId: DeleteServer
+  tags:
+    - servers
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+  responses:
+    "204":
+      description: Server deleted successfully
+    "404":
+      description: Server not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

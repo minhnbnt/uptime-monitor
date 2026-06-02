@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/samber/do/v2"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
@@ -29,8 +30,13 @@ func RegisterPingService(i do.Injector) {
 
 func (s *PingService) PingWorkflow(ctx workflow.Context, endpointID uint, method string, url string, expectedCode int) error {
 
+	logger := workflow.GetLogger(ctx)
+
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		StartToCloseTimeout: 10 * time.Second,
+		RetryPolicy: &temporal.RetryPolicy{
+			MaximumAttempts: 1,
+		},
 	})
 
 	statusCode := 0
@@ -41,6 +47,13 @@ func (s *PingService) PingWorkflow(ctx workflow.Context, endpointID uint, method
 	if !isPingOk {
 		currentStatus = domain.StatusOff
 	}
+
+	logger.Info(
+		"ping result",
+		"url", url,
+		"statusCode", statusCode,
+		"isPingOk", isPingOk,
+	)
 
 	recordCtx := workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		StartToCloseTimeout: 5 * time.Second,

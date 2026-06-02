@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -29,7 +30,7 @@ func RegisterOntimeService(i do.Injector) {
 }
 
 func truncateDay(t time.Time) time.Time {
-	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
 }
 
 func (s *OntimeService) BatchGetOntime(ctx context.Context, req []dto.BatchGetOntimeItem) ([]dto.BatchGetOntimeResponse, error) {
@@ -39,6 +40,62 @@ func (s *OntimeService) BatchGetOntime(ctx context.Context, req []dto.BatchGetOn
 	s.fillMisses(ctx, resultMap, cacheKeys)
 
 	return s.buildResponse(req, resultMap), nil
+}
+
+func (s *OntimeService) ListServersWithOntime(ctx context.Context, page, perPage int) ([]dto.ServerWithOntime, int64, error) {
+	since := truncateDay(time.Now().AddDate(0, 0, -29))
+	until := truncateDay(time.Now())
+
+	var dates []time.Time
+	for d := since; !d.After(until); d = d.AddDate(0, 0, 1) {
+		dates = append(dates, d)
+	}
+
+	servers, err := s.repo.List(ctx, perPage, (page-1)*perPage)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list servers: %w", err)
+	}
+
+	total, err := s.repo.Count(ctx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count servers: %w", err)
+	}
+
+	items := make([]dto.BatchGetOntimeItem, 0, len(servers)*len(dates))
+	for _, sv := range servers {
+		for _, d := range dates {
+			items = append(items, dto.BatchGetOntimeItem{ServerID: sv.ID, Date: d})
+		}
+	}
+
+	ontimeResults, err := s.BatchGetOntime(ctx, items)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to batch get ontime: %w", err)
+	}
+
+	lookup := make(map[uint]map[time.Time]float64, len(ontimeResults))
+	for _, r := range ontimeResults {
+		statsMap := make(map[time.Time]float64, len(r.Result))
+		for _, stat := range r.Result {
+			statsMap[truncateDay(stat.Date)] = stat.Stats
+		}
+		lookup[r.ServerID] = statsMap
+	}
+
+	result := make([]dto.ServerWithOntime, 0, len(servers))
+	for _, sv := range servers {
+		otStats := make([]dto.OntimeStats, 0, len(dates))
+		for _, d := range dates {
+			stats := lookup[sv.ID][d]
+			otStats = append(otStats, dto.OntimeStats{Date: d, Stats: stats})
+		}
+		result = append(result, dto.ServerWithOntime{
+			Server:      toDTOServer(sv),
+			OntimeStats: otStats,
+		})
+	}
+
+	return result, total, nil
 }
 
 func (s *OntimeService) buildCacheKeys(req []dto.BatchGetOntimeItem) []repo.OntimeCacheKey {

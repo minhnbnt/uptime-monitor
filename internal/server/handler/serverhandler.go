@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/oapi-codegen/runtime/types"
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 
@@ -15,6 +16,7 @@ import (
 
 type ServerHandler struct {
 	service       *service.ServerService
+	ontimeService *service.OntimeService
 	pageValidator *utils.PageValidator
 	validator     *RequestValidator
 }
@@ -24,6 +26,7 @@ func RegisterServerHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ServerHandler, error) {
 		return &ServerHandler{
 			service:       do.MustInvoke[*service.ServerService](i),
+			ontimeService: do.MustInvoke[*service.OntimeService](i),
 			pageValidator: utils.NewPageValidator(30),
 			validator:     do.MustInvoke[*RequestValidator](i),
 		}, nil
@@ -133,6 +136,53 @@ func (m *ServerHandler) DeleteServer(c *gin.Context, id int) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+func (m *ServerHandler) ListServersOntime(c *gin.Context, params api.ListServersOntimeParams) {
+
+	page := 1
+	if params.Page != nil {
+		page = *params.Page
+	}
+
+	perPage := 20
+	if params.PerPage != nil {
+		perPage = *params.PerPage
+	}
+
+	if err := m.pageValidator.Validate(page, perPage); err != nil {
+		c.JSON(http.StatusBadRequest, errResponse("INVALID_REQUEST", err.Error()))
+		return
+	}
+
+	ctx := c.Request.Context()
+	result, total, err := m.ontimeService.ListServersWithOntime(ctx, page, perPage)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errResponse("INTERNAL_ERROR", err.Error()))
+		return
+	}
+
+	data := lo.Map(result, func(item dto.ServerWithOntime, _ int) api.ServerWithOntime {
+		return api.ServerWithOntime{
+			Server: toAPIServer(&item.Server),
+			OntimeStats: lo.Map(item.OntimeStats, func(os dto.OntimeStats, _ int) api.OntimeStats {
+				return api.OntimeStats{
+					Date:  types.Date{Time: os.Date},
+					Stats: os.Stats,
+				}
+			}),
+		}
+	})
+
+	totalInt := int(total)
+	c.JSON(http.StatusOK, api.ServerOntimeListResponse{
+		Data: data,
+		Meta: api.PaginationMeta{
+			Page:    &page,
+			PerPage: &perPage,
+			Total:   &totalInt,
+		},
+	})
 }
 
 func toAPIEndpoint(e *dto.Endpoint) *api.Endpoint {

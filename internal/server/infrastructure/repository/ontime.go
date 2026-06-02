@@ -35,14 +35,22 @@ func (sr *ServerRepository) BatchGetOntime(ctx context.Context, req []BatchGetOn
 		return nil, err
 	}
 
-	accum := accumulate(rows)
-	ensureAllDays(accum, req)
+	uptime, coverage := accumulate(rows)
+	ensureAllDays(uptime, coverage, req)
+
+	const oneDay = 24 * 60 * 60
 
 	serverResults := make(map[uint][]OntimeResult)
-	for key, uptime := range accum {
+	for key, upt := range uptime {
+
+		cov, ok := coverage[key]
+		if !ok {
+			cov = oneDay
+		}
+
 		serverResults[key.ServerID] = append(serverResults[key.ServerID], OntimeResult{
 			Date:  key.Day,
-			Stats: uptime / 86400 * 100,
+			Stats: upt / cov * 100,
 		})
 	}
 
@@ -71,20 +79,26 @@ func (sr *ServerRepository) collectEventRows(ctx context.Context, payload []byte
 	return rows, nil
 }
 
-func accumulate(rows []eventRow) map[resultKey]float64 {
-	states := make(map[resultKey]float64)
+func accumulate(rows []eventRow) (map[resultKey]float64, map[resultKey]float64) {
+
+	uptime := make(map[resultKey]float64)
+	coverage := make(map[resultKey]float64)
+
 	for _, row := range rows {
+
 		key := resultKey{ServerID: row.ServerID, Day: row.Day}
+		coverage[key] = row.CoverageSeconds
+
 		if domain.ServerStatus(row.Status) == domain.StatusOn {
-			states[key] += row.DurationSeconds
+			uptime[key] += row.DurationSeconds
 		}
 	}
-	return states
+
+	return uptime, coverage
 }
 
-func ensureAllDays(states map[resultKey]float64, req []BatchGetOntimeRequest) {
+func ensureAllDays(uptime, coverage map[resultKey]float64, req []BatchGetOntimeRequest) {
 	for _, r := range req {
-
 		day := time.Date(
 			r.Date.Year(),
 			r.Date.Month(),
@@ -94,12 +108,18 @@ func ensureAllDays(states map[resultKey]float64, req []BatchGetOntimeRequest) {
 		)
 
 		key := resultKey{ServerID: r.ServerID, Day: day}
-		if _, ok := states[key]; !ok {
-			states[key] = 0
+		if _, ok := uptime[key]; ok {
+			continue
+		}
+
+		uptime[key] = 0
+		if _, hasCoverage := coverage[key]; !hasCoverage {
+			coverage[key] = 86400
 		}
 	}
 }
 
+// this's ok but we have make it look prettier
 const sql = `
 	WITH requested AS (
 		SELECT *
@@ -133,31 +153,43 @@ const sql = `
 			AND se.time < r.date + interval '1 day'
 	),
 	combined AS (
-		SELECT server_id, day, status, occurred_at
+		SELECT server_id, day, status, occurred_at, true AS from_prev
 		FROM prev_events
 		WHERE status IS NOT NULL
 		UNION ALL
-		SELECT server_id, day, status, occurred_at
+		SELECT server_id, day, status, occurred_at, false AS from_prev
 		FROM day_events
+	),
+	day_bounds AS (
+		SELECT server_id, day,
+			CASE
+				WHEN bool_or(from_prev) THEN 86400
+				ELSE EXTRACT(EPOCH FROM (day + interval '1 day' - MIN(occurred_at)))
+			END AS coverage_seconds
+		FROM combined
+		GROUP BY server_id, day
 	),
 	ordered AS (
 		SELECT
-			server_id,
-			day,
-			status,
-			occurred_at,
-			LEAD(occurred_at, 1, day + interval '1 day') OVER (
-				PARTITION BY server_id, day
-				ORDER BY occurred_at ASC
-			) AS next_occurred_at
-		FROM combined
+			c.server_id,
+			c.day,
+			c.status,
+			c.occurred_at,
+			LEAD(c.occurred_at, 1, c.day + interval '1 day') OVER (
+				PARTITION BY c.server_id, c.day
+				ORDER BY c.occurred_at ASC
+			) AS next_occurred_at,
+			db.coverage_seconds
+		FROM combined c
+		JOIN day_bounds db ON db.server_id = c.server_id AND db.day = c.day
 	)
 	SELECT
 		server_id,
 		day,
 		status,
 		occurred_at,
-		COALESCE(EXTRACT(EPOCH FROM (next_occurred_at - occurred_at)), 0) AS duration_seconds
+		COALESCE(EXTRACT(EPOCH FROM (next_occurred_at - occurred_at)), 0) AS duration_seconds,
+		coverage_seconds
 	FROM ordered
 	WHERE next_occurred_at > occurred_at
 	ORDER BY server_id, day, occurred_at ASC
@@ -169,6 +201,7 @@ type eventRow struct {
 	Status          string
 	OccurredAt      time.Time
 	DurationSeconds float64
+	CoverageSeconds float64
 }
 
 type resultKey struct {

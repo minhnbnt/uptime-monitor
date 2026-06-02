@@ -17,7 +17,13 @@ const (
 	ontimeKeyPrefix = "ontime:"
 	ontimeKeySuffix = ":stats"
 	ontimeTTL       = 1 * time.Hour
+	todayTTL        = 10 * time.Second
 )
+
+func isToday(t time.Time) bool {
+	now := time.Now()
+	return t.Year() == now.Year() && t.Month() == now.Month() && t.Day() == now.Day()
+}
 
 type OntimeCacheKey struct {
 	ServerID uint
@@ -84,9 +90,13 @@ func (r *OntimeCacheRepository) MSet(ctx context.Context, items map[OntimeCacheK
 
 	pipe := r.client.Pipeline()
 	for key, stats := range items {
+		ttl := ontimeTTL
+		if isToday(key.Day) {
+			ttl = todayTTL
+		}
 		pipe.Set(
 			ctx, ontimeCacheKey(key.ServerID, key.Day),
-			strconv.FormatFloat(stats, 'f', 2, 64), ontimeTTL,
+			strconv.FormatFloat(stats, 'f', 2, 64), ttl,
 		)
 	}
 

@@ -16,3 +16,8 @@ type BatchGetOntimeResponse struct {
 	ServerID uint
 	Result   []OntimeStats
 }
+
+type ServerWithOntime struct {
+	Server      Server
+	OntimeStats []OntimeStats
+}
