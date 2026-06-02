@@ -3,7 +3,7 @@ package dto
 import (
 	"time"
 
-	"github.com/minhnbnt/uptime-monitor/internal/server/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/domain"
 )
 
 type Endpoint struct {

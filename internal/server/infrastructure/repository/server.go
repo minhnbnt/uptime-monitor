@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
-	"github.com/minhnbnt/uptime-monitor/internal/server/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/domain"
 )
 
 type ServerRepository struct {

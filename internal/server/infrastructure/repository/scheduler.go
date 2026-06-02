@@ -10,7 +10,7 @@ import (
 	temporalclient "go.temporal.io/sdk/client"
 
 	temporalcfg "github.com/minhnbnt/uptime-monitor/internal/config/temporal"
-	"github.com/minhnbnt/uptime-monitor/internal/server/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/domain"
 )
 
 type PingSchedulerRepository struct {

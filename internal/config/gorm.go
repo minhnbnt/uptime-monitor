@@ -11,8 +11,7 @@ import (
 	"gorm.io/gorm"
 	"moul.io/zapgorm2"
 
-	monitordomain "github.com/minhnbnt/uptime-monitor/internal/monitor/domain"
-	"github.com/minhnbnt/uptime-monitor/internal/server/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/domain"
 )
 
 func newPostgresDriver(i do.Injector) (gorm.Dialector, error) {
@@ -53,7 +52,7 @@ func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 	schemas := []any{
 		&domain.Server{},
 		&domain.Endpoint{},
-		&monitordomain.ServerEvent{},
+		&domain.ServerEvent{},
 	}
 
 	if err := db.AutoMigrate(schemas...); err != nil {

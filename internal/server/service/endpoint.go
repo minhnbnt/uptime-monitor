@@ -6,7 +6,7 @@ import (
 
 	"github.com/samber/do/v2"
 
-	"github.com/minhnbnt/uptime-monitor/internal/server/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	repo "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/repository"
 )

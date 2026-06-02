@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
-	"github.com/minhnbnt/uptime-monitor/internal/monitor/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/domain"
 )
 
 type ServerEventRepository struct {

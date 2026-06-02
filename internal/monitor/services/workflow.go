@@ -9,7 +9,7 @@ import (
 	"github.com/samber/do/v2"
 	"go.temporal.io/sdk/workflow"
 
-	"github.com/minhnbnt/uptime-monitor/internal/monitor/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure"
 )
 
