@@ -13,9 +13,9 @@ func RegisterLogger(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (Logger, error) {
 
 		logger := do.MustInvoke[*zap.Logger](i)
-		logger = logger.WithOptions(			zap.AddCallerSkip(1)		)
+		logger = logger.WithOptions(zap.AddCallerSkip(1))
 
-		return &ZapLogger{		logger: logger		}, nil
+		return &ZapLogger{logger: logger}, nil
 	})
 }
 

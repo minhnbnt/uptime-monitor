@@ -1,0 +1,69 @@
+package services
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/samber/do/v2"
+	"go.temporal.io/sdk/workflow"
+
+	"github.com/minhnbnt/uptime-monitor/internal/monitor/domain"
+	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure"
+)
+
+type PingService struct {
+	pingWorker             *infra.PingWorker
+	recordPingStatusWorker *infra.RecordPingStatusWorker
+}
+
+func RegisterPingService(i do.Injector) {
+	do.Provide(i, func(i do.Injector) (*PingService, error) {
+		return &PingService{
+			pingWorker:             do.MustInvoke[*infra.PingWorker](i),
+			recordPingStatusWorker: do.MustInvoke[*infra.RecordPingStatusWorker](i),
+		}, nil
+	})
+}
+
+func (s *PingService) PingWorkflow(ctx workflow.Context, endpointID uint, method string, url string, expectedCode int) error {
+
+	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+		StartToCloseTimeout: 10 * time.Second,
+	})
+
+	statusCode := 0
+	pingErr := workflow.ExecuteActivity(ctx, s.pingWorker.Ping, method, url).Get(ctx, &statusCode)
+
+	currentStatus := domain.StatusOn
+	isPingOk := pingErr == nil && statusCode == expectedCode
+	if !isPingOk {
+		currentStatus = domain.StatusOff
+	}
+
+	recordCtx := workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+		StartToCloseTimeout: 5 * time.Second,
+	})
+
+	id, err := uuid.NewV7()
+	if err != nil {
+		return fmt.Errorf("failed to generate uuid: %w", err)
+	}
+
+	event := &domain.ServerEvent{
+		ID:         id,
+		EndpointID: endpointID,
+		Status:     currentStatus,
+	}
+
+	return workflow.ExecuteActivity(recordCtx, s.recordPingStatusWorker.Record, event).Get(recordCtx, nil)
+}
+
+func (s *PingService) Ping(ctx context.Context, method, url string) (int, error) {
+	return s.pingWorker.Ping(ctx, method, url)
+}
+
+func (s *PingService) Record(ctx context.Context, event *domain.ServerEvent) error {
+	return s.recordPingStatusWorker.Record(ctx, event)
+}

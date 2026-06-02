@@ -16,8 +16,12 @@ services:
       TEMPORAL_TASK_QUEUE: ping-task-queue
       TEMPORAL_WORKFLOW_NAME: ping-workflow
       TEMPORAL_HOST: host.docker.internal:7233
+      REDIS_ADDR: redis:6379
+      REDIS_DB: "0"
 
     depends_on:
+      redis:
+        condition: service_started
       postgres:
         condition: service_healthy
 
@@ -36,73 +40,31 @@ services:
       TEMPORAL_TASK_QUEUE: ping-task-queue
       TEMPORAL_WORKFLOW_NAME: ping-workflow
       TEMPORAL_HOST: host.docker.internal:7233
+      REDIS_ADDR: redis:6379
+      REDIS_DB: "0"
 
     depends_on:
+      redis:
+        condition: service_started
       postgres:
         condition: service_healthy
 
-  worker-1:
-    build: .
-    command: ["./app", "--server=false"]
+  redis:
+    image: redis:8-alpine
 
-    environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_NAME: uptime_monitor
-      LOG_LEVEL: info
-      APP_ENV: development
-      TEMPORAL_TASK_QUEUE: ping-task-queue
-      TEMPORAL_WORKFLOW_NAME: ping-workflow
-      TEMPORAL_HOST: host.docker.internal:7233
+    ports:
+      - "6379:6379"
 
-    depends_on:
-      postgres:
-        condition: service_healthy
+    volumes:
+      - redis_data:/data
 
-  worker-2:
-    build: .
-    command: ["./app", "--server=false"]
-
-    environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_NAME: uptime_monitor
-      LOG_LEVEL: info
-      APP_ENV: development
-      TEMPORAL_TASK_QUEUE: ping-task-queue
-      TEMPORAL_WORKFLOW_NAME: ping-workflow
-      TEMPORAL_HOST: host.docker.internal:7233
-
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  worker-3:
-    build: .
-    command: ["./app", "--server=false"]
-
-    environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_NAME: uptime_monitor
-      LOG_LEVEL: info
-      APP_ENV: development
-      TEMPORAL_TASK_QUEUE: ping-task-queue
-      TEMPORAL_WORKFLOW_NAME: ping-workflow
-      TEMPORAL_HOST: host.docker.internal:7233
-
-    depends_on:
-      postgres:
-        condition: service_healthy
+    command: "redis-server --appendonly yes"
 
   postgres:
     image: postgres:17-alpine
+
+    ports:
+      - "5432:5432"
 
     environment:
       POSTGRES_DB: uptime_monitor
@@ -113,23 +75,24 @@ services:
       - postgres-data:/var/lib/postgresql
 
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d alerts"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d uptime_monitor"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # temporal:
-  #   image: temporalio/temporal:latest
-  #
-  #   ports:
-  #     - 7233:7233
-  #     - 8233:8233
-  #
-  #   volumes:
-  #     - temporal-data:/home/temporal
-  #
-  #   command: server start-dev --ip 0.0.0.0 --db-filename /home/temporal/temporal.db
+  temporal:
+    image: temporalio/temporal:latest
+
+    ports:
+      - 7233:7233
+      - 8233:8233
+
+    volumes:
+      - temporal-data:/home/temporal
+
+    command: server start-dev --ip 0.0.0.0 --db-filename /home/temporal/temporal.db
 
 volumes:
   temporal-data:
   postgres-data:
+  redis_data:

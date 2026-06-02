@@ -67,6 +67,7 @@ func (psr *PingSchedulerRepository) NewScheduler(ctx context.Context, endpoint *
 			TaskQueue: psr.taskQueue,
 			Workflow:  psr.workflow,
 			Args: []any{
+				endpoint.ID,
 				endpoint.Method,
 				endpoint.URL,
 				endpoint.ExpectedCode,

@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 	"moul.io/zapgorm2"
 
+	monitordomain "github.com/minhnbnt/uptime-monitor/internal/monitor/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/server/domain"
 )
 
@@ -49,7 +50,13 @@ func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 		return nil, err
 	}
 
-	if err := db.AutoMigrate(&domain.Server{}, &domain.Endpoint{}); err != nil {
+	schemas := []any{
+		&domain.Server{},
+		&domain.Endpoint{},
+		&monitordomain.ServerEvent{},
+	}
+
+	if err := db.AutoMigrate(schemas...); err != nil {
 		return nil, err
 	}
 
