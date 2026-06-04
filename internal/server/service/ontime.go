@@ -14,9 +14,10 @@ import (
 )
 
 type OntimeService struct {
-	repo   *repo.ServerRepository
-	cache  *repo.OntimeCacheRepository
-	logger logger.Logger
+	repo       *repo.ServerRepository
+	cache      *repo.OntimeCacheRepository
+	logger     logger.Logger
+	calculator OntimeCalculator
 }
 
 func RegisterOntimeService(i do.Injector) {
@@ -43,6 +44,7 @@ func (s *OntimeService) BatchGetOntime(ctx context.Context, req []dto.BatchGetOn
 }
 
 func (s *OntimeService) ListServersWithOntime(ctx context.Context, page, perPage int) ([]dto.ServerWithOntime, int64, error) {
+
 	since := truncateDay(time.Now().AddDate(0, 0, -29))
 	until := truncateDay(time.Now())
 
@@ -134,24 +136,33 @@ func (s *OntimeService) fillMisses(ctx context.Context, resultMap map[repo.Ontim
 	requests := lo.Map(missKeys, func(key repo.OntimeCacheKey, _ int) repo.BatchGetOntimeRequest {
 		return repo.BatchGetOntimeRequest{ServerID: key.ServerID, Date: key.Day}
 	})
-	dbResults, err := s.repo.BatchGetOntime(ctx, requests)
+	rows, err := s.repo.BatchGetOntime(ctx, requests)
 	if err != nil {
 		s.logger.Warn("failed to batch get ontime from DB", logger.Error(err))
 		return
 	}
 
-	toCache := make(map[repo.OntimeCacheKey]float64, len(dbResults))
-	for _, dbRes := range dbResults {
-		for _, r := range dbRes.Result {
+	type dayKey struct {
+		ServerID uint
+		Day      time.Time
+	}
 
-			key := repo.OntimeCacheKey{
-				ServerID: dbRes.ServerID,
-				Day:      truncateDay(r.Date),
-			}
+	groups := make(map[dayKey][]repo.RawEvent)
+	for _, row := range rows {
+		key := dayKey{ServerID: row.ServerID, Day: row.Day}
+		groups[key] = append(groups[key], row)
+	}
 
-			toCache[key] = r.Stats
-			resultMap[key] = r.Stats
-		}
+	now := time.Now()
+	today := truncateDay(now)
+
+	toCache := make(map[repo.OntimeCacheKey]float64, len(missKeys))
+	for _, key := range missKeys {
+		gk := dayKey{ServerID: key.ServerID, Day: key.Day}
+		events := groups[gk]
+		stats := s.calculator.CalculateDayOntime(events, today, now)
+		toCache[key] = stats
+		resultMap[key] = stats
 	}
 
 	if err := s.cache.MSet(ctx, toCache); err != nil {

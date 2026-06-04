@@ -186,6 +186,7 @@ func (m *ServerHandler) ListServersOntime(c *gin.Context, params api.ListServers
 }
 
 func toAPIEndpoint(e *dto.Endpoint) *api.Endpoint {
+
 	if e == nil {
 		return nil
 	}

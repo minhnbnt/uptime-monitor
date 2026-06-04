@@ -62,6 +62,7 @@ func (r *OntimeCacheRepository) MGet(ctx context.Context, keys []OntimeCacheKey)
 
 	result := make(map[OntimeCacheKey]float64, len(keys))
 	for i, val := range values {
+
 		if val == nil {
 			continue
 		}
