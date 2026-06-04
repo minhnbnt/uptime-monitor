@@ -61,15 +61,19 @@ func (s *OntimeService) ListServersWithOntime(ctx context.Context, page, perPage
 	}
 
 	items := make([]dto.BatchGetOntimeItem, 0, len(servers)*len(dates))
+	serverDates := make(map[uint][]time.Time, len(servers))
+
 	for _, sv := range servers {
+		created := utils.TruncateDay(sv.CreatedAt)
 		for _, d := range dates {
-			items = append(
-				items,
-				dto.BatchGetOntimeItem{
-					ServerID: sv.ID,
-					Date:     d,
-				},
-			)
+			if d.Before(created) {
+				continue
+			}
+			items = append(items, dto.BatchGetOntimeItem{
+				ServerID: sv.ID,
+				Date:     d,
+			})
+			serverDates[sv.ID] = append(serverDates[sv.ID], d)
 		}
 	}
 
@@ -87,7 +91,7 @@ func (s *OntimeService) ListServersWithOntime(ctx context.Context, page, perPage
 			stats = make(map[time.Time]float64)
 		}
 
-		otStats := lo.Map(dates, func(d time.Time, _ int) dto.OntimeStats {
+		otStats := lo.Map(serverDates[sv.ID], func(d time.Time, _ int) dto.OntimeStats {
 			return dto.OntimeStats{Date: d, Stats: stats[d]}
 		})
 
