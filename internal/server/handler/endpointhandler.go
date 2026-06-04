@@ -13,7 +13,7 @@ import (
 )
 
 type EndpointHandler struct {
-	endpointService *service.EndpointService
+	endpointService EndpointService
 	validator       *RequestValidator
 }
 

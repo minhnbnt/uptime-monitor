@@ -13,7 +13,7 @@ import (
 )
 
 type AuthHandler struct {
-	service   *service.AuthService
+	service   AuthService
 	validator *RequestValidator
 }
 

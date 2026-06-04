@@ -15,8 +15,8 @@ import (
 )
 
 type ServerHandler struct {
-	service       *service.ServerService
-	ontimeService *service.OntimeService
+	service       ServerService
+	ontimeService OntimeService
 	pageValidator *utils.PageValidator
 	validator     *RequestValidator
 }

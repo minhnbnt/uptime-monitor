@@ -15,8 +15,8 @@ import (
 )
 
 type OntimeService struct {
-	repo       *repo.ServerRepository
-	cache      *repo.OntimeCacheRepository
+	repo       ServerRepository
+	cache      OntimeCacheRepository
 	logger     logger.Logger
 	calculator OntimeCalculator
 }

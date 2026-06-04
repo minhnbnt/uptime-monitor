@@ -12,7 +12,7 @@ import (
 )
 
 type EndpointService struct {
-	endpointRepo *repo.EndpointRepository
+	endpointRepo EndpointRepository
 }
 
 func RegisterEndpointService(i do.Injector) {

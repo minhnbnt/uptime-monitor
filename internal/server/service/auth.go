@@ -19,9 +19,9 @@ var (
 )
 
 type AuthService struct {
-	userRepo  *repo.UserRepository
-	encoder   *serverinfra.Argon2PasswordEncoder
-	jwtParser *serverinfra.JwtParser
+	userRepo  UserRepository
+	encoder   PasswordEncoder
+	jwtParser TokenParser
 }
 
 func RegisterAuthService(i do.Injector) {

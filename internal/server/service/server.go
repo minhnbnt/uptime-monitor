@@ -13,7 +13,7 @@ import (
 )
 
 type ServerService struct {
-	repo *repo.ServerRepository
+	repo ServerRepository
 }
 
 func RegisterServerService(i do.Injector) {
