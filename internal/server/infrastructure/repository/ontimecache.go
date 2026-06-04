@@ -11,6 +11,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
+	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
 const (
@@ -21,8 +22,11 @@ const (
 )
 
 func isToday(t time.Time) bool {
+
 	now := time.Now()
-	return t.Year() == now.Year() && t.Month() == now.Month() && t.Day() == now.Day()
+	today := utils.TruncateDay(now)
+
+	return utils.TruncateDay(t).Equal(today)
 }
 
 type OntimeCacheKey struct {
@@ -42,7 +46,10 @@ func RegisterOntimeCacheRepository(i do.Injector) {
 }
 
 func ontimeCacheKey(serverID uint, day time.Time) string {
-	return fmt.Sprintf("%s%d:%s%s", ontimeKeyPrefix, serverID, day.Format("2006-01-02"), ontimeKeySuffix)
+	return fmt.Sprintf(
+		"%s%d:%s%s", ontimeKeyPrefix, serverID,
+		day.Format("2006-01-02"), ontimeKeySuffix,
+	)
 }
 
 func (r *OntimeCacheRepository) MGet(ctx context.Context, keys []OntimeCacheKey) (map[OntimeCacheKey]float64, error) {

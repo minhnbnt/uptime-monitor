@@ -11,6 +11,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	repo "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/repository"
+	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
 type OntimeService struct {
@@ -30,14 +31,16 @@ func RegisterOntimeService(i do.Injector) {
 	})
 }
 
-func truncateDay(t time.Time) time.Time {
-	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
+type serverDayKey struct {
+	ServerID uint
+	Day      time.Time
 }
 
 func (s *OntimeService) BatchGetOntime(ctx context.Context, req []dto.BatchGetOntimeItem) ([]dto.BatchGetOntimeResponse, error) {
 
 	cacheKeys := s.buildCacheKeys(req)
 	resultMap := s.resolveCache(ctx, cacheKeys)
+
 	s.fillMisses(ctx, resultMap, cacheKeys)
 
 	return s.buildResponse(req, resultMap), nil
@@ -45,15 +48,9 @@ func (s *OntimeService) BatchGetOntime(ctx context.Context, req []dto.BatchGetOn
 
 func (s *OntimeService) ListServersWithOntime(ctx context.Context, page, perPage int) ([]dto.ServerWithOntime, int64, error) {
 
-	since := truncateDay(time.Now().AddDate(0, 0, -29))
-	until := truncateDay(time.Now())
-
-	var dates []time.Time
-	for d := since; !d.After(until); d = d.AddDate(0, 0, 1) {
-		dates = append(dates, d)
-	}
-
+	dates := utils.Last30Days()
 	servers, err := s.repo.List(ctx, perPage, (page-1)*perPage)
+
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to list servers: %w", err)
 	}
@@ -66,57 +63,72 @@ func (s *OntimeService) ListServersWithOntime(ctx context.Context, page, perPage
 	items := make([]dto.BatchGetOntimeItem, 0, len(servers)*len(dates))
 	for _, sv := range servers {
 		for _, d := range dates {
-			items = append(items, dto.BatchGetOntimeItem{ServerID: sv.ID, Date: d})
+			items = append(
+				items,
+				dto.BatchGetOntimeItem{ServerID: sv.ID, Date: d},
+			)
 		}
 	}
 
-	ontimeResults, err := s.BatchGetOntime(ctx, items)
+	results, err := s.BatchGetOntime(ctx, items)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to batch get ontime: %w", err)
 	}
 
-	lookup := make(map[uint]map[time.Time]float64, len(ontimeResults))
-	for _, r := range ontimeResults {
-		statsMap := make(map[time.Time]float64, len(r.Result))
-		for _, stat := range r.Result {
-			statsMap[truncateDay(stat.Date)] = stat.Stats
-		}
-		lookup[r.ServerID] = statsMap
-	}
-
-	result := make([]dto.ServerWithOntime, 0, len(servers))
+	lookup := buildOntimeLookup(results)
+	out := make([]dto.ServerWithOntime, 0, len(servers))
 	for _, sv := range servers {
-		otStats := make([]dto.OntimeStats, 0, len(dates))
-		for _, d := range dates {
-			stats := lookup[sv.ID][d]
-			otStats = append(otStats, dto.OntimeStats{Date: d, Stats: stats})
+
+		stats, ok := lookup[sv.ID]
+		if !ok {
+			stats = make(map[time.Time]float64)
 		}
-		result = append(result, dto.ServerWithOntime{
+
+		otStats := lo.Map(dates, func(d time.Time, _ int) dto.OntimeStats {
+			return dto.OntimeStats{Date: d, Stats: stats[d]}
+		})
+
+		out = append(out, dto.ServerWithOntime{
 			Server:      toDTOServer(sv),
 			OntimeStats: otStats,
 		})
 	}
 
-	return result, total, nil
+	return out, total, nil
+}
+
+func buildOntimeLookup(results []dto.BatchGetOntimeResponse) map[uint]map[time.Time]float64 {
+
+	lookup := make(map[uint]map[time.Time]float64, len(results))
+
+	for _, r := range results {
+
+		mp := lo.SliceToMap(r.Result, func(stat dto.OntimeStats) (time.Time, float64) {
+			return utils.TruncateDay(stat.Date), stat.Stats
+		})
+
+		lookup[r.ServerID] = mp
+	}
+
+	return lookup
 }
 
 func (s *OntimeService) buildCacheKeys(req []dto.BatchGetOntimeItem) []repo.OntimeCacheKey {
 
-	cacheKeys := lo.Map(req, func(item dto.BatchGetOntimeItem, _ int) repo.OntimeCacheKey {
-		return repo.OntimeCacheKey{ServerID: item.ServerID, Day: truncateDay(item.Date)}
+	keys := lo.Map(req, func(item dto.BatchGetOntimeItem, _ int) repo.OntimeCacheKey {
+		return repo.OntimeCacheKey{ServerID: item.ServerID, Day: utils.TruncateDay(item.Date)}
 	})
 
-	return lo.Uniq(cacheKeys)
+	return lo.Uniq(keys)
 }
 
 func (s *OntimeService) resolveCache(ctx context.Context, keys []repo.OntimeCacheKey) map[repo.OntimeCacheKey]float64 {
 
-	resultMap := make(map[repo.OntimeCacheKey]float64, len(keys))
-
 	cached, err := s.cache.MGet(ctx, keys)
+
 	if err != nil {
 		s.logger.Warn("ontime cache MGet failed, falling back to DB", logger.Error(err))
-		return resultMap
+		return make(map[repo.OntimeCacheKey]float64, len(keys))
 	}
 
 	return cached
@@ -133,33 +145,21 @@ func (s *OntimeService) fillMisses(ctx context.Context, resultMap map[repo.Ontim
 		return
 	}
 
-	requests := lo.Map(missKeys, func(key repo.OntimeCacheKey, _ int) repo.BatchGetOntimeRequest {
-		return repo.BatchGetOntimeRequest{ServerID: key.ServerID, Date: key.Day}
-	})
-	rows, err := s.repo.BatchGetOntime(ctx, requests)
-	if err != nil {
-		s.logger.Warn("failed to batch get ontime from DB", logger.Error(err))
+	rows := s.fetchRawEvents(ctx, missKeys)
+	if rows == nil {
 		return
 	}
 
-	type dayKey struct {
-		ServerID uint
-		Day      time.Time
-	}
-
-	groups := make(map[dayKey][]repo.RawEvent)
-	for _, row := range rows {
-		key := dayKey{ServerID: row.ServerID, Day: row.Day}
-		groups[key] = append(groups[key], row)
-	}
+	groups := lo.GroupBy(rows, func(row repo.RawEvent) serverDayKey {
+		return serverDayKey{ServerID: row.ServerID, Day: row.Day}
+	})
 
 	now := time.Now()
-	today := truncateDay(now)
-
+	today := utils.TruncateDay(now)
 	toCache := make(map[repo.OntimeCacheKey]float64, len(missKeys))
+
 	for _, key := range missKeys {
-		gk := dayKey{ServerID: key.ServerID, Day: key.Day}
-		events := groups[gk]
+		events := groups[serverDayKey{ServerID: key.ServerID, Day: key.Day}]
 		stats := s.calculator.CalculateDayOntime(events, today, now)
 		toCache[key] = stats
 		resultMap[key] = stats
@@ -170,29 +170,36 @@ func (s *OntimeService) fillMisses(ctx context.Context, resultMap map[repo.Ontim
 	}
 }
 
+func (s *OntimeService) fetchRawEvents(ctx context.Context, missKeys []repo.OntimeCacheKey) []repo.RawEvent {
+
+	requests := lo.Map(missKeys, func(key repo.OntimeCacheKey, _ int) repo.BatchGetOntimeRequest {
+		return repo.BatchGetOntimeRequest{ServerID: key.ServerID, Date: key.Day}
+	})
+
+	rows, err := s.repo.BatchGetOntime(ctx, requests)
+	if err != nil {
+		s.logger.Warn("failed to batch get ontime from DB", logger.Error(err))
+		return nil
+	}
+
+	return rows
+}
+
 func (s *OntimeService) buildResponse(req []dto.BatchGetOntimeItem, resultMap map[repo.OntimeCacheKey]float64) []dto.BatchGetOntimeResponse {
 
 	serverResults := make(map[uint][]dto.OntimeStats)
+
 	for _, item := range req {
-
-		key := repo.OntimeCacheKey{
-			ServerID: item.ServerID,
-			Day:      truncateDay(item.Date),
-		}
-
-		serverResults[item.ServerID] = append(
-			serverResults[item.ServerID],
-			dto.OntimeStats{
-				Date:  key.Day,
-				Stats: resultMap[key],
-			},
-		)
+		key := repo.OntimeCacheKey{ServerID: item.ServerID, Day: utils.TruncateDay(item.Date)}
+		serverResults[item.ServerID] = append(serverResults[item.ServerID], dto.OntimeStats{
+			Date:  key.Day,
+			Stats: resultMap[key],
+		})
 	}
 
-	responses := make([]dto.BatchGetOntimeResponse, 0, len(serverResults))
-	for serverID, result := range serverResults {
-		responses = append(responses, dto.BatchGetOntimeResponse{ServerID: serverID, Result: result})
-	}
+	responses := lo.MapToSlice(serverResults, func(serverID uint, result []dto.OntimeStats) dto.BatchGetOntimeResponse {
+		return dto.BatchGetOntimeResponse{ServerID: serverID, Result: result}
+	})
 
 	return responses
 }
