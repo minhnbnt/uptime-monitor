@@ -91,95 +91,137 @@ func (sr *ServerRepository) collectRawEvents(ctx context.Context, payload []byte
 	return rows, nil
 }
 
+type Timeline struct {
+	Day         time.Time
+	StartTime   time.Time
+	EndTime     time.Time
+	StartStatus string
+	Events      []RawEvent
+}
+
 func calculateDayOntime(events []RawEvent, today time.Time, now time.Time) float64 {
+
 	if len(events) == 0 {
 		return 0
 	}
 
-	day := truncateDay(events[0].Day)
-	dayStart := day
-	dayEnd := day.Add(24 * time.Hour)
-	isToday := day.Equal(today)
+	t := buildTimeline(events, today, now)
+	online := calculateOnlineDuration(t)
+	coverage := t.EndTime.Sub(t.StartTime).Seconds()
 
-	startStatus := ""
-	startTime := dayStart
-	var dayEvents []RawEvent
+	if coverage > 0 {
+		return online / coverage * 100
+	}
+
+	if domain.ServerStatus(t.StartStatus) == domain.StatusOn {
+		return 100
+	}
+	return 0
+}
+
+func buildTimeline(events []RawEvent, today time.Time, now time.Time) Timeline {
+	day := truncateDay(events[0].Day)
+
+	t := Timeline{
+		Day:       day,
+		StartTime: day,
+		EndTime:   day.Add(24 * time.Hour),
+	}
+
+	if day.Equal(today) {
+		t.EndTime = now
+	}
+
+	prevEvents, dayEvents := splitByDayBoundary(events, day)
+	applyStartState(&t, prevEvents, dayEvents, events, day.Equal(today))
+	t.Events = dedupEvents(dayEvents)
+
+	return t
+}
+
+func splitByDayBoundary(events []RawEvent, day time.Time) (prev, inside []RawEvent) {
+	dayEnd := day.Add(24 * time.Hour)
 
 	for _, e := range events {
-		if e.Time.Before(dayStart) {
-			startStatus = e.Status
-			if isToday {
-				startTime = e.Time
-			}
+		if e.Time.Before(day) {
+			prev = append(prev, e)
 		} else if e.Time.Before(dayEnd) {
-			dayEvents = append(dayEvents, e)
+			inside = append(inside, e)
 		}
 	}
 
-	if startStatus == "" {
-		switch {
-		case len(dayEvents) > 0:
-			startStatus = dayEvents[0].Status
-			if isToday {
-				startTime = dayEvents[0].Time
-			}
-		case len(events) > 0:
-			startStatus = events[0].Status
-			if isToday {
-				startTime = events[0].Time
-			}
+	return
+}
+
+func applyStartState(t *Timeline, prevEvents, dayEvents, allEvents []RawEvent, isToday bool) {
+
+	if len(prevEvents) > 0 {
+
+		last := prevEvents[len(prevEvents)-1]
+
+		t.StartStatus = last.Status
+		if isToday {
+			t.StartTime = last.Time
+		}
+
+		return
+	}
+
+	if len(allEvents) == 0 {
+		return
+	}
+
+	fallback := allEvents[0]
+
+	switch {
+	case len(dayEvents) > 0:
+		fallback = dayEvents[0]
+	}
+
+	t.StartStatus = fallback.Status
+	if isToday {
+		t.StartTime = fallback.Time
+	}
+}
+
+func dedupEvents(events []RawEvent) []RawEvent {
+
+	if len(events) <= 1 {
+		return events
+	}
+
+	unique := []RawEvent{events[0]}
+	for i := 1; i < len(events); i++ {
+		if !events[i].Time.Equal(events[i-1].Time) {
+			unique = append(unique, events[i])
 		}
 	}
 
-	if len(dayEvents) > 1 {
-		unique := []RawEvent{dayEvents[0]}
-		for i := 1; i < len(dayEvents); i++ {
-			if !dayEvents[i].Time.Equal(dayEvents[i-1].Time) {
-				unique = append(unique, dayEvents[i])
-			}
-		}
-		dayEvents = unique
-	}
+	return unique
+}
 
-	prevTime := startTime
-	prevStatus := startStatus
-	var totalOnline float64
+func calculateOnlineDuration(t Timeline) float64 {
 
-	for _, e := range dayEvents {
+	prevTime := t.StartTime
+	prevStatus := t.StartStatus
+	var total float64
+
+	for _, e := range t.Events {
 		if domain.ServerStatus(prevStatus) == domain.StatusOn {
-			totalOnline += e.Time.Sub(prevTime).Seconds()
+			total += e.Time.Sub(prevTime).Seconds()
 		}
 		prevStatus = e.Status
 		prevTime = e.Time
 	}
 
-	endTime := dayEnd
-	if isToday {
-		endTime = now
-	}
-
 	if domain.ServerStatus(prevStatus) == domain.StatusOn {
-		dur := endTime.Sub(prevTime).Seconds()
+		dur := t.EndTime.Sub(prevTime).Seconds()
 		if dur > 0 {
-			totalOnline += dur
+			total += dur
 		}
 	}
 
-	var coverage float64
-	if isToday {
-		coverage = now.Sub(startTime).Seconds()
-	} else {
-		coverage = dayEnd.Sub(dayStart).Seconds()
-	}
-
-	if coverage <= 0 {
-		if domain.ServerStatus(startStatus) == domain.StatusOn {
-			return 100
-		}
-		return 0
-	}
-
-	return totalOnline / coverage * 100
+	return total
 }
 
 func truncateDay(t time.Time) time.Time {
