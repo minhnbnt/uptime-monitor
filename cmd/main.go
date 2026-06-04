@@ -24,6 +24,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	monitorhandler "github.com/minhnbnt/uptime-monitor/internal/monitor/handler"
 	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure"
+	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
 	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure/repository"
 	monitorservices "github.com/minhnbnt/uptime-monitor/internal/monitor/services"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
@@ -43,6 +44,7 @@ func main() {
 		config.RegisterZapLogger,
 		config.RegisterGORMDB,
 		config.RegisterRedisClient,
+		config.RegisterJwtConfig,
 		temporalcfg.RegisterConfig,
 		temporalcfg.RegisterClient,
 
@@ -58,6 +60,8 @@ func main() {
 
 		infra.RegisterPingWorker,
 		infra.RegisterRecordPingStatusWorker,
+
+		serverinfra.RegisterJwtParser,
 
 		service.RegisterServerService,
 		service.RegisterEndpointService,

@@ -12,6 +12,7 @@ require (
 	github.com/gin-contrib/zap v1.1.7
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-playground/validator/v10 v10.30.2
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/oapi-codegen/runtime v1.4.0
 	github.com/opensearch-project/opensearch-go v1.1.0
