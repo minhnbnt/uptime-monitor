@@ -14,16 +14,16 @@ func TestServerService_ListServers(t *testing.T) {
 	now := time.Now()
 	domainServers := []domain.Server{
 		{
-			Model:     gormModel(1, now),
-			Name:      "server-a",
-			Status:    domain.StatusActive,
-			Endpoint:  nil,
+			Model:    gormModel(1, now),
+			Name:     "server-a",
+			Status:   domain.StatusActive,
+			Endpoint: nil,
 		},
 		{
-			Model:     gormModel(2, now),
-			Name:      "server-b",
-			Status:    domain.StatusPaused,
-			Endpoint:  nil,
+			Model:    gormModel(2, now),
+			Name:     "server-b",
+			Status:   domain.StatusPaused,
+			Endpoint: nil,
 		},
 	}
 

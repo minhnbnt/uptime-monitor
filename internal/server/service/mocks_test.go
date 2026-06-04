@@ -25,12 +25,12 @@ func domainUser(id uint, email, username string) domain.User {
 }
 
 type mockServerRepo struct {
-	listFn          func(ctx context.Context, limit, offset int) ([]domain.Server, error)
-	countFn         func(ctx context.Context) (int64, error)
-	createFn        func(ctx context.Context, s *domain.Server) error
-	getByIDFn       func(ctx context.Context, id uint) (*domain.Server, error)
-	updateFn        func(ctx context.Context, s *domain.Server) error
-	deleteFn        func(ctx context.Context, id uint) error
+	listFn           func(ctx context.Context, limit, offset int) ([]domain.Server, error)
+	countFn          func(ctx context.Context) (int64, error)
+	createFn         func(ctx context.Context, s *domain.Server) error
+	getByIDFn        func(ctx context.Context, id uint) (*domain.Server, error)
+	updateFn         func(ctx context.Context, s *domain.Server) error
+	deleteFn         func(ctx context.Context, id uint) error
 	batchGetOntimeFn func(ctx context.Context, req []repo.BatchGetOntimeRequest) ([]repo.RawEvent, error)
 }
 
@@ -57,7 +57,7 @@ func (m *mockServerRepo) BatchGetOntime(ctx context.Context, req []repo.BatchGet
 }
 
 type mockUserRepo struct {
-	createFn               func(ctx context.Context, user *domain.User) error
+	createFn                func(ctx context.Context, user *domain.User) error
 	findByEmailOrUsernameFn func(ctx context.Context, login string) (*domain.User, error)
 }
 

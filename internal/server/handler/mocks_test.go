@@ -19,11 +19,11 @@ func (m *mockAuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto
 }
 
 type mockServerService struct {
-	listServersFn   func(ctx context.Context, page, perPage int) ([]dto.Server, error)
-	createServerFn  func(ctx context.Context, req dto.CreateServerRequest) (*dto.Server, error)
-	getServerFn     func(ctx context.Context, id uint) (*dto.Server, error)
-	updateServerFn  func(ctx context.Context, id uint, req dto.UpdateServerRequest) (*dto.Server, error)
-	deleteServerFn  func(ctx context.Context, id uint) error
+	listServersFn  func(ctx context.Context, page, perPage int) ([]dto.Server, error)
+	createServerFn func(ctx context.Context, req dto.CreateServerRequest) (*dto.Server, error)
+	getServerFn    func(ctx context.Context, id uint) (*dto.Server, error)
+	updateServerFn func(ctx context.Context, id uint, req dto.UpdateServerRequest) (*dto.Server, error)
+	deleteServerFn func(ctx context.Context, id uint) error
 }
 
 func (m *mockServerService) ListServers(ctx context.Context, page, perPage int) ([]dto.Server, error) {

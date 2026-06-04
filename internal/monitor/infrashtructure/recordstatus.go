@@ -22,7 +22,7 @@ func RegisterRecordPingStatusWorker(i do.Injector) {
 		return &RecordPingStatusWorker{
 			statusStore: do.MustInvoke[*repo.RedisServerEventRepository](i),
 			eventSaver:  do.MustInvoke[*repo.ServerEventRepository](i),
-			logger:    do.MustInvoke[logger.Logger](i),
+			logger:      do.MustInvoke[logger.Logger](i),
 		}, nil
 	})
 }
