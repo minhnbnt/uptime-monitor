@@ -58,6 +58,7 @@ func (o OntimeCalculator) BuildTimeline(events []repo.RawEvent, today time.Time,
 }
 
 func (o OntimeCalculator) splitByDayBoundary(events []repo.RawEvent, day time.Time) (prev, inside []repo.RawEvent) {
+
 	dayEnd := day.Add(24 * time.Hour)
 
 	for _, e := range events {

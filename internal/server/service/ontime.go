@@ -65,7 +65,10 @@ func (s *OntimeService) ListServersWithOntime(ctx context.Context, page, perPage
 		for _, d := range dates {
 			items = append(
 				items,
-				dto.BatchGetOntimeItem{ServerID: sv.ID, Date: d},
+				dto.BatchGetOntimeItem{
+					ServerID: sv.ID,
+					Date:     d,
+				},
 			)
 		}
 	}
@@ -145,8 +148,13 @@ func (s *OntimeService) fillMisses(ctx context.Context, resultMap map[repo.Ontim
 		return
 	}
 
-	rows := s.fetchRawEvents(ctx, missKeys)
-	if rows == nil {
+	requests := lo.Map(missKeys, func(key repo.OntimeCacheKey, _ int) repo.BatchGetOntimeRequest {
+		return repo.BatchGetOntimeRequest{ServerID: key.ServerID, Date: key.Day}
+	})
+
+	rows, err := s.repo.BatchGetOntime(ctx, requests)
+	if err != nil {
+		s.logger.Warn("failed to batch get ontime from DB", logger.Error(err))
 		return
 	}
 
@@ -159,30 +167,17 @@ func (s *OntimeService) fillMisses(ctx context.Context, resultMap map[repo.Ontim
 	toCache := make(map[repo.OntimeCacheKey]float64, len(missKeys))
 
 	for _, key := range missKeys {
+
 		events := groups[serverDayKey{ServerID: key.ServerID, Day: key.Day}]
 		stats := s.calculator.CalculateDayOntime(events, today, now)
-		toCache[key] = stats
+
 		resultMap[key] = stats
+		toCache[key] = stats
 	}
 
 	if err := s.cache.MSet(ctx, toCache); err != nil {
 		s.logger.Warn("failed to batch cache ontime results", logger.Error(err))
 	}
-}
-
-func (s *OntimeService) fetchRawEvents(ctx context.Context, missKeys []repo.OntimeCacheKey) []repo.RawEvent {
-
-	requests := lo.Map(missKeys, func(key repo.OntimeCacheKey, _ int) repo.BatchGetOntimeRequest {
-		return repo.BatchGetOntimeRequest{ServerID: key.ServerID, Date: key.Day}
-	})
-
-	rows, err := s.repo.BatchGetOntime(ctx, requests)
-	if err != nil {
-		s.logger.Warn("failed to batch get ontime from DB", logger.Error(err))
-		return nil
-	}
-
-	return rows
 }
 
 func (s *OntimeService) buildResponse(req []dto.BatchGetOntimeItem, resultMap map[repo.OntimeCacheKey]float64) []dto.BatchGetOntimeResponse {

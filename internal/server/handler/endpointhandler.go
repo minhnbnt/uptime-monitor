@@ -49,7 +49,10 @@ func (h *EndpointHandler) SetCheckMethod(c *gin.Context, id int) {
 	}
 
 	if err := h.endpointService.SetCheckMethod(ctx, uint(id), dtoReq); err != nil {
-		c.JSON(http.StatusInternalServerError, errResponse("INTERNAL_ERROR", err.Error()))
+		c.JSON(
+			http.StatusInternalServerError,
+			errResponse("INTERNAL_ERROR", err.Error()),
+		)
 		return
 	}
 

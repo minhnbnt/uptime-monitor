@@ -3,10 +3,11 @@ services:
     build: .
     ports:
       - 8080:8080
+
     command: ["./app", "--worker=false"]
 
     env_file:
-      ./.env
+      - ./.env
 
     depends_on:
       redis:
@@ -19,7 +20,7 @@ services:
     command: ["./app", "--server=false"]
 
     env_file:
-      ./.env
+      - ./.env
 
     depends_on:
       redis:

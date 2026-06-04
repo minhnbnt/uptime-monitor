@@ -26,8 +26,8 @@ RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
 
 FROM alpine:3.22 AS upx
 
-RUN --mount=type=cache,target=/var/cache/apk \
-    apk add --no-cache upx
+RUN --mount=type=cache,id=apk-cache,target=/var/cache/apk \
+    apk add upx
 
 COPY --from=builder /app/app /app/app
 

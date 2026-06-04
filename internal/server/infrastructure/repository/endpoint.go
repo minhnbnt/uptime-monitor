@@ -18,8 +18,10 @@ type EndpointRepository struct {
 
 func RegisterEndpointRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointRepository, error) {
+
 		dbWrapper := do.MustInvoke[*config.GORMWrapper](i)
 		schedulerRepo := do.MustInvoke[*PingSchedulerRepository](i)
+
 		return &EndpointRepository{
 			db:                  dbWrapper.GetDB(),
 			schedulerRepository: schedulerRepo,
@@ -47,8 +49,6 @@ func (er *EndpointRepository) UpsertEndpoint(ctx context.Context, endpoint domai
 			return err
 		}
 
-		er.schedulerRepository.NewScheduler(ctx, &endpoint)
-
-		return nil
+		return er.schedulerRepository.NewScheduler(ctx, &endpoint)
 	})
 }

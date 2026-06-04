@@ -20,18 +20,16 @@ type RawEvent struct {
 }
 
 func (sr *ServerRepository) BatchGetOntime(ctx context.Context, req []BatchGetOntimeRequest) ([]RawEvent, error) {
+
 	payload, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
 
 	var rows []RawEvent
+	result := sr.db.WithContext(ctx).Raw(rawEventSQL, string(payload)).Scan(&rows)
 
-	err = sr.db.WithContext(ctx).
-		Raw(rawEventSQL, string(payload)).
-		Scan(&rows).Error
-
-	return rows, err
+	return rows, result.Error
 }
 
 const rawEventSQL = `
