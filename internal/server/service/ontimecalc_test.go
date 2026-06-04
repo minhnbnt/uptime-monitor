@@ -88,7 +88,7 @@ func TestCalculateDayOntime(t *testing.T) {
 			},
 			today: tomorrow,
 			now:   tomorrow.Add(1 * time.Hour),
-			want:   0,
+			want:  0,
 		},
 		{
 			name: "all ON",
@@ -243,13 +243,13 @@ func TestBuildTimelinePastDay(t *testing.T) {
 
 	tl := OntimeCalculator{}.BuildTimeline(events, d.Add(24*time.Hour), d.Add(48*time.Hour))
 
-	if tl.Day != d {
+	if !tl.Day.Equal(d) {
 		t.Errorf("Day = %v, want %v", tl.Day, d)
 	}
-	if tl.StartTime != d {
+	if !tl.StartTime.Equal(d) {
 		t.Errorf("StartTime = %v, want %v", tl.StartTime, d)
 	}
-	if tl.EndTime != d.Add(24*time.Hour) {
+	if !tl.EndTime.Equal(d.Add(24 * time.Hour)) {
 		t.Errorf("EndTime = %v, want %v", tl.EndTime, d.Add(24*time.Hour))
 	}
 	if tl.StartStatus != "ON" {
@@ -270,10 +270,10 @@ func TestBuildTimelineToday(t *testing.T) {
 
 	tl := OntimeCalculator{}.BuildTimeline(events, d, now)
 
-	if tl.StartTime != tm(2026, 6, 4, 6, 0) {
+	if !tl.StartTime.Equal(tm(2026, 6, 4, 6, 0)) {
 		t.Errorf("StartTime = %v, want 06:00", tl.StartTime)
 	}
-	if tl.EndTime != now {
+	if !tl.EndTime.Equal(now) {
 		t.Errorf("EndTime = %v, want %v", tl.EndTime, now)
 	}
 }
@@ -289,7 +289,7 @@ func TestBuildTimelineTodayWithPrevEvents(t *testing.T) {
 
 	tl := OntimeCalculator{}.BuildTimeline(events, d, now)
 
-	if tl.StartTime != prev {
+	if !tl.StartTime.Equal(prev) {
 		t.Errorf("StartTime = %v, want %v", tl.StartTime, prev)
 	}
 	if tl.StartStatus != "ON" {
@@ -301,10 +301,10 @@ func TestSplitByDayBoundary(t *testing.T) {
 	d := day(2026, 6, 4)
 
 	tests := []struct {
-		name        string
-		events      []repo.RawEvent
-		wantPrev    int
-		wantInside  int
+		name       string
+		events     []repo.RawEvent
+		wantPrev   int
+		wantInside int
 	}{
 		{
 			name: "all inside",
