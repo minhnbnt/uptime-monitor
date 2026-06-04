@@ -23,7 +23,7 @@ func TestEndpointService_SetCheckMethod(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		var captured *domain.Endpoint
 		svc := &EndpointService{
-			endpointRepo: &mockEndpointRepo{
+			endpointRepository: &mockEndpointRepo{
 				upsertEndpointFn: func(_ context.Context, e domain.Endpoint) error {
 					captured = &e
 					return nil
@@ -63,7 +63,7 @@ func TestEndpointService_SetCheckMethod(t *testing.T) {
 
 	t.Run("repo error", func(t *testing.T) {
 		svc := &EndpointService{
-			endpointRepo: &mockEndpointRepo{
+			endpointRepository: &mockEndpointRepo{
 				upsertEndpointFn: func(_ context.Context, _ domain.Endpoint) error {
 					return errors.New("upsert failed")
 				},

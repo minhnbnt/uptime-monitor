@@ -15,7 +15,7 @@ import (
 )
 
 type ServerHandler struct {
-	service       ServerService
+	serverService ServerService
 	ontimeService OntimeService
 	pageValidator *utils.PageValidator
 	validator     *RequestValidator
@@ -25,7 +25,7 @@ func RegisterServerHandler(i do.Injector) {
 
 	do.Provide(i, func(i do.Injector) (*ServerHandler, error) {
 		return &ServerHandler{
-			service:       do.MustInvoke[*service.ServerService](i),
+			serverService: do.MustInvoke[*service.ServerService](i),
 			ontimeService: do.MustInvoke[*service.OntimeService](i),
 			pageValidator: utils.NewPageValidator(30),
 			validator:     do.MustInvoke[*RequestValidator](i),
@@ -51,7 +51,7 @@ func (m *ServerHandler) ListServers(c *gin.Context, params api.ListServersParams
 	}
 
 	ctx := c.Request.Context()
-	result, err := m.service.ListServers(ctx, page, perPage)
+	result, err := m.serverService.ListServers(ctx, page, perPage)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errResponse("INTERNAL_ERROR", err.Error()))
 		return
@@ -83,7 +83,7 @@ func (m *ServerHandler) CreateServer(c *gin.Context) {
 		return
 	}
 
-	result, err := m.service.CreateServer(ctx, dtoReq)
+	result, err := m.serverService.CreateServer(ctx, dtoReq)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errResponse("INTERNAL_ERROR", err.Error()))
 		return
@@ -95,7 +95,7 @@ func (m *ServerHandler) CreateServer(c *gin.Context) {
 func (m *ServerHandler) GetServer(c *gin.Context, id int) {
 
 	ctx := c.Request.Context()
-	result, err := m.service.GetServer(ctx, uint(id))
+	result, err := m.serverService.GetServer(ctx, uint(id))
 	if err != nil {
 		c.JSON(http.StatusNotFound, errResponse("NOT_FOUND", "Server not found"))
 		return
@@ -118,7 +118,7 @@ func (m *ServerHandler) UpdateServer(c *gin.Context, id int) {
 		return
 	}
 
-	result, err := m.service.UpdateServer(ctx, uint(id), dtoReq)
+	result, err := m.serverService.UpdateServer(ctx, uint(id), dtoReq)
 	if err != nil {
 		c.JSON(http.StatusNotFound, errResponse("NOT_FOUND", "Server not found"))
 		return
@@ -130,7 +130,7 @@ func (m *ServerHandler) UpdateServer(c *gin.Context, id int) {
 func (m *ServerHandler) DeleteServer(c *gin.Context, id int) {
 
 	ctx := c.Request.Context()
-	if err := m.service.DeleteServer(ctx, uint(id)); err != nil {
+	if err := m.serverService.DeleteServer(ctx, uint(id)); err != nil {
 		c.JSON(http.StatusNotFound, errResponse("NOT_FOUND", "Server not found"))
 		return
 	}

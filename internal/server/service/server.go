@@ -13,14 +13,14 @@ import (
 )
 
 type ServerService struct {
-	repo ServerRepository
+	serverRepository ServerRepository
 }
 
 func RegisterServerService(i do.Injector) {
 
 	do.Provide(i, func(i do.Injector) (*ServerService, error) {
 		return &ServerService{
-			repo: do.MustInvoke[*repo.ServerRepository](i),
+			serverRepository: do.MustInvoke[*repo.ServerRepository](i),
 		}, nil
 	})
 }
@@ -54,7 +54,7 @@ func (ss *ServerService) ListServers(ctx context.Context, page, perPage int) ([]
 
 	limit, offset := perPage, (page-1)*perPage
 
-	result, err := ss.repo.List(ctx, limit, offset)
+	result, err := ss.serverRepository.List(ctx, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get servers: %w", err)
 	}
@@ -71,7 +71,7 @@ func (ss *ServerService) CreateServer(ctx context.Context, req dto.CreateServerR
 		Status: domain.StatusActive,
 	}
 
-	if err := ss.repo.Create(ctx, &server); err != nil {
+	if err := ss.serverRepository.Create(ctx, &server); err != nil {
 		return nil, fmt.Errorf("failed to create server: %w", err)
 	}
 
@@ -81,7 +81,7 @@ func (ss *ServerService) CreateServer(ctx context.Context, req dto.CreateServerR
 
 func (ss *ServerService) GetServer(ctx context.Context, id uint) (*dto.Server, error) {
 
-	server, err := ss.repo.GetByID(ctx, id)
+	server, err := ss.serverRepository.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get server: %w", err)
 	}
@@ -92,7 +92,7 @@ func (ss *ServerService) GetServer(ctx context.Context, id uint) (*dto.Server, e
 
 func (ss *ServerService) UpdateServer(ctx context.Context, id uint, req dto.UpdateServerRequest) (*dto.Server, error) {
 
-	server, err := ss.repo.GetByID(ctx, id)
+	server, err := ss.serverRepository.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get server: %w", err)
 	}
@@ -105,7 +105,7 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uint, req dto.Upda
 		server.Status = *req.Status
 	}
 
-	if err := ss.repo.Update(ctx, server); err != nil {
+	if err := ss.serverRepository.Update(ctx, server); err != nil {
 		return nil, fmt.Errorf("failed to update server: %w", err)
 	}
 
@@ -115,7 +115,7 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uint, req dto.Upda
 
 func (ss *ServerService) DeleteServer(ctx context.Context, id uint) error {
 
-	if err := ss.repo.Delete(ctx, id); err != nil {
+	if err := ss.serverRepository.Delete(ctx, id); err != nil {
 		return fmt.Errorf("failed to delete server: %w", err)
 	}
 

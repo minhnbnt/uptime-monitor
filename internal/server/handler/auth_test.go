@@ -20,7 +20,7 @@ func TestAuthHandler_Register(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		h := &AuthHandler{
-			service: &mockAuthService{
+			authService: &mockAuthService{
 				registerFn: func(_ context.Context, req dto.RegisterRequest) (*dto.AuthResponse, error) {
 					return &dto.AuthResponse{Token: "jwt", User: validUser}, nil
 				},
@@ -53,8 +53,8 @@ func TestAuthHandler_Register(t *testing.T) {
 
 	t.Run("validation error", func(t *testing.T) {
 		h := &AuthHandler{
-			service:   &mockAuthService{},
-			validator: validator,
+			authService: &mockAuthService{},
+			validator:   validator,
 		}
 		c, w := newGinContext("POST", "/api/v1/auth/register",
 			`{"email":"a@b.com","username":"u","password":"short","name":""}`)
@@ -72,7 +72,7 @@ func TestAuthHandler_Register(t *testing.T) {
 
 	t.Run("email taken", func(t *testing.T) {
 		h := &AuthHandler{
-			service: &mockAuthService{
+			authService: &mockAuthService{
 				registerFn: func(_ context.Context, _ dto.RegisterRequest) (*dto.AuthResponse, error) {
 					return nil, service.ErrEmailOrUsernameTaken
 				},
@@ -89,7 +89,7 @@ func TestAuthHandler_Register(t *testing.T) {
 
 	t.Run("internal error", func(t *testing.T) {
 		h := &AuthHandler{
-			service: &mockAuthService{
+			authService: &mockAuthService{
 				registerFn: func(_ context.Context, _ dto.RegisterRequest) (*dto.AuthResponse, error) {
 					return nil, errors.New("db error")
 				},
@@ -112,7 +112,7 @@ func TestAuthHandler_Login(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		h := &AuthHandler{
-			service: &mockAuthService{
+			authService: &mockAuthService{
 				loginFn: func(_ context.Context, _ dto.LoginRequest) (*dto.AuthResponse, error) {
 					return &dto.AuthResponse{Token: "jwt", User: validUser}, nil
 				},
@@ -144,7 +144,7 @@ func TestAuthHandler_Login(t *testing.T) {
 
 	t.Run("invalid credentials", func(t *testing.T) {
 		h := &AuthHandler{
-			service: &mockAuthService{
+			authService: &mockAuthService{
 				loginFn: func(_ context.Context, _ dto.LoginRequest) (*dto.AuthResponse, error) {
 					return nil, service.ErrInvalidCredentials
 				},
@@ -161,7 +161,7 @@ func TestAuthHandler_Login(t *testing.T) {
 
 	t.Run("internal error", func(t *testing.T) {
 		h := &AuthHandler{
-			service: &mockAuthService{
+			authService: &mockAuthService{
 				loginFn: func(_ context.Context, _ dto.LoginRequest) (*dto.AuthResponse, error) {
 					return nil, errors.New("db error")
 				},

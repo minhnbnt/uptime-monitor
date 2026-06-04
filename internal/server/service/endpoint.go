@@ -12,13 +12,13 @@ import (
 )
 
 type EndpointService struct {
-	endpointRepo EndpointRepository
+	endpointRepository EndpointRepository
 }
 
 func RegisterEndpointService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointService, error) {
 		return &EndpointService{
-			endpointRepo: do.MustInvoke[*repo.EndpointRepository](i),
+			endpointRepository: do.MustInvoke[*repo.EndpointRepository](i),
 		}, nil
 	})
 }
@@ -39,7 +39,7 @@ func (es *EndpointService) SetCheckMethod(ctx context.Context, serverID uint, re
 
 	endpoint := toDomainEndpoint(serverID, req)
 
-	if err := es.endpointRepo.UpsertEndpoint(ctx, endpoint); err != nil {
+	if err := es.endpointRepository.UpsertEndpoint(ctx, endpoint); err != nil {
 		return fmt.Errorf("failed to upsert endpoint: %w", err)
 	}
 

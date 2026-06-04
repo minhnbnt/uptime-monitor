@@ -28,7 +28,7 @@ func TestServerService_ListServers(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		svc := &ServerService{repo: &mockServerRepo{
+		svc := &ServerService{serverRepository: &mockServerRepo{
 			listFn: func(_ context.Context, limit, offset int) ([]domain.Server, error) {
 				if limit != 10 || offset != 0 {
 					t.Errorf("List(%d, %d)", limit, offset)
@@ -50,7 +50,7 @@ func TestServerService_ListServers(t *testing.T) {
 	})
 
 	t.Run("repo error", func(t *testing.T) {
-		svc := &ServerService{repo: &mockServerRepo{
+		svc := &ServerService{serverRepository: &mockServerRepo{
 			listFn: func(_ context.Context, _, _ int) ([]domain.Server, error) {
 				return nil, errors.New("db error")
 			},
@@ -66,7 +66,7 @@ func TestServerService_ListServers(t *testing.T) {
 func TestServerService_CreateServer(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		var saved *domain.Server
-		svc := &ServerService{repo: &mockServerRepo{
+		svc := &ServerService{serverRepository: &mockServerRepo{
 			createFn: func(_ context.Context, s *domain.Server) error {
 				s.ID = 42
 				s.CreatedAt = time.Now()
@@ -96,7 +96,7 @@ func TestServerService_CreateServer(t *testing.T) {
 	})
 
 	t.Run("repo error", func(t *testing.T) {
-		svc := &ServerService{repo: &mockServerRepo{
+		svc := &ServerService{serverRepository: &mockServerRepo{
 			createFn: func(_ context.Context, _ *domain.Server) error {
 				return errors.New("db error")
 			},
@@ -113,7 +113,7 @@ func TestServerService_GetServer(t *testing.T) {
 	now := time.Now()
 
 	t.Run("found", func(t *testing.T) {
-		svc := &ServerService{repo: &mockServerRepo{
+		svc := &ServerService{serverRepository: &mockServerRepo{
 			getByIDFn: func(_ context.Context, id uint) (*domain.Server, error) {
 				return &domain.Server{
 					Model:  gormModel(id, now),
@@ -136,7 +136,7 @@ func TestServerService_GetServer(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		svc := &ServerService{repo: &mockServerRepo{
+		svc := &ServerService{serverRepository: &mockServerRepo{
 			getByIDFn: func(_ context.Context, _ uint) (*domain.Server, error) {
 				return nil, errors.New("not found")
 			},
@@ -159,7 +159,7 @@ func TestServerService_UpdateServer(t *testing.T) {
 
 	t.Run("update name and status", func(t *testing.T) {
 		var updated *domain.Server
-		svc := &ServerService{repo: &mockServerRepo{
+		svc := &ServerService{serverRepository: &mockServerRepo{
 			getByIDFn: func(_ context.Context, _ uint) (*domain.Server, error) {
 				cp := *existing
 				return &cp, nil
@@ -190,7 +190,7 @@ func TestServerService_UpdateServer(t *testing.T) {
 
 	t.Run("nil fields leave unchanged", func(t *testing.T) {
 		var updated *domain.Server
-		svc := &ServerService{repo: &mockServerRepo{
+		svc := &ServerService{serverRepository: &mockServerRepo{
 			getByIDFn: func(_ context.Context, _ uint) (*domain.Server, error) {
 				cp := *existing
 				return &cp, nil
@@ -215,7 +215,7 @@ func TestServerService_UpdateServer(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		svc := &ServerService{repo: &mockServerRepo{
+		svc := &ServerService{serverRepository: &mockServerRepo{
 			getByIDFn: func(_ context.Context, _ uint) (*domain.Server, error) {
 				return nil, errors.New("not found")
 			},
@@ -228,7 +228,7 @@ func TestServerService_UpdateServer(t *testing.T) {
 	})
 
 	t.Run("update error", func(t *testing.T) {
-		svc := &ServerService{repo: &mockServerRepo{
+		svc := &ServerService{serverRepository: &mockServerRepo{
 			getByIDFn: func(_ context.Context, _ uint) (*domain.Server, error) {
 				cp := *existing
 				return &cp, nil
@@ -248,7 +248,7 @@ func TestServerService_UpdateServer(t *testing.T) {
 func TestServerService_DeleteServer(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		var deleted uint
-		svc := &ServerService{repo: &mockServerRepo{
+		svc := &ServerService{serverRepository: &mockServerRepo{
 			deleteFn: func(_ context.Context, id uint) error {
 				deleted = id
 				return nil
@@ -265,7 +265,7 @@ func TestServerService_DeleteServer(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		svc := &ServerService{repo: &mockServerRepo{
+		svc := &ServerService{serverRepository: &mockServerRepo{
 			deleteFn: func(_ context.Context, _ uint) error {
 				return errors.New("not found")
 			},

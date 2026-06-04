@@ -13,15 +13,15 @@ import (
 )
 
 type AuthHandler struct {
-	service   AuthService
-	validator *RequestValidator
+	authService AuthService
+	validator   *RequestValidator
 }
 
 func RegisterAuthHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*AuthHandler, error) {
 		return &AuthHandler{
-			service:   do.MustInvoke[*service.AuthService](i),
-			validator: do.MustInvoke[*RequestValidator](i),
+			authService: do.MustInvoke[*service.AuthService](i),
+			validator:   do.MustInvoke[*RequestValidator](i),
 		}, nil
 	})
 }
@@ -44,7 +44,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	result, err := h.service.Register(ctx, dtoReq)
+	result, err := h.authService.Register(ctx, dtoReq)
 	if err != nil {
 		if errors.Is(err, service.ErrEmailOrUsernameTaken) {
 			c.JSON(http.StatusConflict, errResponse("CONFLICT", err.Error()))
@@ -81,7 +81,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	result, err := h.service.Login(ctx, dtoReq)
+	result, err := h.authService.Login(ctx, dtoReq)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidCredentials) {
 			c.JSON(http.StatusUnauthorized, errResponse("UNAUTHORIZED", err.Error()))

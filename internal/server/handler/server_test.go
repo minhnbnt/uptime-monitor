@@ -24,7 +24,7 @@ func TestServerHandler_ListServers(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		h := &ServerHandler{
-			service: &mockServerService{
+			serverService: &mockServerService{
 				listServersFn: func(_ context.Context, page, perPage int) ([]dto.Server, error) {
 					if page != 2 || perPage != 10 {
 						t.Errorf("ListServers(%d, %d)", page, perPage)
@@ -59,7 +59,7 @@ func TestServerHandler_ListServers(t *testing.T) {
 
 	t.Run("internal error", func(t *testing.T) {
 		h := &ServerHandler{
-			service: &mockServerService{
+			serverService: &mockServerService{
 				listServersFn: func(_ context.Context, _, _ int) ([]dto.Server, error) {
 					return nil, errors.New("db error")
 				},
@@ -81,7 +81,7 @@ func TestServerHandler_CreateServer(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		h := &ServerHandler{
-			service: &mockServerService{
+			serverService: &mockServerService{
 				createServerFn: func(_ context.Context, req dto.CreateServerRequest) (*dto.Server, error) {
 					s := dtoServer(1, req.Name, now)
 					return &s, nil
@@ -114,7 +114,7 @@ func TestServerHandler_CreateServer(t *testing.T) {
 
 	t.Run("internal error", func(t *testing.T) {
 		h := &ServerHandler{
-			service: &mockServerService{
+			serverService: &mockServerService{
 				createServerFn: func(_ context.Context, _ dto.CreateServerRequest) (*dto.Server, error) {
 					return nil, errors.New("db error")
 				},
@@ -135,7 +135,7 @@ func TestServerHandler_GetServer(t *testing.T) {
 
 	t.Run("found", func(t *testing.T) {
 		h := &ServerHandler{
-			service: &mockServerService{
+			serverService: &mockServerService{
 				getServerFn: func(_ context.Context, id uint) (*dto.Server, error) {
 					s := dtoServer(id, "found", now)
 					return &s, nil
@@ -157,7 +157,7 @@ func TestServerHandler_GetServer(t *testing.T) {
 
 	t.Run("not found", func(t *testing.T) {
 		h := &ServerHandler{
-			service: &mockServerService{
+			serverService: &mockServerService{
 				getServerFn: func(_ context.Context, _ uint) (*dto.Server, error) {
 					return nil, errors.New("not found")
 				},
@@ -178,7 +178,7 @@ func TestServerHandler_UpdateServer(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		h := &ServerHandler{
-			service: &mockServerService{
+			serverService: &mockServerService{
 				updateServerFn: func(_ context.Context, id uint, req dto.UpdateServerRequest) (*dto.Server, error) {
 					s := dtoServer(id, *req.Name, now)
 					return &s, nil
@@ -211,7 +211,7 @@ func TestServerHandler_UpdateServer(t *testing.T) {
 
 	t.Run("not found", func(t *testing.T) {
 		h := &ServerHandler{
-			service: &mockServerService{
+			serverService: &mockServerService{
 				updateServerFn: func(_ context.Context, _ uint, _ dto.UpdateServerRequest) (*dto.Server, error) {
 					return nil, errors.New("not found")
 				},
@@ -230,7 +230,7 @@ func TestServerHandler_UpdateServer(t *testing.T) {
 func TestServerHandler_DeleteServer(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		h := &ServerHandler{
-			service: &mockServerService{
+			serverService: &mockServerService{
 				deleteServerFn: func(_ context.Context, id uint) error {
 					return nil
 				},
@@ -247,7 +247,7 @@ func TestServerHandler_DeleteServer(t *testing.T) {
 
 	t.Run("not found", func(t *testing.T) {
 		h := &ServerHandler{
-			service: &mockServerService{
+			serverService: &mockServerService{
 				deleteServerFn: func(_ context.Context, _ uint) error {
 					return errors.New("not found")
 				},

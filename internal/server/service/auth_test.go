@@ -19,7 +19,7 @@ func TestAuthService_Register(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		svc := &AuthService{
-			userRepo: &mockUserRepo{
+			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return nil, nil
 				},
@@ -28,12 +28,12 @@ func TestAuthService_Register(t *testing.T) {
 					return nil
 				},
 			},
-			encoder: &mockPasswordEncoder{
+			passwordEncoder: &mockPasswordEncoder{
 				encodeFn: func(_ string) (string, error) {
 					return "hashed-pass", nil
 				},
 			},
-			jwtParser: &mockTokenParser{
+			tokenParser: &mockTokenParser{
 				newTokenFn: func(_ string, claims map[string]any) (string, error) {
 					if claims["sub"] != uint(10) {
 						t.Error("wrong sub claim")
@@ -60,7 +60,7 @@ func TestAuthService_Register(t *testing.T) {
 
 	t.Run("email taken", func(t *testing.T) {
 		svc := &AuthService{
-			userRepo: &mockUserRepo{
+			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					u := domainUser(1, "a@b.com", "other")
 					return &u, nil
@@ -76,7 +76,7 @@ func TestAuthService_Register(t *testing.T) {
 
 	t.Run("find error", func(t *testing.T) {
 		svc := &AuthService{
-			userRepo: &mockUserRepo{
+			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return nil, errors.New("db error")
 				},
@@ -91,7 +91,7 @@ func TestAuthService_Register(t *testing.T) {
 
 	t.Run("encode error", func(t *testing.T) {
 		svc := &AuthService{
-			userRepo: &mockUserRepo{
+			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return nil, nil
 				},
@@ -99,7 +99,7 @@ func TestAuthService_Register(t *testing.T) {
 					return nil
 				},
 			},
-			encoder: &mockPasswordEncoder{
+			passwordEncoder: &mockPasswordEncoder{
 				encodeFn: func(_ string) (string, error) {
 					return "", errors.New("hash failed")
 				},
@@ -114,7 +114,7 @@ func TestAuthService_Register(t *testing.T) {
 
 	t.Run("create error", func(t *testing.T) {
 		svc := &AuthService{
-			userRepo: &mockUserRepo{
+			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return nil, nil
 				},
@@ -122,7 +122,7 @@ func TestAuthService_Register(t *testing.T) {
 					return errors.New("create failed")
 				},
 			},
-			encoder: &mockPasswordEncoder{
+			passwordEncoder: &mockPasswordEncoder{
 				encodeFn: func(_ string) (string, error) {
 					return "hash", nil
 				},
@@ -137,7 +137,7 @@ func TestAuthService_Register(t *testing.T) {
 
 	t.Run("token error", func(t *testing.T) {
 		svc := &AuthService{
-			userRepo: &mockUserRepo{
+			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return nil, nil
 				},
@@ -146,12 +146,12 @@ func TestAuthService_Register(t *testing.T) {
 					return nil
 				},
 			},
-			encoder: &mockPasswordEncoder{
+			passwordEncoder: &mockPasswordEncoder{
 				encodeFn: func(_ string) (string, error) {
 					return "hash", nil
 				},
 			},
-			jwtParser: &mockTokenParser{
+			tokenParser: &mockTokenParser{
 				newTokenFn: func(_ string, _ map[string]any) (string, error) {
 					return "", errors.New("jwt failed")
 				},
@@ -175,17 +175,17 @@ func TestAuthService_Login(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		svc := &AuthService{
-			userRepo: &mockUserRepo{
+			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return &matchUser, nil
 				},
 			},
-			encoder: &mockPasswordEncoder{
+			passwordEncoder: &mockPasswordEncoder{
 				verifyFn: func(_, _ string) (bool, error) {
 					return true, nil
 				},
 			},
-			jwtParser: &mockTokenParser{
+			tokenParser: &mockTokenParser{
 				newTokenFn: func(_ string, _ map[string]any) (string, error) {
 					return "jwt-token", nil
 				},
@@ -206,7 +206,7 @@ func TestAuthService_Login(t *testing.T) {
 
 	t.Run("user not found", func(t *testing.T) {
 		svc := &AuthService{
-			userRepo: &mockUserRepo{
+			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return nil, errors.New("not found")
 				},
@@ -221,12 +221,12 @@ func TestAuthService_Login(t *testing.T) {
 
 	t.Run("wrong password", func(t *testing.T) {
 		svc := &AuthService{
-			userRepo: &mockUserRepo{
+			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return &matchUser, nil
 				},
 			},
-			encoder: &mockPasswordEncoder{
+			passwordEncoder: &mockPasswordEncoder{
 				verifyFn: func(_, _ string) (bool, error) {
 					return false, nil
 				},
@@ -241,12 +241,12 @@ func TestAuthService_Login(t *testing.T) {
 
 	t.Run("verify error", func(t *testing.T) {
 		svc := &AuthService{
-			userRepo: &mockUserRepo{
+			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return &matchUser, nil
 				},
 			},
-			encoder: &mockPasswordEncoder{
+			passwordEncoder: &mockPasswordEncoder{
 				verifyFn: func(_, _ string) (bool, error) {
 					return false, errors.New("verify error")
 				},
@@ -261,17 +261,17 @@ func TestAuthService_Login(t *testing.T) {
 
 	t.Run("token error", func(t *testing.T) {
 		svc := &AuthService{
-			userRepo: &mockUserRepo{
+			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return &matchUser, nil
 				},
 			},
-			encoder: &mockPasswordEncoder{
+			passwordEncoder: &mockPasswordEncoder{
 				verifyFn: func(_, _ string) (bool, error) {
 					return true, nil
 				},
 			},
-			jwtParser: &mockTokenParser{
+			tokenParser: &mockTokenParser{
 				newTokenFn: func(_ string, _ map[string]any) (string, error) {
 					return "", errors.New("jwt failed")
 				},

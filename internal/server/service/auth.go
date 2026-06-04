@@ -19,17 +19,17 @@ var (
 )
 
 type AuthService struct {
-	userRepo  UserRepository
-	encoder   PasswordEncoder
-	jwtParser TokenParser
+	userRepository  UserRepository
+	passwordEncoder PasswordEncoder
+	tokenParser     TokenParser
 }
 
 func RegisterAuthService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*AuthService, error) {
 		return &AuthService{
-			userRepo:  do.MustInvoke[*repo.UserRepository](i),
-			encoder:   do.MustInvoke[*serverinfra.Argon2PasswordEncoder](i),
-			jwtParser: do.MustInvoke[*serverinfra.JwtParser](i),
+			userRepository:  do.MustInvoke[*repo.UserRepository](i),
+			passwordEncoder: do.MustInvoke[*serverinfra.Argon2PasswordEncoder](i),
+			tokenParser:     do.MustInvoke[*serverinfra.JwtParser](i),
 		}, nil
 	})
 }
@@ -45,7 +45,7 @@ func toUserProfile(u domain.User) dto.UserProfile {
 
 func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*dto.AuthResponse, error) {
 
-	existing, err := s.userRepo.FindByEmailOrUsername(ctx, req.Email)
+	existing, err := s.userRepository.FindByEmailOrUsername(ctx, req.Email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
@@ -54,7 +54,7 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 		return nil, ErrEmailOrUsernameTaken
 	}
 
-	hash, err := s.encoder.Encode(req.Password)
+	hash, err := s.passwordEncoder.Encode(req.Password)
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
@@ -66,11 +66,11 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 		Name:     req.Name,
 	}
 
-	if err := s.userRepo.Create(ctx, &user); err != nil {
+	if err := s.userRepository.Create(ctx, &user); err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	token, err := s.jwtParser.NewToken("uptime-monitor", map[string]any{
+	token, err := s.tokenParser.NewToken("uptime-monitor", map[string]any{
 		"sub":      user.ID,
 		"email":    user.Email,
 		"username": user.Username,
@@ -88,12 +88,12 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 
 func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.AuthResponse, error) {
 
-	user, err := s.userRepo.FindByEmailOrUsername(ctx, req.Login)
+	user, err := s.userRepository.FindByEmailOrUsername(ctx, req.Login)
 	if err != nil {
 		return nil, ErrInvalidCredentials
 	}
 
-	ok, err := s.encoder.Verify(req.Password, user.Password)
+	ok, err := s.passwordEncoder.Verify(req.Password, user.Password)
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify password: %w", err)
 	}
@@ -102,7 +102,7 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Aut
 		return nil, ErrInvalidCredentials
 	}
 
-	token, err := s.jwtParser.NewToken("uptime-monitor", map[string]any{
+	token, err := s.tokenParser.NewToken("uptime-monitor", map[string]any{
 		"sub":      user.ID,
 		"email":    user.Email,
 		"username": user.Username,

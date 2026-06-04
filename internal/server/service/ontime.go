@@ -15,18 +15,18 @@ import (
 )
 
 type OntimeService struct {
-	repo       ServerRepository
-	cache      OntimeCacheRepository
-	logger     logger.Logger
-	calculator OntimeCalculator
+	serverRepository      ServerRepository
+	ontimeCacheRepository OntimeCacheRepository
+	logger                logger.Logger
+	calculator            OntimeCalculator
 }
 
 func RegisterOntimeService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*OntimeService, error) {
 		return &OntimeService{
-			repo:   do.MustInvoke[*repo.ServerRepository](i),
-			cache:  do.MustInvoke[*repo.OntimeCacheRepository](i),
-			logger: do.MustInvoke[logger.Logger](i),
+			serverRepository:      do.MustInvoke[*repo.ServerRepository](i),
+			ontimeCacheRepository: do.MustInvoke[*repo.OntimeCacheRepository](i),
+			logger:                do.MustInvoke[logger.Logger](i),
 		}, nil
 	})
 }
@@ -49,13 +49,13 @@ func (s *OntimeService) BatchGetOntime(ctx context.Context, req []dto.BatchGetOn
 func (s *OntimeService) ListServersWithOntime(ctx context.Context, page, perPage int) ([]dto.ServerWithOntime, int64, error) {
 
 	dates := utils.Last30Days()
-	servers, err := s.repo.List(ctx, perPage, (page-1)*perPage)
+	servers, err := s.serverRepository.List(ctx, perPage, (page-1)*perPage)
 
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to list servers: %w", err)
 	}
 
-	total, err := s.repo.Count(ctx)
+	total, err := s.serverRepository.Count(ctx)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count servers: %w", err)
 	}
@@ -131,7 +131,7 @@ func (s *OntimeService) buildCacheKeys(req []dto.BatchGetOntimeItem) []repo.Onti
 
 func (s *OntimeService) resolveCache(ctx context.Context, keys []repo.OntimeCacheKey) map[repo.OntimeCacheKey]float64 {
 
-	cached, err := s.cache.MGet(ctx, keys)
+	cached, err := s.ontimeCacheRepository.MGet(ctx, keys)
 
 	if err != nil {
 		s.logger.Warn("ontime cache MGet failed, falling back to DB", logger.Error(err))
@@ -156,7 +156,7 @@ func (s *OntimeService) fillMisses(ctx context.Context, resultMap map[repo.Ontim
 		return repo.BatchGetOntimeRequest{ServerID: key.ServerID, Date: key.Day}
 	})
 
-	rows, err := s.repo.BatchGetOntime(ctx, requests)
+	rows, err := s.serverRepository.BatchGetOntime(ctx, requests)
 	if err != nil {
 		s.logger.Warn("failed to batch get ontime from DB", logger.Error(err))
 		return
@@ -179,7 +179,7 @@ func (s *OntimeService) fillMisses(ctx context.Context, resultMap map[repo.Ontim
 		toCache[key] = stats
 	}
 
-	if err := s.cache.MSet(ctx, toCache); err != nil {
+	if err := s.ontimeCacheRepository.MSet(ctx, toCache); err != nil {
 		s.logger.Warn("failed to batch cache ontime results", logger.Error(err))
 	}
 }
