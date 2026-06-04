@@ -5,19 +5,8 @@ services:
       - 8080:8080
     command: ["./app", "--worker=false"]
 
-    environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_NAME: uptime_monitor
-      LOG_LEVEL: info
-      APP_ENV: development
-      TEMPORAL_TASK_QUEUE: ping-task-queue
-      TEMPORAL_WORKFLOW_NAME: ping-workflow
-      TEMPORAL_HOST: host.docker.internal:7233
-      REDIS_ADDR: redis:6379
-      REDIS_DB: "0"
+    env_file:
+      ./.env
 
     depends_on:
       redis:
@@ -29,19 +18,8 @@ services:
     build: .
     command: ["./app", "--server=false"]
 
-    environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_NAME: uptime_monitor
-      LOG_LEVEL: info
-      APP_ENV: development
-      TEMPORAL_TASK_QUEUE: ping-task-queue
-      TEMPORAL_WORKFLOW_NAME: ping-workflow
-      TEMPORAL_HOST: host.docker.internal:7233
-      REDIS_ADDR: redis:6379
-      REDIS_DB: "0"
+    env_file:
+      ./.env
 
     depends_on:
       redis:

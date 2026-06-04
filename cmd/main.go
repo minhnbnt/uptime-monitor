@@ -24,11 +24,11 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	monitorhandler "github.com/minhnbnt/uptime-monitor/internal/monitor/handler"
 	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure"
-	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
 	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure/repository"
 	monitorservices "github.com/minhnbnt/uptime-monitor/internal/monitor/services"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/handler"
+	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
 	repo "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 )
@@ -45,6 +45,7 @@ func main() {
 		config.RegisterGORMDB,
 		config.RegisterRedisClient,
 		config.RegisterJwtConfig,
+		config.RegisterArgon2Config,
 		temporalcfg.RegisterConfig,
 		temporalcfg.RegisterClient,
 
@@ -52,6 +53,7 @@ func main() {
 		repo.RegisterServerRepository,
 		repo.RegisterEndpointRepository,
 		repo.RegisterPingSchedulerRepository,
+		repo.RegisterUserRepository,
 
 		monitorrepo.RegisterServerEventRepository,
 		monitorrepo.RegisterRedisServerEventRepository,
@@ -62,15 +64,18 @@ func main() {
 		infra.RegisterRecordPingStatusWorker,
 
 		serverinfra.RegisterJwtParser,
+		serverinfra.RegisterArgon2PasswordEncoder,
 
 		service.RegisterServerService,
 		service.RegisterEndpointService,
 		service.RegisterOntimeService,
+		service.RegisterAuthService,
 		monitorservices.RegisterPingService,
 
 		handler.RegisterRequestValidator,
 		handler.RegisterServerHandler,
 		handler.RegisterEndpointHandler,
+		handler.RegisterAuthHandler,
 
 		server.RegisterCompositeHandler,
 		monitorhandler.RegisterTemporalWorkerRunner,

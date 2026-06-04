@@ -9,6 +9,7 @@ import (
 type CompositeHandler struct {
 	*handler.ServerHandler
 	*handler.EndpointHandler
+	*handler.AuthHandler
 }
 
 func RegisterCompositeHandler(i do.Injector) {
@@ -16,6 +17,7 @@ func RegisterCompositeHandler(i do.Injector) {
 		return &CompositeHandler{
 			ServerHandler:   do.MustInvoke[*handler.ServerHandler](i),
 			EndpointHandler: do.MustInvoke[*handler.EndpointHandler](i),
+			AuthHandler:     do.MustInvoke[*handler.AuthHandler](i),
 		}, nil
 	})
 }

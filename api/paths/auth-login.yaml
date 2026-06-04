@@ -1,0 +1,24 @@
+post:
+  summary: Login with email or username
+  operationId: Login
+  tags:
+    - auth
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "#/components/schemas/LoginRequest"
+  responses:
+    "200":
+      description: Login successful
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AuthResponse"
+    "401":
+      description: Invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

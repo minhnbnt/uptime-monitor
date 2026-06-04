@@ -17,6 +17,10 @@ paths:
     $ref: './paths/server-id.yaml'
   /api/v1/servers/{id}/check_method:
     $ref: './paths/check-method.yaml'
+  /api/v1/auth/register:
+    $ref: './paths/auth-register.yaml'
+  /api/v1/auth/login:
+    $ref: './paths/auth-login.yaml'
 
 components:
   schemas:
@@ -183,6 +187,68 @@ components:
             $ref: "#/components/schemas/ServerWithOntime"
         meta:
           $ref: "#/components/schemas/PaginationMeta"
+
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - username
+        - password
+        - name
+      properties:
+        email:
+          type: string
+          format: email
+        username:
+          type: string
+          minLength: 3
+          maxLength: 100
+        password:
+          type: string
+          minLength: 8
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+
+    LoginRequest:
+      type: object
+      required:
+        - login
+        - password
+      properties:
+        login:
+          type: string
+        password:
+          type: string
+
+    UserProfile:
+      type: object
+      required:
+        - id
+        - email
+        - username
+        - name
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        username:
+          type: string
+        name:
+          type: string
+
+    AuthResponse:
+      type: object
+      required:
+        - token
+        - user
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/UserProfile"
 
     ErrorResponse:
       type: object
