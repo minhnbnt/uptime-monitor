@@ -134,7 +134,7 @@ func (m *mockLogger) Warn(msg string, fields ...logger.Field) {
 	m.warnCalled = true
 	m.lastMsg = msg
 }
-func (m *mockLogger) Error(msg string, fields ...logger.Field) {}
-func (m *mockLogger) Debug(msg string, fields ...logger.Field) {}
-func (m *mockLogger) Fatal(msg string, fields ...logger.Field) {}
+func (m *mockLogger) Error(msg string, fields ...logger.Field)  {}
+func (m *mockLogger) Debug(msg string, fields ...logger.Field)  {}
+func (m *mockLogger) Fatal(msg string, fields ...logger.Field)  {}
 func (m *mockLogger) With(fields ...logger.Field) logger.Logger { return m }
