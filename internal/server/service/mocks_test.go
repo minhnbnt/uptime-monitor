@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	repo "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/repository"
 )
 
@@ -99,3 +100,41 @@ func (m *mockTokenParser) NewToken(issuer string, otherClaims map[string]any) (s
 func (m *mockTokenParser) Validate(token string) (issuer string, err error) {
 	return m.validateFn(token)
 }
+
+type mockOntimeCacheRepo struct {
+	mGetFn func(ctx context.Context, keys []repo.OntimeCacheKey) (map[repo.OntimeCacheKey]float64, error)
+	mSetFn func(ctx context.Context, items map[repo.OntimeCacheKey]float64) error
+}
+
+func (m *mockOntimeCacheRepo) MGet(ctx context.Context, keys []repo.OntimeCacheKey) (map[repo.OntimeCacheKey]float64, error) {
+	if m.mGetFn == nil {
+		return nil, nil
+	}
+	return m.mGetFn(ctx, keys)
+}
+
+func (m *mockOntimeCacheRepo) MSet(ctx context.Context, items map[repo.OntimeCacheKey]float64) error {
+	if m.mSetFn == nil {
+		return nil
+	}
+	return m.mSetFn(ctx, items)
+}
+
+type mockLogger struct {
+	infoCalled bool
+	warnCalled bool
+	lastMsg    string
+}
+
+func (m *mockLogger) Info(msg string, fields ...logger.Field) {
+	m.infoCalled = true
+	m.lastMsg = msg
+}
+func (m *mockLogger) Warn(msg string, fields ...logger.Field) {
+	m.warnCalled = true
+	m.lastMsg = msg
+}
+func (m *mockLogger) Error(msg string, fields ...logger.Field) {}
+func (m *mockLogger) Debug(msg string, fields ...logger.Field) {}
+func (m *mockLogger) Fatal(msg string, fields ...logger.Field) {}
+func (m *mockLogger) With(fields ...logger.Field) logger.Logger { return m }
