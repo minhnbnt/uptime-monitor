@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/samber/do/v2"
 	"go.uber.org/zap"
@@ -44,10 +45,32 @@ func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 
 	gormLogger := zapgorm2.New(logger)
 
-	db, err := gorm.Open(dialector, &gorm.Config{Logger: gormLogger})
-	if err != nil {
-		return nil, err
+	var db *gorm.DB
+	var err error
+
+	for attempt := range 30 {
+
+		db, err = gorm.Open(dialector, &gorm.Config{Logger: gormLogger})
+		if err == nil {
+			break
+		}
+
+		logger.Warn("gorm open failed, retrying", zap.Int("attempt", attempt+1), zap.Error(err))
+		time.Sleep(time.Second)
 	}
+
+	if err != nil {
+		return nil, fmt.Errorf("gorm open after 30 retries: %w", err)
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("get sql.DB: %w", err)
+	}
+
+	sqlDB.SetMaxOpenConns(50)
+	sqlDB.SetMaxIdleConns(5)
+	sqlDB.SetConnMaxLifetime(30 * time.Minute)
 
 	schemas := []any{
 		&domain.Server{},

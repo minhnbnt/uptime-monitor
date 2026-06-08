@@ -30,18 +30,25 @@ func RegisterZSetScheduleRepository(i do.Injector) {
 	})
 }
 
-// claimScript atomically fetches at most N due tasks and the next future task.
+// claimScript atomically claims at most N due tasks and peeks the next future task.
 //
 // KEYS[1] = scheduler:queue
 // ARGV[1] = now in UnixMilliseconds
 // ARGV[2] = max number of due tasks to claim
 // Returns: {due_array, next_array}
 //
-//	due_array:  [member1, score1, member2, score2, ...] — removed from ZSET
+//	due_array:  [member1, score1, member2, score2, ...] — atomically removed from ZSET
 //	next_array: [member, score] — stays in ZSET, or [] if none
 var claimScript = redis.NewScript(`
 	local due = redis.call("ZRANGEBYSCORE", KEYS[1], "-inf", ARGV[1], "WITHSCORES", "LIMIT", "0", ARGV[2])
 	local next = redis.call("ZRANGEBYSCORE", KEYS[1], "(" .. ARGV[1], "+inf", "WITHSCORES", "LIMIT", "0", "1")
+	if #due > 0 then
+		local members = {}
+		for i = 1, #due, 2 do
+			members[#members + 1] = due[i]
+		end
+		redis.call("ZREM", KEYS[1], unpack(members))
+	end
 	return {due, next}
 `)
 

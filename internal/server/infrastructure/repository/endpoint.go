@@ -51,7 +51,7 @@ func (er *EndpointRepository) UpsertEndpoint(ctx context.Context, endpoint domai
 
 	return er.db.Transaction(func(tx *gorm.DB) error {
 
-		err := gorm.G[domain.Endpoint](er.db).Create(ctx, &endpoint)
+		err := gorm.G[domain.Endpoint](tx).Create(ctx, &endpoint)
 		if err != nil {
 			return err
 		}
