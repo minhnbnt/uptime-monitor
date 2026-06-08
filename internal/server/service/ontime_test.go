@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
+	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
-	repo "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
@@ -93,7 +94,7 @@ func TestBuildResponse(t *testing.T) {
 			{ServerID: 1, Date: d2},
 			{ServerID: 2, Date: d1},
 		}
-		resultMap := map[repo.OntimeCacheKey]float64{
+		resultMap := map[ontimerepo.OntimeCacheKey]float64{
 			{ServerID: 1, Day: d1}: 99.5,
 			{ServerID: 1, Day: d2}: 100.0,
 			{ServerID: 2, Day: d1}: 50.0,
@@ -207,18 +208,18 @@ func TestResolveCache(t *testing.T) {
 	d2 := oDay(2026, 6, 2)
 
 	t.Run("returns cached values", func(t *testing.T) {
-		keys := []repo.OntimeCacheKey{
+		keys := []ontimerepo.OntimeCacheKey{
 			{ServerID: 1, Day: d1},
 			{ServerID: 1, Day: d2},
 		}
-		cached := map[repo.OntimeCacheKey]float64{
+		cached := map[ontimerepo.OntimeCacheKey]float64{
 			{ServerID: 1, Day: d1}: 99.0,
 			{ServerID: 1, Day: d2}: 100.0,
 		}
 
 		svc := &OntimeService{
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mGetFn: func(_ context.Context, keys []repo.OntimeCacheKey) (map[repo.OntimeCacheKey]float64, error) {
+				mGetFn: func(_ context.Context, keys []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error) {
 					return cached, nil
 				},
 			},
@@ -236,14 +237,14 @@ func TestResolveCache(t *testing.T) {
 	})
 
 	t.Run("cache error returns empty map", func(t *testing.T) {
-		keys := []repo.OntimeCacheKey{
+		keys := []ontimerepo.OntimeCacheKey{
 			{ServerID: 1, Day: d1},
 		}
 		log := &mockLogger{}
 
 		svc := &OntimeService{
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mGetFn: func(_ context.Context, keys []repo.OntimeCacheKey) (map[repo.OntimeCacheKey]float64, error) {
+				mGetFn: func(_ context.Context, keys []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error) {
 					return nil, errors.New("redis down")
 				},
 			},
@@ -263,7 +264,7 @@ func TestResolveCache(t *testing.T) {
 	t.Run("empty keys returns nil", func(t *testing.T) {
 		svc := &OntimeService{
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mGetFn: func(_ context.Context, keys []repo.OntimeCacheKey) (map[repo.OntimeCacheKey]float64, error) {
+				mGetFn: func(_ context.Context, keys []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error) {
 					return nil, nil
 				},
 			},
@@ -284,22 +285,22 @@ func TestFillMisses(t *testing.T) {
 	d1 := oDay(2026, 6, 1)
 
 	t.Run("no miss - nothing to fill", func(t *testing.T) {
-		keys := []repo.OntimeCacheKey{
+		keys := []ontimerepo.OntimeCacheKey{
 			{ServerID: 1, Day: d1},
 		}
-		resultMap := map[repo.OntimeCacheKey]float64{
+		resultMap := map[ontimerepo.OntimeCacheKey]float64{
 			{ServerID: 1, Day: d1}: 100.0,
 		}
 		var mSetCalled bool
 
 		svc := &OntimeService{
 			serverRepository: &mockServerRepo{
-				batchGetOntimeFn: func(_ context.Context, _ []repo.BatchGetOntimeRequest) ([]repo.RawEvent, error) {
+				batchGetOntimeFn: func(_ context.Context, _ []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
 					return nil, nil
 				},
 			},
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mSetFn: func(_ context.Context, _ map[repo.OntimeCacheKey]float64) error {
+				mSetFn: func(_ context.Context, _ map[ontimerepo.OntimeCacheKey]float64) error {
 					mSetCalled = true
 					return nil
 				},
@@ -315,23 +316,23 @@ func TestFillMisses(t *testing.T) {
 	})
 
 	t.Run("all miss - fills from DB", func(t *testing.T) {
-		keys := []repo.OntimeCacheKey{
+		keys := []ontimerepo.OntimeCacheKey{
 			{ServerID: 1, Day: d1},
 		}
-		resultMap := map[repo.OntimeCacheKey]float64{}
+		resultMap := map[ontimerepo.OntimeCacheKey]float64{}
 		var mSetCalled bool
-		var capturedItems map[repo.OntimeCacheKey]float64
+		var capturedItems map[ontimerepo.OntimeCacheKey]float64
 
 		svc := &OntimeService{
 			serverRepository: &mockServerRepo{
-				batchGetOntimeFn: func(_ context.Context, req []repo.BatchGetOntimeRequest) ([]repo.RawEvent, error) {
-					return []repo.RawEvent{
+				batchGetOntimeFn: func(_ context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
+					return []serverrepo.RawEvent{
 						{ServerID: 1, Day: d1, Status: "ON", Time: oTm(2026, 6, 1, 6, 0)},
 					}, nil
 				},
 			},
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mSetFn: func(_ context.Context, items map[repo.OntimeCacheKey]float64) error {
+				mSetFn: func(_ context.Context, items map[ontimerepo.OntimeCacheKey]float64) error {
 					mSetCalled = true
 					capturedItems = items
 					return nil
@@ -357,15 +358,15 @@ func TestFillMisses(t *testing.T) {
 	})
 
 	t.Run("db error logs warning", func(t *testing.T) {
-		keys := []repo.OntimeCacheKey{
+		keys := []ontimerepo.OntimeCacheKey{
 			{ServerID: 1, Day: d1},
 		}
-		resultMap := map[repo.OntimeCacheKey]float64{}
+		resultMap := map[ontimerepo.OntimeCacheKey]float64{}
 		log := &mockLogger{}
 
 		svc := &OntimeService{
 			serverRepository: &mockServerRepo{
-				batchGetOntimeFn: func(_ context.Context, _ []repo.BatchGetOntimeRequest) ([]repo.RawEvent, error) {
+				batchGetOntimeFn: func(_ context.Context, _ []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
 					return nil, errors.New("db error")
 				},
 			},
@@ -381,22 +382,22 @@ func TestFillMisses(t *testing.T) {
 	})
 
 	t.Run("MSet error logs warning", func(t *testing.T) {
-		keys := []repo.OntimeCacheKey{
+		keys := []ontimerepo.OntimeCacheKey{
 			{ServerID: 1, Day: d1},
 		}
-		resultMap := map[repo.OntimeCacheKey]float64{}
+		resultMap := map[ontimerepo.OntimeCacheKey]float64{}
 		log := &mockLogger{}
 
 		svc := &OntimeService{
 			serverRepository: &mockServerRepo{
-				batchGetOntimeFn: func(_ context.Context, _ []repo.BatchGetOntimeRequest) ([]repo.RawEvent, error) {
-					return []repo.RawEvent{
+				batchGetOntimeFn: func(_ context.Context, _ []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
+					return []serverrepo.RawEvent{
 						{ServerID: 1, Day: d1, Status: "ON", Time: oTm(2026, 6, 1, 6, 0)},
 					}, nil
 				},
 			},
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mSetFn: func(_ context.Context, _ map[repo.OntimeCacheKey]float64) error {
+				mSetFn: func(_ context.Context, _ map[ontimerepo.OntimeCacheKey]float64) error {
 					return errors.New("redis set error")
 				},
 			},
@@ -429,7 +430,7 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 	}
 
 	t.Run("all cached", func(t *testing.T) {
-		cacheResult := map[repo.OntimeCacheKey]float64{
+		cacheResult := map[ontimerepo.OntimeCacheKey]float64{
 			{ServerID: 1, Day: d1}: 99.0,
 			{ServerID: 1, Day: d2}: 100.0,
 			{ServerID: 2, Day: d3}: 50.0,
@@ -437,7 +438,7 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 
 		svc := &OntimeService{
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mGetFn: func(_ context.Context, keys []repo.OntimeCacheKey) (map[repo.OntimeCacheKey]float64, error) {
+				mGetFn: func(_ context.Context, keys []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error) {
 					return cacheResult, nil
 				},
 			},
@@ -474,24 +475,24 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 	})
 
 	t.Run("partially cached", func(t *testing.T) {
-		cacheResult := map[repo.OntimeCacheKey]float64{
+		cacheResult := map[ontimerepo.OntimeCacheKey]float64{
 			{ServerID: 1, Day: d1}: 99.0,
 		}
 
 		svc := &OntimeService{
 			serverRepository: &mockServerRepo{
-				batchGetOntimeFn: func(_ context.Context, req []repo.BatchGetOntimeRequest) ([]repo.RawEvent, error) {
+				batchGetOntimeFn: func(_ context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
 					// Only return events for the missing keys
-					events := []repo.RawEvent{}
+					events := []serverrepo.RawEvent{}
 					for _, r := range req {
 						if r.ServerID == 1 && r.Date.Equal(d2) {
-							events = append(events, repo.RawEvent{
+							events = append(events, serverrepo.RawEvent{
 								ServerID: 1, Day: d2, Status: "ON",
 								Time: d2.Add(6 * time.Hour),
 							})
 						}
 						if r.ServerID == 2 && r.Date.Equal(d3) {
-							events = append(events, repo.RawEvent{
+							events = append(events, serverrepo.RawEvent{
 								ServerID: 2, Day: d3, Status: "OFF",
 								Time: d3.Add(12 * time.Hour),
 							})
@@ -501,10 +502,10 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 				},
 			},
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mGetFn: func(_ context.Context, keys []repo.OntimeCacheKey) (map[repo.OntimeCacheKey]float64, error) {
+				mGetFn: func(_ context.Context, keys []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error) {
 					return cacheResult, nil
 				},
-				mSetFn: func(_ context.Context, _ map[repo.OntimeCacheKey]float64) error {
+				mSetFn: func(_ context.Context, _ map[ontimerepo.OntimeCacheKey]float64) error {
 					return nil
 				},
 			},
@@ -539,9 +540,9 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 
 		svc := &OntimeService{
 			serverRepository: &mockServerRepo{
-				batchGetOntimeFn: func(_ context.Context, req []repo.BatchGetOntimeRequest) ([]repo.RawEvent, error) {
+				batchGetOntimeFn: func(_ context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
 					dbCalled = true
-					return []repo.RawEvent{
+					return []serverrepo.RawEvent{
 						{ServerID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)},
 						{ServerID: 1, Day: d2, Status: "ON", Time: d2.Add(8 * time.Hour)},
 						{ServerID: 1, Day: d2, Status: "OFF", Time: d2.Add(12 * time.Hour)},
@@ -550,10 +551,10 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 				},
 			},
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mGetFn: func(_ context.Context, _ []repo.OntimeCacheKey) (map[repo.OntimeCacheKey]float64, error) {
+				mGetFn: func(_ context.Context, _ []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error) {
 					return nil, errors.New("redis down")
 				},
-				mSetFn: func(_ context.Context, _ map[repo.OntimeCacheKey]float64) error {
+				mSetFn: func(_ context.Context, _ map[ontimerepo.OntimeCacheKey]float64) error {
 					return nil
 				},
 			},
@@ -611,16 +612,16 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 		}
 
 		// Build cache: return 100% for all server-date combinations
-		server1Keys := make([]repo.OntimeCacheKey, len(dates))
+		server1Keys := make([]ontimerepo.OntimeCacheKey, len(dates))
 		for i, d := range dates {
-			server1Keys[i] = repo.OntimeCacheKey{ServerID: 1, Day: d}
+			server1Keys[i] = ontimerepo.OntimeCacheKey{ServerID: 1, Day: d}
 		}
-		server2Keys := make([]repo.OntimeCacheKey, len(dates))
+		server2Keys := make([]ontimerepo.OntimeCacheKey, len(dates))
 		for i, d := range dates {
-			server2Keys[i] = repo.OntimeCacheKey{ServerID: 2, Day: d}
+			server2Keys[i] = ontimerepo.OntimeCacheKey{ServerID: 2, Day: d}
 		}
 
-		cacheResult := make(map[repo.OntimeCacheKey]float64)
+		cacheResult := make(map[ontimerepo.OntimeCacheKey]float64)
 		for _, k := range server1Keys {
 			cacheResult[k] = 100.0
 		}
@@ -647,9 +648,9 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 				},
 			},
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mGetFn: func(_ context.Context, keys []repo.OntimeCacheKey) (map[repo.OntimeCacheKey]float64, error) {
+				mGetFn: func(_ context.Context, keys []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error) {
 					// Return whatever was requested
-					result := make(map[repo.OntimeCacheKey]float64, len(keys))
+					result := make(map[ontimerepo.OntimeCacheKey]float64, len(keys))
 					for _, k := range keys {
 						if v, ok := cacheResult[k]; ok {
 							result[k] = v
@@ -771,8 +772,8 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 				},
 			},
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mGetFn: func(_ context.Context, keys []repo.OntimeCacheKey) (map[repo.OntimeCacheKey]float64, error) {
-					result := make(map[repo.OntimeCacheKey]float64, len(keys))
+				mGetFn: func(_ context.Context, keys []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error) {
+					result := make(map[ontimerepo.OntimeCacheKey]float64, len(keys))
 					for _, k := range keys {
 						result[k] = 100.0
 					}

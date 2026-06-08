@@ -24,14 +24,16 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	monitorhandler "github.com/minhnbnt/uptime-monitor/internal/monitor/handler"
 	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure"
-	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure/repository"
-	monitorscheduler "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure/scheduler"
 	monitorservices "github.com/minhnbnt/uptime-monitor/internal/monitor/services"
+	authrepo "github.com/minhnbnt/uptime-monitor/internal/repository/auth"
+	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/repository/monitor"
+	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
+	schedulerrepo "github.com/minhnbnt/uptime-monitor/internal/repository/scheduler"
+	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/handler"
 	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
 	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
-	repo "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/repository"
 	servertmiddleware "github.com/minhnbnt/uptime-monitor/internal/server/middleware"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 )
@@ -54,25 +56,24 @@ func main() {
 		temporalcfg.RegisterClient,
 
 		logger.RegisterLogger,
-		repo.RegisterServerRepository,
-		repo.RegisterEndpointRepository,
-		repo.RegisterPingSchedulerRepository,
-		repo.RegisterZSetSchedulerRepository,
-		repo.RegisterUserRepository,
+		serverrepo.RegisterServerRepository,
+		serverrepo.RegisterEndpointRepository,
+		schedulerrepo.RegisterPingSchedulerRepository,
+		authrepo.RegisterUserRepository,
 
 		monitorrepo.RegisterServerEventRepository,
 		monitorrepo.RegisterRedisServerEventRepository,
 
-		repo.RegisterOntimeCacheRepository,
+		ontimerepo.RegisterOntimeCacheRepository,
 
 		infra.RegisterPingWorker,
 		infra.RegisterRecordPingStatusWorker,
 
-		monitorscheduler.RegisterZSetScheduleRepository,
-		monitorscheduler.RegisterScoreUpdater,
-		monitorscheduler.RegisterEndpointFetcher,
-		monitorscheduler.RegisterEndpointProvider,
-		monitorscheduler.RegisterEndpointMetaCache,
+		schedulerrepo.RegisterZSetScheduleRepository,
+		schedulerrepo.RegisterScoreUpdater,
+		schedulerrepo.RegisterEndpointFetcher,
+		schedulerrepo.RegisterEndpointProvider,
+		schedulerrepo.RegisterEndpointMetaCache,
 
 		jwtutil.RegisterJwtParser,
 		serverinfra.RegisterArgon2PasswordEncoder,
@@ -94,7 +95,7 @@ func main() {
 		monitorhandler.RegisterZSetWorkerRunner,
 	)
 
-	repo.RegisterSchedulerBackend(injector, repo.SchedulerBackend(*schedulerBackend))
+	schedulerrepo.RegisterSchedulerBackend(injector, schedulerrepo.SchedulerBackend(*schedulerBackend))
 
 	ctx, stop := signal.NotifyContext(
 		context.Background(),
@@ -119,13 +120,13 @@ func main() {
 }
 
 func runWorker(ctx context.Context, i do.Injector) {
-	backend := do.MustInvoke[*repo.SchedulerBackend](i)
+	backend := do.MustInvoke[*schedulerrepo.SchedulerBackend](i)
 
 	switch *backend {
-	case repo.SchedulerBackendTemporal:
+	case schedulerrepo.SchedulerBackendTemporal:
 		runner := do.MustInvoke[*monitorhandler.TemporalWorkerRunner](i)
 		runner.RunTemporalWorker(ctx)
-	case repo.SchedulerBackendRedis:
+	case schedulerrepo.SchedulerBackendRedis:
 		runner := do.MustInvoke[*monitorhandler.ZSetWorkerRunner](i)
 		_ = runner.RunZSetWorker(ctx)
 	}

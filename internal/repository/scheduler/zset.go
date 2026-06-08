@@ -10,6 +10,8 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
+	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
 const schedulerQueueKey = "scheduler:queue"
@@ -39,6 +41,34 @@ func RegisterZSetScheduleRepository(i do.Injector) {
 //
 //	due_array:  [member1, score1, member2, score2, ...] — atomically removed from ZSET
 //	next_array: [member, score] — stays in ZSET, or [] if none
+func schedulerMetaKey(id uint) string {
+	return fmt.Sprintf("scheduler:meta:%d", id)
+}
+
+func (r *ZSetScheduleRepository) Register(ctx context.Context, endpoint *domain.Endpoint) error {
+
+	idStr := strconv.FormatUint(uint64(endpoint.ID), 10)
+	offset := utils.GenerateOffset(idStr, endpoint.Interval)
+	score := time.Now().UnixMilli() + offset.Milliseconds()
+
+	pipe := r.client.Pipeline()
+
+	pipe.ZAdd(ctx, schedulerQueueKey, redis.Z{
+		Score:  float64(score),
+		Member: idStr,
+	})
+
+	pipe.HSet(ctx, schedulerMetaKey(endpoint.ID),
+		"url", endpoint.URL,
+		"method", endpoint.Method,
+		"expected_code", strconv.Itoa(endpoint.ExpectedCode),
+		"interval_ns", strconv.FormatInt(int64(endpoint.Interval), 10),
+	)
+
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
 var claimScript = redis.NewScript(`
 	local due = redis.call("ZRANGEBYSCORE", KEYS[1], "-inf", ARGV[1], "WITHSCORES", "LIMIT", "0", ARGV[2])
 	local next = redis.call("ZRANGEBYSCORE", KEYS[1], "(" .. ARGV[1], "+inf", "WITHSCORES", "LIMIT", "0", "1")

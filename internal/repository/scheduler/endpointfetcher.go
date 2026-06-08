@@ -29,3 +29,7 @@ func (f *EndpointFetcher) Fetch(ctx context.Context, ids ...uint) ([]domain.Endp
 
 	return gorm.G[domain.Endpoint](f.db).Where("id IN ?", ids).Find(ctx)
 }
+
+func (f *EndpointFetcher) GetAll(ctx context.Context, batch int, callback func([]domain.Endpoint, int) error) error {
+	return gorm.G[domain.Endpoint](f.db).FindInBatches(ctx, batch, callback)
+}

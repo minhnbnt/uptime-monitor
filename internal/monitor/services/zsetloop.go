@@ -11,7 +11,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	scheduler "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure/scheduler"
+	scheduler "github.com/minhnbnt/uptime-monitor/internal/repository/scheduler"
 )
 
 const (

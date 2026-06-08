@@ -4,8 +4,9 @@ import (
 	"context"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
+	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
-	repo "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/repository"
 )
 
 type ServerRepository interface {
@@ -15,7 +16,7 @@ type ServerRepository interface {
 	GetByID(ctx context.Context, id uint) (*domain.Server, error)
 	Update(ctx context.Context, s *domain.Server) error
 	Delete(ctx context.Context, id uint) error
-	BatchGetOntime(ctx context.Context, req []repo.BatchGetOntimeRequest) ([]repo.RawEvent, error)
+	BatchGetOntime(ctx context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error)
 }
 
 type EndpointRepository interface {
@@ -28,8 +29,8 @@ type UserRepository interface {
 }
 
 type OntimeCacheRepository interface {
-	MGet(ctx context.Context, keys []repo.OntimeCacheKey) (map[repo.OntimeCacheKey]float64, error)
-	MSet(ctx context.Context, items map[repo.OntimeCacheKey]float64) error
+	MGet(ctx context.Context, keys []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error)
+	MSet(ctx context.Context, items map[ontimerepo.OntimeCacheKey]float64) error
 }
 
 type PasswordEncoder interface {

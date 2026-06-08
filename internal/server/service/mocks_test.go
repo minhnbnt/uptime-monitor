@@ -8,8 +8,9 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
+	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
+	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
-	repo "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/repository"
 )
 
 func gormModel(id uint, t time.Time) gorm.Model {
@@ -33,7 +34,7 @@ type mockServerRepo struct {
 	getByIDFn        func(ctx context.Context, id uint) (*domain.Server, error)
 	updateFn         func(ctx context.Context, s *domain.Server) error
 	deleteFn         func(ctx context.Context, id uint) error
-	batchGetOntimeFn func(ctx context.Context, req []repo.BatchGetOntimeRequest) ([]repo.RawEvent, error)
+	batchGetOntimeFn func(ctx context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error)
 }
 
 func (m *mockServerRepo) List(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error) {
@@ -54,7 +55,7 @@ func (m *mockServerRepo) Update(ctx context.Context, s *domain.Server) error {
 func (m *mockServerRepo) Delete(ctx context.Context, id uint) error {
 	return m.deleteFn(ctx, id)
 }
-func (m *mockServerRepo) BatchGetOntime(ctx context.Context, req []repo.BatchGetOntimeRequest) ([]repo.RawEvent, error) {
+func (m *mockServerRepo) BatchGetOntime(ctx context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
 	return m.batchGetOntimeFn(ctx, req)
 }
 
@@ -107,18 +108,18 @@ func (m *mockTokenParser) Parse(token string) (*jwtutil.Token, error) {
 }
 
 type mockOntimeCacheRepo struct {
-	mGetFn func(ctx context.Context, keys []repo.OntimeCacheKey) (map[repo.OntimeCacheKey]float64, error)
-	mSetFn func(ctx context.Context, items map[repo.OntimeCacheKey]float64) error
+	mGetFn func(ctx context.Context, keys []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error)
+	mSetFn func(ctx context.Context, items map[ontimerepo.OntimeCacheKey]float64) error
 }
 
-func (m *mockOntimeCacheRepo) MGet(ctx context.Context, keys []repo.OntimeCacheKey) (map[repo.OntimeCacheKey]float64, error) {
+func (m *mockOntimeCacheRepo) MGet(ctx context.Context, keys []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error) {
 	if m.mGetFn == nil {
 		return nil, nil
 	}
 	return m.mGetFn(ctx, keys)
 }
 
-func (m *mockOntimeCacheRepo) MSet(ctx context.Context, items map[repo.OntimeCacheKey]float64) error {
+func (m *mockOntimeCacheRepo) MSet(ctx context.Context, items map[ontimerepo.OntimeCacheKey]float64) error {
 	if m.mSetFn == nil {
 		return nil
 	}

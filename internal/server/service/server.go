@@ -8,8 +8,8 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
-	repo "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/repository"
 )
 
 type ServerService struct {
@@ -20,7 +20,7 @@ func RegisterServerService(i do.Injector) {
 
 	do.Provide(i, func(i do.Injector) (*ServerService, error) {
 		return &ServerService{
-			serverRepository: do.MustInvoke[*repo.ServerRepository](i),
+			serverRepository: do.MustInvoke[*serverrepo.ServerRepository](i),
 		}, nil
 	})
 }

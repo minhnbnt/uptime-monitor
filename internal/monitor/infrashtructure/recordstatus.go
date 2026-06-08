@@ -8,7 +8,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	repo "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure/repository"
+	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/repository/monitor"
 )
 
 type RecordPingStatusWorker struct {
@@ -20,8 +20,8 @@ type RecordPingStatusWorker struct {
 func RegisterRecordPingStatusWorker(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*RecordPingStatusWorker, error) {
 		return &RecordPingStatusWorker{
-			statusStore: do.MustInvoke[*repo.RedisServerEventRepository](i),
-			eventSaver:  do.MustInvoke[*repo.ServerEventRepository](i),
+			statusStore: do.MustInvoke[*monitorrepo.RedisServerEventRepository](i),
+			eventSaver:  do.MustInvoke[*monitorrepo.ServerEventRepository](i),
 			logger:      do.MustInvoke[logger.Logger](i),
 		}, nil
 	})

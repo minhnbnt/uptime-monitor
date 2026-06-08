@@ -35,7 +35,7 @@ func TestAuthService_Register(t *testing.T) {
 			},
 			tokenParser: &mockTokenParser{
 				newTokenFn: func(_ string, claims map[string]any) (string, error) {
-					if claims["sub"] != uint(10) {
+					if claims["sub"] != "10" {
 						t.Error("wrong sub claim")
 					}
 					return "jwt-token", nil
@@ -208,7 +208,7 @@ func TestAuthService_Login(t *testing.T) {
 		svc := &AuthService{
 			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
-					return nil, errors.New("not found")
+					return nil, nil
 				},
 			},
 		}

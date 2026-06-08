@@ -1,4 +1,4 @@
-package repository
+package server
 
 import (
 	"context"
@@ -9,29 +9,30 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/repository/scheduler"
 )
 
 type EndpointRepository struct {
 	db        *gorm.DB
-	scheduler SchedulerRepository
+	scheduler scheduler.SchedulerRepository
 }
 
 func RegisterEndpointRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointRepository, error) {
 
 		dbWrapper := do.MustInvoke[*config.GORMWrapper](i)
-		backend := do.MustInvoke[*SchedulerBackend](i)
+		backend := do.MustInvoke[*scheduler.SchedulerBackend](i)
 
-		var scheduler SchedulerRepository
-		if *backend == SchedulerBackendTemporal {
-			scheduler = do.MustInvoke[*PingSchedulerRepository](i)
+		var sched scheduler.SchedulerRepository
+		if *backend == scheduler.SchedulerBackendTemporal {
+			sched = do.MustInvoke[*scheduler.PingSchedulerRepository](i)
 		} else {
-			scheduler = do.MustInvoke[*ZSetSchedulerRepository](i)
+			sched = do.MustInvoke[*scheduler.ZSetScheduleRepository](i)
 		}
 
 		return &EndpointRepository{
 			db:        dbWrapper.GetDB(),
-			scheduler: scheduler,
+			scheduler: sched,
 		}, nil
 	})
 }

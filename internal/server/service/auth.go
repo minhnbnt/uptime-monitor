@@ -9,10 +9,10 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	authrepo "github.com/minhnbnt/uptime-monitor/internal/repository/auth"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
 	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
-	repo "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/repository"
 )
 
 var (
@@ -29,7 +29,7 @@ type AuthService struct {
 func RegisterAuthService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*AuthService, error) {
 		return &AuthService{
-			userRepository:  do.MustInvoke[*repo.UserRepository](i),
+			userRepository:  do.MustInvoke[*authrepo.UserRepository](i),
 			passwordEncoder: do.MustInvoke[*serverinfra.Argon2PasswordEncoder](i),
 			tokenParser:     do.MustInvoke[*jwtutil.JwtParser](i),
 		}, nil

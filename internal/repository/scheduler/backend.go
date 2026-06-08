@@ -1,4 +1,4 @@
-package repository
+package scheduler
 
 import "github.com/samber/do/v2"
 
