@@ -1,7 +1,6 @@
-package infrastructure
+package jwt
 
 import (
-	"errors"
 	"maps"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -21,7 +20,7 @@ func RegisterJwtParser(i do.Injector) {
 	})
 }
 
-func (j *JwtParser) Validate(token string) (issuer string, err error) {
+func (j *JwtParser) Parse(token string) (*Token, error) {
 
 	keyFunc := func(t *jwt.Token) (any, error) {
 		return j.config.GetValidateKey(), nil
@@ -31,27 +30,22 @@ func (j *JwtParser) Validate(token string) (issuer string, err error) {
 		jwt.WithValidMethods([]string{j.config.GetMethod().Alg()}),
 	}
 
-	tokenr, err := jwt.Parse(token, keyFunc, options...)
+	parsedToken, err := jwt.Parse(token, keyFunc, options...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Token{token: parsedToken}, nil
+}
+
+func (j *JwtParser) Validate(token string) (string, error) {
+
+	t, err := j.Parse(token)
 	if err != nil {
 		return "", err
 	}
 
-	claims, ok := tokenr.Claims.(jwt.MapClaims)
-	if !ok {
-		return "", errors.New("invalid claims")
-	}
-
-	issuerAny, ok := claims["iss"]
-	if !ok {
-		return "", errors.New("invalid issuer")
-	}
-
-	issuer, ok = issuerAny.(string)
-	if !ok {
-		return "", errors.New("invalid issuer")
-	}
-
-	return issuer, nil
+	return t.Issuer()
 }
 
 func (j *JwtParser) NewToken(issuer string, otherClaims map[string]any) (string, error) {

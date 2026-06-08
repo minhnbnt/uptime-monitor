@@ -50,11 +50,11 @@ func toDTOServer(s domain.Server) dto.Server {
 	}
 }
 
-func (ss *ServerService) ListServers(ctx context.Context, page, perPage int) ([]dto.Server, error) {
+func (ss *ServerService) ListServers(ctx context.Context, createdByID uint, page, perPage int) ([]dto.Server, error) {
 
 	limit, offset := perPage, (page-1)*perPage
 
-	result, err := ss.serverRepository.List(ctx, limit, offset)
+	result, err := ss.serverRepository.List(ctx, createdByID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get servers: %w", err)
 	}
@@ -64,11 +64,12 @@ func (ss *ServerService) ListServers(ctx context.Context, page, perPage int) ([]
 	}), nil
 }
 
-func (ss *ServerService) CreateServer(ctx context.Context, req dto.CreateServerRequest) (*dto.Server, error) {
+func (ss *ServerService) CreateServer(ctx context.Context, req dto.CreateServerRequest, createdByID uint) (*dto.Server, error) {
 
 	server := domain.Server{
-		Name:   req.Name,
-		Status: domain.StatusActive,
+		Name:        req.Name,
+		Status:      domain.StatusActive,
+		CreatedByID: createdByID,
 	}
 
 	if err := ss.serverRepository.Create(ctx, &server); err != nil {

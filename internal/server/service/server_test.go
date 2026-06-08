@@ -29,7 +29,10 @@ func TestServerService_ListServers(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		svc := &ServerService{serverRepository: &mockServerRepo{
-			listFn: func(_ context.Context, limit, offset int) ([]domain.Server, error) {
+			listFn: func(_ context.Context, createdByID uint, limit, offset int) ([]domain.Server, error) {
+				if createdByID != 1 {
+					t.Errorf("List createdByID = %d, want 1", createdByID)
+				}
 				if limit != 10 || offset != 0 {
 					t.Errorf("List(%d, %d)", limit, offset)
 				}
@@ -37,7 +40,7 @@ func TestServerService_ListServers(t *testing.T) {
 			},
 		}}
 
-		got, err := svc.ListServers(t.Context(), 1, 10)
+		got, err := svc.ListServers(t.Context(), 1, 1, 10)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -51,12 +54,12 @@ func TestServerService_ListServers(t *testing.T) {
 
 	t.Run("repo error", func(t *testing.T) {
 		svc := &ServerService{serverRepository: &mockServerRepo{
-			listFn: func(_ context.Context, _, _ int) ([]domain.Server, error) {
+			listFn: func(_ context.Context, _ uint, _, _ int) ([]domain.Server, error) {
 				return nil, errors.New("db error")
 			},
 		}}
 
-		_, err := svc.ListServers(t.Context(), 1, 10)
+		_, err := svc.ListServers(t.Context(), 1, 1, 10)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -77,7 +80,7 @@ func TestServerService_CreateServer(t *testing.T) {
 		}}
 
 		req := dto.CreateServerRequest{Name: "my-server"}
-		got, err := svc.CreateServer(t.Context(), req)
+		got, err := svc.CreateServer(t.Context(), req, 1)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -102,7 +105,7 @@ func TestServerService_CreateServer(t *testing.T) {
 			},
 		}}
 
-		_, err := svc.CreateServer(t.Context(), dto.CreateServerRequest{Name: "x"})
+		_, err := svc.CreateServer(t.Context(), dto.CreateServerRequest{Name: "x"}, 1)
 		if err == nil {
 			t.Fatal("expected error")
 		}

@@ -265,3 +265,9 @@ components:
               type: string
             message:
               type: string
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

@@ -3,6 +3,8 @@ put:
   operationId: SetCheckMethod
   tags:
     - servers
+  security:
+    - BearerAuth: []
   parameters:
     - name: id
       in: path
@@ -24,6 +26,12 @@ put:
             $ref: "#/components/schemas/ServerResponse"
     "400":
       description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    "401":
+      description: Unauthorized
       content:
         application/json:
           schema:

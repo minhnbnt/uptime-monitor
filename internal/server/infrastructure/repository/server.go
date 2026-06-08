@@ -22,18 +22,16 @@ func RegisterServerRepository(i do.Injector) {
 	})
 }
 
-func (sr *ServerRepository) Count(ctx context.Context) (int64, error) {
-	var count int64
-	err := sr.db.WithContext(ctx).Model(&domain.Server{}).Count(&count).Error
-	if err != nil {
-		return 0, fmt.Errorf("failed to count servers: %w", err)
-	}
-	return count, nil
+func (sr *ServerRepository) Count(ctx context.Context, createdByID uint) (int64, error) {
+	return gorm.G[domain.Server](sr.db).
+		Where("created_by_id = ?", createdByID).
+		Count(ctx, "id")
 }
 
-func (sr *ServerRepository) List(ctx context.Context, limit, offset int) ([]domain.Server, error) {
+func (sr *ServerRepository) List(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error) {
 
 	servers, err := gorm.G[domain.Server](sr.db).
+		Where("created_by_id = ?", createdByID).
 		Limit(limit).
 		Offset(offset).
 		Find(ctx)

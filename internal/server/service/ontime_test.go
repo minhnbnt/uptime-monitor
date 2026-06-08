@@ -630,13 +630,19 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 
 		svc := &OntimeService{
 			serverRepository: &mockServerRepo{
-				listFn: func(_ context.Context, limit, offset int) ([]domain.Server, error) {
+				listFn: func(_ context.Context, createdByID uint, limit, offset int) ([]domain.Server, error) {
+					if createdByID != 1 {
+						t.Errorf("List createdByID = %d, want 1", createdByID)
+					}
 					if limit != 10 || offset != 0 {
 						t.Errorf("List(%d, %d)", limit, offset)
 					}
 					return servers, nil
 				},
-				countFn: func(_ context.Context) (int64, error) {
+				countFn: func(_ context.Context, createdByID uint) (int64, error) {
+					if createdByID != 1 {
+						t.Errorf("Count createdByID = %d, want 1", createdByID)
+					}
 					return 2, nil
 				},
 			},
@@ -655,7 +661,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 			logger: &mockLogger{},
 		}
 
-		got, total, err := svc.ListServersWithOntime(t.Context(), 1, 10)
+		got, total, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -686,10 +692,10 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 	t.Run("empty server list", func(t *testing.T) {
 		svc := &OntimeService{
 			serverRepository: &mockServerRepo{
-				listFn: func(_ context.Context, limit, offset int) ([]domain.Server, error) {
+				listFn: func(_ context.Context, _ uint, limit, offset int) ([]domain.Server, error) {
 					return nil, nil
 				},
-				countFn: func(_ context.Context) (int64, error) {
+				countFn: func(_ context.Context, _ uint) (int64, error) {
 					return 0, nil
 				},
 			},
@@ -697,7 +703,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 			logger:                &mockLogger{},
 		}
 
-		got, total, err := svc.ListServersWithOntime(t.Context(), 1, 10)
+		got, total, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -712,7 +718,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 	t.Run("server repo list error", func(t *testing.T) {
 		svc := &OntimeService{
 			serverRepository: &mockServerRepo{
-				listFn: func(_ context.Context, limit, offset int) ([]domain.Server, error) {
+				listFn: func(_ context.Context, _ uint, limit, offset int) ([]domain.Server, error) {
 					return nil, errors.New("db error")
 				},
 			},
@@ -720,7 +726,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 			logger:                &mockLogger{},
 		}
 
-		_, _, err := svc.ListServersWithOntime(t.Context(), 1, 10)
+		_, _, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -729,12 +735,12 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 	t.Run("server repo count error", func(t *testing.T) {
 		svc := &OntimeService{
 			serverRepository: &mockServerRepo{
-				listFn: func(_ context.Context, limit, offset int) ([]domain.Server, error) {
+				listFn: func(_ context.Context, _ uint, limit, offset int) ([]domain.Server, error) {
 					return []domain.Server{
 						{Model: gormModel(1, oldTime), Name: "s1", Status: domain.StatusActive},
 					}, nil
 				},
-				countFn: func(_ context.Context) (int64, error) {
+				countFn: func(_ context.Context, _ uint) (int64, error) {
 					return 0, errors.New("count error")
 				},
 			},
@@ -742,7 +748,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 			logger:                &mockLogger{},
 		}
 
-		_, _, err := svc.ListServersWithOntime(t.Context(), 1, 10)
+		_, _, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -757,10 +763,10 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 
 		svc := &OntimeService{
 			serverRepository: &mockServerRepo{
-				listFn: func(_ context.Context, limit, offset int) ([]domain.Server, error) {
+				listFn: func(_ context.Context, _ uint, limit, offset int) ([]domain.Server, error) {
 					return servers, nil
 				},
-				countFn: func(_ context.Context) (int64, error) {
+				countFn: func(_ context.Context, _ uint) (int64, error) {
 					return 1, nil
 				},
 			},
@@ -776,7 +782,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 			logger: &mockLogger{},
 		}
 
-		got, total, err := svc.ListServersWithOntime(t.Context(), 1, 10)
+		got, total, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

@@ -46,16 +46,16 @@ func (s *OntimeService) BatchGetOntime(ctx context.Context, req []dto.BatchGetOn
 	return s.buildResponse(req, resultMap), nil
 }
 
-func (s *OntimeService) ListServersWithOntime(ctx context.Context, page, perPage int) ([]dto.ServerWithOntime, int64, error) {
+func (s *OntimeService) ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]dto.ServerWithOntime, int64, error) {
 
 	dates := utils.Last30Days()
-	servers, err := s.serverRepository.List(ctx, perPage, (page-1)*perPage)
+	servers, err := s.serverRepository.List(ctx, createdByID, perPage, (page-1)*perPage)
 
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to list servers: %w", err)
 	}
 
-	total, err := s.serverRepository.Count(ctx)
+	total, err := s.serverRepository.Count(ctx, createdByID)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count servers: %w", err)
 	}

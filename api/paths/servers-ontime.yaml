@@ -3,6 +3,8 @@ get:
   operationId: ListServersOntime
   tags:
     - servers
+  security:
+    - BearerAuth: []
   parameters:
     - name: page
       in: query
@@ -24,3 +26,9 @@ get:
         application/json:
           schema:
             $ref: "#/components/schemas/ServerOntimeListResponse"
+    "401":
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

@@ -10,6 +10,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
+	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
 	repo "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/repository"
 )
 
@@ -29,7 +30,7 @@ func RegisterAuthService(i do.Injector) {
 		return &AuthService{
 			userRepository:  do.MustInvoke[*repo.UserRepository](i),
 			passwordEncoder: do.MustInvoke[*serverinfra.Argon2PasswordEncoder](i),
-			tokenParser:     do.MustInvoke[*serverinfra.JwtParser](i),
+			tokenParser:     do.MustInvoke[*jwtutil.JwtParser](i),
 		}, nil
 	})
 }

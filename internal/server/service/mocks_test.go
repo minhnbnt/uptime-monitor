@@ -8,6 +8,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
+	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
 	repo "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/repository"
 )
 
@@ -26,8 +27,8 @@ func domainUser(id uint, email, username string) domain.User {
 }
 
 type mockServerRepo struct {
-	listFn           func(ctx context.Context, limit, offset int) ([]domain.Server, error)
-	countFn          func(ctx context.Context) (int64, error)
+	listFn           func(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error)
+	countFn          func(ctx context.Context, createdByID uint) (int64, error)
 	createFn         func(ctx context.Context, s *domain.Server) error
 	getByIDFn        func(ctx context.Context, id uint) (*domain.Server, error)
 	updateFn         func(ctx context.Context, s *domain.Server) error
@@ -35,11 +36,11 @@ type mockServerRepo struct {
 	batchGetOntimeFn func(ctx context.Context, req []repo.BatchGetOntimeRequest) ([]repo.RawEvent, error)
 }
 
-func (m *mockServerRepo) List(ctx context.Context, limit, offset int) ([]domain.Server, error) {
-	return m.listFn(ctx, limit, offset)
+func (m *mockServerRepo) List(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error) {
+	return m.listFn(ctx, createdByID, limit, offset)
 }
-func (m *mockServerRepo) Count(ctx context.Context) (int64, error) {
-	return m.countFn(ctx)
+func (m *mockServerRepo) Count(ctx context.Context, createdByID uint) (int64, error) {
+	return m.countFn(ctx, createdByID)
 }
 func (m *mockServerRepo) Create(ctx context.Context, s *domain.Server) error {
 	return m.createFn(ctx, s)
@@ -92,6 +93,7 @@ func (m *mockPasswordEncoder) Verify(password, encodedHash string) (bool, error)
 type mockTokenParser struct {
 	newTokenFn func(issuer string, otherClaims map[string]any) (string, error)
 	validateFn func(token string) (issuer string, err error)
+	parseFn    func(token string) (*jwtutil.Token, error)
 }
 
 func (m *mockTokenParser) NewToken(issuer string, otherClaims map[string]any) (string, error) {
@@ -99,6 +101,9 @@ func (m *mockTokenParser) NewToken(issuer string, otherClaims map[string]any) (s
 }
 func (m *mockTokenParser) Validate(token string) (issuer string, err error) {
 	return m.validateFn(token)
+}
+func (m *mockTokenParser) Parse(token string) (*jwtutil.Token, error) {
+	return m.parseFn(token)
 }
 
 type mockOntimeCacheRepo struct {

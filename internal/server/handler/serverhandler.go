@@ -14,6 +14,17 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
+const UserIDKey = "user_id"
+
+func getCurrentUserID(c *gin.Context) uint {
+	v, exists := c.Get(UserIDKey)
+	if !exists {
+		return 0
+	}
+	uid, _ := v.(uint)
+	return uid
+}
+
 type ServerHandler struct {
 	serverService ServerService
 	ontimeService OntimeService
@@ -51,7 +62,7 @@ func (m *ServerHandler) ListServers(c *gin.Context, params api.ListServersParams
 	}
 
 	ctx := c.Request.Context()
-	result, err := m.serverService.ListServers(ctx, page, perPage)
+	result, err := m.serverService.ListServers(ctx, getCurrentUserID(c), page, perPage)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errResponse("INTERNAL_ERROR", err.Error()))
 		return
@@ -83,7 +94,7 @@ func (m *ServerHandler) CreateServer(c *gin.Context) {
 		return
 	}
 
-	result, err := m.serverService.CreateServer(ctx, dtoReq)
+	result, err := m.serverService.CreateServer(ctx, dtoReq, getCurrentUserID(c))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errResponse("INTERNAL_ERROR", err.Error()))
 		return
@@ -156,7 +167,7 @@ func (m *ServerHandler) ListServersOntime(c *gin.Context, params api.ListServers
 	}
 
 	ctx := c.Request.Context()
-	result, total, err := m.ontimeService.ListServersWithOntime(ctx, page, perPage)
+	result, total, err := m.ontimeService.ListServersWithOntime(ctx, getCurrentUserID(c), page, perPage)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errResponse("INTERNAL_ERROR", err.Error()))
 		return

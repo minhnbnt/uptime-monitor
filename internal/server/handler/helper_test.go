@@ -11,6 +11,10 @@ import (
 )
 
 func newGinContext(method, path, body string) (*gin.Context, *httptest.ResponseRecorder) {
+	return newGinContextWithUser(method, path, body, 0)
+}
+
+func newGinContextWithUser(method, path, body string, userID uint) (*gin.Context, *httptest.ResponseRecorder) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 
@@ -21,6 +25,10 @@ func newGinContext(method, path, body string) (*gin.Context, *httptest.ResponseR
 	req, _ := http.NewRequest(method, path, r)
 	req.Header.Set("Content-Type", "application/json")
 	c.Request = req
+
+	if userID != 0 {
+		c.Set(UserIDKey, userID)
+	}
 
 	return c, w
 }

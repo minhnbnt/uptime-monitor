@@ -1,4 +1,4 @@
-package infrastructure
+package jwt
 
 import (
 	"os"
@@ -10,6 +10,7 @@ import (
 )
 
 func TestJwtParser_RoundTrip(t *testing.T) {
+
 	os.Setenv("JWT_KEY", "test-signing-key-for-jwt-parser-test")
 	t.Cleanup(func() { os.Unsetenv("JWT_KEY") })
 

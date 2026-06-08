@@ -29,7 +29,9 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/handler"
 	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
+	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
 	repo "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/repository"
+	servertmiddleware "github.com/minhnbnt/uptime-monitor/internal/server/middleware"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 )
 
@@ -63,7 +65,7 @@ func main() {
 		infra.RegisterPingWorker,
 		infra.RegisterRecordPingStatusWorker,
 
-		serverinfra.RegisterJwtParser,
+		jwtutil.RegisterJwtParser,
 		serverinfra.RegisterArgon2PasswordEncoder,
 
 		service.RegisterServerService,
@@ -136,8 +138,11 @@ func runWebServer(ctx context.Context, i do.Injector) {
 		}
 	}()
 
-	handler := do.MustInvoke[*server.CompositeHandler](i)
-	api.RegisterHandlers(router, handler)
+	compositeHandler := do.MustInvoke[*server.CompositeHandler](i)
+	authMiddleware := servertmiddleware.AuthRequired(i)
+	api.RegisterHandlersWithOptions(router, compositeHandler, api.GinServerOptions{
+		Middlewares: []api.MiddlewareFunc{api.MiddlewareFunc(authMiddleware)},
+	})
 
 	if err := httpServer.ListenAndServe(); err != nil {
 		logger.Panic("failed to run server", zap.Error(err))

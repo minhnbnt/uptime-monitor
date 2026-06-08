@@ -25,7 +25,10 @@ func TestServerHandler_ListServers(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		h := &ServerHandler{
 			serverService: &mockServerService{
-				listServersFn: func(_ context.Context, page, perPage int) ([]dto.Server, error) {
+				listServersFn: func(_ context.Context, createdByID uint, page, perPage int) ([]dto.Server, error) {
+					if createdByID != 1 {
+						t.Errorf("ListServers createdByID = %d, want 1", createdByID)
+					}
 					if page != 2 || perPage != 10 {
 						t.Errorf("ListServers(%d, %d)", page, perPage)
 					}
@@ -34,7 +37,7 @@ func TestServerHandler_ListServers(t *testing.T) {
 			},
 			pageValidator: srv,
 		}
-		c, w := newGinContext("GET", "/api/v1/servers?page=2&per_page=10", "")
+		c, w := newGinContextWithUser("GET", "/api/v1/servers?page=2&per_page=10", "", 1)
 		h.ListServers(c, api.ListServersParams{Page: intPtr(2), PerPage: intPtr(10)})
 
 		if w.Code != http.StatusOK {
@@ -60,13 +63,13 @@ func TestServerHandler_ListServers(t *testing.T) {
 	t.Run("internal error", func(t *testing.T) {
 		h := &ServerHandler{
 			serverService: &mockServerService{
-				listServersFn: func(_ context.Context, _, _ int) ([]dto.Server, error) {
+				listServersFn: func(_ context.Context, _ uint, _, _ int) ([]dto.Server, error) {
 					return nil, errors.New("db error")
 				},
 			},
 			pageValidator: srv,
 		}
-		c, w := newGinContext("GET", "/api/v1/servers", "")
+		c, w := newGinContextWithUser("GET", "/api/v1/servers", "", 1)
 		h.ListServers(c, api.ListServersParams{})
 
 		if w.Code != http.StatusInternalServerError {
@@ -82,14 +85,17 @@ func TestServerHandler_CreateServer(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		h := &ServerHandler{
 			serverService: &mockServerService{
-				createServerFn: func(_ context.Context, req dto.CreateServerRequest) (*dto.Server, error) {
+				createServerFn: func(_ context.Context, req dto.CreateServerRequest, createdByID uint) (*dto.Server, error) {
+					if createdByID != 1 {
+						t.Errorf("CreateServer createdByID = %d, want 1", createdByID)
+					}
 					s := dtoServer(1, req.Name, now)
 					return &s, nil
 				},
 			},
 			validator: val,
 		}
-		c, w := newGinContext("POST", "/api/v1/servers", `{"name":"new-srv"}`)
+		c, w := newGinContextWithUser("POST", "/api/v1/servers", `{"name":"new-srv"}`, 1)
 		h.CreateServer(c)
 
 		if w.Code != http.StatusCreated {
@@ -104,7 +110,7 @@ func TestServerHandler_CreateServer(t *testing.T) {
 
 	t.Run("bad json", func(t *testing.T) {
 		h := &ServerHandler{validator: val}
-		c, w := newGinContext("POST", "/api/v1/servers", `{bad`)
+		c, w := newGinContextWithUser("POST", "/api/v1/servers", `{bad`, 1)
 		h.CreateServer(c)
 
 		if w.Code != http.StatusBadRequest {
@@ -115,13 +121,13 @@ func TestServerHandler_CreateServer(t *testing.T) {
 	t.Run("internal error", func(t *testing.T) {
 		h := &ServerHandler{
 			serverService: &mockServerService{
-				createServerFn: func(_ context.Context, _ dto.CreateServerRequest) (*dto.Server, error) {
+				createServerFn: func(_ context.Context, _ dto.CreateServerRequest, _ uint) (*dto.Server, error) {
 					return nil, errors.New("db error")
 				},
 			},
 			validator: val,
 		}
-		c, w := newGinContext("POST", "/api/v1/servers", `{"name":"x"}`)
+		c, w := newGinContextWithUser("POST", "/api/v1/servers", `{"name":"x"}`, 1)
 		h.CreateServer(c)
 
 		if w.Code != http.StatusInternalServerError {
@@ -142,7 +148,7 @@ func TestServerHandler_GetServer(t *testing.T) {
 				},
 			},
 		}
-		c, w := newGinContext("GET", "/api/v1/servers/5", "")
+		c, w := newGinContextWithUser("GET", "/api/v1/servers/5", "", 1)
 		h.GetServer(c, 5)
 
 		if w.Code != http.StatusOK {
@@ -163,7 +169,7 @@ func TestServerHandler_GetServer(t *testing.T) {
 				},
 			},
 		}
-		c, w := newGinContext("GET", "/api/v1/servers/99", "")
+		c, w := newGinContextWithUser("GET", "/api/v1/servers/99", "", 1)
 		h.GetServer(c, 99)
 
 		if w.Code != http.StatusNotFound {
@@ -186,7 +192,7 @@ func TestServerHandler_UpdateServer(t *testing.T) {
 			},
 			validator: val,
 		}
-		c, w := newGinContext("PUT", "/api/v1/servers/3", `{"name":"updated"}`)
+		c, w := newGinContextWithUser("PUT", "/api/v1/servers/3", `{"name":"updated"}`, 1)
 		h.UpdateServer(c, 3)
 
 		if w.Code != http.StatusOK {
@@ -201,7 +207,7 @@ func TestServerHandler_UpdateServer(t *testing.T) {
 
 	t.Run("bad json", func(t *testing.T) {
 		h := &ServerHandler{validator: val}
-		c, w := newGinContext("PUT", "/api/v1/servers/3", `{bad`)
+		c, w := newGinContextWithUser("PUT", "/api/v1/servers/3", `{bad`, 1)
 		h.UpdateServer(c, 3)
 
 		if w.Code != http.StatusBadRequest {
@@ -218,7 +224,7 @@ func TestServerHandler_UpdateServer(t *testing.T) {
 			},
 			validator: val,
 		}
-		c, w := newGinContext("PUT", "/api/v1/servers/99", `{"name":"x"}`)
+		c, w := newGinContextWithUser("PUT", "/api/v1/servers/99", `{"name":"x"}`, 1)
 		h.UpdateServer(c, 99)
 
 		if w.Code != http.StatusNotFound {
@@ -236,7 +242,7 @@ func TestServerHandler_DeleteServer(t *testing.T) {
 				},
 			},
 		}
-		c, w := newGinContext("DELETE", "/api/v1/servers/4", "")
+		c, w := newGinContextWithUser("DELETE", "/api/v1/servers/4", "", 1)
 		h.DeleteServer(c, 4)
 		c.Writer.WriteHeaderNow()
 
@@ -253,7 +259,7 @@ func TestServerHandler_DeleteServer(t *testing.T) {
 				},
 			},
 		}
-		c, w := newGinContext("DELETE", "/api/v1/servers/99", "")
+		c, w := newGinContextWithUser("DELETE", "/api/v1/servers/99", "", 1)
 		h.DeleteServer(c, 99)
 
 		if w.Code != http.StatusNotFound {
@@ -269,7 +275,10 @@ func TestServerHandler_ListServersOntime(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		h := &ServerHandler{
 			ontimeService: &mockOntimeService{
-				listServersWithOntimeFn: func(_ context.Context, page, perPage int) ([]dto.ServerWithOntime, int64, error) {
+				listServersWithOntimeFn: func(_ context.Context, createdByID uint, page, perPage int) ([]dto.ServerWithOntime, int64, error) {
+					if createdByID != 1 {
+						t.Errorf("ListServersWithOntime createdByID = %d, want 1", createdByID)
+					}
 					return []dto.ServerWithOntime{
 						{Server: dtoServer(1, "s1", now), OntimeStats: []dto.OntimeStats{{Date: now, Stats: 95.5}}},
 					}, 1, nil
@@ -277,7 +286,7 @@ func TestServerHandler_ListServersOntime(t *testing.T) {
 			},
 			pageValidator: srv,
 		}
-		c, w := newGinContext("GET", "/api/v1/servers/ontime?page=1&per_page=20", "")
+		c, w := newGinContextWithUser("GET", "/api/v1/servers/ontime?page=1&per_page=20", "", 1)
 		h.ListServersOntime(c, api.ListServersOntimeParams{Page: intPtr(1), PerPage: intPtr(20)})
 
 		if w.Code != http.StatusOK {
@@ -306,13 +315,13 @@ func TestServerHandler_ListServersOntime(t *testing.T) {
 	t.Run("internal error", func(t *testing.T) {
 		h := &ServerHandler{
 			ontimeService: &mockOntimeService{
-				listServersWithOntimeFn: func(_ context.Context, _, _ int) ([]dto.ServerWithOntime, int64, error) {
+				listServersWithOntimeFn: func(_ context.Context, _ uint, _, _ int) ([]dto.ServerWithOntime, int64, error) {
 					return nil, 0, errors.New("db error")
 				},
 			},
 			pageValidator: srv,
 		}
-		c, w := newGinContext("GET", "/api/v1/servers/ontime", "")
+		c, w := newGinContextWithUser("GET", "/api/v1/servers/ontime", "", 1)
 		h.ListServersOntime(c, api.ListServersOntimeParams{})
 
 		if w.Code != http.StatusInternalServerError {

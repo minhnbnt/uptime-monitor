@@ -3,6 +3,8 @@ post:
   operationId: CreateServer
   tags:
     - servers
+  security:
+    - BearerAuth: []
   requestBody:
     required: true
     content:
@@ -22,12 +24,20 @@ post:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
+    "401":
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
 
 get:
   summary: List servers
   operationId: ListServers
   tags:
     - servers
+  security:
+    - BearerAuth: []
   parameters:
     - name: page
       in: query
@@ -53,3 +63,9 @@ get:
         application/json:
           schema:
             $ref: "#/components/schemas/ServerListResponse"
+    "401":
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

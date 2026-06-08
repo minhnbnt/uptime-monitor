@@ -4,12 +4,13 @@ import (
 	"context"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
 	repo "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/repository"
 )
 
 type ServerRepository interface {
-	Count(ctx context.Context) (int64, error)
-	List(ctx context.Context, limit, offset int) ([]domain.Server, error)
+	Count(ctx context.Context, createdByID uint) (int64, error)
+	List(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error)
 	Create(ctx context.Context, s *domain.Server) error
 	GetByID(ctx context.Context, id uint) (*domain.Server, error)
 	Update(ctx context.Context, s *domain.Server) error
@@ -39,4 +40,5 @@ type PasswordEncoder interface {
 type TokenParser interface {
 	NewToken(issuer string, otherClaims map[string]any) (string, error)
 	Validate(token string) (issuer string, err error)
+	Parse(token string) (*jwtutil.Token, error)
 }
