@@ -12,19 +12,26 @@ import (
 )
 
 type EndpointRepository struct {
-	db                  *gorm.DB
-	schedulerRepository *PingSchedulerRepository
+	db        *gorm.DB
+	scheduler SchedulerRepository
 }
 
 func RegisterEndpointRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointRepository, error) {
 
 		dbWrapper := do.MustInvoke[*config.GORMWrapper](i)
-		schedulerRepo := do.MustInvoke[*PingSchedulerRepository](i)
+		backend := do.MustInvoke[*SchedulerBackend](i)
+
+		var scheduler SchedulerRepository
+		if *backend == SchedulerBackendTemporal {
+			scheduler = do.MustInvoke[*PingSchedulerRepository](i)
+		} else {
+			scheduler = do.MustInvoke[*ZSetSchedulerRepository](i)
+		}
 
 		return &EndpointRepository{
-			db:                  dbWrapper.GetDB(),
-			schedulerRepository: schedulerRepo,
+			db:        dbWrapper.GetDB(),
+			scheduler: scheduler,
 		}, nil
 	})
 }
@@ -49,6 +56,6 @@ func (er *EndpointRepository) UpsertEndpoint(ctx context.Context, endpoint domai
 			return err
 		}
 
-		return er.schedulerRepository.NewScheduler(ctx, &endpoint)
+		return er.scheduler.Register(ctx, &endpoint)
 	})
 }

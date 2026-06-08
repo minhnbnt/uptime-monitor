@@ -25,6 +25,7 @@ import (
 	monitorhandler "github.com/minhnbnt/uptime-monitor/internal/monitor/handler"
 	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure"
 	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure/repository"
+	monitorscheduler "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure/scheduler"
 	monitorservices "github.com/minhnbnt/uptime-monitor/internal/monitor/services"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/handler"
@@ -38,7 +39,8 @@ import (
 func main() {
 
 	enableServer := flag.Bool("server", true, "start HTTP API server")
-	enableWorker := flag.Bool("worker", true, "start Temporal worker")
+	enableWorker := flag.Bool("worker", true, "start background worker")
+	schedulerBackend := flag.String("scheduler-backend", "temporal", "scheduler backend: temporal | redis")
 	flag.Parse()
 
 	injector := do.New(
@@ -55,6 +57,7 @@ func main() {
 		repo.RegisterServerRepository,
 		repo.RegisterEndpointRepository,
 		repo.RegisterPingSchedulerRepository,
+		repo.RegisterZSetSchedulerRepository,
 		repo.RegisterUserRepository,
 
 		monitorrepo.RegisterServerEventRepository,
@@ -65,6 +68,12 @@ func main() {
 		infra.RegisterPingWorker,
 		infra.RegisterRecordPingStatusWorker,
 
+		monitorscheduler.RegisterZSetScheduleRepository,
+		monitorscheduler.RegisterScoreUpdater,
+		monitorscheduler.RegisterEndpointFetcher,
+		monitorscheduler.RegisterEndpointProvider,
+		monitorscheduler.RegisterEndpointMetaCache,
+
 		jwtutil.RegisterJwtParser,
 		serverinfra.RegisterArgon2PasswordEncoder,
 
@@ -73,6 +82,7 @@ func main() {
 		service.RegisterOntimeService,
 		service.RegisterAuthService,
 		monitorservices.RegisterPingService,
+		monitorservices.RegisterLoopService,
 
 		handler.RegisterRequestValidator,
 		handler.RegisterServerHandler,
@@ -81,7 +91,10 @@ func main() {
 
 		server.RegisterCompositeHandler,
 		monitorhandler.RegisterTemporalWorkerRunner,
+		monitorhandler.RegisterZSetWorkerRunner,
 	)
+
+	repo.RegisterSchedulerBackend(injector, repo.SchedulerBackend(*schedulerBackend))
 
 	ctx, stop := signal.NotifyContext(
 		context.Background(),
@@ -106,8 +119,16 @@ func main() {
 }
 
 func runWorker(ctx context.Context, i do.Injector) {
-	runner := do.MustInvoke[*monitorhandler.TemporalWorkerRunner](i)
-	runner.RunTemporalWorker(ctx)
+	backend := do.MustInvoke[*repo.SchedulerBackend](i)
+
+	switch *backend {
+	case repo.SchedulerBackendTemporal:
+		runner := do.MustInvoke[*monitorhandler.TemporalWorkerRunner](i)
+		runner.RunTemporalWorker(ctx)
+	case repo.SchedulerBackendRedis:
+		runner := do.MustInvoke[*monitorhandler.ZSetWorkerRunner](i)
+		_ = runner.RunZSetWorker(ctx)
+	}
 }
 
 func runWebServer(ctx context.Context, i do.Injector) {

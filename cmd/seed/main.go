@@ -8,17 +8,61 @@ import (
 	"net/http"
 	"sync"
 
+	openapi_types "github.com/oapi-codegen/runtime/types"
+
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 )
 
 const baseURL = "http://localhost:8080"
 
+func authToken() string {
+
+	reqBody, _ := json.Marshal(api.RegisterRequest{
+		Email:    openapi_types.Email("seed@uptime.local"),
+		Username: "seed",
+		Password: "seedseed",
+		Name:     "Seed User",
+	})
+
+	resp, err := http.Post(baseURL+"/api/v1/auth/register", "application/json", bytes.NewReader(reqBody))
+	if err != nil {
+		panic(fmt.Sprintf("register: %v", err))
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusConflict {
+		loginBody, _ := json.Marshal(api.LoginRequest{
+			Login:    "seed",
+			Password: "seedseed",
+		})
+		resp, err = http.Post(baseURL+"/api/v1/auth/login", "application/json", bytes.NewReader(loginBody))
+		if err != nil {
+			panic(fmt.Sprintf("login: %v", err))
+		}
+		defer resp.Body.Close()
+	}
+
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		panic(fmt.Sprintf("auth: status %d\n  body: %s", resp.StatusCode, string(body)))
+	}
+
+	var authResp api.AuthResponse
+	if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
+		panic(fmt.Sprintf("decode auth: %v", err))
+	}
+
+	return authResp.Token
+}
+
 func main() {
+
+	token := authToken()
 
 	ports := make(chan int, 10000)
 
 	go func() {
-		for p := 10000; p <= 10099; p++ {
+		for p := 10000; p <= 19999; p++ {
 			ports <- p
 		}
 		close(ports)
@@ -42,7 +86,11 @@ func main() {
 				name := fmt.Sprintf("host.docker.internal:%d", port)
 
 				reqBody, _ := json.Marshal(api.CreateServerRequest{Name: name})
-				resp, err := client.Post(baseURL+"/api/v1/servers", "application/json", bytes.NewReader(reqBody))
+				req, _ := http.NewRequest(http.MethodPost, baseURL+"/api/v1/servers", bytes.NewReader(reqBody))
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Authorization", "Bearer "+token)
+
+				resp, err := client.Do(req)
 				if err != nil {
 					mu.Lock()
 					createFails++
@@ -88,10 +136,11 @@ func main() {
 					},
 				})
 
-				req, _ := http.NewRequest(http.MethodPut,
+				req, _ = http.NewRequest(http.MethodPut,
 					fmt.Sprintf(baseURL+"/api/v1/servers/%d/check_method", srvResp.Data.Id),
 					bytes.NewReader(epBody))
 				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Authorization", "Bearer "+token)
 
 				epResp, err := client.Do(req)
 				if err != nil {

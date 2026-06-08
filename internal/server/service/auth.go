@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/samber/do/v2"
 
@@ -71,8 +72,9 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
+	sub := strconv.FormatUint(uint64(user.ID), 10)
 	token, err := s.tokenParser.NewToken("uptime-monitor", map[string]any{
-		"sub":      user.ID,
+		"sub":      sub,
 		"email":    user.Email,
 		"username": user.Username,
 	})
@@ -91,6 +93,9 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Aut
 
 	user, err := s.userRepository.FindByEmailOrUsername(ctx, req.Login)
 	if err != nil {
+		return nil, fmt.Errorf("find user: %w", err)
+	}
+	if user == nil {
 		return nil, ErrInvalidCredentials
 	}
 
@@ -103,8 +108,9 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Aut
 		return nil, ErrInvalidCredentials
 	}
 
+	sub := strconv.FormatUint(uint64(user.ID), 10)
 	token, err := s.tokenParser.NewToken("uptime-monitor", map[string]any{
-		"sub":      user.ID,
+		"sub":      sub,
 		"email":    user.Email,
 		"username": user.Username,
 	})

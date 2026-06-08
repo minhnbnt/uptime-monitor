@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/samber/do/v2"
@@ -33,8 +34,11 @@ func (r *UserRepository) FindByEmailOrUsername(ctx context.Context, login string
 		First(ctx)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to find user: %w", err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("find user: %w", err)
 	}
 
-	return new(user), nil
+	return &user, nil
 }

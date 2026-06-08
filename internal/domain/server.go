@@ -19,7 +19,7 @@ type Server struct {
 	Status      Status    `gorm:"type:varchar(10);not null;default:active"`
 	Endpoint    *Endpoint `gorm:"foreignKey:ServerID;references:ID"`
 	CreatedBy   *User     `gorm:"foreignKey:CreatedByID"`
-	CreatedByID uint      `gorm:"not null;index"`
+	CreatedByID uint      `gorm:"not null;default:0;index"`
 }
 
 func (Server) TableName() string {

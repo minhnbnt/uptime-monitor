@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	defaultClaimLimit   = 50
+	defaultClaimLimit    = 50
 	defaultSleepDuration = 5 * time.Second
 )
 

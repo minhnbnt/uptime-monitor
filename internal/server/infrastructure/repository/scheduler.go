@@ -3,15 +3,18 @@ package repository
 import (
 	"context"
 	"fmt"
-	"hash/fnv"
-	"time"
 
 	"github.com/samber/do/v2"
 	temporalclient "go.temporal.io/sdk/client"
 
 	temporalcfg "github.com/minhnbnt/uptime-monitor/internal/config/temporal"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
+
+type SchedulerRepository interface {
+	Register(ctx context.Context, endpoint *domain.Endpoint) error
+}
 
 type PingSchedulerRepository struct {
 	client temporalclient.ScheduleClient
@@ -39,19 +42,14 @@ func toScheduleID(serverID string) string {
 	return "ping-schedule-" + serverID
 }
 
-func calculateOffset(id string, interval time.Duration) time.Duration {
-
-	hasher := fnv.New64a()
-	hasher.Write([]byte(id))
-
-	offset := hasher.Sum64() % uint64(interval)
-	return time.Duration(offset)
+func (psr *PingSchedulerRepository) Register(ctx context.Context, endpoint *domain.Endpoint) error {
+	return psr.NewScheduler(ctx, endpoint)
 }
 
 func (psr *PingSchedulerRepository) NewScheduler(ctx context.Context, endpoint *domain.Endpoint) error {
 
 	id := fmt.Sprintf("%d", endpoint.ID)
-	offset := calculateOffset(id, endpoint.Interval)
+	offset := utils.GenerateOffset(id, endpoint.Interval)
 
 	scheduleOptions := temporalclient.ScheduleOptions{
 

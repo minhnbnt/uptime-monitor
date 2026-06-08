@@ -23,7 +23,7 @@ type ZSetScheduleRepository struct {
 	client *redis.Client
 }
 
-func RegisterRedisZSetScheduleRepository(i do.Injector) {
+func RegisterZSetScheduleRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ZSetScheduleRepository, error) {
 		wrapper := do.MustInvoke[*config.RedisClientWrapper](i)
 		return &ZSetScheduleRepository{client: wrapper.GetClient()}, nil
