@@ -37,7 +37,7 @@ func TestServerService_ListServers(t *testing.T) {
 			},
 		}}
 
-		got, err := svc.ListServers(context.Background(), 1, 10)
+		got, err := svc.ListServers(t.Context(), 1, 10)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -56,7 +56,7 @@ func TestServerService_ListServers(t *testing.T) {
 			},
 		}}
 
-		_, err := svc.ListServers(context.Background(), 1, 10)
+		_, err := svc.ListServers(t.Context(), 1, 10)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -77,7 +77,7 @@ func TestServerService_CreateServer(t *testing.T) {
 		}}
 
 		req := dto.CreateServerRequest{Name: "my-server"}
-		got, err := svc.CreateServer(context.Background(), req)
+		got, err := svc.CreateServer(t.Context(), req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -102,7 +102,7 @@ func TestServerService_CreateServer(t *testing.T) {
 			},
 		}}
 
-		_, err := svc.CreateServer(context.Background(), dto.CreateServerRequest{Name: "x"})
+		_, err := svc.CreateServer(t.Context(), dto.CreateServerRequest{Name: "x"})
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -123,7 +123,7 @@ func TestServerService_GetServer(t *testing.T) {
 			},
 		}}
 
-		got, err := svc.GetServer(context.Background(), 7)
+		got, err := svc.GetServer(t.Context(), 7)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -142,7 +142,7 @@ func TestServerService_GetServer(t *testing.T) {
 			},
 		}}
 
-		_, err := svc.GetServer(context.Background(), 99)
+		_, err := svc.GetServer(t.Context(), 99)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -173,7 +173,7 @@ func TestServerService_UpdateServer(t *testing.T) {
 		name := "renamed"
 		status := domain.StatusPaused
 		req := dto.UpdateServerRequest{Name: &name, Status: &status}
-		got, err := svc.UpdateServer(context.Background(), 1, req)
+		got, err := svc.UpdateServer(t.Context(), 1, req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -202,7 +202,7 @@ func TestServerService_UpdateServer(t *testing.T) {
 		}}
 
 		req := dto.UpdateServerRequest{}
-		got, err := svc.UpdateServer(context.Background(), 1, req)
+		got, err := svc.UpdateServer(t.Context(), 1, req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -221,7 +221,7 @@ func TestServerService_UpdateServer(t *testing.T) {
 			},
 		}}
 
-		_, err := svc.UpdateServer(context.Background(), 99, dto.UpdateServerRequest{})
+		_, err := svc.UpdateServer(t.Context(), 99, dto.UpdateServerRequest{})
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -238,7 +238,7 @@ func TestServerService_UpdateServer(t *testing.T) {
 			},
 		}}
 
-		_, err := svc.UpdateServer(context.Background(), 1, dto.UpdateServerRequest{})
+		_, err := svc.UpdateServer(t.Context(), 1, dto.UpdateServerRequest{})
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -255,7 +255,7 @@ func TestServerService_DeleteServer(t *testing.T) {
 			},
 		}}
 
-		err := svc.DeleteServer(context.Background(), 7)
+		err := svc.DeleteServer(t.Context(), 7)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -271,7 +271,7 @@ func TestServerService_DeleteServer(t *testing.T) {
 			},
 		}}
 
-		err := svc.DeleteServer(context.Background(), 99)
+		err := svc.DeleteServer(t.Context(), 99)
 		if err == nil {
 			t.Fatal("expected error")
 		}

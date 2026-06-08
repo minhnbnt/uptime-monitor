@@ -43,7 +43,7 @@ func TestAuthService_Register(t *testing.T) {
 			},
 		}
 
-		result, err := svc.Register(context.Background(), req)
+		result, err := svc.Register(t.Context(), req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -68,7 +68,7 @@ func TestAuthService_Register(t *testing.T) {
 			},
 		}
 
-		_, err := svc.Register(context.Background(), req)
+		_, err := svc.Register(t.Context(), req)
 		if !errors.Is(err, ErrEmailOrUsernameTaken) {
 			t.Errorf("got %v, want ErrEmailOrUsernameTaken", err)
 		}
@@ -83,7 +83,7 @@ func TestAuthService_Register(t *testing.T) {
 			},
 		}
 
-		_, err := svc.Register(context.Background(), req)
+		_, err := svc.Register(t.Context(), req)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -106,7 +106,7 @@ func TestAuthService_Register(t *testing.T) {
 			},
 		}
 
-		_, err := svc.Register(context.Background(), req)
+		_, err := svc.Register(t.Context(), req)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -129,7 +129,7 @@ func TestAuthService_Register(t *testing.T) {
 			},
 		}
 
-		_, err := svc.Register(context.Background(), req)
+		_, err := svc.Register(t.Context(), req)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -158,7 +158,7 @@ func TestAuthService_Register(t *testing.T) {
 			},
 		}
 
-		_, err := svc.Register(context.Background(), req)
+		_, err := svc.Register(t.Context(), req)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -192,7 +192,7 @@ func TestAuthService_Login(t *testing.T) {
 			},
 		}
 
-		result, err := svc.Login(context.Background(), req)
+		result, err := svc.Login(t.Context(), req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -213,7 +213,7 @@ func TestAuthService_Login(t *testing.T) {
 			},
 		}
 
-		_, err := svc.Login(context.Background(), req)
+		_, err := svc.Login(t.Context(), req)
 		if !errors.Is(err, ErrInvalidCredentials) {
 			t.Errorf("got %v, want ErrInvalidCredentials", err)
 		}
@@ -233,7 +233,7 @@ func TestAuthService_Login(t *testing.T) {
 			},
 		}
 
-		_, err := svc.Login(context.Background(), req)
+		_, err := svc.Login(t.Context(), req)
 		if !errors.Is(err, ErrInvalidCredentials) {
 			t.Errorf("got %v, want ErrInvalidCredentials", err)
 		}
@@ -253,7 +253,7 @@ func TestAuthService_Login(t *testing.T) {
 			},
 		}
 
-		_, err := svc.Login(context.Background(), req)
+		_, err := svc.Login(t.Context(), req)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -278,7 +278,7 @@ func TestAuthService_Login(t *testing.T) {
 			},
 		}
 
-		_, err := svc.Login(context.Background(), req)
+		_, err := svc.Login(t.Context(), req)
 		if err == nil {
 			t.Fatal("expected error")
 		}

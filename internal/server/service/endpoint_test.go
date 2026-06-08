@@ -31,7 +31,7 @@ func TestEndpointService_SetCheckMethod(t *testing.T) {
 			},
 		}
 
-		err := svc.SetCheckMethod(context.Background(), 7, req)
+		err := svc.SetCheckMethod(t.Context(), 7, req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -70,7 +70,7 @@ func TestEndpointService_SetCheckMethod(t *testing.T) {
 			},
 		}
 
-		err := svc.SetCheckMethod(context.Background(), 1, req)
+		err := svc.SetCheckMethod(t.Context(), 1, req)
 		if err == nil {
 			t.Fatal("expected error")
 		}

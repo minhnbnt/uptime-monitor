@@ -64,7 +64,7 @@ func TestRecordPingStatusWorker_Record(t *testing.T) {
 			logger: log,
 		}
 
-		err := w.Record(context.Background(), event(1, domain.StatusOn))
+		err := w.Record(t.Context(), event(1, domain.StatusOn))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -94,7 +94,7 @@ func TestRecordPingStatusWorker_Record(t *testing.T) {
 			},
 		}
 
-		err := w.Record(context.Background(), event(1, domain.StatusOn))
+		err := w.Record(t.Context(), event(1, domain.StatusOn))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -131,7 +131,7 @@ func TestRecordPingStatusWorker_Record(t *testing.T) {
 		}
 
 		e := event(7, domain.StatusOff)
-		err := w.Record(context.Background(), e)
+		err := w.Record(t.Context(), e)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -163,7 +163,7 @@ func TestRecordPingStatusWorker_Record(t *testing.T) {
 			},
 		}
 
-		err := w.Record(context.Background(), event(1, domain.StatusOff))
+		err := w.Record(t.Context(), event(1, domain.StatusOff))
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -186,7 +186,7 @@ func TestRecordPingStatusWorker_Record(t *testing.T) {
 			},
 		}
 
-		err := w.Record(context.Background(), event(1, domain.StatusOff))
+		err := w.Record(t.Context(), event(1, domain.StatusOff))
 		if err == nil {
 			t.Fatal("expected error")
 		}
