@@ -29,6 +29,7 @@ import (
 	schedulerrepo "github.com/minhnbnt/uptime-monitor/internal/repository/scheduler"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
+	"github.com/minhnbnt/uptime-monitor/internal/server/docs"
 	"github.com/minhnbnt/uptime-monitor/internal/server/handler"
 	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
 	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
@@ -42,6 +43,7 @@ func main() {
 	enableServer := flag.Bool("server", true, "start HTTP API server")
 	enableWorker := flag.Bool("worker", true, "start background worker")
 	schedulerBackend := flag.String("scheduler-backend", "temporal", "scheduler backend: temporal | redis")
+	dev := flag.Bool("dev", false, "enable dev features (API docs)")
 	flag.Parse()
 
 	injector := do.New(
@@ -117,7 +119,7 @@ func main() {
 	}
 
 	if *enableServer {
-		waitgroup.Go(func() { runWebServer(ctx, injector) })
+		waitgroup.Go(func() { runWebServer(ctx, injector, *dev) })
 	}
 }
 
@@ -148,7 +150,7 @@ func errorHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, e
 	})
 }
 
-func runWebServer(ctx context.Context, i do.Injector) {
+func runWebServer(ctx context.Context, i do.Injector, dev bool) {
 
 	logger := do.MustInvoke[*zap.Logger](i)
 
@@ -166,11 +168,18 @@ func runWebServer(ctx context.Context, i do.Injector) {
 		logger.Panic("failed to create server", zap.Error(err))
 	}
 
-	middleware := servertmiddleware.CORSMiddleware()
+	var handler http.Handler = servertmiddleware.CORSMiddleware()(server)
+
+	if dev {
+		docsMux := http.NewServeMux()
+		docsMux.Handle("/docs/", docs.Handler("Uptime Monitor API"))
+		docsMux.Handle("/", handler)
+		handler = docsMux
+	}
 
 	httpServer := http.Server{
 		Addr:    ":8080",
-		Handler: middleware(server),
+		Handler: handler,
 	}
 
 	go func() {
