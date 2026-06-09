@@ -34,7 +34,7 @@ func RegisterZSetScheduleRepository(i do.Injector) {
 
 func (r *ZSetScheduleRepository) Register(ctx context.Context, endpoint *domain.Endpoint) error {
 
-	idStr := strconv.FormatUint(uint64(endpoint.ID), 10)
+	idStr := fmt.Sprint(endpoint.ID)
 	offset := utils.GenerateOffset(idStr, endpoint.Interval)
 	score := time.Now().UnixMilli() + offset.Milliseconds()
 
@@ -48,8 +48,8 @@ func (r *ZSetScheduleRepository) Register(ctx context.Context, endpoint *domain.
 	pipe.HSet(ctx, metaCacheKey(endpoint.ID),
 		"url", endpoint.URL,
 		"method", endpoint.Method,
-		"expected_code", strconv.Itoa(endpoint.ExpectedCode),
-		"interval_ns", strconv.FormatInt(int64(endpoint.Interval), 10),
+		"expected_code", fmt.Sprint(endpoint.ExpectedCode),
+		"interval_ns", fmt.Sprint(endpoint.Interval),
 	)
 
 	_, err := pipe.Exec(ctx)
@@ -119,8 +119,8 @@ func (r *ZSetScheduleRepository) ClaimDueTasks(
 
 	cmd := claimScript.Run(
 		ctx, r.client, []string{schedulerQueueKey},
-		strconv.FormatInt(now.UnixMilli(), 10),
-		strconv.FormatInt(limit, 10),
+		fmt.Sprint(now.UnixMilli()),
+		fmt.Sprint(limit),
 	)
 
 	dueRaw, nextRaw, err := collectRawValues(cmd)

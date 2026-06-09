@@ -44,7 +44,7 @@ func toScheduleID(serverID string) string {
 
 func (tsr *TemporalSchedulerRepository) Register(ctx context.Context, endpoint *domain.Endpoint) error {
 
-	id := fmt.Sprintf("%d", endpoint.ID)
+	id := fmt.Sprint(endpoint.ID)
 	offset := utils.GenerateOffset(id, endpoint.Interval)
 
 	scheduleOptions := temporalclient.ScheduleOptions{

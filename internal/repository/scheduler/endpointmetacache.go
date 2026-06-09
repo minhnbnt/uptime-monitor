@@ -90,8 +90,8 @@ func (c *EndpointMetaCache) Set(ctx context.Context, ep *domain.Endpoint) error 
 		ctx, metaCacheKey(ep.ID),
 		"url", ep.URL,
 		"method", ep.Method,
-		"expected_code", strconv.Itoa(ep.ExpectedCode),
-		"interval_ns", strconv.FormatInt(int64(ep.Interval), 10),
+		"expected_code", fmt.Sprint(ep.ExpectedCode),
+		"interval_ns", fmt.Sprint(ep.Interval),
 	)
 
 	return cmd.Err()
@@ -110,8 +110,8 @@ func (c *EndpointMetaCache) SetMulti(ctx context.Context, endpoints []domain.End
 			ctx, metaCacheKey(endpoints[i].ID),
 			"url", endpoints[i].URL,
 			"method", endpoints[i].Method,
-			"expected_code", strconv.Itoa(endpoints[i].ExpectedCode),
-			"interval_ns", strconv.FormatInt(int64(endpoints[i].Interval), 10),
+			"expected_code", fmt.Sprint(endpoints[i].ExpectedCode),
+			"interval_ns", fmt.Sprint(endpoints[i].Interval),
 		)
 	}
 

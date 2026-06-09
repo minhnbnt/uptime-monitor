@@ -2,7 +2,6 @@ package auth
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,7 +28,7 @@ func RegisterTokenGenerator(i do.Injector) {
 
 func (tg *tokenGenerator) GenerateAccessToken(user *domain.User) (string, error) {
 
-	sub := strconv.FormatUint(uint64(user.ID), 10)
+	sub := fmt.Sprint(user.ID)
 	return tg.provider.NewToken(tg.tokenConfig.GetAccessTokenIssuer(), map[string]any{
 		"sub":      sub,
 		"email":    user.Email,
@@ -45,7 +44,7 @@ func (tg *tokenGenerator) GenerateRefreshToken(user *domain.User) (string, error
 		return "", fmt.Errorf("failed to generate jti: %v", err)
 	}
 
-	sub := strconv.FormatUint(uint64(user.ID), 10)
+	sub := fmt.Sprint(user.ID)
 	return tg.provider.NewToken(tg.tokenConfig.GetRefreshTokenIssuer(), map[string]any{
 		"sub": sub,
 		"jti": jti.String(),

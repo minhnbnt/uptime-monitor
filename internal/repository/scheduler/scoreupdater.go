@@ -3,7 +3,6 @@ package scheduler
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/samber/do/v2"
@@ -26,7 +25,7 @@ func (u *ScoreUpdater) Update(ctx context.Context, endpointID uint, nextScore in
 
 	return u.client.ZAdd(ctx, schedulerQueueKey, redis.Z{
 		Score:  float64(nextScore),
-		Member: strconv.FormatUint(uint64(endpointID), 10),
+		Member: fmt.Sprint(endpointID),
 	}).Err()
 }
 
@@ -41,7 +40,7 @@ func (u *ScoreUpdater) UpdateBatch(ctx context.Context, items map[uint]int64) er
 	for id, score := range items {
 		pipe.ZAdd(ctx, schedulerQueueKey, redis.Z{
 			Score:  float64(score),
-			Member: strconv.FormatUint(uint64(id), 10),
+			Member: fmt.Sprint(id),
 		})
 	}
 
