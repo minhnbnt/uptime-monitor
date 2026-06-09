@@ -3,6 +3,7 @@ package jwt
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -79,4 +80,24 @@ func (t *Token) JTI() (string, error) {
 	}
 
 	return id, nil
+}
+
+func (t *Token) Expiry() (time.Time, error) {
+
+	raw, err := t.getClaimsField("exp")
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	var unix int64
+	switch v := raw.(type) {
+	case float64:
+		unix = int64(v)
+	case int64:
+		unix = v
+	default:
+		return time.Time{}, errors.New("invalid exp")
+	}
+
+	return time.Unix(unix, 0), nil
 }
