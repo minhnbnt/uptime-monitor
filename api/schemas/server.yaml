@@ -1,0 +1,64 @@
+ServerObject:
+  type: object
+  required:
+    - id
+    - name
+    - status
+    - created_at
+    - updated_at
+  properties:
+    id:
+      type: integer
+    name:
+      type: string
+      minLength: 1
+      maxLength: 255
+    status:
+      $ref: "./common.yaml#/ServerStatus"
+    endpoint:
+      $ref: "./endpoint.yaml#/Endpoint"
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+CreateServerRequest:
+  type: object
+  required:
+    - name
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 255
+
+UpdateServerRequest:
+  type: object
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 255
+
+ServerResponse:
+  type: object
+  required:
+    - data
+  properties:
+    data:
+      $ref: "#/ServerObject"
+
+ServerListResponse:
+  type: object
+  required:
+    - data
+    - meta
+  properties:
+    data:
+      type: array
+      items:
+        $ref: "#/ServerObject"
+    meta:
+      $ref: "./common.yaml#/PaginationMeta"

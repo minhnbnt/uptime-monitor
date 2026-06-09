@@ -1,0 +1,38 @@
+OntimeStats:
+  type: object
+  required:
+    - date
+    - stats
+  properties:
+    date:
+      type: string
+      format: date
+    stats:
+      type: number
+      format: double
+
+ServerWithOntime:
+  type: object
+  required:
+    - server
+    - ontime_stats
+  properties:
+    server:
+      $ref: "./server.yaml#/ServerObject"
+    ontime_stats:
+      type: array
+      items:
+        $ref: "#/OntimeStats"
+
+ServerOntimeListResponse:
+  type: object
+  required:
+    - data
+    - meta
+  properties:
+    data:
+      type: array
+      items:
+        $ref: "#/ServerWithOntime"
+    meta:
+      $ref: "./common.yaml#/PaginationMeta"

@@ -15,6 +15,7 @@ require (
 	github.com/ogen-go/ogen v1.20.3
 	github.com/opensearch-project/opensearch-go v1.1.0
 	github.com/redis/go-redis/v9 v9.20.0
+	github.com/rs/cors v1.11.1
 	github.com/samber/do/v2 v2.0.0
 	github.com/samber/lo v1.53.0
 	go.opentelemetry.io/otel v1.44.0
@@ -68,7 +69,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.3.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
-	github.com/rs/cors v1.11.1 // indirect
 	github.com/samber/go-type-to-string v1.8.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect

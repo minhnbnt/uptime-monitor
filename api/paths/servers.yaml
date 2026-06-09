@@ -1,0 +1,224 @@
+servers:
+  post:
+    summary: Create a new server
+    operationId: CreateServer
+    x-ogen-operation-group: Servers
+    tags:
+      - servers
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/server.yaml#/CreateServerRequest"
+    responses:
+      "201":
+        description: Server created successfully
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/server.yaml#/ServerResponse"
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+  get:
+    summary: List servers
+    operationId: ListServers
+    x-ogen-operation-group: Servers
+    tags:
+      - servers
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+          minimum: 1
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 100
+      - name: status
+        in: query
+        schema:
+          $ref: "../schemas/common.yaml#/ServerStatus"
+    responses:
+      "200":
+        description: List of servers
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/server.yaml#/ServerListResponse"
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+servers-ontime:
+  get:
+    summary: List servers with ontime stats for the last 30 days
+    operationId: ListServersOntime
+    x-ogen-operation-group: Servers
+    tags:
+      - servers
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+          minimum: 1
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 30
+    responses:
+      "200":
+        description: List of servers with ontime stats
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/ontime.yaml#/ServerOntimeListResponse"
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+servers-id:
+  get:
+    summary: Get server by ID
+    operationId: GetServer
+    x-ogen-operation-group: Servers
+    tags:
+      - servers
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    responses:
+      "200":
+        description: Server details
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/server.yaml#/ServerResponse"
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+  put:
+    summary: Update server
+    operationId: UpdateServer
+    x-ogen-operation-group: Servers
+    tags:
+      - servers
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/server.yaml#/UpdateServerRequest"
+    responses:
+      "200":
+        description: Server updated successfully
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/server.yaml#/ServerResponse"
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+  delete:
+    summary: Delete server
+    operationId: DeleteServer
+    x-ogen-operation-group: Servers
+    tags:
+      - servers
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    responses:
+      "204":
+        description: Server deleted successfully
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+check-method:
+  put:
+    summary: Set check method for a server
+    operationId: SetCheckMethod
+    x-ogen-operation-group: Endpoint
+    tags:
+      - servers
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/endpoint.yaml#/SetCheckMethodRequest"
+    responses:
+      "200":
+        description: Check method updated successfully
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/server.yaml#/ServerResponse"
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
