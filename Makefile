@@ -10,7 +10,7 @@ build-dev:
 	go build -o tmp/uptime-monitor ./cmd/main.go
 
 generate:
-	go run github.com/ogen-go/ogen/cmd/ogen@latest --target generated/api --package api --clean api/spec.yaml
+	go generate ./...
 
 test:
 	go test -count=1 ./internal/...

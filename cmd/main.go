@@ -127,6 +127,7 @@ func runWorker(ctx context.Context, i do.Injector) {
 	case schedulerrepo.SchedulerBackendTemporal:
 		runner := do.MustInvoke[*monitorhandler.TemporalWorkerRunner](i)
 		runner.RunTemporalWorker(ctx)
+
 	case schedulerrepo.SchedulerBackendRedis:
 		runner := do.MustInvoke[*monitorhandler.ZSetWorkerRunner](i)
 		_ = runner.RunZSetWorker(ctx)
