@@ -11,6 +11,7 @@ import (
 	authrepo "github.com/minhnbnt/uptime-monitor/internal/repository/auth"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
+	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
 )
 
 var (
@@ -34,20 +35,27 @@ type TokenGenerator interface {
 	GenerateRefreshToken(user *domain.User) (string, error)
 }
 
+type RevokedTokenRepository interface {
+	Revoke(ctx context.Context, token *jwtutil.Token) error
+	IsRevoked(ctx context.Context, jti string) (bool, error)
+}
+
 type AuthService struct {
-	userRepository  UserRepository
-	passwordEncoder PasswordEncoder
-	tokenGenerator  TokenGenerator
-	tokenValidator  *TokenValidator
+	userRepository         UserRepository
+	passwordEncoder        PasswordEncoder
+	tokenGenerator         TokenGenerator
+	tokenValidator         *TokenValidator
+	revokedTokenRepository RevokedTokenRepository
 }
 
 func RegisterAuthService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*AuthService, error) {
 		return &AuthService{
-			userRepository:  do.MustInvoke[*authrepo.UserRepository](i),
-			passwordEncoder: do.MustInvoke[*serverinfra.Argon2PasswordEncoder](i),
-			tokenGenerator:  do.MustInvoke[TokenGenerator](i),
-			tokenValidator:  do.MustInvoke[*TokenValidator](i),
+			userRepository:         do.MustInvoke[*authrepo.UserRepository](i),
+			passwordEncoder:        do.MustInvoke[*serverinfra.Argon2PasswordEncoder](i),
+			tokenGenerator:         do.MustInvoke[TokenGenerator](i),
+			tokenValidator:         do.MustInvoke[*TokenValidator](i),
+			revokedTokenRepository: do.MustInvoke[RevokedTokenRepository](i),
 		}, nil
 	})
 }
@@ -105,6 +113,16 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 	}, nil
 }
 
+func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
+
+	token, err := s.tokenValidator.ParseRefreshToken(refreshToken)
+	if err != nil {
+		return ErrInvalidCredentials
+	}
+
+	return s.revokedTokenRepository.Revoke(ctx, token)
+}
+
 func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.AuthResponse, error) {
 
 	user, err := s.userRepository.FindByEmailOrUsername(ctx, req.Login)
@@ -142,7 +160,8 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Aut
 }
 
 func (s *AuthService) Refresh(ctx context.Context, req dto.RefreshRequest) (*dto.AuthResponse, error) {
-	userID, _, err := s.tokenValidator.ValidateRefreshToken(req.RefreshToken)
+
+	userID, _, err := s.tokenValidator.ValidateRefreshToken(ctx, req.RefreshToken)
 	if err != nil {
 		return nil, ErrInvalidCredentials
 	}

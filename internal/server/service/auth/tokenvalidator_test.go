@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"os"
 	"testing"
 	"time"
@@ -21,6 +22,9 @@ func setupTokenValidatorTest(t *testing.T) *TokenValidator {
 	config.RegisterJwtConfig(i)
 	config.RegisterTokenConfig(i)
 	jwtutil.RegisterProvider(i)
+	do.Provide(i, func(i do.Injector) (RevokedTokenRepository, error) {
+		return &mockRevokedTokenRepo{}, nil
+	})
 	RegisterTokenValidator(i)
 
 	return do.MustInvoke[*TokenValidator](i)
@@ -111,7 +115,7 @@ func TestValidateAccessToken_Malformed(t *testing.T) {
 
 func TestValidateRefreshToken_Success(t *testing.T) {
 	p, tc := setupProviderWithConfig(t)
-	tv := &TokenValidator{provider: p, tokenConfig: tc}
+	tv := &TokenValidator{provider: p, tokenConfig: tc, revokedTokenRepo: &mockRevokedTokenRepo{}}
 
 	token, err := p.NewToken(tc.GetRefreshTokenIssuer(), map[string]any{
 		"sub": "42",
@@ -122,7 +126,7 @@ func TestValidateRefreshToken_Success(t *testing.T) {
 		t.Fatalf("NewToken error: %v", err)
 	}
 
-	userID, jti, err := tv.ValidateRefreshToken(token)
+	userID, jti, err := tv.ValidateRefreshToken(t.Context(), token)
 	if err != nil {
 		t.Fatalf("ValidateRefreshToken error: %v", err)
 	}
@@ -136,7 +140,7 @@ func TestValidateRefreshToken_Success(t *testing.T) {
 
 func TestValidateRefreshToken_WrongIssuer(t *testing.T) {
 	p, tc := setupProviderWithConfig(t)
-	tv := &TokenValidator{provider: p, tokenConfig: tc}
+	tv := &TokenValidator{provider: p, tokenConfig: tc, revokedTokenRepo: &mockRevokedTokenRepo{}}
 
 	token, err := p.NewToken(tc.GetAccessTokenIssuer(), map[string]any{
 		"sub": "42",
@@ -147,7 +151,7 @@ func TestValidateRefreshToken_WrongIssuer(t *testing.T) {
 		t.Fatalf("NewToken error: %v", err)
 	}
 
-	_, _, err = tv.ValidateRefreshToken(token)
+	_, _, err = tv.ValidateRefreshToken(t.Context(), token)
 	if err == nil {
 		t.Fatal("expected error for wrong issuer")
 	}
@@ -155,7 +159,7 @@ func TestValidateRefreshToken_WrongIssuer(t *testing.T) {
 
 func TestValidateRefreshToken_Expired(t *testing.T) {
 	p, tc := setupProviderWithConfig(t)
-	tv := &TokenValidator{provider: p, tokenConfig: tc}
+	tv := &TokenValidator{provider: p, tokenConfig: tc, revokedTokenRepo: &mockRevokedTokenRepo{}}
 
 	token, err := p.NewToken(tc.GetRefreshTokenIssuer(), map[string]any{
 		"sub": "42",
@@ -166,7 +170,7 @@ func TestValidateRefreshToken_Expired(t *testing.T) {
 		t.Fatalf("NewToken error: %v", err)
 	}
 
-	_, _, err = tv.ValidateRefreshToken(token)
+	_, _, err = tv.ValidateRefreshToken(t.Context(), token)
 	if err == nil {
 		t.Fatal("expected error for expired refresh token")
 	}
@@ -174,7 +178,7 @@ func TestValidateRefreshToken_Expired(t *testing.T) {
 
 func TestValidateRefreshToken_MissingJTI(t *testing.T) {
 	p, tc := setupProviderWithConfig(t)
-	tv := &TokenValidator{provider: p, tokenConfig: tc}
+	tv := &TokenValidator{provider: p, tokenConfig: tc, revokedTokenRepo: &mockRevokedTokenRepo{}}
 
 	token, err := p.NewToken(tc.GetRefreshTokenIssuer(), map[string]any{
 		"sub": "42",
@@ -184,7 +188,7 @@ func TestValidateRefreshToken_MissingJTI(t *testing.T) {
 		t.Fatalf("NewToken error: %v", err)
 	}
 
-	_, _, err = tv.ValidateRefreshToken(token)
+	_, _, err = tv.ValidateRefreshToken(t.Context(), token)
 	if err == nil {
 		t.Fatal("expected error for missing jti")
 	}
@@ -192,10 +196,37 @@ func TestValidateRefreshToken_MissingJTI(t *testing.T) {
 
 func TestValidateRefreshToken_Malformed(t *testing.T) {
 	p, tc := setupProviderWithConfig(t)
-	tv := &TokenValidator{provider: p, tokenConfig: tc}
+	tv := &TokenValidator{provider: p, tokenConfig: tc, revokedTokenRepo: &mockRevokedTokenRepo{}}
 
-	_, _, err := tv.ValidateRefreshToken("not-a-valid-token")
+	_, _, err := tv.ValidateRefreshToken(t.Context(), "not-a-valid-token")
 	if err == nil {
 		t.Fatal("expected error for malformed token")
+	}
+}
+
+func TestValidateRefreshToken_Revoked(t *testing.T) {
+	p, tc := setupProviderWithConfig(t)
+	tv := &TokenValidator{
+		provider:    p,
+		tokenConfig: tc,
+		revokedTokenRepo: &mockRevokedTokenRepo{
+			isRevokedFn: func(_ context.Context, _ string) (bool, error) {
+				return true, nil
+			},
+		},
+	}
+
+	token, err := p.NewToken(tc.GetRefreshTokenIssuer(), map[string]any{
+		"sub": "42",
+		"jti": "0195f0b0-0000-7000-8000-000000000000",
+		"exp": time.Now().Add(7 * 24 * time.Hour).Unix(),
+	})
+	if err != nil {
+		t.Fatalf("NewToken error: %v", err)
+	}
+
+	_, _, err = tv.ValidateRefreshToken(t.Context(), token)
+	if err == nil {
+		t.Fatal("expected error for revoked token")
 	}
 }

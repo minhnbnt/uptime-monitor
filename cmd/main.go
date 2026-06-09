@@ -28,6 +28,7 @@ import (
 	authrepo "github.com/minhnbnt/uptime-monitor/internal/repository/auth"
 	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/repository/monitor"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
+	revokedtokenrepo "github.com/minhnbnt/uptime-monitor/internal/repository/revokedtoken"
 	schedulerrepo "github.com/minhnbnt/uptime-monitor/internal/repository/scheduler"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
@@ -62,6 +63,7 @@ func main() {
 		serverrepo.RegisterEndpointRepository,
 		schedulerrepo.RegisterTemporalSchedulerRepository,
 		authrepo.RegisterUserRepository,
+		revokedtokenrepo.RegisterRedisRevokedTokenRepository,
 
 		monitorrepo.RegisterServerEventRepository,
 		monitorrepo.RegisterRedisServerEventRepository,

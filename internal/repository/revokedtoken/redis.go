@@ -9,6 +9,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
+	authservice "github.com/minhnbnt/uptime-monitor/internal/server/service/auth"
 )
 
 const revokedPrefix = "revoked_token:"
@@ -18,7 +19,7 @@ type RedisRevokedTokenRepository struct {
 }
 
 func RegisterRedisRevokedTokenRepository(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (*RedisRevokedTokenRepository, error) {
+	do.Provide[authservice.RevokedTokenRepository](i, func(i do.Injector) (authservice.RevokedTokenRepository, error) {
 		wrapper := do.MustInvoke[*config.RedisClientWrapper](i)
 		return &RedisRevokedTokenRepository{client: wrapper.GetClient()}, nil
 	})

@@ -140,3 +140,25 @@ func (h *AuthHandler) LoginRefresh(c *gin.Context) {
 		},
 	})
 }
+
+func (h *AuthHandler) Logout(c *gin.Context) {
+	var req api.LogoutJSONBody
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, errResponse("INVALID_REQUEST", err.Error()))
+		return
+	}
+
+	ctx := c.Request.Context()
+	err := h.authService.Logout(ctx, req.RefreshToken)
+	if errors.Is(err, authservice.ErrInvalidCredentials) {
+		c.JSON(http.StatusUnauthorized, errResponse("UNAUTHORIZED", err.Error()))
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, errResponse("INTERNAL_ERROR", err.Error()))
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}

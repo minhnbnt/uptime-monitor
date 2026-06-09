@@ -21,6 +21,9 @@ func (m *mockAuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto
 func (m *mockAuthService) Refresh(ctx context.Context, req dto.RefreshRequest) (*dto.AuthResponse, error) {
 	return m.refreshFn(ctx, req)
 }
+func (m *mockAuthService) Logout(ctx context.Context, refreshToken string) error {
+	return nil
+}
 
 type mockServerService struct {
 	listServersFn  func(ctx context.Context, createdByID uint, page, perPage int) ([]dto.Server, error)

@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
 )
 
 func gormModel(id uint, t time.Time) gorm.Model {
@@ -61,4 +62,22 @@ func (m *mockTokenGenerator) GenerateAccessToken(user *domain.User) (string, err
 }
 func (m *mockTokenGenerator) GenerateRefreshToken(user *domain.User) (string, error) {
 	return m.generateRefreshTokenFn(user)
+}
+
+type mockRevokedTokenRepo struct {
+	revokeFn    func(ctx context.Context, token *jwtutil.Token) error
+	isRevokedFn func(ctx context.Context, jti string) (bool, error)
+}
+
+func (m *mockRevokedTokenRepo) Revoke(ctx context.Context, token *jwtutil.Token) error {
+	if m.revokeFn == nil {
+		return nil
+	}
+	return m.revokeFn(ctx, token)
+}
+func (m *mockRevokedTokenRepo) IsRevoked(ctx context.Context, jti string) (bool, error) {
+	if m.isRevokedFn == nil {
+		return false, nil
+	}
+	return m.isRevokedFn(ctx, jti)
 }
