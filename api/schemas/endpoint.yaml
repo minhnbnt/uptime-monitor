@@ -20,15 +20,29 @@ Endpoint:
       $ref: "./common.yaml#/ServerStatus"
     interval:
       type: integer
+      minimum: 1
       description: Interval in seconds (default 30)
     timeout:
       type: integer
+      minimum: 1
       description: Timeout in seconds (default 10)
     method:
       type: string
+      enum:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - PATCH
+        - HEAD
+        - OPTIONS
+        - CONNECT
+        - TRACE
       description: HTTP method (default GET)
     expected_code:
       type: integer
+      minimum: 100
+      maximum: 599
       description: Expected HTTP status code (default 200)
 
 SetCheckMethodRequest:

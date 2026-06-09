@@ -38,6 +38,7 @@ import (
 )
 
 func main() {
+
 	enableServer := flag.Bool("server", true, "start HTTP API server")
 	enableWorker := flag.Bool("worker", true, "start background worker")
 	schedulerBackend := flag.String("scheduler-backend", "temporal", "scheduler backend: temporal | redis")

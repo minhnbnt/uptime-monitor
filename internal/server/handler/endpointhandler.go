@@ -32,7 +32,7 @@ func (h *EndpointHandler) SetCheckMethod(
 
 	dtoReq := dto.SetCheckMethodRequest{
 		Method:       dto.CheckMethodType(req.Method),
-		HTTPMethod:   req.Endpoint.Method,
+		HTTPMethod:   string(req.Endpoint.Method),
 		Interval:     time.Duration(req.Endpoint.Interval) * time.Second,
 		Timeout:      time.Duration(req.Endpoint.Timeout) * time.Second,
 		URL:          req.Endpoint.URL.String(),

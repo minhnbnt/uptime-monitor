@@ -3,8 +3,8 @@ package dto
 import "time"
 
 type BatchGetOntimeItem struct {
-	ServerID uint      `validate:"required"`
-	Date     time.Time `validate:"required"`
+	ServerID uint
+	Date     time.Time
 }
 
 type OntimeStats struct {

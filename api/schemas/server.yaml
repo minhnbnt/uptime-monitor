@@ -41,6 +41,8 @@ UpdateServerRequest:
       type: string
       minLength: 1
       maxLength: 255
+    status:
+      $ref: "./common.yaml#/ServerStatus"
 
 ServerResponse:
   type: object

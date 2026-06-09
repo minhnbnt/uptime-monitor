@@ -32,19 +32,19 @@ const (
 )
 
 type CreateServerRequest struct {
-	Name string `validate:"required,min=1,max=255"`
+	Name string
 }
 
 type UpdateServerRequest struct {
-	Name   *string        `validate:"omitempty,min=1,max=255"`
-	Status *domain.Status `validate:"omitempty,oneof=active paused"`
+	Name   *string
+	Status *domain.Status
 }
 
 type SetCheckMethodRequest struct {
-	URL          string          `validate:"required,url"`
-	Method       CheckMethodType `validate:"required,oneof=push pull"`
-	HTTPMethod   string          `validate:"required,oneof=GET POST PUT DELETE PATCH HEAD OPTIONS CONNECT TRACE"`
-	Interval     time.Duration   `validate:"required,gt=0"`
-	Timeout      time.Duration   `validate:"required,gt=0"`
-	ExpectedCode int             `validate:"min=100,max=599"`
+	URL          string
+	Method       CheckMethodType
+	HTTPMethod   string
+	Interval     time.Duration
+	Timeout      time.Duration
+	ExpectedCode int
 }

@@ -36,7 +36,7 @@ func toAPIEndpoint(e *dto.Endpoint) api.OptEndpoint {
 		URL:          u,
 		Interval:     int(e.Interval.Seconds()),
 		Timeout:      int(e.Timeout.Seconds()),
-		Method:       e.Method,
+		Method:       api.EndpointMethod(e.Method),
 		ExpectedCode: e.ExpectedCode,
 	})
 }
