@@ -23,6 +23,17 @@ func RegisterUserRepository(i do.Injector) {
 	})
 }
 
+func (r *UserRepository) FindByID(ctx context.Context, id uint) (*domain.User, error) {
+	user, err := gorm.G[domain.User](r.db).Where("id = ?", id).First(ctx)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("find user by id: %w", err)
+	}
+	return &user, nil
+}
+
 func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 	return gorm.G[domain.User](r.db).Create(ctx, user)
 }

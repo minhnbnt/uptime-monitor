@@ -52,7 +52,7 @@ func authToken() string {
 		panic(fmt.Sprintf("decode auth: %v", err))
 	}
 
-	return authResp.Token
+	return authResp.AccessToken
 }
 
 func main() {

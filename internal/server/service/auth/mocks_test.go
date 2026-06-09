@@ -26,6 +26,7 @@ func domainUser(id uint, email, username string) domain.User {
 type mockUserRepo struct {
 	createFn                func(ctx context.Context, user *domain.User) error
 	findByEmailOrUsernameFn func(ctx context.Context, login string) (*domain.User, error)
+	findByIDFn              func(ctx context.Context, id uint) (*domain.User, error)
 }
 
 func (m *mockUserRepo) Create(ctx context.Context, user *domain.User) error {
@@ -33,6 +34,9 @@ func (m *mockUserRepo) Create(ctx context.Context, user *domain.User) error {
 }
 func (m *mockUserRepo) FindByEmailOrUsername(ctx context.Context, login string) (*domain.User, error) {
 	return m.findByEmailOrUsernameFn(ctx, login)
+}
+func (m *mockUserRepo) FindByID(ctx context.Context, id uint) (*domain.User, error) {
+	return m.findByIDFn(ctx, id)
 }
 
 type mockPasswordEncoder struct {

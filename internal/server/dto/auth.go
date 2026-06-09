@@ -13,9 +13,13 @@ type LoginRequest struct {
 }
 
 type AuthResponse struct {
-	Token        string
+	AccessToken  string
 	RefreshToken string
 	User         UserProfile
+}
+
+type RefreshRequest struct {
+	RefreshToken string `validate:"required"`
 }
 
 type UserProfile struct {

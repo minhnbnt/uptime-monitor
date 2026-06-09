@@ -21,7 +21,14 @@ func RegisterProvider(i do.Injector) {
 }
 
 func (j *Provider) Parse(token string) (*Token, error) {
+	return j.parseWithOptions(token)
+}
 
+func (j *Provider) ParseWithIssuer(token string, expectedIssuer string) (*Token, error) {
+	return j.parseWithOptions(token, jwt.WithIssuer(expectedIssuer))
+}
+
+func (j *Provider) parseWithOptions(token string, extraOpts ...jwt.ParserOption) (*Token, error) {
 	keyFunc := func(t *jwt.Token) (any, error) {
 		return j.config.GetValidateKey(), nil
 	}
@@ -29,6 +36,7 @@ func (j *Provider) Parse(token string) (*Token, error) {
 	options := []jwt.ParserOption{
 		jwt.WithValidMethods([]string{j.config.GetMethod().Alg()}),
 	}
+	options = append(options, extraOpts...)
 
 	parsedToken, err := jwt.Parse(token, keyFunc, options...)
 	if err != nil {

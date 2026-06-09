@@ -55,7 +55,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, api.AuthResponse{
-		Token: result.Token,
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
 		User: api.UserProfile{
 			Id:       int(result.User.ID),
 			Email:    result.User.Email,
@@ -92,7 +93,45 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, api.AuthResponse{
-		Token: result.Token,
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
+		User: api.UserProfile{
+			Id:       int(result.User.ID),
+			Email:    result.User.Email,
+			Username: result.User.Username,
+			Name:     result.User.Name,
+		},
+	})
+}
+
+func (h *AuthHandler) LoginRefresh(c *gin.Context) {
+	var req api.RefreshTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, errResponse("INVALID_REQUEST", err.Error()))
+		return
+	}
+
+	dtoReq := dto.RefreshRequest{
+		RefreshToken: req.RefreshToken,
+	}
+	if !h.validator.Validate(c, dtoReq) {
+		return
+	}
+
+	ctx := c.Request.Context()
+	result, err := h.authService.Refresh(ctx, dtoReq)
+	if err != nil {
+		if errors.Is(err, authservice.ErrInvalidCredentials) {
+			c.JSON(http.StatusUnauthorized, errResponse("UNAUTHORIZED", err.Error()))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, errResponse("INTERNAL_ERROR", err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, api.AuthResponse{
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
 		User: api.UserProfile{
 			Id:       int(result.User.ID),
 			Email:    result.User.Email,

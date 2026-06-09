@@ -65,3 +65,18 @@ func (t *Token) Issuer() (string, error) {
 
 	return issuer, nil
 }
+
+func (t *Token) JTI() (string, error) {
+
+	jti, err := t.getClaimsField("jti")
+	if err != nil {
+		return "", err
+	}
+
+	id, ok := jti.(string)
+	if !ok {
+		return "", errors.New("invalid jti")
+	}
+
+	return id, nil
+}

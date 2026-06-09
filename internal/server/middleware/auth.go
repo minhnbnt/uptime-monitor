@@ -14,7 +14,9 @@ func AuthRequired(i do.Injector) gin.HandlerFunc {
 	tokenValidator := do.MustInvoke[*authservice.TokenValidator](i)
 
 	return func(c *gin.Context) {
-		if strings.HasPrefix(c.Request.URL.Path, "/api/v1/auth") {
+		if c.Request.URL.Path == "/api/v1/auth/login" ||
+			c.Request.URL.Path == "/api/v1/auth/register" ||
+			c.Request.URL.Path == "/api/v1/auth/refresh" {
 			c.Next()
 			return
 		}
@@ -29,7 +31,7 @@ func AuthRequired(i do.Injector) gin.HandlerFunc {
 		}
 
 		tokenStr := strings.TrimPrefix(auth, "Bearer ")
-		userID, err := tokenValidator.ValidateUserToken(tokenStr)
+		userID, err := tokenValidator.ValidateAccessToken(tokenStr)
 		if err != nil {
 			c.AbortWithStatusJSON(
 				http.StatusUnauthorized,

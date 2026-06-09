@@ -21,6 +21,7 @@ var (
 type UserRepository interface {
 	Create(ctx context.Context, user *domain.User) error
 	FindByEmailOrUsername(ctx context.Context, login string) (*domain.User, error)
+	FindByID(ctx context.Context, id uint) (*domain.User, error)
 }
 
 type PasswordEncoder interface {
@@ -37,6 +38,7 @@ type AuthService struct {
 	userRepository  UserRepository
 	passwordEncoder PasswordEncoder
 	tokenGenerator  TokenGenerator
+	tokenValidator  *TokenValidator
 }
 
 func RegisterAuthService(i do.Injector) {
@@ -45,6 +47,7 @@ func RegisterAuthService(i do.Injector) {
 			userRepository:  do.MustInvoke[*authrepo.UserRepository](i),
 			passwordEncoder: do.MustInvoke[*serverinfra.Argon2PasswordEncoder](i),
 			tokenGenerator:  do.MustInvoke[TokenGenerator](i),
+			tokenValidator:  do.MustInvoke[*TokenValidator](i),
 		}, nil
 	})
 }
@@ -96,7 +99,7 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 	}
 
 	return &dto.AuthResponse{
-		Token:        accessToken,
+		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		User:         toUserProfile(user),
 	}, nil
@@ -132,7 +135,38 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Aut
 	}
 
 	return &dto.AuthResponse{
-		Token:        accessToken,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		User:         toUserProfile(*user),
+	}, nil
+}
+
+func (s *AuthService) Refresh(ctx context.Context, req dto.RefreshRequest) (*dto.AuthResponse, error) {
+	userID, _, err := s.tokenValidator.ValidateRefreshToken(req.RefreshToken)
+	if err != nil {
+		return nil, ErrInvalidCredentials
+	}
+
+	user, err := s.userRepository.FindByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("find user: %w", err)
+	}
+	if user == nil {
+		return nil, ErrInvalidCredentials
+	}
+
+	accessToken, err := s.tokenGenerator.GenerateAccessToken(user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate access token: %w", err)
+	}
+
+	refreshToken, err := s.tokenGenerator.GenerateRefreshToken(user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
+	return &dto.AuthResponse{
+		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		User:         toUserProfile(*user),
 	}, nil

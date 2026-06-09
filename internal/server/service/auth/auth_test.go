@@ -50,8 +50,8 @@ func TestAuthService_Register(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if result.Token != "access-token" {
-			t.Errorf("Token = %q, want access-token", result.Token)
+		if result.AccessToken != "access-token" {
+			t.Errorf("Token = %q, want access-token", result.AccessToken)
 		}
 		if result.RefreshToken != "refresh-token" {
 			t.Errorf("RefreshToken = %q, want refresh-token", result.RefreshToken)
@@ -205,8 +205,8 @@ func TestAuthService_Login(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if result.Token != "access-token" {
-			t.Errorf("Token = %q, want access-token", result.Token)
+		if result.AccessToken != "access-token" {
+			t.Errorf("Token = %q, want access-token", result.AccessToken)
 		}
 		if result.RefreshToken != "refresh-token" {
 			t.Errorf("RefreshToken = %q, want refresh-token", result.RefreshToken)

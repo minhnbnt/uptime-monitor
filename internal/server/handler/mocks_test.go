@@ -9,6 +9,7 @@ import (
 type mockAuthService struct {
 	registerFn func(ctx context.Context, req dto.RegisterRequest) (*dto.AuthResponse, error)
 	loginFn    func(ctx context.Context, req dto.LoginRequest) (*dto.AuthResponse, error)
+	refreshFn  func(ctx context.Context, req dto.RefreshRequest) (*dto.AuthResponse, error)
 }
 
 func (m *mockAuthService) Register(ctx context.Context, req dto.RegisterRequest) (*dto.AuthResponse, error) {
@@ -16,6 +17,9 @@ func (m *mockAuthService) Register(ctx context.Context, req dto.RegisterRequest)
 }
 func (m *mockAuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.AuthResponse, error) {
 	return m.loginFn(ctx, req)
+}
+func (m *mockAuthService) Refresh(ctx context.Context, req dto.RefreshRequest) (*dto.AuthResponse, error) {
+	return m.refreshFn(ctx, req)
 }
 
 type mockServerService struct {

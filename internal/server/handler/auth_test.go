@@ -22,7 +22,7 @@ func TestAuthHandler_Register(t *testing.T) {
 		h := &AuthHandler{
 			authService: &mockAuthService{
 				registerFn: func(_ context.Context, req dto.RegisterRequest) (*dto.AuthResponse, error) {
-					return &dto.AuthResponse{Token: "jwt", User: validUser}, nil
+					return &dto.AuthResponse{AccessToken: "jwt", User: validUser}, nil
 				},
 			},
 			validator: validator,
@@ -36,7 +36,7 @@ func TestAuthHandler_Register(t *testing.T) {
 		}
 		var resp api.AuthResponse
 		parseJSON(w, &resp)
-		if resp.Token != "jwt" || resp.User.Email != "a@b.com" {
+		if resp.AccessToken != "jwt" || resp.User.Email != "a@b.com" {
 			t.Errorf("unexpected response: %+v", resp)
 		}
 	})
@@ -114,7 +114,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		h := &AuthHandler{
 			authService: &mockAuthService{
 				loginFn: func(_ context.Context, _ dto.LoginRequest) (*dto.AuthResponse, error) {
-					return &dto.AuthResponse{Token: "jwt", User: validUser}, nil
+					return &dto.AuthResponse{AccessToken: "jwt", User: validUser}, nil
 				},
 			},
 			validator: validator,
@@ -127,8 +127,8 @@ func TestAuthHandler_Login(t *testing.T) {
 		}
 		var resp api.AuthResponse
 		parseJSON(w, &resp)
-		if resp.Token != "jwt" {
-			t.Errorf("token = %q", resp.Token)
+		if resp.AccessToken != "jwt" {
+			t.Errorf("access_token = %q", resp.AccessToken)
 		}
 	})
 
