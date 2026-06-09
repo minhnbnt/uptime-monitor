@@ -2,8 +2,6 @@ package utils
 
 import "fmt"
 
-type PageValidatorError error
-
 type PageValidator struct {
 	maxPageSize int
 }
@@ -18,8 +16,8 @@ func (v *PageValidator) validate(pageNumber, pageSize int) error {
 		return fmt.Errorf("page number must be greater than 0")
 	}
 
-	if pageSize >= v.maxPageSize {
-		return fmt.Errorf("page size must be less than %v", v.maxPageSize)
+	if pageSize > v.maxPageSize {
+		return fmt.Errorf("page size must be less than %v", v.maxPageSize+1)
 	}
 
 	return nil
@@ -27,9 +25,5 @@ func (v *PageValidator) validate(pageNumber, pageSize int) error {
 
 func (v *PageValidator) Validate(pageNumber, pageSize int) error {
 
-	if err := v.validate(pageNumber, pageSize); err != nil {
-		return PageValidatorError(err)
-	}
-
-	return nil
+	return v.validate(pageNumber, pageSize)
 }

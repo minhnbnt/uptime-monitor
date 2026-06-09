@@ -7,9 +7,9 @@ import (
 )
 
 type Config struct {
-	Host      string
-	TaskQueue string
-	Workflow  string
+	Host         string
+	TaskQueue    string
+	WorkflowName string
 }
 
 func newConfig(i do.Injector) (*Config, error) {
@@ -30,9 +30,9 @@ func newConfig(i do.Injector) (*Config, error) {
 	}
 
 	return &Config{
-		Host:      host,
-		TaskQueue: taskQueue,
-		Workflow:  workflow,
+		Host:         host,
+		TaskQueue:    taskQueue,
+		WorkflowName: workflow,
 	}, nil
 }
 

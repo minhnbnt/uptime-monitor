@@ -15,7 +15,7 @@ func TestPageValidator_Validate(t *testing.T) {
 		{"valid edge min", 1, 29, false},
 		{"page 0", 0, 10, true},
 		{"page negative", -1, 10, true},
-		{"size equals max", 1, 30, true},
+		{"size equals max", 1, 30, false},
 		{"size exceeds max", 1, 100, true},
 	}
 

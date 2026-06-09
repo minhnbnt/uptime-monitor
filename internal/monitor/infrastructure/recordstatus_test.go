@@ -1,4 +1,4 @@
-package infrashtructure
+package infrastructure
 
 import (
 	"context"
@@ -52,10 +52,10 @@ func event(endpointID uint, status domain.ServerStatus) *domain.ServerEvent {
 	}
 }
 
-func TestRecordPingStatusWorker_Record(t *testing.T) {
+func TestRecordStatusWorker_Record(t *testing.T) {
 	t.Run("redis get fails -> log warning, return nil", func(t *testing.T) {
 		log := &mockLogger{}
-		w := &RecordPingStatusWorker{
+		w := &RecordStatusWorker{
 			statusStore: &mockStatusStore{
 				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
 					return "", errors.New("redis down")
@@ -76,7 +76,7 @@ func TestRecordPingStatusWorker_Record(t *testing.T) {
 	t.Run("same status -> no-op", func(t *testing.T) {
 		var saveCalled bool
 		var setCalled bool
-		w := &RecordPingStatusWorker{
+		w := &RecordStatusWorker{
 			statusStore: &mockStatusStore{
 				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
 					return domain.StatusOn, nil
@@ -111,7 +111,7 @@ func TestRecordPingStatusWorker_Record(t *testing.T) {
 		var setEndpointID uint
 		var setStatus domain.ServerStatus
 
-		w := &RecordPingStatusWorker{
+		w := &RecordStatusWorker{
 			statusStore: &mockStatusStore{
 				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
 					return domain.StatusOn, nil
@@ -150,7 +150,7 @@ func TestRecordPingStatusWorker_Record(t *testing.T) {
 	})
 
 	t.Run("db save error -> return error", func(t *testing.T) {
-		w := &RecordPingStatusWorker{
+		w := &RecordStatusWorker{
 			statusStore: &mockStatusStore{
 				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
 					return domain.StatusOn, nil
@@ -170,7 +170,7 @@ func TestRecordPingStatusWorker_Record(t *testing.T) {
 	})
 
 	t.Run("redis set error -> return error", func(t *testing.T) {
-		w := &RecordPingStatusWorker{
+		w := &RecordStatusWorker{
 			statusStore: &mockStatusStore{
 				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
 					return domain.StatusOn, nil

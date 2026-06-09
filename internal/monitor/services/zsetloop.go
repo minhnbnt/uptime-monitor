@@ -40,9 +40,11 @@ func RegisterLoopService(i do.Injector) {
 }
 
 func sleepCtx(ctx context.Context, d time.Duration) {
+
 	if d <= 0 {
 		return
 	}
+
 	select {
 	case <-ctx.Done():
 	case <-time.After(d):
@@ -50,13 +52,16 @@ func sleepCtx(ctx context.Context, d time.Duration) {
 }
 
 func getSleepDuration(next *scheduler.ScheduledTask) time.Duration {
+
 	if next == nil {
 		return defaultSleepDuration
 	}
+
 	nextTime := time.UnixMilli(next.Score)
 	if nextTime.Before(time.Now()) {
 		return 0
 	}
+
 	return time.Until(nextTime)
 }
 

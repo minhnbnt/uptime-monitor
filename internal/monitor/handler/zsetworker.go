@@ -34,16 +34,17 @@ func (r *ZSetWorkerRunner) RunZSetWorker(ctx context.Context) error {
 	handler := func(ctx context.Context, endpoints iter.Seq[*domain.Endpoint]) {
 
 		waitGroup := sync.WaitGroup{}
+		defer waitGroup.Wait()
 
 		for ep := range endpoints {
-			waitGroup.Go(func() { r.processEndpoint(ctx, ep) })
+			waitGroup.Go(func() { r.pingAndRecordEndpoint(ctx, ep) })
 		}
 	}
 
 	return r.loopService.Run(ctx, handler)
 }
 
-func (r *ZSetWorkerRunner) processEndpoint(ctx context.Context, ep *domain.Endpoint) {
+func (r *ZSetWorkerRunner) pingAndRecordEndpoint(ctx context.Context, ep *domain.Endpoint) {
 
 	statusCode, pingErr := r.pingService.Ping(ctx, ep.Method, ep.URL)
 

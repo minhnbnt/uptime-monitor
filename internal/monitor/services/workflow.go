@@ -11,19 +11,19 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure"
+	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrastructure"
 )
 
 type PingService struct {
-	pingWorker             *infra.PingWorker
-	recordPingStatusWorker *infra.RecordPingStatusWorker
+	pingWorker         *infra.PingWorker
+	recordStatusWorker *infra.RecordStatusWorker
 }
 
 func RegisterPingService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*PingService, error) {
 		return &PingService{
-			pingWorker:             do.MustInvoke[*infra.PingWorker](i),
-			recordPingStatusWorker: do.MustInvoke[*infra.RecordPingStatusWorker](i),
+			pingWorker:         do.MustInvoke[*infra.PingWorker](i),
+			recordStatusWorker: do.MustInvoke[*infra.RecordStatusWorker](i),
 		}, nil
 	})
 }
@@ -70,7 +70,7 @@ func (s *PingService) PingWorkflow(ctx workflow.Context, endpointID uint, method
 		Status:     currentStatus,
 	}
 
-	return workflow.ExecuteActivity(recordCtx, s.recordPingStatusWorker.Record, event).Get(recordCtx, nil)
+	return workflow.ExecuteActivity(recordCtx, s.recordStatusWorker.Record, event).Get(recordCtx, nil)
 }
 
 func (s *PingService) Ping(ctx context.Context, method, url string) (int, error) {
@@ -78,5 +78,5 @@ func (s *PingService) Ping(ctx context.Context, method, url string) (int, error)
 }
 
 func (s *PingService) Record(ctx context.Context, event *domain.ServerEvent) error {
-	return s.recordPingStatusWorker.Record(ctx, event)
+	return s.recordStatusWorker.Record(ctx, event)
 }

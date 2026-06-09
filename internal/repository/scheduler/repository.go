@@ -16,24 +16,24 @@ type SchedulerRepository interface {
 	Register(ctx context.Context, endpoint *domain.Endpoint) error
 }
 
-type PingSchedulerRepository struct {
+type TemporalSchedulerRepository struct {
 	client temporalclient.ScheduleClient
 
 	taskQueue string
 	workflow  string
 }
 
-func RegisterPingSchedulerRepository(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (*PingSchedulerRepository, error) {
+func RegisterTemporalSchedulerRepository(i do.Injector) {
+	do.Provide(i, func(i do.Injector) (*TemporalSchedulerRepository, error) {
 
 		clientWrapper := do.MustInvoke[*temporalcfg.ClientWrapper](i)
 		temporalCfg := do.MustInvoke[*temporalcfg.Config](i)
 		schedulerClient := clientWrapper.GetClient().ScheduleClient()
 
-		return &PingSchedulerRepository{
+		return &TemporalSchedulerRepository{
 			client:    schedulerClient,
 			taskQueue: temporalCfg.TaskQueue,
-			workflow:  temporalCfg.Workflow,
+			workflow:  temporalCfg.WorkflowName,
 		}, nil
 	})
 }
@@ -42,11 +42,7 @@ func toScheduleID(serverID string) string {
 	return "ping-schedule-" + serverID
 }
 
-func (psr *PingSchedulerRepository) Register(ctx context.Context, endpoint *domain.Endpoint) error {
-	return psr.NewScheduler(ctx, endpoint)
-}
-
-func (psr *PingSchedulerRepository) NewScheduler(ctx context.Context, endpoint *domain.Endpoint) error {
+func (tsr *TemporalSchedulerRepository) Register(ctx context.Context, endpoint *domain.Endpoint) error {
 
 	id := fmt.Sprintf("%d", endpoint.ID)
 	offset := utils.GenerateOffset(id, endpoint.Interval)
@@ -62,8 +58,8 @@ func (psr *PingSchedulerRepository) NewScheduler(ctx context.Context, endpoint *
 		},
 
 		Action: &temporalclient.ScheduleWorkflowAction{
-			TaskQueue: psr.taskQueue,
-			Workflow:  psr.workflow,
+			TaskQueue: tsr.taskQueue,
+			Workflow:  tsr.workflow,
 			Args: []any{
 				endpoint.ID,
 				endpoint.Method,
@@ -73,6 +69,6 @@ func (psr *PingSchedulerRepository) NewScheduler(ctx context.Context, endpoint *
 		},
 	}
 
-	_, err := psr.client.Create(ctx, scheduleOptions)
+	_, err := tsr.client.Create(ctx, scheduleOptions)
 	return err
 }

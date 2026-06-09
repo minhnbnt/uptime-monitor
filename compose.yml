@@ -28,19 +28,6 @@ services:
       pgbouncer:
         condition: service_started
 
-  worker-2:
-    build: .
-    command: ["./app", "--server=false", "--scheduler-backend=redis"]
-
-    env_file:
-      - ./.env
-
-    depends_on:
-      redis:
-        condition: service_started
-      pgbouncer:
-        condition: service_started
-
   pgbouncer:
     image: edoburu/pgbouncer:v1.25.1-p0
 

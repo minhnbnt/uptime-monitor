@@ -1,4 +1,4 @@
-package infrashtructure
+package infrastructure
 
 import (
 	"context"
@@ -11,15 +11,15 @@ import (
 	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/repository/monitor"
 )
 
-type RecordPingStatusWorker struct {
+type RecordStatusWorker struct {
 	statusStore StatusStore
 	eventSaver  EventSaver
 	logger      logger.Logger
 }
 
-func RegisterRecordPingStatusWorker(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (*RecordPingStatusWorker, error) {
-		return &RecordPingStatusWorker{
+func RegisterRecordStatusWorker(i do.Injector) {
+	do.Provide(i, func(i do.Injector) (*RecordStatusWorker, error) {
+		return &RecordStatusWorker{
 			statusStore: do.MustInvoke[*monitorrepo.RedisServerEventRepository](i),
 			eventSaver:  do.MustInvoke[*monitorrepo.ServerEventRepository](i),
 			logger:      do.MustInvoke[logger.Logger](i),
@@ -27,7 +27,7 @@ func RegisterRecordPingStatusWorker(i do.Injector) {
 	})
 }
 
-func (w *RecordPingStatusWorker) Record(ctx context.Context, event *domain.ServerEvent) error {
+func (w *RecordStatusWorker) Record(ctx context.Context, event *domain.ServerEvent) error {
 
 	event.Time = time.Now()
 

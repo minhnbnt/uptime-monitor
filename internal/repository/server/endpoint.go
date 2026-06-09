@@ -25,7 +25,7 @@ func RegisterEndpointRepository(i do.Injector) {
 
 		var sched scheduler.SchedulerRepository
 		if *backend == scheduler.SchedulerBackendTemporal {
-			sched = do.MustInvoke[*scheduler.PingSchedulerRepository](i)
+			sched = do.MustInvoke[*scheduler.TemporalSchedulerRepository](i)
 		} else {
 			sched = do.MustInvoke[*scheduler.ZSetScheduleRepository](i)
 		}

@@ -23,7 +23,7 @@ import (
 	temporalcfg "github.com/minhnbnt/uptime-monitor/internal/config/temporal"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	monitorhandler "github.com/minhnbnt/uptime-monitor/internal/monitor/handler"
-	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrashtructure"
+	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrastructure"
 	monitorservices "github.com/minhnbnt/uptime-monitor/internal/monitor/services"
 	authrepo "github.com/minhnbnt/uptime-monitor/internal/repository/auth"
 	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/repository/monitor"
@@ -58,7 +58,7 @@ func main() {
 		logger.RegisterLogger,
 		serverrepo.RegisterServerRepository,
 		serverrepo.RegisterEndpointRepository,
-		schedulerrepo.RegisterPingSchedulerRepository,
+		schedulerrepo.RegisterTemporalSchedulerRepository,
 		authrepo.RegisterUserRepository,
 
 		monitorrepo.RegisterServerEventRepository,
@@ -67,7 +67,7 @@ func main() {
 		ontimerepo.RegisterOntimeCacheRepository,
 
 		infra.RegisterPingWorker,
-		infra.RegisterRecordPingStatusWorker,
+		infra.RegisterRecordStatusWorker,
 
 		schedulerrepo.RegisterZSetScheduleRepository,
 		schedulerrepo.RegisterScoreUpdater,

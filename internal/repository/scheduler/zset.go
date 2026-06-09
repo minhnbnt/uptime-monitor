@@ -32,19 +32,6 @@ func RegisterZSetScheduleRepository(i do.Injector) {
 	})
 }
 
-// claimScript atomically claims at most N due tasks and peeks the next future task.
-//
-// KEYS[1] = scheduler:queue
-// ARGV[1] = now in UnixMilliseconds
-// ARGV[2] = max number of due tasks to claim
-// Returns: {due_array, next_array}
-//
-//	due_array:  [member1, score1, member2, score2, ...] — atomically removed from ZSET
-//	next_array: [member, score] — stays in ZSET, or [] if none
-func schedulerMetaKey(id uint) string {
-	return fmt.Sprintf("scheduler:meta:%d", id)
-}
-
 func (r *ZSetScheduleRepository) Register(ctx context.Context, endpoint *domain.Endpoint) error {
 
 	idStr := strconv.FormatUint(uint64(endpoint.ID), 10)
@@ -58,7 +45,7 @@ func (r *ZSetScheduleRepository) Register(ctx context.Context, endpoint *domain.
 		Member: idStr,
 	})
 
-	pipe.HSet(ctx, schedulerMetaKey(endpoint.ID),
+	pipe.HSet(ctx, metaCacheKey(endpoint.ID),
 		"url", endpoint.URL,
 		"method", endpoint.Method,
 		"expected_code", strconv.Itoa(endpoint.ExpectedCode),
@@ -69,6 +56,15 @@ func (r *ZSetScheduleRepository) Register(ctx context.Context, endpoint *domain.
 	return err
 }
 
+// claimScript atomically claims at most N due tasks and peeks the next future task.
+//
+// KEYS[1] = scheduler:queue
+// ARGV[1] = now in UnixMilliseconds
+// ARGV[2] = max number of due tasks to claim
+// Returns: {due_array, next_array}
+//
+//	due_array:  [member1, score1, member2, score2, ...] — atomically removed from ZSET
+//	next_array: [member, score] — stays in ZSET, or [] if none
 var claimScript = redis.NewScript(`
 	local due = redis.call("ZRANGEBYSCORE", KEYS[1], "-inf", ARGV[1], "WITHSCORES", "LIMIT", "0", ARGV[2])
 	local next = redis.call("ZRANGEBYSCORE", KEYS[1], "(" .. ARGV[1], "+inf", "WITHSCORES", "LIMIT", "0", "1")
@@ -82,7 +78,7 @@ var claimScript = redis.NewScript(`
 	return {due, next}
 `)
 
-func collectRaws(cmd *redis.Cmd) (dueRaw, nextRaw []any, err error) {
+func collectRawValues(cmd *redis.Cmd) (dueRaw, nextRaw []any, err error) {
 
 	result, err := cmd.Result()
 	if err != nil {
@@ -127,7 +123,7 @@ func (r *ZSetScheduleRepository) ClaimDueTasks(
 		strconv.FormatInt(limit, 10),
 	)
 
-	dueRaw, nextRaw, err := collectRaws(cmd)
+	dueRaw, nextRaw, err := collectRawValues(cmd)
 	if err != nil {
 		return nil, nil, err
 	}

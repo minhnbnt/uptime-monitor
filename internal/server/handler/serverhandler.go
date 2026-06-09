@@ -44,7 +44,7 @@ func RegisterServerHandler(i do.Injector) {
 	})
 }
 
-func (m *ServerHandler) ListServers(c *gin.Context, params api.ListServersParams) {
+func (h *ServerHandler) ListServers(c *gin.Context, params api.ListServersParams) {
 
 	page := 1
 	if params.Page != nil {
@@ -56,13 +56,13 @@ func (m *ServerHandler) ListServers(c *gin.Context, params api.ListServersParams
 		perPage = *params.PerPage
 	}
 
-	if err := m.pageValidator.Validate(page, perPage); err != nil {
+	if err := h.pageValidator.Validate(page, perPage); err != nil {
 		c.JSON(http.StatusBadRequest, errResponse("INVALID_REQUEST", err.Error()))
 		return
 	}
 
 	ctx := c.Request.Context()
-	result, err := m.serverService.ListServers(ctx, getCurrentUserID(c), page, perPage)
+	result, err := h.serverService.ListServers(ctx, getCurrentUserID(c), page, perPage)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errResponse("INTERNAL_ERROR", err.Error()))
 		return
@@ -80,7 +80,7 @@ func (m *ServerHandler) ListServers(c *gin.Context, params api.ListServersParams
 	})
 }
 
-func (m *ServerHandler) CreateServer(c *gin.Context) {
+func (h *ServerHandler) CreateServer(c *gin.Context) {
 
 	var req api.CreateServerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -90,11 +90,11 @@ func (m *ServerHandler) CreateServer(c *gin.Context) {
 
 	ctx := c.Request.Context()
 	dtoReq := dto.CreateServerRequest{Name: req.Name}
-	if !m.validator.Validate(c, dtoReq) {
+	if !h.validator.Validate(c, dtoReq) {
 		return
 	}
 
-	result, err := m.serverService.CreateServer(ctx, dtoReq, getCurrentUserID(c))
+	result, err := h.serverService.CreateServer(ctx, dtoReq, getCurrentUserID(c))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errResponse("INTERNAL_ERROR", err.Error()))
 		return
@@ -103,10 +103,10 @@ func (m *ServerHandler) CreateServer(c *gin.Context) {
 	c.JSON(http.StatusCreated, api.ServerResponse{Data: toAPIServer(result)})
 }
 
-func (m *ServerHandler) GetServer(c *gin.Context, id int) {
+func (h *ServerHandler) GetServer(c *gin.Context, id int) {
 
 	ctx := c.Request.Context()
-	result, err := m.serverService.GetServer(ctx, uint(id))
+	result, err := h.serverService.GetServer(ctx, uint(id))
 	if err != nil {
 		c.JSON(http.StatusNotFound, errResponse("NOT_FOUND", "Server not found"))
 		return
@@ -115,7 +115,7 @@ func (m *ServerHandler) GetServer(c *gin.Context, id int) {
 	c.JSON(http.StatusOK, api.ServerResponse{Data: toAPIServer(result)})
 }
 
-func (m *ServerHandler) UpdateServer(c *gin.Context, id int) {
+func (h *ServerHandler) UpdateServer(c *gin.Context, id int) {
 
 	var req api.UpdateServerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -125,11 +125,11 @@ func (m *ServerHandler) UpdateServer(c *gin.Context, id int) {
 
 	ctx := c.Request.Context()
 	dtoReq := dto.UpdateServerRequest{Name: req.Name}
-	if !m.validator.Validate(c, dtoReq) {
+	if !h.validator.Validate(c, dtoReq) {
 		return
 	}
 
-	result, err := m.serverService.UpdateServer(ctx, uint(id), dtoReq)
+	result, err := h.serverService.UpdateServer(ctx, uint(id), dtoReq)
 	if err != nil {
 		c.JSON(http.StatusNotFound, errResponse("NOT_FOUND", "Server not found"))
 		return
@@ -138,10 +138,10 @@ func (m *ServerHandler) UpdateServer(c *gin.Context, id int) {
 	c.JSON(http.StatusOK, api.ServerResponse{Data: toAPIServer(result)})
 }
 
-func (m *ServerHandler) DeleteServer(c *gin.Context, id int) {
+func (h *ServerHandler) DeleteServer(c *gin.Context, id int) {
 
 	ctx := c.Request.Context()
-	if err := m.serverService.DeleteServer(ctx, uint(id)); err != nil {
+	if err := h.serverService.DeleteServer(ctx, uint(id)); err != nil {
 		c.JSON(http.StatusNotFound, errResponse("NOT_FOUND", "Server not found"))
 		return
 	}
@@ -149,7 +149,7 @@ func (m *ServerHandler) DeleteServer(c *gin.Context, id int) {
 	c.Status(http.StatusNoContent)
 }
 
-func (m *ServerHandler) ListServersOntime(c *gin.Context, params api.ListServersOntimeParams) {
+func (h *ServerHandler) ListServersOntime(c *gin.Context, params api.ListServersOntimeParams) {
 
 	page := 1
 	if params.Page != nil {
@@ -161,13 +161,13 @@ func (m *ServerHandler) ListServersOntime(c *gin.Context, params api.ListServers
 		perPage = *params.PerPage
 	}
 
-	if err := m.pageValidator.Validate(page, perPage); err != nil {
+	if err := h.pageValidator.Validate(page, perPage); err != nil {
 		c.JSON(http.StatusBadRequest, errResponse("INVALID_REQUEST", err.Error()))
 		return
 	}
 
 	ctx := c.Request.Context()
-	result, total, err := m.ontimeService.ListServersWithOntime(ctx, getCurrentUserID(c), page, perPage)
+	result, total, err := h.ontimeService.ListServersWithOntime(ctx, getCurrentUserID(c), page, perPage)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errResponse("INTERNAL_ERROR", err.Error()))
 		return
