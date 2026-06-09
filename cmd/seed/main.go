@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"sync"
-
-	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 )
@@ -18,7 +17,7 @@ const baseURL = "http://localhost:8080"
 func authToken() string {
 
 	reqBody, _ := json.Marshal(api.RegisterRequest{
-		Email:    openapi_types.Email("seed@uptime.local"),
+		Email:    "seed@uptime.local",
 		Username: "seed",
 		Password: "seedseed",
 		Name:     "Seed User",
@@ -125,10 +124,11 @@ func main() {
 				created++
 				mu.Unlock()
 
+				parsedURL, _ := url.Parse(fmt.Sprintf("http://%s/health", name))
 				epBody, _ := json.Marshal(api.SetCheckMethodRequest{
-					Method: api.Pull,
+					Method: api.CheckMethodTypePull,
 					Endpoint: api.Endpoint{
-						Url:          fmt.Sprintf("http://%s/health", name),
+						URL:          *parsedURL,
 						Interval:     30,
 						Timeout:      10,
 						Method:       "GET",
@@ -137,7 +137,7 @@ func main() {
 				})
 
 				req, _ = http.NewRequest(http.MethodPut,
-					fmt.Sprintf(baseURL+"/api/v1/servers/%d/check_method", srvResp.Data.Id),
+					fmt.Sprintf(baseURL+"/api/v1/servers/%d/check_method", srvResp.Data.ID),
 					bytes.NewReader(epBody))
 				req.Header.Set("Content-Type", "application/json")
 				req.Header.Set("Authorization", "Bearer "+token)

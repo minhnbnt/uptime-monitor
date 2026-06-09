@@ -10,23 +10,336 @@ servers:
 
 paths:
   /api/v1/servers:
-    $ref: './paths/servers.yaml'
+    post:
+      summary: Create a new server
+      operationId: CreateServer
+      x-ogen-operation-group: Servers
+      tags:
+        - servers
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateServerRequest"
+      responses:
+        "201":
+          description: Server created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    get:
+      summary: List servers
+      operationId: ListServers
+      x-ogen-operation-group: Servers
+      tags:
+        - servers
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/ServerStatus"
+      responses:
+        "200":
+          description: List of servers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerListResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/servers/ontime:
-    $ref: './paths/servers-ontime.yaml'
+    get:
+      summary: List servers with ontime stats for the last 30 days
+      operationId: ListServersOntime
+      x-ogen-operation-group: Servers
+      tags:
+        - servers
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 30
+      responses:
+        "200":
+          description: List of servers with ontime stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerOntimeListResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/servers/{id}:
-    $ref: './paths/server-id.yaml'
+    get:
+      summary: Get server by ID
+      operationId: GetServer
+      x-ogen-operation-group: Servers
+      tags:
+        - servers
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Server details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      summary: Update server
+      operationId: UpdateServer
+      x-ogen-operation-group: Servers
+      tags:
+        - servers
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateServerRequest"
+      responses:
+        "200":
+          description: Server updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      summary: Delete server
+      operationId: DeleteServer
+      x-ogen-operation-group: Servers
+      tags:
+        - servers
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Server deleted successfully
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/servers/{id}/check_method:
-    $ref: './paths/check-method.yaml'
+    put:
+      summary: Set check method for a server
+      operationId: SetCheckMethod
+      x-ogen-operation-group: Endpoint
+      tags:
+        - servers
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetCheckMethodRequest"
+      responses:
+        "200":
+          description: Check method updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/auth/register:
-    $ref: './paths/auth-register.yaml'
+    post:
+      summary: Register a new user
+      operationId: Register
+      x-ogen-operation-group: Auth
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/auth/login:
-    $ref: './paths/auth-login.yaml'
+    post:
+      summary: Login with email or username
+      operationId: Login
+      x-ogen-operation-group: Auth
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/auth/refresh:
-    $ref: './paths/auth-refresh.yaml'
+    post:
+      summary: Refresh access token
+      operationId: LoginRefresh
+      x-ogen-operation-group: Auth
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenRequest"
+      responses:
+        "200":
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/auth/logout:
-    $ref: './paths/auth-logout.yaml'
+    post:
+      summary: Logout and revoke refresh token
+      operationId: Logout
+      x-ogen-operation-group: Auth
+      tags:
+        - auth
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenRequest"
+      responses:
+        "204":
+          description: Logged out successfully
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     ServerStatus:
       type: string
@@ -34,7 +347,7 @@ components:
         - active
         - paused
 
-    Server:
+    ServerObject:
       type: object
       required:
         - id
@@ -94,7 +407,7 @@ components:
         - data
       properties:
         data:
-          $ref: "#/components/schemas/Server"
+          $ref: "#/components/schemas/ServerObject"
 
     ServerListResponse:
       type: object
@@ -105,7 +418,7 @@ components:
         data:
           type: array
           items:
-            $ref: "#/components/schemas/Server"
+            $ref: "#/components/schemas/ServerObject"
         meta:
           $ref: "#/components/schemas/PaginationMeta"
 
@@ -173,7 +486,7 @@ components:
         - ontime_stats
       properties:
         server:
-          $ref: "#/components/schemas/Server"
+          $ref: "#/components/schemas/ServerObject"
         ontime_stats:
           type: array
           items:
@@ -280,9 +593,3 @@ components:
               type: string
             message:
               type: string
-
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT

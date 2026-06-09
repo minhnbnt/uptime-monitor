@@ -1,10 +1,10 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
@@ -14,151 +14,132 @@ import (
 
 type AuthHandler struct {
 	authService AuthService
-	validator   *RequestValidator
 }
 
 func RegisterAuthHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*AuthHandler, error) {
 		return &AuthHandler{
 			authService: do.MustInvoke[*authservice.AuthService](i),
-			validator:   do.MustInvoke[*RequestValidator](i),
 		}, nil
 	})
 }
 
-func (h *AuthHandler) Register(c *gin.Context) {
-	var req api.RegisterRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errResponse("INVALID_REQUEST", err.Error()))
-		return
-	}
+func (h *AuthHandler) Register(ctx context.Context, req *api.RegisterRequest) (*api.AuthResponse, error) {
 
 	dtoReq := dto.RegisterRequest{
-		Email:    string(req.Email),
+		Email:    req.Email,
 		Username: req.Username,
 		Password: req.Password,
 		Name:     req.Name,
 	}
-	if !h.validator.Validate(c, dtoReq) {
-		return
-	}
 
-	ctx := c.Request.Context()
 	result, err := h.authService.Register(ctx, dtoReq)
-	if err != nil {
-		if errors.Is(err, authservice.ErrEmailOrUsernameTaken) {
-			c.JSON(http.StatusConflict, errResponse("CONFLICT", err.Error()))
-			return
+	if errors.Is(err, authservice.ErrEmailOrUsernameTaken) {
+		return nil, &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusConflict,
+			Response:   errResponse("CONFLICT", err.Error()),
 		}
-		c.JSON(http.StatusInternalServerError, errResponse("INTERNAL_ERROR", err.Error()))
-		return
+	}
+	if err != nil {
+		return nil, &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusInternalServerError,
+			Response:   errResponse("INTERNAL_ERROR", err.Error()),
+		}
 	}
 
-	c.JSON(http.StatusCreated, api.AuthResponse{
+	return &api.AuthResponse{
 		AccessToken:  result.AccessToken,
 		RefreshToken: result.RefreshToken,
 		User: api.UserProfile{
-			Id:       int(result.User.ID),
+			ID:       int(result.User.ID),
 			Email:    result.User.Email,
 			Username: result.User.Username,
 			Name:     result.User.Name,
 		},
-	})
+	}, nil
 }
 
-func (h *AuthHandler) Login(c *gin.Context) {
-	var req api.LoginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errResponse("INVALID_REQUEST", err.Error()))
-		return
-	}
+func (h *AuthHandler) Login(ctx context.Context, req *api.LoginRequest) (*api.AuthResponse, error) {
 
 	dtoReq := dto.LoginRequest{
 		Login:    req.Login,
 		Password: req.Password,
 	}
-	if !h.validator.Validate(c, dtoReq) {
-		return
-	}
 
-	ctx := c.Request.Context()
 	result, err := h.authService.Login(ctx, dtoReq)
-	if err != nil {
-		if errors.Is(err, authservice.ErrInvalidCredentials) {
-			c.JSON(http.StatusUnauthorized, errResponse("UNAUTHORIZED", err.Error()))
-			return
+	if errors.Is(err, authservice.ErrInvalidCredentials) {
+		return nil, &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusUnauthorized,
+			Response:   errResponse("UNAUTHORIZED", err.Error()),
 		}
-		c.JSON(http.StatusInternalServerError, errResponse("INTERNAL_ERROR", err.Error()))
-		return
 	}
 
-	c.JSON(http.StatusOK, api.AuthResponse{
+	if err != nil {
+		return nil, &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusInternalServerError,
+			Response:   errResponse("INTERNAL_ERROR", err.Error()),
+		}
+	}
+
+	return &api.AuthResponse{
 		AccessToken:  result.AccessToken,
 		RefreshToken: result.RefreshToken,
 		User: api.UserProfile{
-			Id:       int(result.User.ID),
+			ID:       int(result.User.ID),
 			Email:    result.User.Email,
 			Username: result.User.Username,
 			Name:     result.User.Name,
 		},
-	})
+	}, nil
 }
 
-func (h *AuthHandler) LoginRefresh(c *gin.Context) {
-	var req api.RefreshTokenRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errResponse("INVALID_REQUEST", err.Error()))
-		return
-	}
+func (h *AuthHandler) LoginRefresh(ctx context.Context, req *api.RefreshTokenRequest) (*api.AuthResponse, error) {
 
-	dtoReq := dto.RefreshRequest{
-		RefreshToken: req.RefreshToken,
-	}
-	if !h.validator.Validate(c, dtoReq) {
-		return
-	}
+	dtoReq := dto.RefreshRequest{RefreshToken: req.RefreshToken}
 
-	ctx := c.Request.Context()
 	result, err := h.authService.Refresh(ctx, dtoReq)
-	if err != nil {
-		if errors.Is(err, authservice.ErrInvalidCredentials) {
-			c.JSON(http.StatusUnauthorized, errResponse("UNAUTHORIZED", err.Error()))
-			return
+	if errors.Is(err, authservice.ErrInvalidCredentials) {
+		return nil, &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusUnauthorized,
+			Response:   errResponse("UNAUTHORIZED", err.Error()),
 		}
-		c.JSON(http.StatusInternalServerError, errResponse("INTERNAL_ERROR", err.Error()))
-		return
 	}
 
-	c.JSON(http.StatusOK, api.AuthResponse{
+	if err != nil {
+		return nil, &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusInternalServerError,
+			Response:   errResponse("INTERNAL_ERROR", err.Error()),
+		}
+	}
+
+	return &api.AuthResponse{
 		AccessToken:  result.AccessToken,
 		RefreshToken: result.RefreshToken,
 		User: api.UserProfile{
-			Id:       int(result.User.ID),
+			ID:       int(result.User.ID),
 			Email:    result.User.Email,
 			Username: result.User.Username,
 			Name:     result.User.Name,
 		},
-	})
+	}, nil
 }
 
-func (h *AuthHandler) Logout(c *gin.Context) {
-	var req api.LogoutJSONBody
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errResponse("INVALID_REQUEST", err.Error()))
-		return
-	}
+func (h *AuthHandler) Logout(ctx context.Context, req *api.RefreshTokenRequest) error {
 
-	ctx := c.Request.Context()
 	err := h.authService.Logout(ctx, req.RefreshToken)
 	if errors.Is(err, authservice.ErrInvalidCredentials) {
-		c.JSON(http.StatusUnauthorized, errResponse("UNAUTHORIZED", err.Error()))
-		return
+		return &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusUnauthorized,
+			Response:   errResponse("UNAUTHORIZED", err.Error()),
+		}
 	}
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, errResponse("INTERNAL_ERROR", err.Error()))
-		return
+		return &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusInternalServerError,
+			Response:   errResponse("INTERNAL_ERROR", err.Error()),
+		}
 	}
 
-	c.Status(http.StatusNoContent)
+	return nil
 }

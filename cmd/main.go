@@ -1,20 +1,17 @@
 package main
 
-//go:generate go tool oapi-codegen -config=../oapi-codegen.yml ../api/spec.yaml
+//go:generate go tool ogen --target ../generated/api --package api --clean ../api/spec.yaml
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
-	"github.com/gin-contrib/cors"
-	ginzap "github.com/gin-contrib/zap"
-	"github.com/gin-gonic/gin"
 	"github.com/samber/do/v2"
 	"go.uber.org/zap"
 
@@ -41,7 +38,6 @@ import (
 )
 
 func main() {
-
 	enableServer := flag.Bool("server", true, "start HTTP API server")
 	enableWorker := flag.Bool("worker", true, "start background worker")
 	schedulerBackend := flag.String("scheduler-backend", "temporal", "scheduler backend: temporal | redis")
@@ -91,7 +87,6 @@ func main() {
 		monitorservices.RegisterPingService,
 		monitorservices.RegisterLoopService,
 
-		handler.RegisterRequestValidator,
 		handler.RegisterServerHandler,
 		handler.RegisterEndpointHandler,
 		handler.RegisterAuthHandler,
@@ -138,39 +133,50 @@ func runWorker(ctx context.Context, i do.Injector) {
 	}
 }
 
-func runWebServer(ctx context.Context, i do.Injector) {
+func errorHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
 
-	router := gin.Default()
-	router.Use(cors.Default())
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusBadRequest)
+
+	json.NewEncoder(w).Encode(api.ErrorResponse{
+		Error: api.ErrorResponseError{
+			Code:    "VALIDATION_ERROR",
+			Message: err.Error(),
+		},
+	})
+}
+
+func runWebServer(ctx context.Context, i do.Injector) {
 
 	logger := do.MustInvoke[*zap.Logger](i)
 
-	router.Use(ginzap.Ginzap(logger, time.RFC3339, true))
-	router.Use(ginzap.RecoveryWithZap(logger, true))
+	compositeHandler := do.MustInvoke[*server.CompositeHandler](i)
+	authMiddleware := servertmiddleware.RegisterAuthMiddleware(i)
 
-	router.GET("/api/v1/hello", func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Hello, world!"})
-	})
+	server, err := api.NewServer(
+		compositeHandler,
+		authMiddleware,
+		api.WithPathPrefix(""),
+		api.WithErrorHandler(errorHandler),
+	)
+
+	if err != nil {
+		logger.Panic("failed to create server", zap.Error(err))
+	}
+
+	middleware := servertmiddleware.CORSMiddleware()
 
 	httpServer := http.Server{
 		Addr:    ":8080",
-		Handler: router,
+		Handler: middleware(server),
 	}
 
 	go func() {
-
 		<-ctx.Done()
-
 		if err := httpServer.Close(); err != nil {
 			logger.Panic("failed to shutdown server", zap.Error(err))
 		}
 	}()
-
-	compositeHandler := do.MustInvoke[*server.CompositeHandler](i)
-	authMiddleware := servertmiddleware.AuthRequired(i)
-	api.RegisterHandlersWithOptions(router, compositeHandler, api.GinServerOptions{
-		Middlewares: []api.MiddlewareFunc{api.MiddlewareFunc(authMiddleware)},
-	})
 
 	if err := httpServer.ListenAndServe(); err != nil {
 		logger.Panic("failed to run server", zap.Error(err))

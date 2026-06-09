@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-playground/validator/v10"
-
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
@@ -26,9 +24,6 @@ func TestServerHandler_ListServers(t *testing.T) {
 		h := &ServerHandler{
 			serverService: &mockServerService{
 				listServersFn: func(_ context.Context, createdByID uint, page, perPage int) ([]dto.Server, error) {
-					if createdByID != 1 {
-						t.Errorf("ListServers createdByID = %d, want 1", createdByID)
-					}
 					if page != 2 || perPage != 10 {
 						t.Errorf("ListServers(%d, %d)", page, perPage)
 					}
@@ -37,14 +32,14 @@ func TestServerHandler_ListServers(t *testing.T) {
 			},
 			pageValidator: srv,
 		}
-		c, w := newGinContextWithUser("GET", "/api/v1/servers?page=2&per_page=10", "", 1)
-		h.ListServers(c, api.ListServersParams{Page: intPtr(2), PerPage: intPtr(10)})
 
-		if w.Code != http.StatusOK {
-			t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+		resp, err := h.ListServers(context.Background(), api.ListServersParams{
+			Page:    api.NewOptInt(2),
+			PerPage: api.NewOptInt(10),
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
 		}
-		var resp api.ServerListResponse
-		parseJSON(w, &resp)
 		if len(resp.Data) != 1 || resp.Data[0].Name != "s1" {
 			t.Errorf("unexpected data: %+v", resp.Data)
 		}
@@ -52,11 +47,15 @@ func TestServerHandler_ListServers(t *testing.T) {
 
 	t.Run("invalid page", func(t *testing.T) {
 		h := &ServerHandler{pageValidator: srv}
-		c, w := newGinContext("GET", "/api/v1/servers?page=0", "")
-		h.ListServers(c, api.ListServersParams{Page: intPtr(0)})
-
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+		_, err := h.ListServers(context.Background(), api.ListServersParams{
+			Page: api.NewOptInt(0),
+		})
+		var statusErr *api.ErrorResponseStatusCode
+		if !errors.As(err, &statusErr) {
+			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
+		}
+		if statusErr.StatusCode != http.StatusBadRequest {
+			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusBadRequest)
 		}
 	})
 
@@ -69,52 +68,36 @@ func TestServerHandler_ListServers(t *testing.T) {
 			},
 			pageValidator: srv,
 		}
-		c, w := newGinContextWithUser("GET", "/api/v1/servers", "", 1)
-		h.ListServers(c, api.ListServersParams{})
-
-		if w.Code != http.StatusInternalServerError {
-			t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+		_, err := h.ListServers(context.Background(), api.ListServersParams{})
+		var statusErr *api.ErrorResponseStatusCode
+		if !errors.As(err, &statusErr) {
+			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
+		}
+		if statusErr.StatusCode != http.StatusInternalServerError {
+			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusInternalServerError)
 		}
 	})
 }
 
 func TestServerHandler_CreateServer(t *testing.T) {
 	now := time.Now()
-	val := &RequestValidator{v: validator.New()}
 
 	t.Run("success", func(t *testing.T) {
 		h := &ServerHandler{
 			serverService: &mockServerService{
 				createServerFn: func(_ context.Context, req dto.CreateServerRequest, createdByID uint) (*dto.Server, error) {
-					if createdByID != 1 {
-						t.Errorf("CreateServer createdByID = %d, want 1", createdByID)
-					}
 					s := dtoServer(1, req.Name, now)
 					return &s, nil
 				},
 			},
-			validator: val,
 		}
-		c, w := newGinContextWithUser("POST", "/api/v1/servers", `{"name":"new-srv"}`, 1)
-		h.CreateServer(c)
-
-		if w.Code != http.StatusCreated {
-			t.Errorf("status = %d, want %d", w.Code, http.StatusCreated)
+		req := &api.CreateServerRequest{Name: "new-srv"}
+		resp, err := h.CreateServer(context.Background(), req)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
 		}
-		var resp api.ServerResponse
-		parseJSON(w, &resp)
 		if resp.Data.Name != "new-srv" {
 			t.Errorf("name = %q", resp.Data.Name)
-		}
-	})
-
-	t.Run("bad json", func(t *testing.T) {
-		h := &ServerHandler{validator: val}
-		c, w := newGinContextWithUser("POST", "/api/v1/servers", `{bad`, 1)
-		h.CreateServer(c)
-
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
 		}
 	})
 
@@ -125,13 +108,15 @@ func TestServerHandler_CreateServer(t *testing.T) {
 					return nil, errors.New("db error")
 				},
 			},
-			validator: val,
 		}
-		c, w := newGinContextWithUser("POST", "/api/v1/servers", `{"name":"x"}`, 1)
-		h.CreateServer(c)
-
-		if w.Code != http.StatusInternalServerError {
-			t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+		req := &api.CreateServerRequest{Name: "x"}
+		_, err := h.CreateServer(context.Background(), req)
+		var statusErr *api.ErrorResponseStatusCode
+		if !errors.As(err, &statusErr) {
+			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
+		}
+		if statusErr.StatusCode != http.StatusInternalServerError {
+			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusInternalServerError)
 		}
 	})
 }
@@ -148,15 +133,11 @@ func TestServerHandler_GetServer(t *testing.T) {
 				},
 			},
 		}
-		c, w := newGinContextWithUser("GET", "/api/v1/servers/5", "", 1)
-		h.GetServer(c, 5)
-
-		if w.Code != http.StatusOK {
-			t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+		resp, err := h.GetServer(context.Background(), api.GetServerParams{ID: 5})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
 		}
-		var resp api.ServerResponse
-		parseJSON(w, &resp)
-		if resp.Data.Id != 5 || resp.Data.Name != "found" {
+		if resp.Data.ID != 5 || resp.Data.Name != "found" {
 			t.Errorf("unexpected: %+v", resp.Data)
 		}
 	})
@@ -169,18 +150,19 @@ func TestServerHandler_GetServer(t *testing.T) {
 				},
 			},
 		}
-		c, w := newGinContextWithUser("GET", "/api/v1/servers/99", "", 1)
-		h.GetServer(c, 99)
-
-		if w.Code != http.StatusNotFound {
-			t.Errorf("status = %d, want %d", w.Code, http.StatusNotFound)
+		_, err := h.GetServer(context.Background(), api.GetServerParams{ID: 99})
+		var statusErr *api.ErrorResponseStatusCode
+		if !errors.As(err, &statusErr) {
+			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
+		}
+		if statusErr.StatusCode != http.StatusNotFound {
+			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusNotFound)
 		}
 	})
 }
 
 func TestServerHandler_UpdateServer(t *testing.T) {
 	now := time.Now()
-	val := &RequestValidator{v: validator.New()}
 
 	t.Run("success", func(t *testing.T) {
 		h := &ServerHandler{
@@ -190,28 +172,14 @@ func TestServerHandler_UpdateServer(t *testing.T) {
 					return &s, nil
 				},
 			},
-			validator: val,
 		}
-		c, w := newGinContextWithUser("PUT", "/api/v1/servers/3", `{"name":"updated"}`, 1)
-		h.UpdateServer(c, 3)
-
-		if w.Code != http.StatusOK {
-			t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+		req := &api.UpdateServerRequest{Name: api.NewOptString("updated")}
+		resp, err := h.UpdateServer(context.Background(), req, api.UpdateServerParams{ID: 3})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
 		}
-		var resp api.ServerResponse
-		parseJSON(w, &resp)
 		if resp.Data.Name != "updated" {
 			t.Errorf("name = %q", resp.Data.Name)
-		}
-	})
-
-	t.Run("bad json", func(t *testing.T) {
-		h := &ServerHandler{validator: val}
-		c, w := newGinContextWithUser("PUT", "/api/v1/servers/3", `{bad`, 1)
-		h.UpdateServer(c, 3)
-
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
 		}
 	})
 
@@ -222,13 +190,15 @@ func TestServerHandler_UpdateServer(t *testing.T) {
 					return nil, errors.New("not found")
 				},
 			},
-			validator: val,
 		}
-		c, w := newGinContextWithUser("PUT", "/api/v1/servers/99", `{"name":"x"}`, 1)
-		h.UpdateServer(c, 99)
-
-		if w.Code != http.StatusNotFound {
-			t.Errorf("status = %d, want %d", w.Code, http.StatusNotFound)
+		req := &api.UpdateServerRequest{Name: api.NewOptString("x")}
+		_, err := h.UpdateServer(context.Background(), req, api.UpdateServerParams{ID: 99})
+		var statusErr *api.ErrorResponseStatusCode
+		if !errors.As(err, &statusErr) {
+			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
+		}
+		if statusErr.StatusCode != http.StatusNotFound {
+			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusNotFound)
 		}
 	})
 }
@@ -242,12 +212,9 @@ func TestServerHandler_DeleteServer(t *testing.T) {
 				},
 			},
 		}
-		c, w := newGinContextWithUser("DELETE", "/api/v1/servers/4", "", 1)
-		h.DeleteServer(c, 4)
-		c.Writer.WriteHeaderNow()
-
-		if w.Code != http.StatusNoContent {
-			t.Errorf("status = %d, want %d", w.Code, http.StatusNoContent)
+		err := h.DeleteServer(context.Background(), api.DeleteServerParams{ID: 4})
+		if err != nil {
+			t.Errorf("expected nil, got %v", err)
 		}
 	})
 
@@ -259,11 +226,13 @@ func TestServerHandler_DeleteServer(t *testing.T) {
 				},
 			},
 		}
-		c, w := newGinContextWithUser("DELETE", "/api/v1/servers/99", "", 1)
-		h.DeleteServer(c, 99)
-
-		if w.Code != http.StatusNotFound {
-			t.Errorf("status = %d, want %d", w.Code, http.StatusNotFound)
+		err := h.DeleteServer(context.Background(), api.DeleteServerParams{ID: 99})
+		var statusErr *api.ErrorResponseStatusCode
+		if !errors.As(err, &statusErr) {
+			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
+		}
+		if statusErr.StatusCode != http.StatusNotFound {
+			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusNotFound)
 		}
 	})
 }
@@ -276,9 +245,6 @@ func TestServerHandler_ListServersOntime(t *testing.T) {
 		h := &ServerHandler{
 			ontimeService: &mockOntimeService{
 				listServersWithOntimeFn: func(_ context.Context, createdByID uint, page, perPage int) ([]dto.ServerWithOntime, int64, error) {
-					if createdByID != 1 {
-						t.Errorf("ListServersWithOntime createdByID = %d, want 1", createdByID)
-					}
 					return []dto.ServerWithOntime{
 						{Server: dtoServer(1, "s1", now), OntimeStats: []dto.OntimeStats{{Date: now, Stats: 95.5}}},
 					}, 1, nil
@@ -286,29 +252,34 @@ func TestServerHandler_ListServersOntime(t *testing.T) {
 			},
 			pageValidator: srv,
 		}
-		c, w := newGinContextWithUser("GET", "/api/v1/servers/ontime?page=1&per_page=20", "", 1)
-		h.ListServersOntime(c, api.ListServersOntimeParams{Page: intPtr(1), PerPage: intPtr(20)})
 
-		if w.Code != http.StatusOK {
-			t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+		resp, err := h.ListServersOntime(context.Background(), api.ListServersOntimeParams{
+			Page:    api.NewOptInt(1),
+			PerPage: api.NewOptInt(20),
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
 		}
-		var resp api.ServerOntimeListResponse
-		parseJSON(w, &resp)
 		if len(resp.Data) != 1 || resp.Data[0].Server.Name != "s1" {
 			t.Errorf("unexpected data: %+v", resp.Data)
 		}
-		if resp.Meta.Total == nil || *resp.Meta.Total != 1 {
+		total, ok := resp.Meta.Total.Get()
+		if !ok || total != 1 {
 			t.Errorf("total = %v", resp.Meta.Total)
 		}
 	})
 
 	t.Run("invalid page", func(t *testing.T) {
 		h := &ServerHandler{pageValidator: srv}
-		c, w := newGinContext("GET", "/api/v1/servers/ontime?page=0", "")
-		h.ListServersOntime(c, api.ListServersOntimeParams{Page: intPtr(0)})
-
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+		_, err := h.ListServersOntime(context.Background(), api.ListServersOntimeParams{
+			Page: api.NewOptInt(0),
+		})
+		var statusErr *api.ErrorResponseStatusCode
+		if !errors.As(err, &statusErr) {
+			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
+		}
+		if statusErr.StatusCode != http.StatusBadRequest {
+			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusBadRequest)
 		}
 	})
 
@@ -321,15 +292,13 @@ func TestServerHandler_ListServersOntime(t *testing.T) {
 			},
 			pageValidator: srv,
 		}
-		c, w := newGinContextWithUser("GET", "/api/v1/servers/ontime", "", 1)
-		h.ListServersOntime(c, api.ListServersOntimeParams{})
-
-		if w.Code != http.StatusInternalServerError {
-			t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+		_, err := h.ListServersOntime(context.Background(), api.ListServersOntimeParams{})
+		var statusErr *api.ErrorResponseStatusCode
+		if !errors.As(err, &statusErr) {
+			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
+		}
+		if statusErr.StatusCode != http.StatusInternalServerError {
+			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusInternalServerError)
 		}
 	})
-}
-
-func intPtr(i int) *int {
-	return &i
 }

@@ -1,10 +1,10 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
@@ -14,47 +14,45 @@ import (
 
 type EndpointHandler struct {
 	endpointService EndpointService
-	validator       *RequestValidator
+	serverService   ServerService
 }
 
 func RegisterEndpointHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointHandler, error) {
 		return &EndpointHandler{
 			endpointService: do.MustInvoke[*service.EndpointService](i),
-			validator:       do.MustInvoke[*RequestValidator](i),
+			serverService:   do.MustInvoke[*service.ServerService](i),
 		}, nil
 	})
 }
 
-func (h *EndpointHandler) SetCheckMethod(c *gin.Context, id int) {
+func (h *EndpointHandler) SetCheckMethod(
+	ctx context.Context, req *api.SetCheckMethodRequest, params api.SetCheckMethodParams,
+) (*api.ServerResponse, error) {
 
-	var req api.SetCheckMethodRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, errResponse("INVALID_REQUEST", err.Error()))
-		return
-	}
-
-	ctx := c.Request.Context()
 	dtoReq := dto.SetCheckMethodRequest{
 		Method:       dto.CheckMethodType(req.Method),
 		HTTPMethod:   req.Endpoint.Method,
 		Interval:     time.Duration(req.Endpoint.Interval) * time.Second,
 		Timeout:      time.Duration(req.Endpoint.Timeout) * time.Second,
-		URL:          req.Endpoint.Url,
+		URL:          req.Endpoint.URL.String(),
 		ExpectedCode: req.Endpoint.ExpectedCode,
 	}
 
-	if !h.validator.Validate(c, dtoReq) {
-		return
+	if err := h.endpointService.SetCheckMethod(ctx, uint(params.ID), dtoReq); err != nil {
+		return nil, &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusInternalServerError,
+			Response:   errResponse("INTERNAL_ERROR", err.Error()),
+		}
 	}
 
-	if err := h.endpointService.SetCheckMethod(ctx, uint(id), dtoReq); err != nil {
-		c.JSON(
-			http.StatusInternalServerError,
-			errResponse("INTERNAL_ERROR", err.Error()),
-		)
-		return
+	server, err := h.serverService.GetServer(ctx, uint(params.ID))
+	if err != nil {
+		return nil, &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusNotFound,
+			Response:   errResponse("NOT_FOUND", "Server not found"),
+		}
 	}
 
-	c.Status(http.StatusOK)
+	return &api.ServerResponse{Data: toAPIServer(server)}, nil
 }

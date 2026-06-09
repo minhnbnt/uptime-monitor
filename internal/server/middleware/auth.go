@@ -1,46 +1,53 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
-	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/rs/cors"
 	"github.com/samber/do/v2"
 
+	"github.com/minhnbnt/uptime-monitor/generated/api"
 	authservice "github.com/minhnbnt/uptime-monitor/internal/server/service/auth"
 )
 
-func AuthRequired(i do.Injector) gin.HandlerFunc {
-	tokenValidator := do.MustInvoke[*authservice.TokenValidator](i)
+type userIDKey struct{}
 
-	return func(c *gin.Context) {
-		if c.Request.URL.Path == "/api/v1/auth/login" ||
-			c.Request.URL.Path == "/api/v1/auth/register" ||
-			c.Request.URL.Path == "/api/v1/auth/refresh" {
-			c.Next()
-			return
-		}
-
-		auth := c.GetHeader("Authorization")
-		if !strings.HasPrefix(auth, "Bearer ") {
-			c.AbortWithStatusJSON(
-				http.StatusUnauthorized,
-				gin.H{"error": "missing or invalid token"},
-			)
-			return
-		}
-
-		tokenStr := strings.TrimPrefix(auth, "Bearer ")
-		userID, err := tokenValidator.ValidateAccessToken(tokenStr)
-		if err != nil {
-			c.AbortWithStatusJSON(
-				http.StatusUnauthorized,
-				gin.H{"error": "invalid token"},
-			)
-			return
-		}
-
-		c.Set("user_id", userID)
-		c.Next()
+func GetUserID(ctx context.Context) uint {
+	v := ctx.Value(userIDKey{})
+	if v == nil {
+		return 0
 	}
+	return v.(uint)
+}
+
+type AuthMiddleware struct {
+	tokenValidator *authservice.TokenValidator
+}
+
+func RegisterAuthMiddleware(i do.Injector) *AuthMiddleware {
+	return &AuthMiddleware{
+		tokenValidator: do.MustInvoke[*authservice.TokenValidator](i),
+	}
+}
+
+func (m *AuthMiddleware) HandleBearerAuth(ctx context.Context, _ api.OperationName, t api.BearerAuth) (context.Context, error) {
+
+	userID, err := m.tokenValidator.ValidateAccessToken(t.Token)
+	if err != nil {
+		return ctx, err
+	}
+
+	return context.WithValue(ctx, userIDKey{}, userID), nil
+}
+
+func CORSMiddleware() func(http.Handler) http.Handler {
+
+	c := cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"Content-Type", "Authorization"},
+	})
+
+	return c.Handler
 }

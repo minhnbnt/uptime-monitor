@@ -4,16 +4,14 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"testing"
 
-	"github.com/go-playground/validator/v10"
-
+	"github.com/minhnbnt/uptime-monitor/generated/api"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 )
 
 func TestEndpointHandler_SetCheckMethod(t *testing.T) {
-	val := &RequestValidator{v: validator.New()}
-
 	t.Run("success", func(t *testing.T) {
 		h := &EndpointHandler{
 			endpointService: &mockEndpointService{
@@ -21,24 +19,30 @@ func TestEndpointHandler_SetCheckMethod(t *testing.T) {
 					return nil
 				},
 			},
-			validator: val,
+			serverService: &mockServerService{
+				getServerFn: func(_ context.Context, id uint) (*dto.Server, error) {
+					return &dto.Server{ID: id, Name: "srv"}, nil
+				},
+			},
 		}
-		body := `{"method":"pull","endpoint":{"url":"https://example.com/h","method":"GET","interval":30,"timeout":10,"expected_code":200}}`
-		c, w := newGinContext("PUT", "/api/v1/servers/1/endpoint", body)
-		h.SetCheckMethod(c, 1)
 
-		if w.Code != http.StatusOK {
-			t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+		parsedURL, _ := url.Parse("https://example.com/h")
+		req := &api.SetCheckMethodRequest{
+			Method: api.CheckMethodTypePull,
+			Endpoint: api.Endpoint{
+				URL:          *parsedURL,
+				Interval:     30,
+				Timeout:      10,
+				Method:       "GET",
+				ExpectedCode: 200,
+			},
 		}
-	})
-
-	t.Run("bad json", func(t *testing.T) {
-		h := &EndpointHandler{validator: val}
-		c, w := newGinContext("PUT", "/api/v1/servers/1/endpoint", `{bad`)
-		h.SetCheckMethod(c, 1)
-
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+		resp, err := h.SetCheckMethod(context.Background(), req, api.SetCheckMethodParams{ID: 1})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if resp.Data.ID != 1 || resp.Data.Name != "srv" {
+			t.Errorf("unexpected response: %+v", resp)
 		}
 	})
 
@@ -49,14 +53,26 @@ func TestEndpointHandler_SetCheckMethod(t *testing.T) {
 					return errors.New("upsert failed")
 				},
 			},
-			validator: val,
 		}
-		body := `{"method":"pull","endpoint":{"url":"https://example.com/h","method":"GET","interval":30,"timeout":10,"expected_code":200}}`
-		c, w := newGinContext("PUT", "/api/v1/servers/1/endpoint", body)
-		h.SetCheckMethod(c, 1)
 
-		if w.Code != http.StatusInternalServerError {
-			t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+		parsedURL, _ := url.Parse("https://example.com/h")
+		req := &api.SetCheckMethodRequest{
+			Method: api.CheckMethodTypePull,
+			Endpoint: api.Endpoint{
+				URL:          *parsedURL,
+				Interval:     30,
+				Timeout:      10,
+				Method:       "GET",
+				ExpectedCode: 200,
+			},
+		}
+		_, err := h.SetCheckMethod(context.Background(), req, api.SetCheckMethodParams{ID: 1})
+		var statusErr *api.ErrorResponseStatusCode
+		if !errors.As(err, &statusErr) {
+			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
+		}
+		if statusErr.StatusCode != http.StatusInternalServerError {
+			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusInternalServerError)
 		}
 	})
 }
