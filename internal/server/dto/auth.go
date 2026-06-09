@@ -13,8 +13,9 @@ type LoginRequest struct {
 }
 
 type AuthResponse struct {
-	Token string
-	User  UserProfile
+	Token        string
+	RefreshToken string
+	User         UserProfile
 }
 
 type UserProfile struct {

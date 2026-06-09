@@ -10,7 +10,6 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
-	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
 )
 
 func gormModel(id uint, t time.Time) gorm.Model {
@@ -91,20 +90,16 @@ func (m *mockPasswordEncoder) Verify(password, encodedHash string) (bool, error)
 	return m.verifyFn(password, encodedHash)
 }
 
-type mockTokenParser struct {
-	newTokenFn func(issuer string, otherClaims map[string]any) (string, error)
-	validateFn func(token string) (issuer string, err error)
-	parseFn    func(token string) (*jwtutil.Token, error)
+type mockTokenGenerator struct {
+	generateAccessTokenFn  func(user *domain.User) (string, error)
+	generateRefreshTokenFn func(user *domain.User) (string, error)
 }
 
-func (m *mockTokenParser) NewToken(issuer string, otherClaims map[string]any) (string, error) {
-	return m.newTokenFn(issuer, otherClaims)
+func (m *mockTokenGenerator) GenerateAccessToken(user *domain.User) (string, error) {
+	return m.generateAccessTokenFn(user)
 }
-func (m *mockTokenParser) Validate(token string) (issuer string, err error) {
-	return m.validateFn(token)
-}
-func (m *mockTokenParser) Parse(token string) (*jwtutil.Token, error) {
-	return m.parseFn(token)
+func (m *mockTokenGenerator) GenerateRefreshToken(user *domain.User) (string, error) {
+	return m.generateRefreshTokenFn(user)
 }
 
 type mockOntimeCacheRepo struct {

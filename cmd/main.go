@@ -51,6 +51,7 @@ func main() {
 		config.RegisterGORMDB,
 		config.RegisterRedisClient,
 		config.RegisterJwtConfig,
+		config.RegisterTokenConfig,
 		config.RegisterArgon2Config,
 		temporalcfg.RegisterConfig,
 		temporalcfg.RegisterClient,
@@ -75,13 +76,15 @@ func main() {
 		schedulerrepo.RegisterEndpointProvider,
 		schedulerrepo.RegisterEndpointMetaCache,
 
-		jwtutil.RegisterJwtParser,
+		jwtutil.RegisterProvider,
 		serverinfra.RegisterArgon2PasswordEncoder,
 
 		service.RegisterServerService,
 		service.RegisterEndpointService,
 		service.RegisterOntimeService,
 		service.RegisterAuthService,
+		service.RegisterTokenGenerator,
+		service.RegisterTokenValidator,
 		monitorservices.RegisterPingService,
 		monitorservices.RegisterLoopService,
 

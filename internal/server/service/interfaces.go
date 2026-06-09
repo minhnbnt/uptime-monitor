@@ -6,7 +6,6 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
-	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
 )
 
 type ServerRepository interface {
@@ -33,13 +32,12 @@ type OntimeCacheRepository interface {
 	MSet(ctx context.Context, items map[ontimerepo.OntimeCacheKey]float64) error
 }
 
+type TokenGenerator interface {
+	GenerateAccessToken(user *domain.User) (string, error)
+	GenerateRefreshToken(user *domain.User) (string, error)
+}
+
 type PasswordEncoder interface {
 	Encode(password string) (string, error)
 	Verify(password, encodedHash string) (bool, error)
-}
-
-type TokenParser interface {
-	NewToken(issuer string, otherClaims map[string]any) (string, error)
-	Validate(token string) (issuer string, err error)
-	Parse(token string) (*jwtutil.Token, error)
 }

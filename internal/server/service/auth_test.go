@@ -33,12 +33,15 @@ func TestAuthService_Register(t *testing.T) {
 					return "hashed-pass", nil
 				},
 			},
-			tokenParser: &mockTokenParser{
-				newTokenFn: func(_ string, claims map[string]any) (string, error) {
-					if claims["sub"] != "10" {
-						t.Error("wrong sub claim")
+			tokenGenerator: &mockTokenGenerator{
+				generateAccessTokenFn: func(user *domain.User) (string, error) {
+					if user.ID != 10 {
+						t.Error("wrong user id")
 					}
-					return "jwt-token", nil
+					return "access-token", nil
+				},
+				generateRefreshTokenFn: func(user *domain.User) (string, error) {
+					return "refresh-token", nil
 				},
 			},
 		}
@@ -47,8 +50,11 @@ func TestAuthService_Register(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if result.Token != "jwt-token" {
-			t.Errorf("Token = %q, want jwt-token", result.Token)
+		if result.Token != "access-token" {
+			t.Errorf("Token = %q, want access-token", result.Token)
+		}
+		if result.RefreshToken != "refresh-token" {
+			t.Errorf("RefreshToken = %q, want refresh-token", result.RefreshToken)
 		}
 		if result.User.ID != 10 {
 			t.Errorf("User.ID = %d, want 10", result.User.ID)
@@ -151,8 +157,8 @@ func TestAuthService_Register(t *testing.T) {
 					return "hash", nil
 				},
 			},
-			tokenParser: &mockTokenParser{
-				newTokenFn: func(_ string, _ map[string]any) (string, error) {
+			tokenGenerator: &mockTokenGenerator{
+				generateAccessTokenFn: func(_ *domain.User) (string, error) {
 					return "", errors.New("jwt failed")
 				},
 			},
@@ -185,9 +191,12 @@ func TestAuthService_Login(t *testing.T) {
 					return true, nil
 				},
 			},
-			tokenParser: &mockTokenParser{
-				newTokenFn: func(_ string, _ map[string]any) (string, error) {
-					return "jwt-token", nil
+			tokenGenerator: &mockTokenGenerator{
+				generateAccessTokenFn: func(_ *domain.User) (string, error) {
+					return "access-token", nil
+				},
+				generateRefreshTokenFn: func(_ *domain.User) (string, error) {
+					return "refresh-token", nil
 				},
 			},
 		}
@@ -196,8 +205,11 @@ func TestAuthService_Login(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if result.Token != "jwt-token" {
-			t.Errorf("Token = %q", result.Token)
+		if result.Token != "access-token" {
+			t.Errorf("Token = %q, want access-token", result.Token)
+		}
+		if result.RefreshToken != "refresh-token" {
+			t.Errorf("RefreshToken = %q, want refresh-token", result.RefreshToken)
 		}
 		if result.User.ID != 5 {
 			t.Errorf("User.ID = %d, want 5", result.User.ID)
@@ -271,8 +283,8 @@ func TestAuthService_Login(t *testing.T) {
 					return true, nil
 				},
 			},
-			tokenParser: &mockTokenParser{
-				newTokenFn: func(_ string, _ map[string]any) (string, error) {
+			tokenGenerator: &mockTokenGenerator{
+				generateAccessTokenFn: func(_ *domain.User) (string, error) {
 					return "", errors.New("jwt failed")
 				},
 			},

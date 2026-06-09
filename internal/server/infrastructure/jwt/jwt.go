@@ -9,18 +9,18 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 )
 
-type JwtParser struct {
+type Provider struct {
 	config *config.JwtConfig
 }
 
-func RegisterJwtParser(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (*JwtParser, error) {
+func RegisterProvider(i do.Injector) {
+	do.Provide(i, func(i do.Injector) (*Provider, error) {
 		config := do.MustInvoke[*config.JwtConfig](i)
-		return &JwtParser{config: config}, nil
+		return &Provider{config: config}, nil
 	})
 }
 
-func (j *JwtParser) Parse(token string) (*Token, error) {
+func (j *Provider) Parse(token string) (*Token, error) {
 
 	keyFunc := func(t *jwt.Token) (any, error) {
 		return j.config.GetValidateKey(), nil
@@ -38,7 +38,7 @@ func (j *JwtParser) Parse(token string) (*Token, error) {
 	return &Token{token: parsedToken}, nil
 }
 
-func (j *JwtParser) Validate(token string) (string, error) {
+func (j *Provider) Validate(token string) (string, error) {
 
 	t, err := j.Parse(token)
 	if err != nil {
@@ -48,7 +48,7 @@ func (j *JwtParser) Validate(token string) (string, error) {
 	return t.Issuer()
 }
 
-func (j *JwtParser) NewToken(issuer string, otherClaims map[string]any) (string, error) {
+func (j *Provider) NewToken(issuer string, otherClaims map[string]any) (string, error) {
 
 	claim := jwt.MapClaims{"iss": issuer}
 	maps.Copy(claim, otherClaims)

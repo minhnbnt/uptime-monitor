@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/samber/do/v2"
 
@@ -12,7 +11,6 @@ import (
 	authrepo "github.com/minhnbnt/uptime-monitor/internal/repository/auth"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
-	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
 )
 
 var (
@@ -23,7 +21,7 @@ var (
 type AuthService struct {
 	userRepository  UserRepository
 	passwordEncoder PasswordEncoder
-	tokenParser     TokenParser
+	tokenGenerator  TokenGenerator
 }
 
 func RegisterAuthService(i do.Injector) {
@@ -31,7 +29,7 @@ func RegisterAuthService(i do.Injector) {
 		return &AuthService{
 			userRepository:  do.MustInvoke[*authrepo.UserRepository](i),
 			passwordEncoder: do.MustInvoke[*serverinfra.Argon2PasswordEncoder](i),
-			tokenParser:     do.MustInvoke[*jwtutil.JwtParser](i),
+			tokenGenerator:  do.MustInvoke[TokenGenerator](i),
 		}, nil
 	})
 }
@@ -72,20 +70,20 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	sub := strconv.FormatUint(uint64(user.ID), 10)
-	token, err := s.tokenParser.NewToken("uptime-monitor", map[string]any{
-		"sub":      sub,
-		"email":    user.Email,
-		"username": user.Username,
-	})
-
+	accessToken, err := s.tokenGenerator.GenerateAccessToken(&user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
+	refreshToken, err := s.tokenGenerator.GenerateRefreshToken(&user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
 	return &dto.AuthResponse{
-		Token: token,
-		User:  toUserProfile(user),
+		Token:        accessToken,
+		RefreshToken: refreshToken,
+		User:         toUserProfile(user),
 	}, nil
 }
 
@@ -108,19 +106,19 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Aut
 		return nil, ErrInvalidCredentials
 	}
 
-	sub := strconv.FormatUint(uint64(user.ID), 10)
-	token, err := s.tokenParser.NewToken("uptime-monitor", map[string]any{
-		"sub":      sub,
-		"email":    user.Email,
-		"username": user.Username,
-	})
-
+	accessToken, err := s.tokenGenerator.GenerateAccessToken(user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
+	refreshToken, err := s.tokenGenerator.GenerateRefreshToken(user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
 	return &dto.AuthResponse{
-		Token: token,
-		User:  toUserProfile(*user),
+		Token:        accessToken,
+		RefreshToken: refreshToken,
+		User:         toUserProfile(*user),
 	}, nil
 }
