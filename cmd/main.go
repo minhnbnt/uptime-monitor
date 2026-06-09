@@ -36,6 +36,7 @@ import (
 	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
 	servertmiddleware "github.com/minhnbnt/uptime-monitor/internal/server/middleware"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
+	authservice "github.com/minhnbnt/uptime-monitor/internal/server/service/auth"
 )
 
 func main() {
@@ -82,9 +83,9 @@ func main() {
 		service.RegisterServerService,
 		service.RegisterEndpointService,
 		service.RegisterOntimeService,
-		service.RegisterAuthService,
-		service.RegisterTokenGenerator,
-		service.RegisterTokenValidator,
+		authservice.RegisterAuthService,
+		authservice.RegisterTokenGenerator,
+		authservice.RegisterTokenValidator,
 		monitorservices.RegisterPingService,
 		monitorservices.RegisterLoopService,
 

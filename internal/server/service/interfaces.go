@@ -22,22 +22,7 @@ type EndpointRepository interface {
 	UpsertEndpoint(ctx context.Context, endpoint domain.Endpoint) error
 }
 
-type UserRepository interface {
-	Create(ctx context.Context, user *domain.User) error
-	FindByEmailOrUsername(ctx context.Context, login string) (*domain.User, error)
-}
-
 type OntimeCacheRepository interface {
 	MGet(ctx context.Context, keys []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error)
 	MSet(ctx context.Context, items map[ontimerepo.OntimeCacheKey]float64) error
-}
-
-type TokenGenerator interface {
-	GenerateAccessToken(user *domain.User) (string, error)
-	GenerateRefreshToken(user *domain.User) (string, error)
-}
-
-type PasswordEncoder interface {
-	Encode(password string) (string, error)
-	Verify(password, encodedHash string) (bool, error)
 }

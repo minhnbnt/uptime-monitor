@@ -1,4 +1,4 @@
-package service
+package auth
 
 import (
 	"context"
@@ -17,6 +17,21 @@ var (
 	ErrEmailOrUsernameTaken = errors.New("email or username already exists")
 	ErrInvalidCredentials   = errors.New("invalid email/username or password")
 )
+
+type UserRepository interface {
+	Create(ctx context.Context, user *domain.User) error
+	FindByEmailOrUsername(ctx context.Context, login string) (*domain.User, error)
+}
+
+type PasswordEncoder interface {
+	Encode(password string) (string, error)
+	Verify(password, encodedHash string) (bool, error)
+}
+
+type TokenGenerator interface {
+	GenerateAccessToken(user *domain.User) (string, error)
+	GenerateRefreshToken(user *domain.User) (string, error)
+}
 
 type AuthService struct {
 	userRepository  UserRepository

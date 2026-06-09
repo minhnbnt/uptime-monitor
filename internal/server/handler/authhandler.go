@@ -9,7 +9,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
-	"github.com/minhnbnt/uptime-monitor/internal/server/service"
+	authservice "github.com/minhnbnt/uptime-monitor/internal/server/service/auth"
 )
 
 type AuthHandler struct {
@@ -20,7 +20,7 @@ type AuthHandler struct {
 func RegisterAuthHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*AuthHandler, error) {
 		return &AuthHandler{
-			authService: do.MustInvoke[*service.AuthService](i),
+			authService: do.MustInvoke[*authservice.AuthService](i),
 			validator:   do.MustInvoke[*RequestValidator](i),
 		}, nil
 	})
@@ -46,7 +46,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	ctx := c.Request.Context()
 	result, err := h.authService.Register(ctx, dtoReq)
 	if err != nil {
-		if errors.Is(err, service.ErrEmailOrUsernameTaken) {
+		if errors.Is(err, authservice.ErrEmailOrUsernameTaken) {
 			c.JSON(http.StatusConflict, errResponse("CONFLICT", err.Error()))
 			return
 		}
@@ -83,7 +83,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	ctx := c.Request.Context()
 	result, err := h.authService.Login(ctx, dtoReq)
 	if err != nil {
-		if errors.Is(err, service.ErrInvalidCredentials) {
+		if errors.Is(err, authservice.ErrInvalidCredentials) {
 			c.JSON(http.StatusUnauthorized, errResponse("UNAUTHORIZED", err.Error()))
 			return
 		}

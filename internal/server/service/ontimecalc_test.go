@@ -460,12 +460,3 @@ func TestApplyStartState(t *testing.T) {
 		})
 	}
 }
-
-func TestServiceSentinelErrors(t *testing.T) {
-	if ErrEmailOrUsernameTaken == nil {
-		t.Error("ErrEmailOrUsernameTaken should not be nil")
-	}
-	if ErrInvalidCredentials == nil {
-		t.Error("ErrInvalidCredentials should not be nil")
-	}
-}

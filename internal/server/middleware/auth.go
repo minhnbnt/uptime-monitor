@@ -7,11 +7,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/samber/do/v2"
 
-	"github.com/minhnbnt/uptime-monitor/internal/server/service"
+	authservice "github.com/minhnbnt/uptime-monitor/internal/server/service/auth"
 )
 
 func AuthRequired(i do.Injector) gin.HandlerFunc {
-	tokenValidator := do.MustInvoke[*service.TokenValidator](i)
+	tokenValidator := do.MustInvoke[*authservice.TokenValidator](i)
 
 	return func(c *gin.Context) {
 		if strings.HasPrefix(c.Request.URL.Path, "/api/v1/auth") {

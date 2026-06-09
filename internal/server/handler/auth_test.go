@@ -10,7 +10,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
-	"github.com/minhnbnt/uptime-monitor/internal/server/service"
+	authservice "github.com/minhnbnt/uptime-monitor/internal/server/service/auth"
 )
 
 func TestAuthHandler_Register(t *testing.T) {
@@ -74,7 +74,7 @@ func TestAuthHandler_Register(t *testing.T) {
 		h := &AuthHandler{
 			authService: &mockAuthService{
 				registerFn: func(_ context.Context, _ dto.RegisterRequest) (*dto.AuthResponse, error) {
-					return nil, service.ErrEmailOrUsernameTaken
+					return nil, authservice.ErrEmailOrUsernameTaken
 				},
 			},
 			validator: validator,
@@ -146,7 +146,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		h := &AuthHandler{
 			authService: &mockAuthService{
 				loginFn: func(_ context.Context, _ dto.LoginRequest) (*dto.AuthResponse, error) {
-					return nil, service.ErrInvalidCredentials
+					return nil, authservice.ErrInvalidCredentials
 				},
 			},
 			validator: validator,
