@@ -168,12 +168,16 @@ func runWebServer(ctx context.Context, i do.Injector, dev bool) {
 		logger.Panic("failed to create server", zap.Error(err))
 	}
 
-	var handler http.Handler = servertmiddleware.CORSMiddleware()(server)
+	middleware := servertmiddleware.CORSMiddleware()
+	handler := middleware(server)
 
 	if dev {
+
 		docsMux := http.NewServeMux()
-		docsMux.Handle("/docs/", docs.Handler("Uptime Monitor API"))
+
+		docsMux.Handle("/docs/", http.StripPrefix("/docs", docs.Handler("Uptime Monitor API")))
 		docsMux.Handle("/", handler)
+
 		handler = docsMux
 	}
 
