@@ -15,6 +15,7 @@ import (
 	"github.com/samber/do/v2"
 	"go.uber.org/zap"
 
+	"github.com/minhnbnt/uptime-monitor/api"
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	temporalcfg "github.com/minhnbnt/uptime-monitor/internal/config/temporal"
@@ -29,7 +30,6 @@ import (
 	schedulerrepo "github.com/minhnbnt/uptime-monitor/internal/repository/scheduler"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
-	"github.com/minhnbnt/uptime-monitor/internal/server/docs"
 	"github.com/minhnbnt/uptime-monitor/internal/server/handler"
 	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
 	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
@@ -99,7 +99,10 @@ func main() {
 		monitorhandler.RegisterZSetWorkerRunner,
 	)
 
-	schedulerrepo.RegisterSchedulerBackend(injector, schedulerrepo.SchedulerBackend(*schedulerBackend))
+	schedulerrepo.RegisterSchedulerBackend(
+		injector,
+	 schedulerrepo.SchedulerBackend(*schedulerBackend),
+	)
 
 	ctx, stop := signal.NotifyContext(
 		context.Background(),
@@ -124,6 +127,7 @@ func main() {
 }
 
 func runWorker(ctx context.Context, i do.Injector) {
+
 	backend := do.MustInvoke[*schedulerrepo.SchedulerBackend](i)
 
 	switch *backend {
@@ -173,12 +177,17 @@ func runWebServer(ctx context.Context, i do.Injector, dev bool) {
 
 	if dev {
 
-		docsMux := http.NewServeMux()
+		docsHandler, err := apidocs.GetHandler("Uptime Monitor API")
+		if err != nil {
+			logger.Panic("failed to get API docs", zap.Error(err))
+		}
 
-		docsMux.Handle("/docs/", http.StripPrefix("/docs", docs.Handler("Uptime Monitor API")))
-		docsMux.Handle("/", handler)
+		mux := http.NewServeMux()
 
-		handler = docsMux
+		mux.Handle("/docs/", http.StripPrefix("/docs", docsHandler))
+		mux.Handle("/", handler)
+
+		handler = mux
 	}
 
 	httpServer := http.Server{
