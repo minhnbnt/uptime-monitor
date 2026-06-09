@@ -2,9 +2,7 @@ package middleware
 
 import (
 	"context"
-	"net/http"
 
-	"github.com/rs/cors"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
@@ -14,10 +12,12 @@ import (
 type userIDKey struct{}
 
 func GetUserID(ctx context.Context) uint {
+
 	v := ctx.Value(userIDKey{})
 	if v == nil {
 		return 0
 	}
+
 	return v.(uint)
 }
 
@@ -25,10 +25,12 @@ type AuthMiddleware struct {
 	tokenValidator *authservice.TokenValidator
 }
 
-func RegisterAuthMiddleware(i do.Injector) *AuthMiddleware {
-	return &AuthMiddleware{
-		tokenValidator: do.MustInvoke[*authservice.TokenValidator](i),
-	}
+func RegisterAuthMiddleware(i do.Injector) {
+	do.Provide(i, func(i do.Injector) (*AuthMiddleware, error) {
+		return &AuthMiddleware{
+			tokenValidator: do.MustInvoke[*authservice.TokenValidator](i),
+		}, nil
+	})
 }
 
 func (m *AuthMiddleware) HandleBearerAuth(ctx context.Context, _ api.OperationName, t api.BearerAuth) (context.Context, error) {
@@ -39,15 +41,4 @@ func (m *AuthMiddleware) HandleBearerAuth(ctx context.Context, _ api.OperationNa
 	}
 
 	return context.WithValue(ctx, userIDKey{}, userID), nil
-}
-
-func CORSMiddleware() func(http.Handler) http.Handler {
-
-	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"*"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"Content-Type", "Authorization"},
-	})
-
-	return c.Handler
 }

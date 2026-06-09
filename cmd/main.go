@@ -12,6 +12,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/rs/cors"
 	"github.com/samber/do/v2"
 	"go.uber.org/zap"
 
@@ -33,7 +34,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/server/handler"
 	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
 	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
-	servertmiddleware "github.com/minhnbnt/uptime-monitor/internal/server/middleware"
+	"github.com/minhnbnt/uptime-monitor/internal/server/middleware"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 	authservice "github.com/minhnbnt/uptime-monitor/internal/server/service/auth"
 )
@@ -94,6 +95,8 @@ func main() {
 		handler.RegisterEndpointHandler,
 		handler.RegisterAuthHandler,
 
+		middleware.RegisterAuthMiddleware,
+
 		server.RegisterCompositeHandler,
 		monitorhandler.RegisterTemporalWorkerRunner,
 		monitorhandler.RegisterZSetWorkerRunner,
@@ -101,7 +104,7 @@ func main() {
 
 	schedulerrepo.RegisterSchedulerBackend(
 		injector,
-	 schedulerrepo.SchedulerBackend(*schedulerBackend),
+		schedulerrepo.SchedulerBackend(*schedulerBackend),
 	)
 
 	ctx, stop := signal.NotifyContext(
@@ -159,7 +162,7 @@ func runWebServer(ctx context.Context, i do.Injector, dev bool) {
 	logger := do.MustInvoke[*zap.Logger](i)
 
 	compositeHandler := do.MustInvoke[*server.CompositeHandler](i)
-	authMiddleware := servertmiddleware.RegisterAuthMiddleware(i)
+	authMiddleware := do.MustInvoke[*middleware.AuthMiddleware](i)
 
 	server, err := api.NewServer(
 		compositeHandler,
@@ -172,8 +175,13 @@ func runWebServer(ctx context.Context, i do.Injector, dev bool) {
 		logger.Panic("failed to create server", zap.Error(err))
 	}
 
-	middleware := servertmiddleware.CORSMiddleware()
-	handler := middleware(server)
+	corsMiddleware := cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"Content-Type", "Authorization"},
+	})
+
+	handler := corsMiddleware.Handler(server)
 
 	if dev {
 
