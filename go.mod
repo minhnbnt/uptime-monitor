@@ -18,9 +18,6 @@ require (
 	github.com/rs/cors v1.11.1
 	github.com/samber/do/v2 v2.0.0
 	github.com/samber/lo v1.53.0
-	go.opentelemetry.io/otel v1.44.0
-	go.opentelemetry.io/otel/metric v1.44.0
-	go.opentelemetry.io/otel/trace v1.44.0
 	go.temporal.io/sdk v1.43.0
 	go.uber.org/zap v1.28.0
 	golang.org/x/crypto v0.51.0
@@ -44,8 +41,6 @@ require (
 	github.com/getkin/kin-openapi v0.135.0 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-faster/yaml v0.4.6 // indirect
-	github.com/go-logr/logr v1.4.3 // indirect
-	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.22.4 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -78,7 +73,7 @@ require (
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/tdewolff/parse/v2 v2.8.3 // indirect
 	github.com/woodsbury/decimal128 v1.4.0 // indirect
-	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
+	go.opentelemetry.io/otel v1.44.0 // indirect
 	go.temporal.io/api v1.62.11 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
