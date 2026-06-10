@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/url"
-	"time"
 
 	"github.com/samber/lo"
 
@@ -48,19 +47,6 @@ func toOntimeStats(stats []dto.OntimeStats) []api.OntimeStats {
 			Stats: os.Stats,
 		}
 	})
-}
-
-func fromOntimeStats(stats []api.OntimeStats) []dto.OntimeStats {
-	return lo.Map(stats, func(os api.OntimeStats, _ int) dto.OntimeStats {
-		return dto.OntimeStats{
-			Date:  os.Date,
-			Stats: os.Stats,
-		}
-	})
-}
-
-func apiDurationToSeconds(d time.Duration) int {
-	return int(d.Seconds())
 }
 
 func toPaginationMeta(page, perPage int, total int64) api.PaginationMeta {

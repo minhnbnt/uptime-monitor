@@ -1,7 +1,7 @@
 .PHONY: dev build build-dev generate test test-v test-cover test-cover-html
 
 dev:
-	go run github.com/air-verse/air -c .air.toml
+	go tool air -c .air.toml
 
 build:
 	go build -ldflags="-s -w" -o bin/uptime-monitor ./cmd/main.go

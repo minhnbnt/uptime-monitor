@@ -57,5 +57,7 @@ func (wr *TemporalWorkerRunner) RunTemporalWorker(ctx context.Context) {
 		<-ctx.Done()
 	}()
 
-	worker.Run(shutdownChan)
+	if err := worker.Run(shutdownChan); err != nil {
+		wr.logger.Error("Temporal worker failed", logger.Error(err))
+	}
 }

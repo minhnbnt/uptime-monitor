@@ -118,7 +118,7 @@ func main() {
 	waitgroup := sync.WaitGroup{}
 	defer waitgroup.Wait()
 
-	waitgroup.Go(func() { injector.ShutdownOnSignalsWithContext(ctx) })
+	waitgroup.Go(func() { _, _ = injector.ShutdownOnSignalsWithContext(ctx) })
 
 	if *enableWorker {
 		waitgroup.Go(func() { runWorker(ctx, injector) })
@@ -149,7 +149,7 @@ func errorHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, e
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusBadRequest)
 
-	json.NewEncoder(w).Encode(api.ErrorResponse{
+	_ = json.NewEncoder(w).Encode(api.ErrorResponse{
 		Error: api.ErrorResponseError{
 			Code:    "VALIDATION_ERROR",
 			Message: err.Error(),

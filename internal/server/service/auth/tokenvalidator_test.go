@@ -12,24 +12,6 @@ import (
 	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
 )
 
-func setupTokenValidatorTest(t *testing.T) *TokenValidator {
-	t.Helper()
-
-	os.Setenv("JWT_KEY", "test-signing-key-for-token-validator")
-	t.Cleanup(func() { os.Unsetenv("JWT_KEY") })
-
-	i := do.New()
-	config.RegisterJwtConfig(i)
-	config.RegisterTokenConfig(i)
-	jwtutil.RegisterProvider(i)
-	do.Provide(i, func(i do.Injector) (RevokedTokenRepository, error) {
-		return &mockRevokedTokenRepo{}, nil
-	})
-	RegisterTokenValidator(i)
-
-	return do.MustInvoke[*TokenValidator](i)
-}
-
 func setupProviderWithConfig(t *testing.T) (*jwtutil.Provider, *config.TokenConfig) {
 	t.Helper()
 

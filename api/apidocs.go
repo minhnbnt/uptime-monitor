@@ -39,10 +39,12 @@ func GetHandler(title string) (http.Handler, error) {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		swaggerUI.Execute(w, map[string]string{
+		if err := swaggerUI.Execute(w, map[string]string{
 			"Title":   title,
 			"SpecURL": "./api/spec.yaml",
-		})
+		}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 
 	return mux, nil

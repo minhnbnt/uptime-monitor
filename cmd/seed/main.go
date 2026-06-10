@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,7 +24,12 @@ func authToken() string {
 		Name:     "Seed User",
 	})
 
-	resp, err := http.Post(baseURL+"/api/v1/auth/register", "application/json", bytes.NewReader(reqBody))
+	ctx := context.Background()
+	client := &http.Client{}
+
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/api/v1/auth/register", bytes.NewReader(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
 	if err != nil {
 		panic(fmt.Sprintf("register: %v", err))
 	}
@@ -34,7 +40,9 @@ func authToken() string {
 			Login:    "seed",
 			Password: "seedseed",
 		})
-		resp, err = http.Post(baseURL+"/api/v1/auth/login", "application/json", bytes.NewReader(loginBody))
+		req, _ = http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/api/v1/auth/login", bytes.NewReader(loginBody))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err = client.Do(req)
 		if err != nil {
 			panic(fmt.Sprintf("login: %v", err))
 		}
@@ -85,7 +93,7 @@ func main() {
 				name := fmt.Sprintf("host.docker.internal:%d", port)
 
 				reqBody, _ := json.Marshal(api.CreateServerRequest{Name: name})
-				req, _ := http.NewRequest(http.MethodPost, baseURL+"/api/v1/servers", bytes.NewReader(reqBody))
+				req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, baseURL+"/api/v1/servers", bytes.NewReader(reqBody))
 				req.Header.Set("Content-Type", "application/json")
 				req.Header.Set("Authorization", "Bearer "+token)
 
@@ -136,7 +144,7 @@ func main() {
 					},
 				})
 
-				req, _ = http.NewRequest(http.MethodPut,
+				req, _ = http.NewRequestWithContext(context.Background(), http.MethodPut,
 					fmt.Sprintf(baseURL+"/api/v1/servers/%d/check_method", srvResp.Data.ID),
 					bytes.NewReader(epBody))
 				req.Header.Set("Content-Type", "application/json")

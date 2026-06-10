@@ -10,9 +10,15 @@ linters:
   default: none
   enable:
     - bidichk
+    - bodyclose
+    - errcheck
     - govet
+    - ineffassign
     - misspell
+    - noctx
     - revive
+    - staticcheck
+    - unused
 
   settings:
     # Matches what we use in corp as of 2023-12-07
