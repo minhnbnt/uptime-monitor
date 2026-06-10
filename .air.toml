@@ -7,16 +7,16 @@ tmp_dir = "tmp"
 
 [build]
   args_bin = []
-  bin = "./tmp/uptime-monitor"
-  cmd = "make build-dev"
+  bin = ""
+  cmd = "docker compose build server && docker compose build worker"
   delay = 1000
-  entrypoint = ["./tmp/uptime-monitor"]
+  entrypoint = []
   exclude_dir = ["assets", "bin", "vendor", "testdata"]
   exclude_file = []
   exclude_regex = ["_test.go"]
   exclude_unchanged = false
   follow_symlink = false
-  full_bin = ""
+  full_bin = "docker compose logs -f --tail=50"
   ignore_dangerous_root_dir = false
   include_dir = []
   include_ext = ["go"]

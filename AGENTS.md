@@ -3,7 +3,7 @@
 ## Quick start
 
 ```sh
-make dev              # go tool air hot-reload
+make dev              # go tool air hot-reload (build & run in Docker)
 make build            # production build (entrypoint: ./app)
 make generate         # ogen from api/spec.yaml via .ogen.yml
 make test             # run all unit tests

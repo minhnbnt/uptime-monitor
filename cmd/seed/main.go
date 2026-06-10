@@ -133,7 +133,7 @@ func main() {
 				mu.Unlock()
 
 				parsedURL, _ := url.Parse(fmt.Sprintf("http://%s/health", name))
-				epBody, _ := json.Marshal(api.SetCheckMethodRequest{
+				epBody, _ := json.Marshal(&api.SetCheckMethodRequest{
 					Method: api.CheckMethodTypePull,
 					Endpoint: api.Endpoint{
 						URL:          *parsedURL,

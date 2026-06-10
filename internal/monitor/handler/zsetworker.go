@@ -48,6 +48,18 @@ func (r *ZSetWorkerRunner) pingAndRecordEndpoint(ctx context.Context, ep *domain
 
 	statusCode, pingErr := r.pingService.Ping(ctx, ep.Method, ep.URL)
 
+	if pingErr != nil {
+		r.logger.Error(
+			"ping failed",
+			logger.String("url", ep.URL),
+			logger.String("method", ep.Method),
+			logger.Int("status_code", statusCode),
+			logger.Int("expected_code", ep.ExpectedCode),
+			logger.Int64("endpoint_id", int64(ep.ID)),
+			logger.Error(pingErr),
+		)
+	}
+
 	status := domain.StatusOn
 	if pingErr != nil || statusCode != ep.ExpectedCode {
 		status = domain.StatusOff

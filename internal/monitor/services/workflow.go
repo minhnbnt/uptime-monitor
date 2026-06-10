@@ -53,6 +53,7 @@ func (s *PingService) PingWorkflow(ctx workflow.Context, endpointID uint, method
 		"url", url,
 		"statusCode", statusCode,
 		"isPingOk", isPingOk,
+		"pingError", pingErr,
 	)
 
 	recordCtx := workflow.WithActivityOptions(ctx, workflow.ActivityOptions{

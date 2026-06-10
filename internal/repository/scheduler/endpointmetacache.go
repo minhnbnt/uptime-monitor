@@ -41,7 +41,11 @@ func (c *EndpointMetaCache) Get(ctx context.Context, id uint) (*domain.Endpoint,
 		return nil, nil
 	}
 
-	return mapToEndpoint(id, data)
+	ep, err := mapToEndpoint(id, data)
+	if err != nil {
+		return nil, nil
+	}
+	return ep, nil
 }
 
 func (c *EndpointMetaCache) MGet(ctx context.Context, ids []uint) (map[uint]*domain.Endpoint, error) {
@@ -75,7 +79,7 @@ func (c *EndpointMetaCache) MGet(ctx context.Context, ids []uint) (map[uint]*dom
 
 		ep, err := mapToEndpoint(id, data)
 		if err != nil {
-			return nil, err
+			continue
 		}
 
 		result[id] = ep
@@ -91,7 +95,7 @@ func (c *EndpointMetaCache) Set(ctx context.Context, ep *domain.Endpoint) error 
 		"url", ep.URL,
 		"method", ep.Method,
 		"expected_code", fmt.Sprint(ep.ExpectedCode),
-		"interval_ns", fmt.Sprint(ep.Interval),
+		"interval_ns", fmt.Sprint(ep.Interval.Nanoseconds()),
 	)
 
 	return cmd.Err()
@@ -111,7 +115,7 @@ func (c *EndpointMetaCache) SetMulti(ctx context.Context, endpoints []domain.End
 			"url", endpoints[i].URL,
 			"method", endpoints[i].Method,
 			"expected_code", fmt.Sprint(endpoints[i].ExpectedCode),
-			"interval_ns", fmt.Sprint(endpoints[i].Interval),
+			"interval_ns", fmt.Sprint(endpoints[i].Interval.Nanoseconds()),
 		)
 	}
 
