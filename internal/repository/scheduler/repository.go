@@ -14,6 +14,7 @@ import (
 
 type SchedulerRepository interface {
 	Register(ctx context.Context, endpoint *domain.Endpoint) error
+	Unregister(ctx context.Context, endpointID uint) error
 }
 
 type TemporalSchedulerRepository struct {
@@ -71,4 +72,12 @@ func (tsr *TemporalSchedulerRepository) Register(ctx context.Context, endpoint *
 
 	_, err := tsr.client.Create(ctx, scheduleOptions)
 	return err
+}
+
+func (tsr *TemporalSchedulerRepository) Unregister(ctx context.Context, endpointID uint) error {
+
+	scheduleID := toScheduleID(fmt.Sprint(endpointID))
+
+	handle := tsr.client.GetHandle(ctx, scheduleID)
+	return handle.Delete(ctx)
 }

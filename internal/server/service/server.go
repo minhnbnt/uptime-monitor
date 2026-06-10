@@ -13,14 +13,16 @@ import (
 )
 
 type ServerService struct {
-	serverRepository ServerRepository
+	serverRepository   ServerRepository
+	endpointRepository *serverrepo.EndpointRepository
 }
 
 func RegisterServerService(i do.Injector) {
 
 	do.Provide(i, func(i do.Injector) (*ServerService, error) {
 		return &ServerService{
-			serverRepository: do.MustInvoke[*serverrepo.ServerRepository](i),
+			serverRepository:   do.MustInvoke[*serverrepo.ServerRepository](i),
+			endpointRepository: do.MustInvoke[*serverrepo.EndpointRepository](i),
 		}, nil
 	})
 }
@@ -115,6 +117,10 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uint, req dto.Upda
 }
 
 func (ss *ServerService) DeleteServer(ctx context.Context, id uint) error {
+
+	if err := ss.endpointRepository.DeleteByServerID(ctx, id); err != nil {
+		return fmt.Errorf("failed to delete endpoint: %w", err)
+	}
 
 	if err := ss.serverRepository.Delete(ctx, id); err != nil {
 		return fmt.Errorf("failed to delete server: %w", err)

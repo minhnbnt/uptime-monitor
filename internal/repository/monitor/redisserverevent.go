@@ -48,3 +48,7 @@ func (r *RedisServerEventRepository) GetStatus(ctx context.Context, endpointID u
 func (r *RedisServerEventRepository) SetStatus(ctx context.Context, endpointID uint, status domain.ServerStatus) error {
 	return r.client.Set(ctx, statusKey(endpointID), string(status), defaultTTL).Err()
 }
+
+func (r *RedisServerEventRepository) DeleteStatus(ctx context.Context, endpointID uint) error {
+	return r.client.Del(ctx, statusKey(endpointID)).Err()
+}

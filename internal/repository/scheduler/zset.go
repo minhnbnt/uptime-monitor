@@ -56,6 +56,17 @@ func (r *ZSetScheduleRepository) Register(ctx context.Context, endpoint *domain.
 	return err
 }
 
+func (r *ZSetScheduleRepository) Unregister(ctx context.Context, endpointID uint) error {
+
+	pipe := r.client.Pipeline()
+
+	pipe.ZRem(ctx, schedulerQueueKey, fmt.Sprint(endpointID))
+	pipe.Del(ctx, metaCacheKey(endpointID))
+
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
 // claimScript atomically claims at most N due tasks and peeks the next future task.
 //
 // KEYS[1] = scheduler:queue
