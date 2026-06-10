@@ -106,7 +106,7 @@ func (r *OntimeCacheRepository) MSet(ctx context.Context, items map[OntimeCacheK
 
 		pipe.Set(
 			ctx, ontimeCacheKey(key.ServerID, key.Day),
-			strconv.FormatFloat(stats, 'f', 2, 64), ttl,
+			fmt.Sprintf("%.2f", stats), ttl,
 		)
 	}
 
