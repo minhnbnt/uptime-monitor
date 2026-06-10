@@ -1,4 +1,4 @@
-.PHONY: dev build build-dev generate test test-v test-cover test-cover-html
+.PHONY: dev build build-dev generate test test-v test-cover test-cover-html format
 
 dev:
 	go tool air -c .air.toml
@@ -24,3 +24,6 @@ test-cover:
 test-cover-html:
 	go test -coverprofile=/tmp/cover.out -count=1 ./internal/...
 	go tool cover -html=/tmp/cover.out
+
+format:
+	golangci-lint run ./... --fix

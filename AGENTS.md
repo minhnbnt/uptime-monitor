@@ -3,26 +3,27 @@
 ## Quick start
 
 ```sh
-make dev              # air hot-reload
-make build            # production build
-make generate         # oapi-codegen from api/spec.yaml
+make dev              # go tool air hot-reload
+make build            # production build (entrypoint: ./app)
+make generate         # ogen from api/spec.yaml via .ogen.yml
 make test             # run all unit tests
 make test-cover       # unit tests with coverage
 make test-cover-html  # open coverage report in browser
 go build ./...        # compile check
-golangci-lint run ./...  # lint + format (gofmt, gci, govet, revive, misspell)
+make format           # auto-fix with golangci-lint (gofmt, gci, govet, ...)
+golangci-lint run ./...  # lint check only
 hurl --test --variable base_url=http://localhost:8080 tests/*.hurl
 ```
 
-> **Lint before commit**: always run `golangci-lint run ./...` before committing. It enforces import order (gci), `interface{}`→`any` (gofmt rewrite), and revives lints.
+> **Lint before commit**: always run `golangci-lint run ./...` before committing. It enforces import order (gci), `interface{}`→`any` (gofmt rewrite), bodyclose, noctx, unused, errcheck, ineffassign, staticcheck, and revive lints.
 
 ## Architecture
 
 - **DI**: `samber/do/v2` — every component has a `Register*` function called in `main.go` (registration order matters: config → repo → service → handler).
 - **Handler → Service → Repository → DB**: layers use consumer-package interfaces (defined where used, not where implemented).
-- **API**: OpenAPI spec at `api/spec.yaml`. Run `make generate` to regenerate `generated/api/gen.go` via oapi-codegen (gin-server mode).
+- **API**: OpenAPI spec at `api/spec.yaml`. Run `make generate` to regenerate `generated/api/gen.go` via ogen.
 - **CompositeHandler** (`internal/server/composite.go`) embeds `ServerHandler` and `EndpointHandler` to satisfy the generated `ServerInterface`.
-- **Router**: Gin, using oapi-codegen's `RegisterHandlers`.
+- **Router**: Gin, using ogen's `RegisterHandlers`.
 
 ## Package layout
 
@@ -52,7 +53,8 @@ internal/utils/             ← TruncateDay, Last30Days, PageValidator
 - **Temporal**: `TemporalSchedulerRepository` reads `TEMPORAL_TASK_QUEUE` and `TEMPORAL_WORKFLOW_NAME` from env. Temporal server runs via compose.
 - **Environment** (compose.yml): `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `TEMPORAL_TASK_QUEUE`, `TEMPORAL_WORKFLOW_NAME`.
 - **Running integration tests**: `podman compose up -d --build` (or `docker compose up -d --build`) rebuilds and starts postgres + temporal + app. Hurl tests call the running instance on `:8080`. Use whichever compose tool is available — never use the hyphenated `podman-compose` or `docker-compose`.
-- **Database**: PostgreSQL with GORM auto-migrate (`Server`, `Endpoint` models). No manual migrations.
+- **Database**: PostgreSQL with GORM auto-migrate (`Server`, `Endpoint` models). No manual migrations. Endpoint upsert uses `ON CONFLICT (server_id) DO UPDATE`.
+- **Redis cleanup**: Deleting a server removes associated Redis keys (status, ZSet, metadata hash) and unregisters from the scheduler (Temporal/ZSet).
 - **Import order** (enforced by gci): std → third-party → `github.com/minhnbnt/uptime-monitor/`.
 - **`interface{}` → `any`** enforced by gofmt rewrite rule in `.golangci.yml`.
 - **Before committing**: run `golangci-lint run ./...` to ensure code quality.
