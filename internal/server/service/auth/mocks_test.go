@@ -75,6 +75,7 @@ func (m *mockRevokedTokenRepo) Revoke(ctx context.Context, token *jwtutil.Token)
 	}
 	return m.revokeFn(ctx, token)
 }
+
 func (m *mockRevokedTokenRepo) IsRevoked(ctx context.Context, jti string) (bool, error) {
 	if m.isRevokedFn == nil {
 		return false, nil

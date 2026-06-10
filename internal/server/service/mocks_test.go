@@ -7,7 +7,6 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 )
@@ -74,22 +73,3 @@ func (m *mockOntimeCacheRepo) MSet(ctx context.Context, items map[ontimerepo.Ont
 	}
 	return m.mSetFn(ctx, items)
 }
-
-type mockLogger struct {
-	infoCalled bool
-	warnCalled bool
-	lastMsg    string
-}
-
-func (m *mockLogger) Info(msg string, fields ...logger.Field) {
-	m.infoCalled = true
-	m.lastMsg = msg
-}
-func (m *mockLogger) Warn(msg string, fields ...logger.Field) {
-	m.warnCalled = true
-	m.lastMsg = msg
-}
-func (m *mockLogger) Error(msg string, fields ...logger.Field)  {}
-func (m *mockLogger) Debug(msg string, fields ...logger.Field)  {}
-func (m *mockLogger) Fatal(msg string, fields ...logger.Field)  {}
-func (m *mockLogger) With(fields ...logger.Field) logger.Logger { return m }

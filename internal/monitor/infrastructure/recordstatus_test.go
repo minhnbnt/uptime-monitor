@@ -31,19 +31,6 @@ func (m *mockEventSaver) Save(ctx context.Context, event *domain.ServerEvent) er
 	return m.saveFn(ctx, event)
 }
 
-type mockLogger struct {
-	warnCalled bool
-}
-
-func (m *mockLogger) Info(msg string, fields ...logger.Field) {}
-func (m *mockLogger) Warn(msg string, fields ...logger.Field) {
-	m.warnCalled = true
-}
-func (m *mockLogger) Error(msg string, fields ...logger.Field)  {}
-func (m *mockLogger) Debug(msg string, fields ...logger.Field)  {}
-func (m *mockLogger) Fatal(msg string, fields ...logger.Field)  {}
-func (m *mockLogger) With(fields ...logger.Field) logger.Logger { return m }
-
 func event(endpointID uint, status domain.ServerStatus) *domain.ServerEvent {
 	return &domain.ServerEvent{
 		ID:         uuid.Must(uuid.NewV7()),
@@ -54,7 +41,7 @@ func event(endpointID uint, status domain.ServerStatus) *domain.ServerEvent {
 
 func TestRecordStatusWorker_Record(t *testing.T) {
 	t.Run("redis get fails -> log warning, return nil", func(t *testing.T) {
-		log := &mockLogger{}
+		log := logger.NewMockLogger()
 		w := &RecordStatusWorker{
 			statusStore: &mockStatusStore{
 				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
@@ -68,7 +55,7 @@ func TestRecordStatusWorker_Record(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if !log.warnCalled {
+		if !log.WarnCalled {
 			t.Error("expected Warn to be called")
 		}
 	})

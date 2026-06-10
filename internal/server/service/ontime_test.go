@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
@@ -223,7 +224,7 @@ func TestResolveCache(t *testing.T) {
 					return cached, nil
 				},
 			},
-			logger: &mockLogger{},
+			logger: logger.NewMockLogger(),
 		}
 
 		got := svc.resolveCache(t.Context(), keys)
@@ -240,7 +241,7 @@ func TestResolveCache(t *testing.T) {
 		keys := []ontimerepo.OntimeCacheKey{
 			{ServerID: 1, Day: d1},
 		}
-		log := &mockLogger{}
+		log := logger.NewMockLogger()
 
 		svc := &OntimeService{
 			ontimeCacheRepository: &mockOntimeCacheRepo{
@@ -256,7 +257,7 @@ func TestResolveCache(t *testing.T) {
 		if len(got) != 0 {
 			t.Errorf("len = %d, want 0", len(got))
 		}
-		if !log.warnCalled {
+		if !log.WarnCalled {
 			t.Error("expected Warn to be called")
 		}
 	})
@@ -268,7 +269,7 @@ func TestResolveCache(t *testing.T) {
 					return nil, nil
 				},
 			},
-			logger: &mockLogger{},
+			logger: logger.NewMockLogger(),
 		}
 
 		got := svc.resolveCache(t.Context(), nil)
@@ -305,7 +306,7 @@ func TestFillMisses(t *testing.T) {
 					return nil
 				},
 			},
-			logger: &mockLogger{},
+			logger: logger.NewMockLogger(),
 		}
 
 		svc.fillMisses(t.Context(), resultMap, keys)
@@ -338,7 +339,7 @@ func TestFillMisses(t *testing.T) {
 					return nil
 				},
 			},
-			logger: &mockLogger{},
+			logger: logger.NewMockLogger(),
 		}
 
 		svc.fillMisses(t.Context(), resultMap, keys)
@@ -362,7 +363,7 @@ func TestFillMisses(t *testing.T) {
 			{ServerID: 1, Day: d1},
 		}
 		resultMap := map[ontimerepo.OntimeCacheKey]float64{}
-		log := &mockLogger{}
+		log := logger.NewMockLogger()
 
 		svc := &OntimeService{
 			serverRepository: &mockServerRepo{
@@ -376,7 +377,7 @@ func TestFillMisses(t *testing.T) {
 
 		svc.fillMisses(t.Context(), resultMap, keys)
 
-		if !log.warnCalled {
+		if !log.WarnCalled {
 			t.Error("expected Warn to be called on DB error")
 		}
 	})
@@ -386,7 +387,7 @@ func TestFillMisses(t *testing.T) {
 			{ServerID: 1, Day: d1},
 		}
 		resultMap := map[ontimerepo.OntimeCacheKey]float64{}
-		log := &mockLogger{}
+		log := logger.NewMockLogger()
 
 		svc := &OntimeService{
 			serverRepository: &mockServerRepo{
@@ -406,7 +407,7 @@ func TestFillMisses(t *testing.T) {
 
 		svc.fillMisses(t.Context(), resultMap, keys)
 
-		if !log.warnCalled {
+		if !log.WarnCalled {
 			t.Error("expected Warn to be called on MSet error")
 		}
 		// resultMap should still be filled even if cache set fails
@@ -442,7 +443,7 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 					return cacheResult, nil
 				},
 			},
-			logger: &mockLogger{},
+			logger: logger.NewMockLogger(),
 		}
 
 		got, err := svc.BatchGetOntime(t.Context(), req)
@@ -509,7 +510,7 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 					return nil
 				},
 			},
-			logger: &mockLogger{},
+			logger: logger.NewMockLogger(),
 		}
 
 		got, err := svc.BatchGetOntime(t.Context(), req)
@@ -558,7 +559,7 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 					return nil
 				},
 			},
-			logger: &mockLogger{},
+			logger: logger.NewMockLogger(),
 		}
 
 		got, err := svc.BatchGetOntime(t.Context(), req)
@@ -586,7 +587,7 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 	t.Run("empty request returns empty", func(t *testing.T) {
 		svc := &OntimeService{
 			ontimeCacheRepository: &mockOntimeCacheRepo{},
-			logger:                &mockLogger{},
+			logger:                logger.NewMockLogger(),
 		}
 
 		got, err := svc.BatchGetOntime(t.Context(), nil)
@@ -659,7 +660,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 					return result, nil
 				},
 			},
-			logger: &mockLogger{},
+			logger: logger.NewMockLogger(),
 		}
 
 		got, total, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
@@ -701,7 +702,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 				},
 			},
 			ontimeCacheRepository: &mockOntimeCacheRepo{},
-			logger:                &mockLogger{},
+			logger:                logger.NewMockLogger(),
 		}
 
 		got, total, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
@@ -724,7 +725,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 				},
 			},
 			ontimeCacheRepository: &mockOntimeCacheRepo{},
-			logger:                &mockLogger{},
+			logger:                logger.NewMockLogger(),
 		}
 
 		_, _, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
@@ -746,7 +747,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 				},
 			},
 			ontimeCacheRepository: &mockOntimeCacheRepo{},
-			logger:                &mockLogger{},
+			logger:                logger.NewMockLogger(),
 		}
 
 		_, _, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
@@ -780,7 +781,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 					return result, nil
 				},
 			},
-			logger: &mockLogger{},
+			logger: logger.NewMockLogger(),
 		}
 
 		got, total, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
