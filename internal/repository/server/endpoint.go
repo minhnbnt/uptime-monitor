@@ -7,6 +7,7 @@ import (
 
 	"github.com/samber/do/v2"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
@@ -84,8 +85,19 @@ func (er *EndpointRepository) UpsertEndpoint(ctx context.Context, endpoint domai
 
 	return er.db.Transaction(func(tx *gorm.DB) error {
 
-		err := gorm.G[domain.Endpoint](tx).Create(ctx, &endpoint)
-		if err != nil {
+		txWithClauses := tx.Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "server_id"}},
+			DoUpdates: clause.AssignmentColumns([]string{
+				"url",
+				"method",
+				"expected_code",
+				"interval",
+				"timeout",
+				"status",
+			}),
+		})
+
+		if err := gorm.G[domain.Endpoint](txWithClauses).Create(ctx, &endpoint); err != nil {
 			return err
 		}
 

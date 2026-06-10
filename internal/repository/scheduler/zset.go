@@ -38,22 +38,12 @@ func (r *ZSetScheduleRepository) Register(ctx context.Context, endpoint *domain.
 	offset := utils.GenerateOffset(idStr, endpoint.Interval)
 	score := time.Now().UnixMilli() + offset.Milliseconds()
 
-	pipe := r.client.Pipeline()
-
-	pipe.ZAdd(ctx, schedulerQueueKey, redis.Z{
+	cmd := r.client.ZAdd(ctx, schedulerQueueKey, redis.Z{
 		Score:  float64(score),
 		Member: idStr,
 	})
 
-	pipe.HSet(ctx, metaCacheKey(endpoint.ID),
-		"url", endpoint.URL,
-		"method", endpoint.Method,
-		"expected_code", fmt.Sprint(endpoint.ExpectedCode),
-		"interval_ns", fmt.Sprint(endpoint.Interval),
-	)
-
-	_, err := pipe.Exec(ctx)
-	return err
+	return cmd.Err()
 }
 
 func (r *ZSetScheduleRepository) Unregister(ctx context.Context, endpointID uint) error {
@@ -64,6 +54,7 @@ func (r *ZSetScheduleRepository) Unregister(ctx context.Context, endpointID uint
 	pipe.Del(ctx, metaCacheKey(endpointID))
 
 	_, err := pipe.Exec(ctx)
+
 	return err
 }
 
