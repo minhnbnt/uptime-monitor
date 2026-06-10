@@ -43,4 +43,4 @@ COPY --from=upx /app/app .
 
 EXPOSE 8080
 
-CMD ["./app"]
+ENTRYPOINT ["./app"]

@@ -4,7 +4,7 @@ services:
     ports:
       - 8080:8080
 
-    command: ["./app", "--worker=false", "--scheduler-backend=redis", "--dev"]
+    command: ["--worker=false", "--scheduler-backend=redis", "--dev"]
 
     env_file:
       - ./.env
@@ -17,7 +17,7 @@ services:
 
   worker:
     build: .
-    command: ["./app", "--server=false", "--scheduler-backend=redis"]
+    command: ["--server=false", "--scheduler-backend=redis"]
 
     env_file:
       - ./.env
