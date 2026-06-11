@@ -17,6 +17,7 @@ func dtoServer(id uint, name string, t time.Time) dto.Server {
 }
 
 func TestServerHandler_ListServers(t *testing.T) {
+
 	now := time.Now()
 	srv := utils.NewPageValidator(30)
 

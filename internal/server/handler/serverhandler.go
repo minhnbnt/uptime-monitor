@@ -31,6 +31,7 @@ func RegisterServerHandler(i do.Injector) {
 }
 
 func (h *ServerHandler) ListServers(ctx context.Context, params api.ListServersParams) (*api.ServerListResponse, error) {
+
 	page := params.Page.Or(1)
 	perPage := params.PerPage.Or(20)
 
@@ -59,6 +60,7 @@ func (h *ServerHandler) ListServers(ctx context.Context, params api.ListServersP
 }
 
 func (h *ServerHandler) CreateServer(ctx context.Context, req *api.CreateServerRequest) (*api.ServerResponse, error) {
+
 	dtoReq := dto.CreateServerRequest{Name: req.Name}
 
 	userID := middleware.GetUserID(ctx)
@@ -74,6 +76,7 @@ func (h *ServerHandler) CreateServer(ctx context.Context, req *api.CreateServerR
 }
 
 func (h *ServerHandler) GetServer(ctx context.Context, params api.GetServerParams) (*api.ServerResponse, error) {
+
 	result, err := h.serverService.GetServer(ctx, uint(params.ID))
 	if err != nil {
 		return nil, &api.ErrorResponseStatusCode{
@@ -86,6 +89,7 @@ func (h *ServerHandler) GetServer(ctx context.Context, params api.GetServerParam
 }
 
 func (h *ServerHandler) UpdateServer(ctx context.Context, req *api.UpdateServerRequest, params api.UpdateServerParams) (*api.ServerResponse, error) {
+
 	dtoReq := dto.UpdateServerRequest{}
 	if name, ok := req.Name.Get(); ok {
 		dtoReq.Name = &name
@@ -114,6 +118,7 @@ func (h *ServerHandler) DeleteServer(ctx context.Context, params api.DeleteServe
 }
 
 func (h *ServerHandler) ListServersOntime(ctx context.Context, params api.ListServersOntimeParams) (*api.ServerOntimeListResponse, error) {
+
 	page := params.Page.Or(1)
 	perPage := params.PerPage.Or(20)
 

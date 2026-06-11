@@ -88,8 +88,7 @@ func (er *EndpointRepository) UpsertEndpoint(ctx context.Context, endpoint domai
 		txWithClauses := tx.Clauses(clause.OnConflict{
 			Columns: []clause.Column{{Name: "server_id"}},
 			DoUpdates: clause.AssignmentColumns([]string{
-				"url",
-				"method",
+				"url", "method",
 				"expected_code",
 				"interval",
 				"timeout",
