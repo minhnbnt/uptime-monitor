@@ -16,6 +16,7 @@ type ServerService interface {
 
 type OntimeService interface {
 	ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]dto.ServerWithOntime, int64, error)
+	GetServerWithOntime(ctx context.Context, serverID uint) (*dto.ServerWithOntime, error)
 }
 
 type EndpointService interface {

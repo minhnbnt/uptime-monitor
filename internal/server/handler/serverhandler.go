@@ -78,7 +78,7 @@ func (h *ServerHandler) CreateServer(ctx context.Context, req *api.CreateServerR
 
 func (h *ServerHandler) GetServer(ctx context.Context, params api.GetServerParams) (*api.ServerResponse, error) {
 
-	result, err := h.serverService.GetServer(ctx, uint(params.ID))
+	result, err := h.ontimeService.GetServerWithOntime(ctx, uint(params.ID))
 	if err != nil {
 		return nil, &api.ErrorResponseStatusCode{
 			StatusCode: http.StatusNotFound,
@@ -86,7 +86,10 @@ func (h *ServerHandler) GetServer(ctx context.Context, params api.GetServerParam
 		}
 	}
 
-	return &api.ServerResponse{Data: toAPIServer(result)}, nil
+	obj := toAPIServer(&result.Server)
+	obj.SetOntimeStats(toOntimeStats(result.OntimeStats))
+
+	return &api.ServerResponse{Data: obj}, nil
 }
 
 func (h *ServerHandler) UpdateServer(ctx context.Context, req *api.UpdateServerRequest, params api.UpdateServerParams) (*api.ServerResponse, error) {

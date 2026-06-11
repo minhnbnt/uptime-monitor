@@ -17,6 +17,10 @@ ServerObject:
       $ref: "./common.yaml#/ServerStatus"
     endpoint:
       $ref: "./endpoint.yaml#/Endpoint"
+    ontime_stats:
+      type: array
+      items:
+        $ref: "./ontime.yaml#/OntimeStats"
     created_at:
       type: string
       format: date-time

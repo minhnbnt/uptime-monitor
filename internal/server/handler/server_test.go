@@ -127,10 +127,13 @@ func TestServerHandler_GetServer(t *testing.T) {
 
 	t.Run("found", func(t *testing.T) {
 		h := &ServerHandler{
-			serverService: &mockServerService{
-				getServerFn: func(_ context.Context, id uint) (*dto.Server, error) {
-					s := dtoServer(id, "found", now)
-					return &s, nil
+			ontimeService: &mockOntimeService{
+				getServerWithOntimeFn: func(_ context.Context, _ uint) (*dto.ServerWithOntime, error) {
+					s := dtoServer(5, "found", now)
+					return &dto.ServerWithOntime{
+						Server:      s,
+						OntimeStats: nil,
+					}, nil
 				},
 			},
 		}
@@ -145,8 +148,8 @@ func TestServerHandler_GetServer(t *testing.T) {
 
 	t.Run("not found", func(t *testing.T) {
 		h := &ServerHandler{
-			serverService: &mockServerService{
-				getServerFn: func(_ context.Context, _ uint) (*dto.Server, error) {
+			ontimeService: &mockOntimeService{
+				getServerWithOntimeFn: func(_ context.Context, _ uint) (*dto.ServerWithOntime, error) {
 					return nil, errors.New("not found")
 				},
 			},

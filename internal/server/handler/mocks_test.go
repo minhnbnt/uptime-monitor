@@ -51,10 +51,18 @@ func (m *mockServerService) DeleteServer(ctx context.Context, id uint) error {
 
 type mockOntimeService struct {
 	listServersWithOntimeFn func(ctx context.Context, createdByID uint, page, perPage int) ([]dto.ServerWithOntime, int64, error)
+	getServerWithOntimeFn   func(ctx context.Context, serverID uint) (*dto.ServerWithOntime, error)
 }
 
 func (m *mockOntimeService) ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]dto.ServerWithOntime, int64, error) {
 	return m.listServersWithOntimeFn(ctx, createdByID, page, perPage)
+}
+
+func (m *mockOntimeService) GetServerWithOntime(ctx context.Context, serverID uint) (*dto.ServerWithOntime, error) {
+	if m.getServerWithOntimeFn == nil {
+		return nil, nil
+	}
+	return m.getServerWithOntimeFn(ctx, serverID)
 }
 
 type mockEndpointService struct {
