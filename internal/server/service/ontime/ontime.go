@@ -3,6 +3,7 @@ package ontime
 import (
 	"context"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -44,7 +45,21 @@ func (s *OntimeService) BatchGetOntimeUntil(ctx context.Context, req []dto.Batch
 	cacheKeys := s.buildCacheKeys(req)
 	resultMap := s.resolveCache(ctx, cacheKeys)
 
-	s.fillMisses(ctx, resultMap, cacheKeys, until)
+	missKeys := lo.Filter(cacheKeys, func(key ontimerepo.OntimeCacheKey, _ int) bool {
+		_, hit := resultMap[key]
+		return !hit
+	})
+
+	if len(missKeys) == 0 {
+		return s.buildResponse(req, resultMap), nil
+	}
+
+	toCache := s.fillMisses(ctx, missKeys, until)
+	maps.Copy(resultMap, toCache)
+
+	if err := s.ontimeCacheRepository.MSet(ctx, toCache); err != nil {
+		s.logger.Warn("failed to batch cache ontime results", logger.Error(err))
+	}
 
 	return s.buildResponse(req, resultMap), nil
 }
@@ -185,46 +200,29 @@ func (s *OntimeService) resolveCache(ctx context.Context, keys []ontimerepo.Onti
 	return cached
 }
 
-func (s *OntimeService) fillMisses(ctx context.Context, resultMap map[ontimerepo.OntimeCacheKey]float64, cacheKeys []ontimerepo.OntimeCacheKey, until time.Time) {
+func (s *OntimeService) fillMisses(ctx context.Context, missedKeys []ontimerepo.OntimeCacheKey, until time.Time) map[ontimerepo.OntimeCacheKey]float64 {
 
-	missKeys := lo.Filter(cacheKeys, func(key ontimerepo.OntimeCacheKey, _ int) bool {
-		_, hit := resultMap[key]
-		return !hit
-	})
-
-	if len(missKeys) == 0 {
-		return
-	}
-
-	requests := lo.Map(missKeys, func(key ontimerepo.OntimeCacheKey, _ int) serverrepo.BatchGetOntimeRequest {
+	requests := lo.Map(missedKeys, func(key ontimerepo.OntimeCacheKey, _ int) serverrepo.BatchGetOntimeRequest {
 		return serverrepo.BatchGetOntimeRequest{ServerID: key.ServerID, Date: key.Day}
 	})
 
 	rows, err := s.serverRepository.BatchGetOntime(ctx, requests)
 	if err != nil {
-		s.logger.Warn("failed to batch get ontime from DB", logger.Error(err))
-		return
+		s.logger.Warn("failed to get missed ontime keys", logger.Error(err))
+		return make(map[ontimerepo.OntimeCacheKey]float64)
 	}
 
 	groups := lo.GroupBy(rows, func(row serverrepo.RawEvent) serverDayKey {
 		return serverDayKey{ServerID: row.ServerID, Day: row.Day}
 	})
 
-	today := utils.TruncateDay(until)
-	toCache := make(map[ontimerepo.OntimeCacheKey]float64, len(missKeys))
-
-	for _, key := range missKeys {
-
+	dayUntil := utils.TruncateDay(until)
+	toCache := lo.SliceToMap(missedKeys, func(key ontimerepo.OntimeCacheKey) (ontimerepo.OntimeCacheKey, float64) {
 		events := groups[serverDayKey{ServerID: key.ServerID, Day: key.Day}]
-		stats := s.calculator.CalculateDayOntime(events, today, until)
+		return key, s.calculator.CalculateDayOntime(events, dayUntil, until)
+	})
 
-		resultMap[key] = stats
-		toCache[key] = stats
-	}
-
-	if err := s.ontimeCacheRepository.MSet(ctx, toCache); err != nil {
-		s.logger.Warn("failed to batch cache ontime results", logger.Error(err))
-	}
+	return toCache
 }
 
 func (s *OntimeService) buildResponse(req []dto.BatchGetOntimeItem, resultMap map[ontimerepo.OntimeCacheKey]float64) []dto.BatchGetOntimeResponse {

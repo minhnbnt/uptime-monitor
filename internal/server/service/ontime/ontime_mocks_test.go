@@ -62,10 +62,10 @@ type mockOntimeCacheRepo struct {
 }
 
 func (m *mockOntimeCacheRepo) MGet(ctx context.Context, keys []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error) {
-	if m.mGetFn == nil {
-		return nil, nil
+	if m.mGetFn != nil {
+		return m.mGetFn(ctx, keys)
 	}
-	return m.mGetFn(ctx, keys)
+	return make(map[ontimerepo.OntimeCacheKey]float64), nil
 }
 
 func (m *mockOntimeCacheRepo) MSet(ctx context.Context, items map[ontimerepo.OntimeCacheKey]float64) error {

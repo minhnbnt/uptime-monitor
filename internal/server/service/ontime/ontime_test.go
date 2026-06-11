@@ -280,27 +280,31 @@ func TestResolveCache(t *testing.T) {
 	})
 }
 
-// ---------- fillMisses ----------
+// ---------- BatchGetOntimeUntil ----------
 
-func TestFillMisses(t *testing.T) {
+func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 	d1 := oDay(2026, 6, 1)
+	until := oTm(2026, 6, 1, 14, 0) // fixed "now"
 
-	t.Run("no miss - nothing to fill", func(t *testing.T) {
-		keys := []ontimerepo.OntimeCacheKey{
-			{ServerID: 1, Day: d1},
-		}
-		resultMap := map[ontimerepo.OntimeCacheKey]float64{
+	t.Run("all cached", func(t *testing.T) {
+		req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: d1}}
+		cacheResult := map[ontimerepo.OntimeCacheKey]float64{
 			{ServerID: 1, Day: d1}: 100.0,
 		}
+		var dbCalled bool
 		var mSetCalled bool
 
 		svc := &OntimeService{
 			serverRepository: &mockServerRepo{
 				batchGetOntimeFn: func(_ context.Context, _ []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
+					dbCalled = true
 					return nil, nil
 				},
 			},
 			ontimeCacheRepository: &mockOntimeCacheRepo{
+				mGetFn: func(_ context.Context, _ []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error) {
+					return cacheResult, nil
+				},
 				mSetFn: func(_ context.Context, _ map[ontimerepo.OntimeCacheKey]float64) error {
 					mSetCalled = true
 					return nil
@@ -309,26 +313,34 @@ func TestFillMisses(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		svc.fillMisses(t.Context(), resultMap, keys, time.Now())
-
+		got, err := svc.BatchGetOntimeUntil(t.Context(), req, until)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if dbCalled {
+			t.Error("DB should not be called when all cached")
+		}
 		if mSetCalled {
-			t.Error("MSet should not be called when there are no misses")
+			t.Error("MSet should not be called when all cached")
+		}
+		if len(got) != 1 || len(got[0].Result) != 1 {
+			t.Fatalf("unexpected result shape: %+v", got)
+		}
+		if got[0].Result[0].Stats != 100.0 {
+			t.Errorf("Stats = %f, want 100.0", got[0].Result[0].Stats)
 		}
 	})
 
 	t.Run("all miss - fills from DB", func(t *testing.T) {
-		keys := []ontimerepo.OntimeCacheKey{
-			{ServerID: 1, Day: d1},
-		}
-		resultMap := map[ontimerepo.OntimeCacheKey]float64{}
+		req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: d1}}
 		var mSetCalled bool
 		var capturedItems map[ontimerepo.OntimeCacheKey]float64
 
 		svc := &OntimeService{
 			serverRepository: &mockServerRepo{
-				batchGetOntimeFn: func(_ context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
+				batchGetOntimeFn: func(_ context.Context, _ []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
 					return []serverrepo.RawEvent{
-						{ServerID: 1, Day: d1, Status: "ON", Time: oTm(2026, 6, 1, 6, 0)},
+						{ServerID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)},
 					}, nil
 				},
 			},
@@ -342,27 +354,26 @@ func TestFillMisses(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		svc.fillMisses(t.Context(), resultMap, keys, time.Now())
-
+		got, err := svc.BatchGetOntimeUntil(t.Context(), req, until)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if !mSetCalled {
 			t.Error("MSet should be called when there are misses")
 		}
-		if len(resultMap) != 1 {
-			t.Fatalf("resultMap len = %d, want 1", len(resultMap))
+		if len(got) != 1 || len(got[0].Result) != 1 {
+			t.Fatalf("unexpected result shape: %+v", got)
 		}
-		if resultMap[keys[0]] <= 0 {
-			t.Errorf("resultMap[%+v] = %f, want > 0", keys[0], resultMap[keys[0]])
+		if got[0].Result[0].Stats <= 0 {
+			t.Errorf("Stats = %f, want > 0", got[0].Result[0].Stats)
 		}
 		if capturedItems != nil && len(capturedItems) != 1 {
 			t.Errorf("capturedItems len = %d, want 1", len(capturedItems))
 		}
 	})
 
-	t.Run("db error logs warning", func(t *testing.T) {
-		keys := []ontimerepo.OntimeCacheKey{
-			{ServerID: 1, Day: d1},
-		}
-		resultMap := map[ontimerepo.OntimeCacheKey]float64{}
+	t.Run("DB error logs warning", func(t *testing.T) {
+		req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: d1}}
 		log := logger.NewMockLogger()
 
 		svc := &OntimeService{
@@ -375,25 +386,24 @@ func TestFillMisses(t *testing.T) {
 			logger:                log,
 		}
 
-		svc.fillMisses(t.Context(), resultMap, keys, time.Now())
-
+		_, err := svc.BatchGetOntimeUntil(t.Context(), req, until)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if !log.WarnCalled {
 			t.Error("expected Warn to be called on DB error")
 		}
 	})
 
 	t.Run("MSet error logs warning", func(t *testing.T) {
-		keys := []ontimerepo.OntimeCacheKey{
-			{ServerID: 1, Day: d1},
-		}
-		resultMap := map[ontimerepo.OntimeCacheKey]float64{}
+		req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: d1}}
 		log := logger.NewMockLogger()
 
 		svc := &OntimeService{
 			serverRepository: &mockServerRepo{
 				batchGetOntimeFn: func(_ context.Context, _ []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
 					return []serverrepo.RawEvent{
-						{ServerID: 1, Day: d1, Status: "ON", Time: oTm(2026, 6, 1, 6, 0)},
+						{ServerID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)},
 					}, nil
 				},
 			},
@@ -405,14 +415,15 @@ func TestFillMisses(t *testing.T) {
 			logger: log,
 		}
 
-		svc.fillMisses(t.Context(), resultMap, keys, time.Now())
-
+		got, err := svc.BatchGetOntimeUntil(t.Context(), req, until)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if !log.WarnCalled {
 			t.Error("expected Warn to be called on MSet error")
 		}
-		// resultMap should still be filled even if cache set fails
-		if len(resultMap) != 1 {
-			t.Errorf("resultMap len = %d, want 1", len(resultMap))
+		if len(got) != 1 || len(got[0].Result) != 1 {
+			t.Fatalf("result should still be returned even if MSet fails: %+v", got)
 		}
 	})
 }
