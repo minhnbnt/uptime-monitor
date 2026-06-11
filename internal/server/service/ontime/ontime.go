@@ -130,11 +130,13 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []domain.S
 			return !d.Before(created)
 		})
 
-		newItems := lo.Map(dates, func(d time.Time, _ int) dto.BatchGetOntimeItem {
+		datesIter := slices.Values(dates)
+
+		newItems := it.Map(datesIter, func(d time.Time) dto.BatchGetOntimeItem {
 			return dto.BatchGetOntimeItem{ServerID: sv.ID, Date: d}
 		})
 
-		items = append(items, newItems...)
+		items = slices.AppendSeq(items, newItems)
 		serverDates[sv.ID] = dates
 	}
 
