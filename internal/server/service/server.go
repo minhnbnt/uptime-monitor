@@ -14,7 +14,7 @@ import (
 
 type ServerService struct {
 	serverRepository   ServerRepository
-	endpointRepository *serverrepo.EndpointRepository
+	endpointRepository EndpointRepository
 }
 
 func RegisterServerService(i do.Injector) {

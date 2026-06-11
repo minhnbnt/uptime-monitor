@@ -251,12 +251,15 @@ func TestServerService_UpdateServer(t *testing.T) {
 func TestServerService_DeleteServer(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		var deleted uint
-		svc := &ServerService{serverRepository: &mockServerRepo{
-			deleteFn: func(_ context.Context, id uint) error {
-				deleted = id
-				return nil
+		svc := &ServerService{
+			serverRepository: &mockServerRepo{
+				deleteFn: func(_ context.Context, id uint) error {
+					deleted = id
+					return nil
+				},
 			},
-		}}
+			endpointRepository: &mockEndpointRepo{},
+		}
 
 		err := svc.DeleteServer(t.Context(), 7)
 		if err != nil {
@@ -268,11 +271,14 @@ func TestServerService_DeleteServer(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		svc := &ServerService{serverRepository: &mockServerRepo{
-			deleteFn: func(_ context.Context, _ uint) error {
-				return errors.New("not found")
+		svc := &ServerService{
+			serverRepository: &mockServerRepo{
+				deleteFn: func(_ context.Context, _ uint) error {
+					return errors.New("not found")
+				},
 			},
-		}}
+			endpointRepository: &mockEndpointRepo{},
+		}
 
 		err := svc.DeleteServer(t.Context(), 99)
 		if err == nil {

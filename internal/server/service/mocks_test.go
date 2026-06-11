@@ -48,11 +48,19 @@ func (m *mockServerRepo) BatchGetOntime(ctx context.Context, req []serverrepo.Ba
 }
 
 type mockEndpointRepo struct {
-	upsertEndpointFn func(ctx context.Context, endpoint domain.Endpoint) error
+	upsertEndpointFn   func(ctx context.Context, endpoint domain.Endpoint) error
+	deleteByServerIDFn func(ctx context.Context, serverID uint) error
 }
 
 func (m *mockEndpointRepo) UpsertEndpoint(ctx context.Context, endpoint domain.Endpoint) error {
 	return m.upsertEndpointFn(ctx, endpoint)
+}
+
+func (m *mockEndpointRepo) DeleteByServerID(ctx context.Context, serverID uint) error {
+	if m.deleteByServerIDFn == nil {
+		return nil
+	}
+	return m.deleteByServerIDFn(ctx, serverID)
 }
 
 type mockOntimeCacheRepo struct {

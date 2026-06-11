@@ -57,7 +57,7 @@ func (h *EndpointHandler) SetCheckMethod(
 	return &api.ServerResponse{Data: toAPIServer(server)}, nil
 }
 
-func (h *EndpointHandler) TestEndpoint(	ctx context.Context, req *api.TestEndpointRequest,) (*api.TestEndpointResponse, error) {
+func (h *EndpointHandler) TestEndpoint(ctx context.Context, req *api.TestEndpointRequest) (*api.TestEndpointResponse, error) {
 
 	timeout := req.Timeout.Or(10)
 	expectedCode := req.ExpectedCode.Or(200)
