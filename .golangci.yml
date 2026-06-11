@@ -99,6 +99,7 @@ linters:
       - third_party$
       - builtin$
       - examples$
+      - generated
 
 formatters:
   enable:
@@ -125,3 +126,4 @@ formatters:
       - third_party$
       - builtin$
       - examples$
+      - generated
