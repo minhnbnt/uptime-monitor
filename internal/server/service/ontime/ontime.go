@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"slices"
 	"time"
 
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
+	"github.com/samber/lo/it"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
@@ -181,11 +183,17 @@ func buildOntimeLookup(results []dto.BatchGetOntimeResponse) map[uint]map[time.T
 
 func (s *OntimeService) buildCacheKeys(req []dto.BatchGetOntimeItem) []ontimerepo.OntimeCacheKey {
 
-	keys := lo.Map(req, func(item dto.BatchGetOntimeItem, _ int) ontimerepo.OntimeCacheKey {
-		return ontimerepo.OntimeCacheKey{ServerID: item.ServerID, Day: utils.TruncateDay(item.Date)}
+	iter := slices.Values(req)
+
+	keys := it.Map(iter, func(item dto.BatchGetOntimeItem) ontimerepo.OntimeCacheKey {
+		return ontimerepo.OntimeCacheKey{
+			Day:      utils.TruncateDay(item.Date),
+			ServerID: item.ServerID,
+		}
 	})
 
-	return lo.Uniq(keys)
+	keys = it.Uniq(keys)
+	return slices.Collect(keys)
 }
 
 func (s *OntimeService) resolveCache(ctx context.Context, keys []ontimerepo.OntimeCacheKey) map[ontimerepo.OntimeCacheKey]float64 {
