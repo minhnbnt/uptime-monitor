@@ -3,8 +3,10 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"github.com/samber/do/v2"
+	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 )
@@ -60,20 +62,17 @@ func (p *EndpointProvider) GetBatch(ctx context.Context, ids []uint) (map[uint]*
 		return nil, err
 	}
 
-	var missIDs []uint
-	for _, id := range ids {
-		if ep, ok := cached[id]; ok {
-			result[id] = ep
-		} else {
-			missIDs = append(missIDs, id)
-		}
-	}
+	maps.Copy(result, cached)
+	missedIDs := lo.Filter(ids, func(id uint, _ int) bool {
+		_, hit := cached[id]
+		return !hit
+	})
 
-	if len(missIDs) == 0 {
+	if len(missedIDs) == 0 {
 		return result, nil
 	}
 
-	eps, err := p.fetcher.Fetch(ctx, missIDs...)
+	eps, err := p.fetcher.Fetch(ctx, missedIDs...)
 	if err != nil {
 		return nil, err
 	}

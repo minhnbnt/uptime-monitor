@@ -92,8 +92,7 @@ func (c *EndpointMetaCache) Set(ctx context.Context, ep *domain.Endpoint) error 
 
 	cmd := c.client.HSet(
 		ctx, metaCacheKey(ep.ID),
-		"url", ep.URL,
-		"method", ep.Method,
+		"url", ep.URL, "method", ep.Method,
 		"expected_code", fmt.Sprint(ep.ExpectedCode),
 		"interval_ns", fmt.Sprint(ep.Interval.Nanoseconds()),
 	)
@@ -109,13 +108,12 @@ func (c *EndpointMetaCache) SetMulti(ctx context.Context, endpoints []domain.End
 
 	pipe := c.client.Pipeline()
 
-	for i := range endpoints {
+	for _, endpoint := range endpoints {
 		pipe.HSet(
-			ctx, metaCacheKey(endpoints[i].ID),
-			"url", endpoints[i].URL,
-			"method", endpoints[i].Method,
-			"expected_code", fmt.Sprint(endpoints[i].ExpectedCode),
-			"interval_ns", fmt.Sprint(endpoints[i].Interval.Nanoseconds()),
+			ctx, metaCacheKey(endpoint.ID),
+			"url", endpoint.URL, "method", endpoint.Method,
+			"expected_code", fmt.Sprint(endpoint.ExpectedCode),
+			"interval_ns", fmt.Sprint(endpoint.Interval.Nanoseconds()),
 		)
 	}
 

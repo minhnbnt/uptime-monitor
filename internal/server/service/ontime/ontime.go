@@ -39,14 +39,18 @@ type serverDayKey struct {
 	Day      time.Time
 }
 
-func (s *OntimeService) BatchGetOntime(ctx context.Context, req []dto.BatchGetOntimeItem) ([]dto.BatchGetOntimeResponse, error) {
+func (s *OntimeService) BatchGetOntimeUntil(ctx context.Context, req []dto.BatchGetOntimeItem, until time.Time) ([]dto.BatchGetOntimeResponse, error) {
 
 	cacheKeys := s.buildCacheKeys(req)
 	resultMap := s.resolveCache(ctx, cacheKeys)
 
-	s.fillMisses(ctx, resultMap, cacheKeys)
+	s.fillMisses(ctx, resultMap, cacheKeys, until)
 
 	return s.buildResponse(req, resultMap), nil
+}
+
+func (s *OntimeService) BatchGetOntime(ctx context.Context, req []dto.BatchGetOntimeItem) ([]dto.BatchGetOntimeResponse, error) {
+	return s.BatchGetOntimeUntil(ctx, req, time.Now())
 }
 
 func (s *OntimeService) ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]dto.ServerWithOntime, int64, error) {
@@ -181,7 +185,7 @@ func (s *OntimeService) resolveCache(ctx context.Context, keys []ontimerepo.Onti
 	return cached
 }
 
-func (s *OntimeService) fillMisses(ctx context.Context, resultMap map[ontimerepo.OntimeCacheKey]float64, cacheKeys []ontimerepo.OntimeCacheKey) {
+func (s *OntimeService) fillMisses(ctx context.Context, resultMap map[ontimerepo.OntimeCacheKey]float64, cacheKeys []ontimerepo.OntimeCacheKey, until time.Time) {
 
 	missKeys := lo.Filter(cacheKeys, func(key ontimerepo.OntimeCacheKey, _ int) bool {
 		_, hit := resultMap[key]
@@ -206,14 +210,13 @@ func (s *OntimeService) fillMisses(ctx context.Context, resultMap map[ontimerepo
 		return serverDayKey{ServerID: row.ServerID, Day: row.Day}
 	})
 
-	now := time.Now()
-	today := utils.TruncateDay(now)
+	today := utils.TruncateDay(until)
 	toCache := make(map[ontimerepo.OntimeCacheKey]float64, len(missKeys))
 
 	for _, key := range missKeys {
 
 		events := groups[serverDayKey{ServerID: key.ServerID, Day: key.Day}]
-		stats := s.calculator.CalculateDayOntime(events, today, now)
+		stats := s.calculator.CalculateDayOntime(events, today, until)
 
 		resultMap[key] = stats
 		toCache[key] = stats

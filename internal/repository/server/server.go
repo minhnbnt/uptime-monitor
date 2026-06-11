@@ -15,6 +15,10 @@ type ServerRepository struct {
 	db *gorm.DB
 }
 
+func NewServerRepository(db *gorm.DB) *ServerRepository {
+	return &ServerRepository{db: db}
+}
+
 func RegisterServerRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ServerRepository, error) {
 		dbWrapper := do.MustInvoke[*config.GORMWrapper](i)

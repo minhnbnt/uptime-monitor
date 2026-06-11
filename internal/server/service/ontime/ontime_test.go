@@ -309,7 +309,7 @@ func TestFillMisses(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		svc.fillMisses(t.Context(), resultMap, keys)
+		svc.fillMisses(t.Context(), resultMap, keys, time.Now())
 
 		if mSetCalled {
 			t.Error("MSet should not be called when there are no misses")
@@ -342,7 +342,7 @@ func TestFillMisses(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		svc.fillMisses(t.Context(), resultMap, keys)
+		svc.fillMisses(t.Context(), resultMap, keys, time.Now())
 
 		if !mSetCalled {
 			t.Error("MSet should be called when there are misses")
@@ -375,7 +375,7 @@ func TestFillMisses(t *testing.T) {
 			logger:                log,
 		}
 
-		svc.fillMisses(t.Context(), resultMap, keys)
+		svc.fillMisses(t.Context(), resultMap, keys, time.Now())
 
 		if !log.WarnCalled {
 			t.Error("expected Warn to be called on DB error")
@@ -405,7 +405,7 @@ func TestFillMisses(t *testing.T) {
 			logger: log,
 		}
 
-		svc.fillMisses(t.Context(), resultMap, keys)
+		svc.fillMisses(t.Context(), resultMap, keys, time.Now())
 
 		if !log.WarnCalled {
 			t.Error("expected Warn to be called on MSet error")
@@ -596,6 +596,97 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 		}
 		if len(got) != 0 {
 			t.Errorf("len(got) = %d, want 0", len(got))
+		}
+	})
+}
+
+// ---------- GetServerWithOntime ----------
+
+func TestOntimeService_GetServerWithOntime(t *testing.T) {
+	dates := utils.Last30Days()
+	oldTime := dates[0].Add(-48 * time.Hour)
+
+	t.Run("success", func(t *testing.T) {
+		server := domain.Server{
+			Model:  gormModel(1, oldTime),
+			Name:   "server-a",
+			Status: domain.StatusActive,
+		}
+
+		cacheResult := make(map[ontimerepo.OntimeCacheKey]float64)
+		for _, d := range dates {
+			cacheResult[ontimerepo.OntimeCacheKey{ServerID: 1, Day: d}] = 100.0
+		}
+
+		svc := &OntimeService{
+			serverRepository: &mockServerRepo{
+				getByIDFn: func(_ context.Context, id uint) (*domain.Server, error) {
+					if id != 1 {
+						t.Errorf("GetByID id = %d, want 1", id)
+					}
+					return &server, nil
+				},
+			},
+			ontimeCacheRepository: &mockOntimeCacheRepo{
+				mGetFn: func(_ context.Context, keys []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error) {
+					result := make(map[ontimerepo.OntimeCacheKey]float64, len(keys))
+					for _, k := range keys {
+						if v, ok := cacheResult[k]; ok {
+							result[k] = v
+						}
+					}
+					return result, nil
+				},
+			},
+			logger: logger.NewMockLogger(),
+		}
+
+		got, err := svc.GetServerWithOntime(t.Context(), 1)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got == nil {
+			t.Fatal("expected non-nil result")
+		}
+		if got.Server.Name != "server-a" {
+			t.Errorf("Server.Name = %q, want server-a", got.Server.Name)
+		}
+		if len(got.OntimeStats) != len(dates) {
+			t.Errorf("len(OntimeStats) = %d, want %d", len(got.OntimeStats), len(dates))
+		}
+	})
+
+	t.Run("server not found", func(t *testing.T) {
+		svc := &OntimeService{
+			serverRepository: &mockServerRepo{
+				getByIDFn: func(_ context.Context, _ uint) (*domain.Server, error) {
+					return nil, errors.New("record not found")
+				},
+			},
+			ontimeCacheRepository: &mockOntimeCacheRepo{},
+			logger:                logger.NewMockLogger(),
+		}
+
+		_, err := svc.GetServerWithOntime(t.Context(), 99)
+		if err == nil {
+			t.Fatal("expected error for non-existent server")
+		}
+	})
+
+	t.Run("repository error", func(t *testing.T) {
+		svc := &OntimeService{
+			serverRepository: &mockServerRepo{
+				getByIDFn: func(_ context.Context, _ uint) (*domain.Server, error) {
+					return nil, errors.New("db error")
+				},
+			},
+			ontimeCacheRepository: &mockOntimeCacheRepo{},
+			logger:                logger.NewMockLogger(),
+		}
+
+		_, err := svc.GetServerWithOntime(t.Context(), 1)
+		if err == nil {
+			t.Fatal("expected error")
 		}
 	})
 }

@@ -128,6 +128,35 @@ func TestServerHandler_GetServer(t *testing.T) {
 		}
 	})
 
+	t.Run("with ontime stats", func(t *testing.T) {
+		h := &ServerHandler{
+			ontimeService: &mockOntimeService{
+				getServerWithOntimeFn: func(_ context.Context, _ uint) (*dto.ServerWithOntime, error) {
+					s := dtoServer(5, "found", now)
+					return &dto.ServerWithOntime{
+						Server: s,
+						OntimeStats: []dto.OntimeStats{
+							{Date: now, Stats: 99.5},
+						},
+					}, nil
+				},
+			},
+		}
+		resp, err := h.GetServer(context.Background(), api.GetServerParams{ID: 5})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if resp.Data.ID != 5 {
+			t.Errorf("ID = %d, want 5", resp.Data.ID)
+		}
+		if len(resp.Data.OntimeStats) != 1 {
+			t.Fatalf("len(OntimeStats) = %d, want 1", len(resp.Data.OntimeStats))
+		}
+		if resp.Data.OntimeStats[0].GetStats() != 99.5 {
+			t.Errorf("stats = %f, want 99.5", resp.Data.OntimeStats[0].GetStats())
+		}
+	})
+
 	t.Run("not found", func(t *testing.T) {
 		h := &ServerHandler{
 			ontimeService: &mockOntimeService{
