@@ -108,15 +108,18 @@ func newService(tb testing.TB) *OntimeService {
 
 	return &OntimeService{
 		serverRepository: serverrepo.NewServerRepository(testDB),
-		ontimeCacheRepository: &mockOntimeCacheRepo{
-			mGetFn: func(_ context.Context, _ []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error) {
-				return make(map[ontimerepo.OntimeCacheKey]float64), nil
+		batcher: &Batcher{
+			serverRepository: serverrepo.NewServerRepository(testDB),
+			ontimeCacheRepository: &mockOntimeCacheRepo{
+				mGetFn: func(_ context.Context, _ []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error) {
+					return make(map[ontimerepo.OntimeCacheKey]float64), nil
+				},
+				mSetFn: func(_ context.Context, _ map[ontimerepo.OntimeCacheKey]float64) error {
+					return nil
+				},
 			},
-			mSetFn: func(_ context.Context, _ map[ontimerepo.OntimeCacheKey]float64) error {
-				return nil
-			},
+			logger: logger.NewMockLogger(),
 		},
-		logger: logger.NewMockLogger(),
 	}
 }
 
