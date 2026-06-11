@@ -9,7 +9,6 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
-	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
 func dtoServer(id uint, name string, t time.Time) dto.Server {
@@ -19,7 +18,6 @@ func dtoServer(id uint, name string, t time.Time) dto.Server {
 func TestServerHandler_ListServers(t *testing.T) {
 
 	now := time.Now()
-	srv := utils.NewPageValidator(30)
 
 	t.Run("success", func(t *testing.T) {
 		h := &ServerHandler{
@@ -31,7 +29,6 @@ func TestServerHandler_ListServers(t *testing.T) {
 					return []dto.Server{dtoServer(1, "s1", now)}, nil
 				},
 			},
-			pageValidator: srv,
 		}
 
 		resp, err := h.ListServers(context.Background(), api.ListServersParams{
@@ -46,20 +43,6 @@ func TestServerHandler_ListServers(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid page", func(t *testing.T) {
-		h := &ServerHandler{pageValidator: srv}
-		_, err := h.ListServers(context.Background(), api.ListServersParams{
-			Page: api.NewOptInt(0),
-		})
-		var statusErr *api.ErrorResponseStatusCode
-		if !errors.As(err, &statusErr) {
-			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
-		}
-		if statusErr.StatusCode != http.StatusBadRequest {
-			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusBadRequest)
-		}
-	})
-
 	t.Run("internal error", func(t *testing.T) {
 		h := &ServerHandler{
 			serverService: &mockServerService{
@@ -67,7 +50,6 @@ func TestServerHandler_ListServers(t *testing.T) {
 					return nil, errors.New("db error")
 				},
 			},
-			pageValidator: srv,
 		}
 		_, err := h.ListServers(context.Background(), api.ListServersParams{})
 		var statusErr *api.ErrorResponseStatusCode
@@ -243,7 +225,6 @@ func TestServerHandler_DeleteServer(t *testing.T) {
 
 func TestServerHandler_ListServersOntime(t *testing.T) {
 	now := time.Now()
-	srv := utils.NewPageValidator(30)
 
 	t.Run("success", func(t *testing.T) {
 		h := &ServerHandler{
@@ -254,7 +235,6 @@ func TestServerHandler_ListServersOntime(t *testing.T) {
 					}, 1, nil
 				},
 			},
-			pageValidator: srv,
 		}
 
 		resp, err := h.ListServersOntime(context.Background(), api.ListServersOntimeParams{
@@ -273,20 +253,6 @@ func TestServerHandler_ListServersOntime(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid page", func(t *testing.T) {
-		h := &ServerHandler{pageValidator: srv}
-		_, err := h.ListServersOntime(context.Background(), api.ListServersOntimeParams{
-			Page: api.NewOptInt(0),
-		})
-		var statusErr *api.ErrorResponseStatusCode
-		if !errors.As(err, &statusErr) {
-			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
-		}
-		if statusErr.StatusCode != http.StatusBadRequest {
-			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusBadRequest)
-		}
-	})
-
 	t.Run("internal error", func(t *testing.T) {
 		h := &ServerHandler{
 			ontimeService: &mockOntimeService{
@@ -294,7 +260,6 @@ func TestServerHandler_ListServersOntime(t *testing.T) {
 					return nil, 0, errors.New("db error")
 				},
 			},
-			pageValidator: srv,
 		}
 		_, err := h.ListServersOntime(context.Background(), api.ListServersOntimeParams{})
 		var statusErr *api.ErrorResponseStatusCode

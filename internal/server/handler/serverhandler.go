@@ -12,13 +12,11 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/server/middleware"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 	ontime "github.com/minhnbnt/uptime-monitor/internal/server/service/ontime"
-	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
 type ServerHandler struct {
 	serverService ServerService
 	ontimeService OntimeService
-	pageValidator *utils.PageValidator
 }
 
 func RegisterServerHandler(i do.Injector) {
@@ -26,7 +24,6 @@ func RegisterServerHandler(i do.Injector) {
 		return &ServerHandler{
 			serverService: do.MustInvoke[*service.ServerService](i),
 			ontimeService: do.MustInvoke[*ontime.OntimeService](i),
-			pageValidator: utils.NewPageValidator(30),
 		}, nil
 	})
 }
@@ -35,13 +32,6 @@ func (h *ServerHandler) ListServers(ctx context.Context, params api.ListServersP
 
 	page := params.Page.Or(1)
 	perPage := params.PerPage.Or(20)
-
-	if err := h.pageValidator.Validate(page, perPage); err != nil {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusBadRequest,
-			Response:   errResponse("INVALID_REQUEST", err.Error()),
-		}
-	}
 
 	userID := middleware.GetUserID(ctx)
 	result, err := h.serverService.ListServers(ctx, userID, page, perPage)
@@ -125,13 +115,6 @@ func (h *ServerHandler) ListServersOntime(ctx context.Context, params api.ListSe
 
 	page := params.Page.Or(1)
 	perPage := params.PerPage.Or(20)
-
-	if err := h.pageValidator.Validate(page, perPage); err != nil {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusBadRequest,
-			Response:   errResponse("INVALID_REQUEST", err.Error()),
-		}
-	}
 
 	userID := middleware.GetUserID(ctx)
 	result, total, err := h.ontimeService.ListServersWithOntime(ctx, userID, page, perPage)
