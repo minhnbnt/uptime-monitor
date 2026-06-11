@@ -1,4 +1,4 @@
-package service
+package ontime
 
 import (
 	"context"
@@ -8,16 +8,18 @@ import (
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 
+	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
 type OntimeService struct {
-	serverRepository      ServerRepository
-	ontimeCacheRepository OntimeCacheRepository
+	serverRepository      service.ServerRepository
+	ontimeCacheRepository service.OntimeCacheRepository
 	logger                logger.Logger
 	calculator            OntimeCalculator
 }
@@ -49,9 +51,7 @@ func (s *OntimeService) BatchGetOntime(ctx context.Context, req []dto.BatchGetOn
 
 func (s *OntimeService) ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]dto.ServerWithOntime, int64, error) {
 
-	dates := utils.Last30Days()
 	servers, err := s.serverRepository.List(ctx, createdByID, perPage, (page-1)*perPage)
-
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to list servers: %w", err)
 	}
@@ -61,30 +61,66 @@ func (s *OntimeService) ListServersWithOntime(ctx context.Context, createdByID u
 		return nil, 0, fmt.Errorf("failed to count servers: %w", err)
 	}
 
+	ontimeMap, err := s.getServersOntime(ctx, servers)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	out := lo.Map(servers, func(sv domain.Server, _ int) dto.ServerWithOntime {
+		return dto.ServerWithOntime{
+			Server:      dto.ServerFromDomain(sv),
+			OntimeStats: ontimeMap[sv.ID],
+		}
+	})
+
+	return out, total, nil
+}
+
+func (s *OntimeService) GetServerOntime(ctx context.Context, server domain.Server) ([]dto.OntimeStats, error) {
+
+	ontimeMap, err := s.getServersOntime(ctx, []domain.Server{server})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return ontimeMap[server.ID], nil
+}
+
+func (s *OntimeService) getServersOntime(ctx context.Context, servers []domain.Server) (map[uint][]dto.OntimeStats, error) {
+
+	dates := utils.Last30Days()
+
 	items := make([]dto.BatchGetOntimeItem, 0, len(servers)*len(dates))
 	serverDates := make(map[uint][]time.Time, len(servers))
 
 	for _, sv := range servers {
+
 		created := utils.TruncateDay(sv.CreatedAt)
-		for _, d := range dates {
-			if d.Before(created) {
-				continue
-			}
-			items = append(items, dto.BatchGetOntimeItem{
-				ServerID: sv.ID,
-				Date:     d,
-			})
-			serverDates[sv.ID] = append(serverDates[sv.ID], d)
-		}
+		dates := lo.Filter(dates, func(d time.Time, _ int) bool {
+			return !d.Before(created)
+		})
+
+		newItems := lo.Map(dates, func(d time.Time, _ int) dto.BatchGetOntimeItem {
+			return dto.BatchGetOntimeItem{ServerID: sv.ID, Date: d}
+		})
+
+		items = append(items, newItems...)
+		serverDates[sv.ID] = dates
+	}
+
+	if len(items) == 0 {
+		return make(map[uint][]dto.OntimeStats), nil
 	}
 
 	results, err := s.BatchGetOntime(ctx, items)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to batch get ontime: %w", err)
+		return nil, fmt.Errorf("failed to batch get ontime: %w", err)
 	}
 
 	lookup := buildOntimeLookup(results)
-	out := make([]dto.ServerWithOntime, 0, len(servers))
+
+	out := make(map[uint][]dto.OntimeStats, len(servers))
 	for _, sv := range servers {
 
 		stats, ok := lookup[sv.ID]
@@ -92,17 +128,12 @@ func (s *OntimeService) ListServersWithOntime(ctx context.Context, createdByID u
 			stats = make(map[time.Time]float64)
 		}
 
-		otStats := lo.Map(serverDates[sv.ID], func(d time.Time, _ int) dto.OntimeStats {
+		out[sv.ID] = lo.Map(serverDates[sv.ID], func(d time.Time, _ int) dto.OntimeStats {
 			return dto.OntimeStats{Date: d, Stats: stats[d]}
-		})
-
-		out = append(out, dto.ServerWithOntime{
-			Server:      toDTOServer(sv),
-			OntimeStats: otStats,
 		})
 	}
 
-	return out, total, nil
+	return out, nil
 }
 
 func buildOntimeLookup(results []dto.BatchGetOntimeResponse) map[uint]map[time.Time]float64 {
@@ -145,8 +176,8 @@ func (s *OntimeService) resolveCache(ctx context.Context, keys []ontimerepo.Onti
 func (s *OntimeService) fillMisses(ctx context.Context, resultMap map[ontimerepo.OntimeCacheKey]float64, cacheKeys []ontimerepo.OntimeCacheKey) {
 
 	missKeys := lo.Filter(cacheKeys, func(key ontimerepo.OntimeCacheKey, _ int) bool {
-		_, has := resultMap[key]
-		return !has
+		_, hit := resultMap[key]
+		return !hit
 	})
 
 	if len(missKeys) == 0 {

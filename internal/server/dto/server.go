@@ -15,6 +15,20 @@ type Endpoint struct {
 	ExpectedCode int
 }
 
+func EndpointFromDomain(e *domain.Endpoint) *Endpoint {
+	if e == nil {
+		return nil
+	}
+	return &Endpoint{
+		URL:          e.URL,
+		Status:       domain.Status(e.Status),
+		Interval:     e.Interval,
+		Timeout:      e.Timeout,
+		Method:       e.Method,
+		ExpectedCode: e.ExpectedCode,
+	}
+}
+
 type Server struct {
 	ID        uint
 	Name      string
@@ -22,6 +36,17 @@ type Server struct {
 	Endpoint  *Endpoint
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+func ServerFromDomain(s domain.Server) Server {
+	return Server{
+		ID:        s.ID,
+		Name:      s.Name,
+		Status:    s.Status,
+		Endpoint:  EndpointFromDomain(s.Endpoint),
+		CreatedAt: s.CreatedAt,
+		UpdatedAt: s.UpdatedAt,
+	}
 }
 
 type CheckMethodType string

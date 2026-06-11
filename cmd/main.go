@@ -37,6 +37,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/server/middleware"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 	authservice "github.com/minhnbnt/uptime-monitor/internal/server/service/auth"
+	ontime "github.com/minhnbnt/uptime-monitor/internal/server/service/ontime"
 )
 
 func main() {
@@ -84,7 +85,7 @@ func main() {
 
 		service.RegisterServerService,
 		service.RegisterEndpointService,
-		service.RegisterOntimeService,
+		ontime.RegisterOntimeService,
 		authservice.RegisterAuthService,
 		authservice.RegisterTokenGenerator,
 		authservice.RegisterTokenValidator,

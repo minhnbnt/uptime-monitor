@@ -27,31 +27,6 @@ func RegisterServerService(i do.Injector) {
 	})
 }
 
-func toDTOEndpoint(e *domain.Endpoint) *dto.Endpoint {
-	if e == nil {
-		return nil
-	}
-	return &dto.Endpoint{
-		URL:          e.URL,
-		Status:       domain.Status(e.Status),
-		Interval:     e.Interval,
-		Timeout:      e.Timeout,
-		Method:       e.Method,
-		ExpectedCode: e.ExpectedCode,
-	}
-}
-
-func toDTOServer(s domain.Server) dto.Server {
-	return dto.Server{
-		ID:        s.ID,
-		Name:      s.Name,
-		Status:    s.Status,
-		Endpoint:  toDTOEndpoint(s.Endpoint),
-		CreatedAt: s.CreatedAt,
-		UpdatedAt: s.UpdatedAt,
-	}
-}
-
 func (ss *ServerService) ListServers(ctx context.Context, createdByID uint, page, perPage int) ([]dto.Server, error) {
 
 	limit, offset := perPage, (page-1)*perPage
@@ -62,7 +37,7 @@ func (ss *ServerService) ListServers(ctx context.Context, createdByID uint, page
 	}
 
 	return lo.Map(result, func(item domain.Server, index int) dto.Server {
-		return toDTOServer(item)
+		return dto.ServerFromDomain(item)
 	}), nil
 }
 
@@ -78,7 +53,7 @@ func (ss *ServerService) CreateServer(ctx context.Context, req dto.CreateServerR
 		return nil, fmt.Errorf("failed to create server: %w", err)
 	}
 
-	result := toDTOServer(server)
+	result := dto.ServerFromDomain(server)
 	return &result, nil
 }
 
@@ -89,7 +64,7 @@ func (ss *ServerService) GetServer(ctx context.Context, id uint) (*dto.Server, e
 		return nil, fmt.Errorf("failed to get server: %w", err)
 	}
 
-	result := toDTOServer(*server)
+	result := dto.ServerFromDomain(*server)
 	return &result, nil
 }
 
@@ -112,7 +87,7 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uint, req dto.Upda
 		return nil, fmt.Errorf("failed to update server: %w", err)
 	}
 
-	result := toDTOServer(*server)
+	result := dto.ServerFromDomain(*server)
 	return &result, nil
 }
 

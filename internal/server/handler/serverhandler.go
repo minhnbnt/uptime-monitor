@@ -11,6 +11,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/server/middleware"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
+	ontime "github.com/minhnbnt/uptime-monitor/internal/server/service/ontime"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
@@ -24,7 +25,7 @@ func RegisterServerHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ServerHandler, error) {
 		return &ServerHandler{
 			serverService: do.MustInvoke[*service.ServerService](i),
-			ontimeService: do.MustInvoke[*service.OntimeService](i),
+			ontimeService: do.MustInvoke[*ontime.OntimeService](i),
 			pageValidator: utils.NewPageValidator(30),
 		}, nil
 	})
