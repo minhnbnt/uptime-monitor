@@ -48,3 +48,16 @@ type SetCheckMethodRequest struct {
 	Timeout      time.Duration
 	ExpectedCode int
 }
+
+type TestEndpointRequest struct {
+	URL          string
+	Method       string
+	Timeout      time.Duration
+	ExpectedCode int
+}
+
+type TestEndpointResponse struct {
+	Success    bool
+	StatusCode int
+	Error      *string
+}

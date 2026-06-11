@@ -56,3 +56,35 @@ func (h *EndpointHandler) SetCheckMethod(
 
 	return &api.ServerResponse{Data: toAPIServer(server)}, nil
 }
+
+func (h *EndpointHandler) TestEndpoint(	ctx context.Context, req *api.TestEndpointRequest,) (*api.TestEndpointResponse, error) {
+
+	timeout := req.Timeout.Or(10)
+	expectedCode := req.ExpectedCode.Or(200)
+
+	dtoReq := dto.TestEndpointRequest{
+		URL:          req.URL.String(),
+		Method:       string(req.Method),
+		Timeout:      time.Duration(timeout) * time.Second,
+		ExpectedCode: expectedCode,
+	}
+
+	result, err := h.endpointService.TestEndpoint(ctx, dtoReq)
+	if err != nil {
+		return nil, &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusInternalServerError,
+			Response:   errResponse("INTERNAL_ERROR", err.Error()),
+		}
+	}
+
+	resp := &api.TestEndpointResponse{
+		Success:    result.Success,
+		StatusCode: result.StatusCode,
+	}
+
+	if result.Error != nil {
+		resp.Error = api.NewOptString(*result.Error)
+	}
+
+	return resp, nil
+}

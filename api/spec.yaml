@@ -17,6 +17,8 @@ paths:
     $ref: "./paths/servers.yaml#/servers-id"
   /api/v1/servers/{id}/check_method:
     $ref: "./paths/servers.yaml#/check-method"
+  /api/v1/test-endpoint:
+    $ref: "./paths/servers.yaml#/test-endpoint"
   /api/v1/auth/register:
     $ref: "./paths/auth.yaml#/register"
   /api/v1/auth/login:
@@ -58,6 +60,10 @@ components:
       $ref: "./schemas/endpoint.yaml#/Endpoint"
     SetCheckMethodRequest:
       $ref: "./schemas/endpoint.yaml#/SetCheckMethodRequest"
+    TestEndpointRequest:
+      $ref: "./schemas/endpoint.yaml#/TestEndpointRequest"
+    TestEndpointResponse:
+      $ref: "./schemas/endpoint.yaml#/TestEndpointResponse"
 
     OntimeStats:
       $ref: "./schemas/ontime.yaml#/OntimeStats"

@@ -59,8 +59,13 @@ func (m *mockOntimeService) ListServersWithOntime(ctx context.Context, createdBy
 
 type mockEndpointService struct {
 	setCheckMethodFn func(ctx context.Context, serverID uint, req dto.SetCheckMethodRequest) error
+	testEndpointFn   func(ctx context.Context, req dto.TestEndpointRequest) (*dto.TestEndpointResponse, error)
 }
 
 func (m *mockEndpointService) SetCheckMethod(ctx context.Context, serverID uint, req dto.SetCheckMethodRequest) error {
 	return m.setCheckMethodFn(ctx, serverID, req)
+}
+
+func (m *mockEndpointService) TestEndpoint(ctx context.Context, req dto.TestEndpointRequest) (*dto.TestEndpointResponse, error) {
+	return m.testEndpointFn(ctx, req)
 }

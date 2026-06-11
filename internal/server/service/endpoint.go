@@ -7,18 +7,21 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrastructure"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 )
 
 type EndpointService struct {
 	endpointRepository EndpointRepository
+	pingWorker         *infra.PingWorker
 }
 
 func RegisterEndpointService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointService, error) {
 		return &EndpointService{
 			endpointRepository: do.MustInvoke[*serverrepo.EndpointRepository](i),
+			pingWorker:         do.MustInvoke[*infra.PingWorker](i),
 		}, nil
 	})
 }
@@ -44,4 +47,25 @@ func (es *EndpointService) SetCheckMethod(ctx context.Context, serverID uint, re
 	}
 
 	return nil
+}
+
+func (es *EndpointService) TestEndpoint(ctx context.Context, req dto.TestEndpointRequest) (*dto.TestEndpointResponse, error) {
+
+	pingCtx, cancel := context.WithTimeout(ctx, req.Timeout)
+	defer cancel()
+
+	statusCode, err := es.pingWorker.Ping(pingCtx, req.Method, req.URL)
+	if err != nil {
+		errMsg := err.Error()
+		return &dto.TestEndpointResponse{
+			Success:    false,
+			StatusCode: 0,
+			Error:      &errMsg,
+		}, nil
+	}
+
+	return &dto.TestEndpointResponse{
+		Success:    statusCode == req.ExpectedCode,
+		StatusCode: statusCode,
+	}, nil
 }

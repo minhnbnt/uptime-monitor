@@ -20,6 +20,7 @@ type OntimeService interface {
 
 type EndpointService interface {
 	SetCheckMethod(ctx context.Context, serverID uint, req dto.SetCheckMethodRequest) error
+	TestEndpoint(ctx context.Context, req dto.TestEndpointRequest) (*dto.TestEndpointResponse, error)
 }
 
 type AuthService interface {

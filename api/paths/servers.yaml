@@ -188,6 +188,35 @@ servers-id:
             schema:
               $ref: "../schemas/common.yaml#/ErrorResponse"
 
+test-endpoint:
+  post:
+    summary: Test connection to an endpoint
+    operationId: TestEndpoint
+    x-ogen-operation-group: Endpoint
+    tags:
+      - servers
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/endpoint.yaml#/TestEndpointRequest"
+    responses:
+      "200":
+        description: Test result
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/endpoint.yaml#/TestEndpointResponse"
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
 check-method:
   put:
     summary: Set check method for a server
