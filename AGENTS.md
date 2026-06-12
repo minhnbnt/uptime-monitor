@@ -6,9 +6,10 @@
 make dev              # go tool air hot-reload (build & run in Docker)
 make build            # production build (entrypoint: ./app)
 make generate         # ogen from api/spec.yaml via .ogen.yml
-make test             # run all unit tests
+make test             # run all unit tests (skip integration tests via -short)
 make test-cover       # unit tests with coverage
 make test-cover-html  # open coverage report in browser
+make test-integration # run all tests including integration (needs Docker)
 go build ./...        # compile check
 make format           # auto-fix with golangci-lint (gofmt, gci, govet, ...)
 golangci-lint run ./...  # lint check only

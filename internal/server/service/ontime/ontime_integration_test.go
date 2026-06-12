@@ -1,9 +1,8 @@
-//go:build integration
-
 package ontime
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"testing"
@@ -27,37 +26,40 @@ import (
 var testDB *gorm.DB
 
 func TestMain(m *testing.M) {
-	ctx := context.Background()
+	flag.Parse()
+	if !testing.Short() {
+		ctx := context.Background()
 
-	container, dsn := startPostgres(ctx)
-	defer container.Terminate(ctx)
+		container, dsn := startPostgres(ctx)
+		defer func() { _ = container.Terminate(ctx) }()
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "gorm open: %v\n", err)
-		os.Exit(1)
+		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "gorm open: %v\n", err)
+			os.Exit(1)
+		}
+
+		schemas := []any{
+			&domain.User{},
+			&domain.Server{},
+			&domain.Endpoint{},
+			&domain.ServerEvent{},
+		}
+		if err := db.AutoMigrate(schemas...); err != nil {
+			fmt.Fprintf(os.Stderr, "auto-migrate: %v\n", err)
+			os.Exit(1)
+		}
+
+		testDB = db
+		// Seed a default user so servers can reference it via CreatedByID.
+		testDB.Create(&domain.User{
+			Model:    gorm.Model{ID: 1},
+			Email:    "test@test.com",
+			Username: "test",
+			Password: "x",
+			Name:     "Test",
+		})
 	}
-
-	schemas := []any{
-		&domain.User{},
-		&domain.Server{},
-		&domain.Endpoint{},
-		&domain.ServerEvent{},
-	}
-	if err := db.AutoMigrate(schemas...); err != nil {
-		fmt.Fprintf(os.Stderr, "auto-migrate: %v\n", err)
-		os.Exit(1)
-	}
-
-	testDB = db
-	// Seed a default user so servers can reference it via CreatedByID.
-	testDB.Create(&domain.User{
-		Model:    gorm.Model{ID: 1},
-		Email:    "test@test.com",
-		Username: "test",
-		Password: "x",
-		Name:     "Test",
-	})
 	os.Exit(m.Run())
 }
 
@@ -106,6 +108,11 @@ func startPostgres(ctx context.Context) (testcontainers.Container, string) {
 func newService(tb testing.TB) *OntimeService {
 	tb.Helper()
 
+	if testing.Short() {
+		tb.Skip("skipping integration test")
+		return nil
+	}
+
 	return &OntimeService{
 		serverRepository: serverrepo.NewServerRepository(testDB),
 		batcher: &Batcher{
@@ -125,6 +132,9 @@ func newService(tb testing.TB) *OntimeService {
 
 func truncateTables(tb testing.TB) {
 	tb.Helper()
+	if testing.Short() {
+		tb.Skip("skipping integration test")
+	}
 	for _, tbl := range []string{"server_events", "endpoints", "servers"} {
 		testDB.Exec(fmt.Sprintf("TRUNCATE TABLE %s CASCADE", tbl))
 	}
@@ -174,7 +184,7 @@ func TestIntegration_BatchGetOntime_CacheMiss(t *testing.T) {
 	svc := newService(t)
 	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: now}}
 
-	results, err := svc.BatchGetOntime(t.Context(), req)
+	results, err := svc.batcher.BatchGetOntime(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -200,7 +210,7 @@ func TestIntegration_BatchGetOntime_AllOn(t *testing.T) {
 	svc := newService(t)
 	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: now}}
 
-	results, err := svc.BatchGetOntime(t.Context(), req)
+	results, err := svc.batcher.BatchGetOntime(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -220,7 +230,7 @@ func TestIntegration_BatchGetOntime_AllOff(t *testing.T) {
 	svc := newService(t)
 	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: now}}
 
-	results, err := svc.BatchGetOntime(t.Context(), req)
+	results, err := svc.batcher.BatchGetOntime(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -239,7 +249,7 @@ func TestIntegration_BatchGetOntime_NoEvents(t *testing.T) {
 	svc := newService(t)
 	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: now}}
 
-	results, err := svc.BatchGetOntime(t.Context(), req)
+	results, err := svc.batcher.BatchGetOntime(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -255,7 +265,7 @@ func TestIntegration_BatchGetOntime_EmptyRequest(t *testing.T) {
 	truncateTables(t)
 
 	svc := newService(t)
-	results, err := svc.BatchGetOntime(t.Context(), nil)
+	results, err := svc.batcher.BatchGetOntime(t.Context(), nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -365,7 +375,7 @@ func TestIntegration_BatchGetOntime_URLSpecialChars(t *testing.T) {
 		{ServerID: 2, Date: now},
 	}
 
-	results, err := svc.BatchGetOntime(t.Context(), req)
+	results, err := svc.batcher.BatchGetOntime(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -392,7 +402,7 @@ func TestIntegration_BatchGetOntime_Today(t *testing.T) {
 	svc := newService(t)
 	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: today}}
 
-	results, err := svc.BatchGetOntime(t.Context(), req)
+	results, err := svc.batcher.BatchGetOntime(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

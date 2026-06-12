@@ -1,5 +1,3 @@
-//go:build integration
-
 package ontime
 
 import (
@@ -27,7 +25,7 @@ func TestIntegration_BatchGetOntime_LowerboundON_NoDayEvents(t *testing.T) {
 	svc := newService(t)
 	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: queryDate}}
 
-	results, err := svc.BatchGetOntime(t.Context(), req)
+	results, err := svc.batcher.BatchGetOntime(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -54,7 +52,7 @@ func TestIntegration_BatchGetOntime_LowerboundOFF_NoDayEvents(t *testing.T) {
 	svc := newService(t)
 	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: queryDate}}
 
-	results, err := svc.BatchGetOntime(t.Context(), req)
+	results, err := svc.batcher.BatchGetOntime(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -93,7 +91,7 @@ func TestIntegration_BatchGetOntime_TodaySingleON_PrevDayOFF(t *testing.T) {
 	svc := newService(t)
 	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: today}}
 
-	results, err := svc.BatchGetOntimeUntil(t.Context(), req, now)
+	results, err := svc.batcher.BatchGetOntimeUntil(t.Context(), req, now)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -136,7 +134,7 @@ func TestIntegration_BatchGetOntime_Today_ON_to_OFF(t *testing.T) {
 	svc := newService(t)
 	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: today}}
 
-	results, err := svc.BatchGetOntimeUntil(t.Context(), req, now)
+	results, err := svc.batcher.BatchGetOntimeUntil(t.Context(), req, now)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -171,7 +169,7 @@ func TestIntegration_BatchGetOntime_NoEndpoint(t *testing.T) {
 	svc := newService(t)
 	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: now}}
 
-	results, err := svc.BatchGetOntime(t.Context(), req)
+	results, err := svc.batcher.BatchGetOntime(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -206,7 +204,7 @@ func TestIntegration_BatchGetOntime_SoftDeletedEndpoint(t *testing.T) {
 	svc := newService(t)
 	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: now}}
 
-	results, err := svc.BatchGetOntime(t.Context(), req)
+	results, err := svc.batcher.BatchGetOntime(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -238,7 +236,7 @@ func TestIntegration_BatchGetOntime_ServerCreatedToday(t *testing.T) {
 	svc := newService(t)
 	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: today}}
 
-	results, err := svc.BatchGetOntime(t.Context(), req)
+	results, err := svc.batcher.BatchGetOntime(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -281,7 +279,7 @@ func TestIntegration_BatchGetOntime_MultipleServers(t *testing.T) {
 		{ServerID: 3, Date: now},
 	}
 
-	results, err := svc.BatchGetOntime(t.Context(), req)
+	results, err := svc.batcher.BatchGetOntime(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -338,7 +336,7 @@ func TestIntegration_BatchGetOntime_MultipleEndpointsOneActive(t *testing.T) {
 	svc := newService(t)
 	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: now}}
 
-	results, err := svc.BatchGetOntime(t.Context(), req)
+	results, err := svc.batcher.BatchGetOntime(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -6,6 +6,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 	"github.com/samber/lo/it"
 
@@ -16,6 +17,17 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
+
+func RegisterBatcher(i do.Injector) {
+	do.Provide(i, func(i do.Injector) (*Batcher, error) {
+		return &Batcher{
+			serverRepository:      do.MustInvoke[service.ServerRepository](i),
+			ontimeCacheRepository: do.MustInvoke[service.OntimeCacheRepository](i),
+			logger:                do.MustInvoke[logger.Logger](i),
+			calculator:            OntimeCalculator{},
+		}, nil
+	})
+}
 
 type Batcher struct {
 	serverRepository      service.ServerRepository

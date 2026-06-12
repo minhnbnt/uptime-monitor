@@ -85,6 +85,7 @@ func main() {
 
 		service.RegisterServerService,
 		service.RegisterEndpointService,
+		ontime.RegisterBatcher,
 		ontime.RegisterOntimeService,
 		authservice.RegisterAuthService,
 		authservice.RegisterTokenGenerator,

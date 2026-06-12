@@ -11,9 +11,6 @@ import (
 	"github.com/samber/lo/it"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
-	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
@@ -26,24 +23,11 @@ type OntimeService struct {
 
 func RegisterOntimeService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*OntimeService, error) {
-		return newOntimeService(
-			do.MustInvoke[*serverrepo.ServerRepository](i),
-			do.MustInvoke[*ontimerepo.OntimeCacheRepository](i),
-			do.MustInvoke[logger.Logger](i),
-		), nil
+		return &OntimeService{
+			serverRepository: do.MustInvoke[service.ServerRepository](i),
+			batcher:          do.MustInvoke[*Batcher](i),
+		}, nil
 	})
-}
-
-func newOntimeService(serverRepo *serverrepo.ServerRepository, cacheRepo *ontimerepo.OntimeCacheRepository, log logger.Logger) *OntimeService {
-	return &OntimeService{
-		serverRepository: serverRepo,
-		batcher: &Batcher{
-			serverRepository:      serverRepo,
-			ontimeCacheRepository: cacheRepo,
-			logger:                log,
-			calculator:            OntimeCalculator{},
-		},
-	}
 }
 
 type serverDayKey struct {
