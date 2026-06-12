@@ -3,9 +3,11 @@ package ontime
 import (
 	"context"
 	"maps"
+	"slices"
 	"time"
 
 	"github.com/samber/lo"
+	"github.com/samber/lo/it"
 
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
@@ -52,11 +54,14 @@ func (b *Batcher) BatchGetOntime(ctx context.Context, req []dto.BatchGetOntimeIt
 
 func (b *Batcher) buildCacheKeys(req []dto.BatchGetOntimeItem) []ontimerepo.OntimeCacheKey {
 
-	keys := lo.Map(req, func(item dto.BatchGetOntimeItem, _ int) ontimerepo.OntimeCacheKey {
+	iter := slices.Values(req)
+
+	keys := it.Map(iter, func(item dto.BatchGetOntimeItem) ontimerepo.OntimeCacheKey {
 		return ontimerepo.OntimeCacheKey{ServerID: item.ServerID, Day: utils.TruncateDay(item.Date)}
 	})
 
-	return lo.Uniq(keys)
+	keys = it.Uniq(keys)
+	return slices.Collect(keys)
 }
 
 func (b *Batcher) resolveCache(ctx context.Context, keys []ontimerepo.OntimeCacheKey) map[ontimerepo.OntimeCacheKey]float64 {

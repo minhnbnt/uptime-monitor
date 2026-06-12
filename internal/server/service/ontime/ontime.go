@@ -3,10 +3,12 @@ package ontime
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
+	"github.com/samber/lo/it"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
@@ -99,7 +101,7 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []domain.S
 
 	dates := utils.Last30Days()
 
-	items := make([]dto.BatchGetOntimeItem, 0)
+	items := make([]dto.BatchGetOntimeItem, 0, len(servers)*len(dates))
 	serverDates := make(map[uint][]time.Time, len(servers))
 
 	for _, sv := range servers {
@@ -109,11 +111,13 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []domain.S
 			return !d.Before(created)
 		})
 
-		newItems := lo.Map(dates, func(d time.Time, _ int) dto.BatchGetOntimeItem {
+		datesIter := slices.Values(dates)
+
+		newItems := it.Map(datesIter, func(d time.Time) dto.BatchGetOntimeItem {
 			return dto.BatchGetOntimeItem{ServerID: sv.ID, Date: d}
 		})
 
-		items = append(items, newItems...)
+		items = slices.AppendSeq(items, newItems)
 		serverDates[sv.ID] = dates
 	}
 
