@@ -14,6 +14,7 @@ type CompositeHandler struct {
 	*handler.ServerHandler
 	*handler.EndpointHandler
 	*handler.AuthHandler
+	*handler.ImportHandler
 }
 
 func RegisterCompositeHandler(i do.Injector) {
@@ -22,6 +23,7 @@ func RegisterCompositeHandler(i do.Injector) {
 			ServerHandler:   do.MustInvoke[*handler.ServerHandler](i),
 			EndpointHandler: do.MustInvoke[*handler.EndpointHandler](i),
 			AuthHandler:     do.MustInvoke[*handler.AuthHandler](i),
+			ImportHandler:   do.MustInvoke[*handler.ImportHandler](i),
 		}, nil
 	})
 }

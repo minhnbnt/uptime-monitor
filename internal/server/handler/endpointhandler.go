@@ -30,6 +30,13 @@ func (h *EndpointHandler) SetCheckMethod(
 	ctx context.Context, req *api.SetCheckMethodRequest, params api.SetCheckMethodParams,
 ) (*api.ServerResponse, error) {
 
+	if req.Method == api.CheckMethodTypePush {
+		return nil, &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusNotImplemented,
+			Response:   errResponse("NOT_IMPLEMENTED", "Push check method is not yet implemented"),
+		}
+	}
+
 	dtoReq := dto.SetCheckMethodRequest{
 		Method:       dto.CheckMethodType(req.Method),
 		HTTPMethod:   string(req.Endpoint.Method),

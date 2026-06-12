@@ -251,3 +251,60 @@ check-method:
           application/json:
             schema:
               $ref: "../schemas/common.yaml#/ErrorResponse"
+
+import-servers:
+  post:
+    summary: Import servers from Excel file
+    operationId: ImportServers
+    x-ogen-operation-group: Import
+    tags:
+      - servers
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            required:
+              - file
+            properties:
+              file:
+                type: string
+                format: binary
+    responses:
+      "200":
+        description: Import result
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/import.yaml#/ImportServersResponse"
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+  get:
+    summary: Download Excel import template
+    operationId: DownloadImportTemplate
+    x-ogen-operation-group: Import
+    tags:
+      - servers
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: Excel template file
+        content:
+          application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+            schema:
+              type: string
+              format: binary
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"

@@ -85,6 +85,7 @@ func main() {
 
 		service.RegisterServerService,
 		service.RegisterEndpointService,
+		service.RegisterImportService,
 		ontime.RegisterBatcher,
 		ontime.RegisterOntimeService,
 		authservice.RegisterAuthService,
@@ -96,6 +97,7 @@ func main() {
 		handler.RegisterServerHandler,
 		handler.RegisterEndpointHandler,
 		handler.RegisterAuthHandler,
+		handler.RegisterImportHandler,
 
 		middleware.RegisterAuthMiddleware,
 

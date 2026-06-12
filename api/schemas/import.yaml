@@ -1,0 +1,17 @@
+ImportServersResponse:
+  type: object
+  properties:
+    imported:
+      type: integer
+    errors:
+      type: array
+      items:
+        $ref: '#/ImportServerRowError'
+
+ImportServerRowError:
+  type: object
+  properties:
+    row:
+      type: integer
+    message:
+      type: string

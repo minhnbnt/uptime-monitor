@@ -17,6 +17,8 @@ paths:
     $ref: "./paths/servers.yaml#/servers-id"
   /api/v1/servers/{id}/check_method:
     $ref: "./paths/servers.yaml#/check-method"
+  /api/v1/servers/import:
+    $ref: "./paths/servers.yaml#/import-servers"
   /api/v1/test-endpoint:
     $ref: "./paths/servers.yaml#/test-endpoint"
   /api/v1/auth/register:
