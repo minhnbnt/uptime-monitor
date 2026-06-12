@@ -4,55 +4,99 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/samber/do/v2"
-	"github.com/xuri/excelize/v2"
+	"github.com/samber/lo"
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
+	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
 )
 
+type ExcelGenerator interface {
+	GenerateTemplate(w io.Writer) error
+	ParseImportFile(file io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error)
+}
+
 type ImportService struct {
-	db *gorm.DB
+	db             *gorm.DB
+	excelGenerator ExcelGenerator
 }
 
 func RegisterImportService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ImportService, error) {
 		dbWrapper := do.MustInvoke[*config.GORMWrapper](i)
-		return &ImportService{db: dbWrapper.GetDB()}, nil
+		return &ImportService{
+			db:             dbWrapper.GetDB(),
+			excelGenerator: do.MustInvoke[*infrastructure.ExcelGenerator](i),
+		}, nil
 	})
 }
 
 func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.Reader) (*dto.ImportResult, error) {
-	return &dto.ImportResult{}, fmt.Errorf("import not yet implemented")
+	rows, rowErrors, err := s.excelGenerator.ParseImportFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(rows) == 0 {
+		return &dto.ImportResult{Errors: rowErrors}, nil
+	}
+
+	servers := lo.Map(rows, func(r dto.ImportRow, _ int) domain.Server {
+		return domain.Server{
+			Name:        r.Name,
+			Status:      domain.StatusActive,
+			CreatedByID: userID,
+		}
+	})
+
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+
+		for _, chunk := range lo.Chunk(servers, 100) {
+			if err := tx.Create(&chunk).Error; err != nil {
+				return fmt.Errorf("failed to batch create servers: %w", err)
+			}
+		}
+
+		var endpoints []domain.Endpoint
+		for i, s := range servers {
+			if rows[i].URL == "" {
+				continue
+			}
+			endpoints = append(endpoints, domain.Endpoint{
+				ServerID:     s.ID,
+				URL:          rows[i].URL,
+				Status:       domain.StatusActive,
+				Interval:     time.Duration(rows[i].Interval) * time.Second,
+				Timeout:      time.Duration(rows[i].Timeout) * time.Second,
+				Method:       rows[i].Method,
+				ExpectedCode: rows[i].ExpectedCode,
+			})
+		}
+
+		for _, chunk := range lo.Chunk(endpoints, 100) {
+			if err := tx.Create(&chunk).Error; err != nil {
+				return fmt.Errorf("failed to batch create endpoints: %w", err)
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.ImportResult{
+		Imported: len(rows),
+		Errors:   rowErrors,
+	}, nil
 }
 
 func (s *ImportService) GenerateTemplate(w io.Writer) error {
-	xl := excelize.NewFile()
-	defer xl.Close()
-
-	headers := []string{"server_name", "url", "method", "interval_sec", "timeout_sec", "expected_code"}
-	for i, h := range headers {
-		cell, err := excelize.CoordinatesToCellName(i+1, 1)
-		if err != nil {
-			return fmt.Errorf("failed to create cell name: %w", err)
-		}
-		if err := xl.SetCellValue("Sheet1", cell, h); err != nil {
-			return fmt.Errorf("failed to set cell value: %w", err)
-		}
-	}
-
-	if err := xl.SetCellValue("Sheet1", "A2", "My Server"); err != nil {
-		return fmt.Errorf("failed to set cell value: %w", err)
-	}
-	if err := xl.SetCellValue("Sheet1", "B2", "https://example.com/health"); err != nil {
-		return fmt.Errorf("failed to set cell value: %w", err)
-	}
-
-	if err := xl.Write(w); err != nil {
-		return fmt.Errorf("failed to write Excel file: %w", err)
-	}
-
-	return nil
+	return s.excelGenerator.GenerateTemplate(w)
 }

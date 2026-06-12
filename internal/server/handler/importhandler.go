@@ -33,8 +33,8 @@ func (h *ImportHandler) ImportServers(ctx context.Context, req *api.ImportServer
 	result, err := h.importService.ImportServers(ctx, userID, req.File.File)
 	if err != nil {
 		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusNotImplemented,
-			Response:   errResponse("NOT_IMPLEMENTED", err.Error()),
+			StatusCode: http.StatusBadRequest,
+			Response:   errResponse("IMPORT_FAILED", err.Error()),
 		}
 	}
 
@@ -53,15 +53,14 @@ func (h *ImportHandler) ImportServers(ctx context.Context, req *api.ImportServer
 
 func (h *ImportHandler) DownloadImportTemplate(ctx context.Context) (api.DownloadImportTemplateOK, error) {
 
-	var buf bytes.Buffer
-	if err := h.importService.GenerateTemplate(&buf); err != nil {
+	buf := new(bytes.Buffer)
+
+	if err := h.importService.GenerateTemplate(buf); err != nil {
 		return api.DownloadImportTemplateOK{}, &api.ErrorResponseStatusCode{
 			StatusCode: http.StatusInternalServerError,
 			Response:   errResponse("TEMPLATE_ERROR", err.Error()),
 		}
 	}
 
-	return api.DownloadImportTemplateOK{
-		Data: bytes.NewReader(buf.Bytes()),
-	}, nil
+	return api.DownloadImportTemplateOK{Data: buf}, nil
 }

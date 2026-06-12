@@ -82,6 +82,7 @@ func main() {
 
 		jwtutil.RegisterProvider,
 		serverinfra.RegisterArgon2PasswordEncoder,
+		serverinfra.RegisterExcelGenerator,
 
 		service.RegisterServerService,
 		service.RegisterEndpointService,
