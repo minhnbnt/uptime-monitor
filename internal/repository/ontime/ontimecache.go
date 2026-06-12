@@ -11,6 +11,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
+	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
@@ -29,11 +30,6 @@ func isToday(t time.Time) bool {
 	return utils.TruncateDay(t).Equal(today)
 }
 
-type OntimeCacheKey struct {
-	ServerID uint
-	Day      time.Time
-}
-
 type OntimeCacheRepository struct {
 	client *redis.Client
 }
@@ -45,21 +41,21 @@ func RegisterOntimeCacheRepository(i do.Injector) {
 	})
 }
 
-func ontimeCacheKey(serverID uint, day time.Time) string {
+func redisKey(serverID uint, day time.Time) string {
 	return fmt.Sprintf(
 		"%s%d:%s%s", ontimeKeyPrefix, serverID,
 		day.Format("2006-01-02"), ontimeKeySuffix,
 	)
 }
 
-func (r *OntimeCacheRepository) MGet(ctx context.Context, keys []OntimeCacheKey) (map[OntimeCacheKey]float64, error) {
+func (r *OntimeCacheRepository) MGet(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error) {
 
 	if len(keys) == 0 {
 		return nil, nil
 	}
 
-	redisKeys := lo.Map(keys, func(k OntimeCacheKey, _ int) string {
-		return ontimeCacheKey(k.ServerID, k.Day)
+	redisKeys := lo.Map(keys, func(k dto.BatchGetOntimeItem, _ int) string {
+		return redisKey(k.ServerID, k.Date)
 	})
 
 	values, err := r.client.MGet(ctx, redisKeys...).Result()
@@ -67,7 +63,7 @@ func (r *OntimeCacheRepository) MGet(ctx context.Context, keys []OntimeCacheKey)
 		return nil, err
 	}
 
-	result := make(map[OntimeCacheKey]float64, len(keys))
+	result := make(map[dto.BatchGetOntimeItem]float64, len(keys))
 	for i, val := range values {
 
 		if val == nil {
@@ -90,7 +86,7 @@ func (r *OntimeCacheRepository) MGet(ctx context.Context, keys []OntimeCacheKey)
 	return result, nil
 }
 
-func (r *OntimeCacheRepository) MSet(ctx context.Context, items map[OntimeCacheKey]float64) error {
+func (r *OntimeCacheRepository) MSet(ctx context.Context, items map[dto.BatchGetOntimeItem]float64) error {
 
 	if len(items) == 0 {
 		return nil
@@ -100,12 +96,12 @@ func (r *OntimeCacheRepository) MSet(ctx context.Context, items map[OntimeCacheK
 	for key, stats := range items {
 
 		ttl := ontimeTTL
-		if isToday(key.Day) {
+		if isToday(key.Date) {
 			ttl = todayTTL
 		}
 
 		pipe.Set(
-			ctx, ontimeCacheKey(key.ServerID, key.Day),
+			ctx, redisKey(key.ServerID, key.Date),
 			fmt.Sprintf("%.2f", stats), ttl,
 		)
 	}

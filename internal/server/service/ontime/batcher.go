@@ -11,7 +11,6 @@ import (
 	"github.com/samber/lo/it"
 
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
@@ -38,10 +37,10 @@ type Batcher struct {
 
 func (b *Batcher) BatchGetOntimeUntil(ctx context.Context, req []dto.BatchGetOntimeItem, until time.Time) ([]dto.BatchGetOntimeResponse, error) {
 
-	cacheKeys := b.buildCacheKeys(req)
+	cacheKeys := getCacheKey(req)
 	resultMap := b.resolveCache(ctx, cacheKeys)
 
-	missKeys := lo.Filter(cacheKeys, func(key ontimerepo.OntimeCacheKey, _ int) bool {
+	missKeys := lo.Filter(cacheKeys, func(key dto.BatchGetOntimeItem, _ int) bool {
 		_, hit := resultMap[key]
 		return !hit
 	})
@@ -64,40 +63,42 @@ func (b *Batcher) BatchGetOntime(ctx context.Context, req []dto.BatchGetOntimeIt
 	return b.BatchGetOntimeUntil(ctx, req, time.Now())
 }
 
-func (b *Batcher) buildCacheKeys(req []dto.BatchGetOntimeItem) []ontimerepo.OntimeCacheKey {
+func getCacheKey(req []dto.BatchGetOntimeItem) []dto.BatchGetOntimeItem {
 
-	iter := slices.Values(req)
+	reqIter := slices.Values(req)
 
-	keys := it.Map(iter, func(item dto.BatchGetOntimeItem) ontimerepo.OntimeCacheKey {
-		return ontimerepo.OntimeCacheKey{ServerID: item.ServerID, Day: utils.TruncateDay(item.Date)}
+	cacheKeys := it.Map(reqIter, func(item dto.BatchGetOntimeItem) dto.BatchGetOntimeItem {
+		item.Date = utils.TruncateDay(item.Date)
+		return item
 	})
 
-	keys = it.Uniq(keys)
-	return slices.Collect(keys)
+	cacheKeys = it.Uniq(cacheKeys)
+
+	return slices.Collect(cacheKeys)
 }
 
-func (b *Batcher) resolveCache(ctx context.Context, keys []ontimerepo.OntimeCacheKey) map[ontimerepo.OntimeCacheKey]float64 {
+func (b *Batcher) resolveCache(ctx context.Context, keys []dto.BatchGetOntimeItem) map[dto.BatchGetOntimeItem]float64 {
 
 	cached, err := b.ontimeCacheRepository.MGet(ctx, keys)
 
 	if err != nil {
 		b.logger.Warn("ontime cache MGet failed, falling back to DB", logger.Error(err))
-		return make(map[ontimerepo.OntimeCacheKey]float64, len(keys))
+		return make(map[dto.BatchGetOntimeItem]float64, len(keys))
 	}
 
 	return cached
 }
 
-func (b *Batcher) fillMisses(ctx context.Context, missedKeys []ontimerepo.OntimeCacheKey, until time.Time) map[ontimerepo.OntimeCacheKey]float64 {
+func (b *Batcher) fillMisses(ctx context.Context, missedKeys []dto.BatchGetOntimeItem, until time.Time) map[dto.BatchGetOntimeItem]float64 {
 
-	requests := lo.Map(missedKeys, func(key ontimerepo.OntimeCacheKey, _ int) serverrepo.BatchGetOntimeRequest {
-		return serverrepo.BatchGetOntimeRequest{ServerID: key.ServerID, Date: key.Day}
+	requests := lo.Map(missedKeys, func(key dto.BatchGetOntimeItem, _ int) serverrepo.BatchGetOntimeRequest {
+		return serverrepo.BatchGetOntimeRequest{ServerID: key.ServerID, Date: key.Date}
 	})
 
 	rows, err := b.serverRepository.BatchGetOntime(ctx, requests)
 	if err != nil {
 		b.logger.Warn("failed to get missed ontime keys", logger.Error(err))
-		return make(map[ontimerepo.OntimeCacheKey]float64)
+		return make(map[dto.BatchGetOntimeItem]float64)
 	}
 
 	groups := lo.GroupBy(rows, func(row serverrepo.RawEvent) serverDayKey {
@@ -105,29 +106,29 @@ func (b *Batcher) fillMisses(ctx context.Context, missedKeys []ontimerepo.Ontime
 	})
 
 	dayUntil := utils.TruncateDay(until)
-	toCache := lo.SliceToMap(missedKeys, func(key ontimerepo.OntimeCacheKey) (ontimerepo.OntimeCacheKey, float64) {
-		events := groups[serverDayKey{ServerID: key.ServerID, Day: key.Day}]
+	toCache := lo.SliceToMap(missedKeys, func(key dto.BatchGetOntimeItem) (dto.BatchGetOntimeItem, float64) {
+		events := groups[serverDayKey{ServerID: key.ServerID, Day: key.Date}]
 		return key, b.calculator.CalculateDayOntime(events, dayUntil, until)
 	})
 
 	return toCache
 }
 
-func (b *Batcher) buildResponse(req []dto.BatchGetOntimeItem, resultMap map[ontimerepo.OntimeCacheKey]float64) []dto.BatchGetOntimeResponse {
+func (b *Batcher) buildResponse(req []dto.BatchGetOntimeItem, resultMap map[dto.BatchGetOntimeItem]float64) []dto.BatchGetOntimeResponse {
 
-	serverResults := make(map[uint][]dto.OntimeStats)
-
-	for _, item := range req {
-		key := ontimerepo.OntimeCacheKey{ServerID: item.ServerID, Day: utils.TruncateDay(item.Date)}
-		serverResults[item.ServerID] = append(serverResults[item.ServerID], dto.OntimeStats{
-			Date:  key.Day,
-			Stats: resultMap[key],
-		})
-	}
-
-	responses := lo.MapToSlice(serverResults, func(serverID uint, result []dto.OntimeStats) dto.BatchGetOntimeResponse {
-		return dto.BatchGetOntimeResponse{ServerID: serverID, Result: result}
+	groups := lo.GroupBy(req, func(item dto.BatchGetOntimeItem) uint {
+		return item.ServerID
 	})
 
-	return responses
+	return lo.MapToSlice(groups, func(serverID uint, items []dto.BatchGetOntimeItem) dto.BatchGetOntimeResponse {
+
+		result := lo.Map(items, func(item dto.BatchGetOntimeItem, _ int) dto.OntimeStats {
+			return dto.OntimeStats{Date: item.Date, Stats: resultMap[item]}
+		})
+
+		return dto.BatchGetOntimeResponse{
+			ServerID: serverID,
+			Result:   result,
+		}
+	})
 }

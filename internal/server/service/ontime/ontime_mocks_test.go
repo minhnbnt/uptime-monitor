@@ -7,8 +7,8 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
+	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 )
 
@@ -57,18 +57,18 @@ func (m *mockServerRepo) BatchGetOntime(ctx context.Context, req []serverrepo.Ba
 var _ service.ServerRepository = (*mockServerRepo)(nil)
 
 type mockOntimeCacheRepo struct {
-	mGetFn func(ctx context.Context, keys []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error)
-	mSetFn func(ctx context.Context, items map[ontimerepo.OntimeCacheKey]float64) error
+	mGetFn func(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error)
+	mSetFn func(ctx context.Context, items map[dto.BatchGetOntimeItem]float64) error
 }
 
-func (m *mockOntimeCacheRepo) MGet(ctx context.Context, keys []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error) {
+func (m *mockOntimeCacheRepo) MGet(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error) {
 	if m.mGetFn != nil {
 		return m.mGetFn(ctx, keys)
 	}
-	return make(map[ontimerepo.OntimeCacheKey]float64), nil
+	return make(map[dto.BatchGetOntimeItem]float64), nil
 }
 
-func (m *mockOntimeCacheRepo) MSet(ctx context.Context, items map[ontimerepo.OntimeCacheKey]float64) error {
+func (m *mockOntimeCacheRepo) MSet(ctx context.Context, items map[dto.BatchGetOntimeItem]float64) error {
 	if m.mSetFn == nil {
 		return nil
 	}

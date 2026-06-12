@@ -16,7 +16,6 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 )
@@ -118,10 +117,10 @@ func newService(tb testing.TB) *OntimeService {
 		batcher: &Batcher{
 			serverRepository: serverrepo.NewServerRepository(testDB),
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mGetFn: func(_ context.Context, _ []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error) {
-					return make(map[ontimerepo.OntimeCacheKey]float64), nil
+				mGetFn: func(_ context.Context, _ []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error) {
+					return make(map[dto.BatchGetOntimeItem]float64), nil
 				},
-				mSetFn: func(_ context.Context, _ map[ontimerepo.OntimeCacheKey]float64) error {
+				mSetFn: func(_ context.Context, _ map[dto.BatchGetOntimeItem]float64) error {
 					return nil
 				},
 			},

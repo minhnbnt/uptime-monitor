@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
+	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 )
 
 type ServerRepository interface {
@@ -24,6 +24,6 @@ type EndpointRepository interface {
 }
 
 type OntimeCacheRepository interface {
-	MGet(ctx context.Context, keys []ontimerepo.OntimeCacheKey) (map[ontimerepo.OntimeCacheKey]float64, error)
-	MSet(ctx context.Context, items map[ontimerepo.OntimeCacheKey]float64) error
+	MGet(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error)
+	MSet(ctx context.Context, items map[dto.BatchGetOntimeItem]float64) error
 }
