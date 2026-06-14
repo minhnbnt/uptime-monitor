@@ -21,8 +21,12 @@ func GetUserID(ctx context.Context) uint {
 	return v.(uint)
 }
 
+type AccessTokenValidator interface {
+	ValidateAccessToken(tokenStr string) (uint, error)
+}
+
 type AuthMiddleware struct {
-	tokenValidator *authservice.TokenValidator
+	tokenValidator AccessTokenValidator
 }
 
 func RegisterAuthMiddleware(i do.Injector) {

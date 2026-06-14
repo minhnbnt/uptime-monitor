@@ -12,9 +12,13 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 )
 
+type Pinger interface {
+	Ping(ctx context.Context, method, url string) (statusCode int, err error)
+}
+
 type EndpointService struct {
 	endpointRepository EndpointRepository
-	pingWorker         *infra.PingWorker
+	pingWorker         Pinger
 }
 
 func RegisterEndpointService(i do.Injector) {
