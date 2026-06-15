@@ -17,13 +17,14 @@ func gormModel(id uint, t time.Time) gorm.Model {
 }
 
 type mockServerRepo struct {
-	listFn           func(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error)
-	countFn          func(ctx context.Context, createdByID uint) (int64, error)
-	createFn         func(ctx context.Context, s *domain.Server) error
-	getByIDFn        func(ctx context.Context, id uint) (*domain.Server, error)
-	updateFn         func(ctx context.Context, s *domain.Server) error
-	deleteFn         func(ctx context.Context, id uint) error
-	batchGetOntimeFn func(ctx context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error)
+	listFn               func(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error)
+	countFn              func(ctx context.Context, createdByID uint) (int64, error)
+	createFn             func(ctx context.Context, s *domain.Server) error
+	getByIDFn            func(ctx context.Context, id uint) (*domain.Server, error)
+	updateFn             func(ctx context.Context, s *domain.Server) error
+	deleteFn             func(ctx context.Context, id uint) error
+	batchGetOntimeFn     func(ctx context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error)
+	batchCreateServersFn func(ctx context.Context, servers []domain.Server) error
 }
 
 func (m *mockServerRepo) List(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error) {
@@ -52,6 +53,10 @@ func (m *mockServerRepo) Delete(ctx context.Context, id uint) error {
 
 func (m *mockServerRepo) BatchGetOntime(ctx context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
 	return m.batchGetOntimeFn(ctx, req)
+}
+
+func (m *mockServerRepo) BatchCreateServers(ctx context.Context, servers []domain.Server) error {
+	return m.batchCreateServersFn(ctx, servers)
 }
 
 var _ service.ServerRepository = (*mockServerRepo)(nil)

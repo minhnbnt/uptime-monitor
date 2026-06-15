@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/samber/do/v2"
+	"github.com/samber/lo"
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
@@ -86,5 +87,14 @@ func (sr *ServerRepository) Delete(ctx context.Context, id uint) error {
 		return fmt.Errorf("server with id %d does not found", id)
 	}
 
+	return nil
+}
+
+func (sr *ServerRepository) BatchCreateServers(ctx context.Context, servers []domain.Server) error {
+	for _, chunk := range lo.Chunk(servers, 100) {
+		if err := sr.db.WithContext(ctx).Create(&chunk).Error; err != nil {
+			return fmt.Errorf("failed to batch create servers: %w", err)
+		}
+	}
 	return nil
 }
