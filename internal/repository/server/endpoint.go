@@ -21,6 +21,10 @@ type EndpointRepository struct {
 	statusStore *monitorrepo.RedisServerEventRepository
 }
 
+func NewEndpointRepository(db *gorm.DB) *EndpointRepository {
+	return &EndpointRepository{db: db}
+}
+
 func RegisterEndpointRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointRepository, error) {
 

@@ -2,12 +2,14 @@ package service
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
+	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 )
 
 func gormModel(id uint, t time.Time) gorm.Model {
@@ -70,4 +72,17 @@ func (m *mockEndpointRepo) DeleteByServerID(ctx context.Context, serverID uint) 
 
 func (m *mockEndpointRepo) BatchCreateEndpoints(ctx context.Context, endpoints []domain.Endpoint) error {
 	return m.batchCreateEndpointsFn(ctx, endpoints)
+}
+
+type mockExcelGenerator struct {
+	generateTemplateFn func(w io.Writer) error
+	parseImportFileFn  func(file io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error)
+}
+
+func (m *mockExcelGenerator) GenerateTemplate(w io.Writer) error {
+	return m.generateTemplateFn(w)
+}
+
+func (m *mockExcelGenerator) ParseImportFile(file io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error) {
+	return m.parseImportFileFn(file)
 }

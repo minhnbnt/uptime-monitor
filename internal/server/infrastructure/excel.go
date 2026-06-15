@@ -103,22 +103,34 @@ func parseRow(rowNum int, row []string) (dto.ImportRow, []error) {
 	r.Row = rowNum
 
 	r.Name, err = parseServerName(getCell(row, 0))
-	errs = append(errs, err)
+	if err != nil {
+		errs = append(errs, err)
+	}
 
 	r.URL, err = parseURL(getCell(row, 1))
-	errs = append(errs, err)
+	if err != nil {
+		errs = append(errs, err)
+	}
 
 	r.Method, err = parseMethod(getCell(row, 2))
-	errs = append(errs, err)
+	if err != nil {
+		errs = append(errs, err)
+	}
 
 	r.Interval, err = parseInterval(getCell(row, 3))
-	errs = append(errs, err)
+	if err != nil {
+		errs = append(errs, err)
+	}
 
 	r.Timeout, err = parseTimeout(getCell(row, 4))
-	errs = append(errs, err)
+	if err != nil {
+		errs = append(errs, err)
+	}
 
 	r.ExpectedCode, err = parseExpectedCode(getCell(row, 5))
-	errs = append(errs, err)
+	if err != nil {
+		errs = append(errs, err)
+	}
 
 	return r, errs
 }
