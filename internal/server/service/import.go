@@ -53,8 +53,10 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 
 	rowIter := slices.Values(rows)
 
-	insertedCount := 0
-	var batchErrors []dto.ImportError
+	var (
+		successes   []dto.ImportSuccess
+		batchErrors []dto.ImportError
+	)
 
 	for chunks := range it.Chunk(rowIter, chunkSize) {
 
@@ -74,7 +76,14 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 			continue
 		}
 
-		insertedCount += len(servers)
+		for i, sv := range servers {
+			successes = append(successes, dto.ImportSuccess{
+				Row:      chunks[i].Row,
+				Name:     sv.Name,
+				URL:      chunks[i].URL,
+				ServerID: sv.ID,
+			})
+		}
 
 		serverIter := slices.Values(servers)
 		endpoints := it.MapI(serverIter, func(sv domain.Server, index int) domain.Endpoint {
@@ -98,7 +107,7 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 		}
 	}
 
-	return &dto.ImportResult{Imported: insertedCount, RowErrors: rowErrors, BatchErrors: batchErrors}, nil
+	return &dto.ImportResult{Successes: successes, RowErrors: rowErrors, BatchErrors: batchErrors}, nil
 }
 
 func (s *ImportService) GenerateTemplate(w io.Writer) error {

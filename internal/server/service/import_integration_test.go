@@ -182,8 +182,8 @@ func TestIntegration_ImportServers_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result.Imported != 3 {
-		t.Errorf("Imported = %d, want 3", result.Imported)
+	if len(result.Successes) != 3 {
+		t.Errorf("len(Successes) = %d, want 3", len(result.Successes))
 	}
 	if len(result.RowErrors)+len(result.BatchErrors) != 0 {
 		t.Errorf("unexpected errors: row=%v batch=%v", result.RowErrors, result.BatchErrors)
@@ -229,8 +229,8 @@ func TestIntegration_ImportServers_SkipEmptyURL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result.Imported != 3 {
-		t.Errorf("Imported = %d, want 3", result.Imported)
+	if len(result.Successes) != 3 {
+		t.Errorf("len(Successes) = %d, want 3", len(result.Successes))
 	}
 
 	var servers []domain.Server
@@ -260,8 +260,8 @@ func TestIntegration_ImportServers_ParseErrors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result.Imported != 0 {
-		t.Errorf("Imported = %d, want 0", result.Imported)
+	if len(result.Successes) != 0 {
+		t.Errorf("len(Successes) = %d, want 0", len(result.Successes))
 	}
 	if len(result.RowErrors) == 0 {
 		t.Errorf("expected parse errors, got none")
@@ -289,8 +289,8 @@ func TestIntegration_ImportServers_PartialErrors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result.Imported != 1 {
-		t.Errorf("Imported = %d, want 1", result.Imported)
+	if len(result.Successes) != 1 {
+		t.Errorf("len(Successes) = %d, want 1", len(result.Successes))
 	}
 	if len(result.RowErrors) == 0 {
 		t.Errorf("expected parse errors, got none")
@@ -355,8 +355,8 @@ func TestIntegration_ImportServers_DefaultValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result.Imported != 1 {
-		t.Errorf("Imported = %d, want 1", result.Imported)
+	if len(result.Successes) != 1 {
+		t.Errorf("len(Successes) = %d, want 1", len(result.Successes))
 	}
 	if len(result.RowErrors)+len(result.BatchErrors) != 0 {
 		t.Errorf("unexpected errors: row=%v batch=%v", result.RowErrors, result.BatchErrors)

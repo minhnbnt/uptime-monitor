@@ -36,25 +36,36 @@ func (h *ImportHandler) ImportServers(ctx context.Context, req *api.ImportServer
 		}
 	}
 
-	n := len(result.RowErrors) + len(result.BatchErrors)
-	apiErrors := make([]api.ImportServerRowError, 0, n)
+	successes := make([]api.ImportServerSuccess, len(result.Successes))
+	for i, s := range result.Successes {
+		successes[i] = api.ImportServerSuccess{
+			Row:      api.NewOptInt(s.Row),
+			Name:     api.NewOptString(s.Name),
+			URL:      api.NewOptString(s.URL),
+			ServerID: api.NewOptInt(int(s.ServerID)),
+		}
+	}
+
+	failed := make([]api.ImportServerRowError, 0, len(result.RowErrors)+len(result.BatchErrors))
 
 	for _, e := range result.RowErrors {
-		apiErrors = append(apiErrors, api.ImportServerRowError{
+		failed = append(failed, api.ImportServerRowError{
 			Row:     api.NewOptInt(e.Row),
 			Message: api.NewOptString(e.Message),
 		})
 	}
 
 	for _, e := range result.BatchErrors {
-		apiErrors = append(apiErrors, api.ImportServerRowError{
+		failed = append(failed, api.ImportServerRowError{
 			Message: api.NewOptString(e.Message),
 		})
 	}
 
 	return &api.ImportServersResponse{
-		Imported: api.NewOptInt(result.Imported),
-		Errors:   apiErrors,
+		SuccessCount: len(result.Successes),
+		Successes:    successes,
+		FailedCount:  len(failed),
+		Failed:       failed,
 	}, nil
 }
 

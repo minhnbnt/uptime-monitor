@@ -49,8 +49,8 @@ func TestImportService_ImportServers(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if result.Imported != 2 {
-			t.Errorf("Imported = %d, want 2", result.Imported)
+		if len(result.Successes) != 2 {
+			t.Errorf("len(Successes) = %d, want 2", len(result.Successes))
 		}
 		if len(result.RowErrors)+len(result.BatchErrors) != 0 {
 			t.Errorf("unexpected errors: row=%v batch=%v", result.RowErrors, result.BatchErrors)
@@ -111,8 +111,8 @@ func TestImportService_ImportServers(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if result.Imported != 2 {
-			t.Errorf("Imported = %d, want 2", result.Imported)
+		if len(result.Successes) != 2 {
+			t.Errorf("len(Successes) = %d, want 2", len(result.Successes))
 		}
 		if len(gotEndpoints) != 1 {
 			t.Fatalf("got %d endpoints, want 1", len(gotEndpoints))
@@ -150,8 +150,8 @@ func TestImportService_ImportServers(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if result.Imported != 0 {
-			t.Errorf("Imported = %d, want 0", result.Imported)
+		if len(result.Successes) != 0 {
+			t.Errorf("len(Successes) = %d, want 0", len(result.Successes))
 		}
 	})
 
@@ -173,8 +173,8 @@ func TestImportService_ImportServers(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if result.Imported != 0 {
-			t.Errorf("Imported = %d, want 0", result.Imported)
+		if len(result.Successes) != 0 {
+			t.Errorf("len(Successes) = %d, want 0", len(result.Successes))
 		}
 		if len(result.RowErrors) != 2 {
 			t.Fatalf("got %d row errors, want 2", len(result.RowErrors))
@@ -212,8 +212,8 @@ func TestImportService_ImportServers(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if result.Imported != 1 {
-			t.Errorf("Imported = %d, want 1", result.Imported)
+		if len(result.Successes) != 1 {
+			t.Errorf("len(Successes) = %d, want 1", len(result.Successes))
 		}
 		if len(result.RowErrors) != 1 {
 			t.Fatalf("got %d row errors, want 1", len(result.RowErrors))
@@ -242,8 +242,8 @@ func TestImportService_ImportServers(t *testing.T) {
 		if err != nil {
 			t.Fatalf("did not expect error from service: %v", err)
 		}
-		if result.Imported != 0 {
-			t.Errorf("Imported = %d, want 0", result.Imported)
+		if len(result.Successes) != 0 {
+			t.Errorf("len(Successes) = %d, want 0", len(result.Successes))
 		}
 		if len(result.BatchErrors) != 1 {
 			t.Fatalf("got %d batch errors, want 1", len(result.BatchErrors))
@@ -286,8 +286,8 @@ func TestImportService_ImportServers(t *testing.T) {
 		if err != nil {
 			t.Fatalf("did not expect error from service: %v", err)
 		}
-		if result.Imported != 2 {
-			t.Errorf("Imported = %d, want 2", result.Imported)
+		if len(result.Successes) != 2 {
+			t.Errorf("len(Successes) = %d, want 2", len(result.Successes))
 		}
 		if len(result.BatchErrors) != 1 {
 			t.Fatalf("got %d batch errors, want 1", len(result.BatchErrors))
