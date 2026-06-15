@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 )
 
@@ -105,6 +106,7 @@ func TestImportService_ImportServers(t *testing.T) {
 					return rows, nil, nil
 				},
 			},
+			logger: logger.NewMockLogger(),
 		}
 
 		result, err := svc.ImportServers(t.Context(), userID, bytes.NewReader(nil))
@@ -129,6 +131,7 @@ func TestImportService_ImportServers(t *testing.T) {
 					return nil, nil, errors.New("invalid excel file")
 				},
 			},
+			logger: logger.NewMockLogger(),
 		}
 
 		_, err := svc.ImportServers(t.Context(), userID, bytes.NewReader(nil))
@@ -144,6 +147,7 @@ func TestImportService_ImportServers(t *testing.T) {
 					return nil, nil, nil
 				},
 			},
+			logger: logger.NewMockLogger(),
 		}
 
 		result, err := svc.ImportServers(t.Context(), userID, bytes.NewReader(nil))
@@ -167,6 +171,7 @@ func TestImportService_ImportServers(t *testing.T) {
 					return nil, rowErrs, nil
 				},
 			},
+			logger: logger.NewMockLogger(),
 		}
 
 		result, err := svc.ImportServers(t.Context(), userID, bytes.NewReader(nil))
@@ -206,6 +211,7 @@ func TestImportService_ImportServers(t *testing.T) {
 					return rows, rowErrs, nil
 				},
 			},
+			logger: logger.NewMockLogger(),
 		}
 
 		result, err := svc.ImportServers(t.Context(), userID, bytes.NewReader(nil))
@@ -236,6 +242,7 @@ func TestImportService_ImportServers(t *testing.T) {
 					return rows, nil, nil
 				},
 			},
+			logger: logger.NewMockLogger(),
 		}
 
 		result, err := svc.ImportServers(t.Context(), userID, bytes.NewReader(nil))
@@ -248,8 +255,8 @@ func TestImportService_ImportServers(t *testing.T) {
 		if len(result.BatchErrors) != 1 {
 			t.Fatalf("got %d batch errors, want 1", len(result.BatchErrors))
 		}
-		if result.BatchErrors[0].Message != "failed to create servers: connection refused" {
-			t.Errorf("Message = %q, want %q", result.BatchErrors[0].Message, "failed to create servers: connection refused")
+		if result.BatchErrors[0].Message != "failed to create servers" {
+			t.Errorf("Message = %q, want %q", result.BatchErrors[0].Message, "failed to create servers")
 		}
 	})
 
@@ -280,11 +287,12 @@ func TestImportService_ImportServers(t *testing.T) {
 					return rows, nil, nil
 				},
 			},
+			logger: logger.NewMockLogger(),
 		}
 
 		result, err := svc.ImportServers(t.Context(), userID, bytes.NewReader(nil))
 		if err != nil {
-			t.Fatalf("did not expect error from service: %v", err)
+			t.Fatalf("unexpected error: %v", err)
 		}
 		if len(result.Successes) != 2 {
 			t.Errorf("len(Successes) = %d, want 2", len(result.Successes))
@@ -292,7 +300,7 @@ func TestImportService_ImportServers(t *testing.T) {
 		if len(result.BatchErrors) != 1 {
 			t.Fatalf("got %d batch errors, want 1", len(result.BatchErrors))
 		}
-		if result.BatchErrors[0].Message != "failed to create endpoints: timeout" {
+		if result.BatchErrors[0].Message != "failed to create endpoints" {
 			t.Errorf("Message = %q", result.BatchErrors[0].Message)
 		}
 	})
@@ -308,6 +316,7 @@ func TestImportService_GenerateTemplate(t *testing.T) {
 					return err
 				},
 			},
+			logger: logger.NewMockLogger(),
 		}
 
 		err := svc.GenerateTemplate(&buf)
@@ -326,6 +335,7 @@ func TestImportService_GenerateTemplate(t *testing.T) {
 					return errors.New("template error")
 				},
 			},
+			logger: logger.NewMockLogger(),
 		}
 
 		err := svc.GenerateTemplate(bytes.NewBuffer(nil))

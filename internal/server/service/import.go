@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"slices"
 	"time"
@@ -12,6 +11,8 @@ import (
 	"github.com/samber/lo/it"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
@@ -26,6 +27,7 @@ type ImportService struct {
 	serverRepository   ServerRepository
 	endpointRepository EndpointRepository
 	excelGenerator     ExcelGenerator
+	logger             logger.Logger
 }
 
 func RegisterImportService(i do.Injector) {
@@ -34,6 +36,7 @@ func RegisterImportService(i do.Injector) {
 			serverRepository:   do.MustInvoke[*serverrepo.ServerRepository](i),
 			endpointRepository: do.MustInvoke[*serverrepo.EndpointRepository](i),
 			excelGenerator:     do.MustInvoke[*infrastructure.ExcelGenerator](i),
+			logger:             do.MustInvoke[logger.Logger](i),
 		}, nil
 	})
 }
@@ -44,7 +47,8 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 
 	rows, rowErrors, err := s.excelGenerator.ParseImportFile(file)
 	if err != nil {
-		return nil, err
+		s.logger.Error("failed to parse import file", logger.Error(err))
+		return nil, apperrors.ErrBadRequest
 	}
 
 	if len(rows) == 0 {
@@ -70,8 +74,9 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 
 		err := s.serverRepository.BatchCreateServers(ctx, servers)
 		if err != nil {
+			s.logger.Error("failed to create servers", logger.Error(err))
 			batchErrors = append(batchErrors, dto.ImportError{
-				Message: fmt.Sprintf("failed to create servers: %v", err),
+				Message: "failed to create servers",
 			})
 			continue
 		}
@@ -101,8 +106,9 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 		endpoints = it.Filter(endpoints, func(e domain.Endpoint) bool { return e.URL != "" })
 
 		if err := s.endpointRepository.BatchCreateEndpoints(ctx, slices.Collect(endpoints)); err != nil {
+			s.logger.Error("failed to create endpoints", logger.Error(err))
 			batchErrors = append(batchErrors, dto.ImportError{
-				Message: fmt.Sprintf("failed to create endpoints: %v", err),
+				Message: "failed to create endpoints",
 			})
 		}
 	}
@@ -111,5 +117,9 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 }
 
 func (s *ImportService) GenerateTemplate(w io.Writer) error {
-	return s.excelGenerator.GenerateTemplate(w)
+	if err := s.excelGenerator.GenerateTemplate(w); err != nil {
+		s.logger.Error("failed to generate template", logger.Error(err))
+		return apperrors.ErrInternal
+	}
+	return nil
 }

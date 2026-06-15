@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/samber/do/v2"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 )
 
 type ServerRepository struct {
@@ -54,6 +56,9 @@ func (sr *ServerRepository) Create(ctx context.Context, s *domain.Server) error 
 func (sr *ServerRepository) GetByID(ctx context.Context, id uint) (*domain.Server, error) {
 
 	server, err := gorm.G[domain.Server](sr.db).Where("id = ?", id).First(ctx)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, fmt.Errorf("server %d: %w", id, apperrors.ErrNotFound)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get server: %w", err)
 	}
@@ -69,7 +74,7 @@ func (sr *ServerRepository) Update(ctx context.Context, s *domain.Server) error 
 	}
 
 	if rowAffected == 0 {
-		return fmt.Errorf("server with id %d does not found", s.ID)
+		return fmt.Errorf("server %d: %w", s.ID, apperrors.ErrNotFound)
 	}
 
 	return nil
@@ -83,7 +88,7 @@ func (sr *ServerRepository) Delete(ctx context.Context, id uint) error {
 	}
 
 	if rowAffected == 0 {
-		return fmt.Errorf("server with id %d does not found", id)
+		return fmt.Errorf("server %d: %w", id, apperrors.ErrNotFound)
 	}
 
 	return nil

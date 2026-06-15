@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 )
 
@@ -19,6 +21,7 @@ func TestAuthService_Register(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		svc := &AuthService{
+			logger: logger.NewMockLogger(),
 			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return nil, nil
@@ -66,6 +69,7 @@ func TestAuthService_Register(t *testing.T) {
 
 	t.Run("email taken", func(t *testing.T) {
 		svc := &AuthService{
+			logger: logger.NewMockLogger(),
 			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					u := domainUser(1, "a@b.com", "other")
@@ -75,13 +79,14 @@ func TestAuthService_Register(t *testing.T) {
 		}
 
 		_, err := svc.Register(t.Context(), req)
-		if !errors.Is(err, ErrEmailOrUsernameTaken) {
-			t.Errorf("got %v, want ErrEmailOrUsernameTaken", err)
+		if !errors.Is(err, apperrors.ErrEmailOrUsernameTaken) {
+			t.Errorf("got %v, want apperrors.ErrEmailOrUsernameTaken", err)
 		}
 	})
 
 	t.Run("find error", func(t *testing.T) {
 		svc := &AuthService{
+			logger: logger.NewMockLogger(),
 			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return nil, errors.New("db error")
@@ -97,6 +102,7 @@ func TestAuthService_Register(t *testing.T) {
 
 	t.Run("encode error", func(t *testing.T) {
 		svc := &AuthService{
+			logger: logger.NewMockLogger(),
 			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return nil, nil
@@ -120,6 +126,7 @@ func TestAuthService_Register(t *testing.T) {
 
 	t.Run("create error", func(t *testing.T) {
 		svc := &AuthService{
+			logger: logger.NewMockLogger(),
 			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return nil, nil
@@ -143,6 +150,7 @@ func TestAuthService_Register(t *testing.T) {
 
 	t.Run("token error", func(t *testing.T) {
 		svc := &AuthService{
+			logger: logger.NewMockLogger(),
 			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return nil, nil
@@ -181,6 +189,7 @@ func TestAuthService_Login(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		svc := &AuthService{
+			logger: logger.NewMockLogger(),
 			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return &matchUser, nil
@@ -218,6 +227,7 @@ func TestAuthService_Login(t *testing.T) {
 
 	t.Run("user not found", func(t *testing.T) {
 		svc := &AuthService{
+			logger: logger.NewMockLogger(),
 			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return nil, nil
@@ -226,13 +236,14 @@ func TestAuthService_Login(t *testing.T) {
 		}
 
 		_, err := svc.Login(t.Context(), req)
-		if !errors.Is(err, ErrInvalidCredentials) {
-			t.Errorf("got %v, want ErrInvalidCredentials", err)
+		if !errors.Is(err, apperrors.ErrInvalidCredentials) {
+			t.Errorf("got %v, want apperrors.ErrInvalidCredentials", err)
 		}
 	})
 
 	t.Run("wrong password", func(t *testing.T) {
 		svc := &AuthService{
+			logger: logger.NewMockLogger(),
 			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return &matchUser, nil
@@ -246,13 +257,14 @@ func TestAuthService_Login(t *testing.T) {
 		}
 
 		_, err := svc.Login(t.Context(), req)
-		if !errors.Is(err, ErrInvalidCredentials) {
-			t.Errorf("got %v, want ErrInvalidCredentials", err)
+		if !errors.Is(err, apperrors.ErrInvalidCredentials) {
+			t.Errorf("got %v, want apperrors.ErrInvalidCredentials", err)
 		}
 	})
 
 	t.Run("verify error", func(t *testing.T) {
 		svc := &AuthService{
+			logger: logger.NewMockLogger(),
 			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return &matchUser, nil
@@ -273,6 +285,7 @@ func TestAuthService_Login(t *testing.T) {
 
 	t.Run("token error", func(t *testing.T) {
 		svc := &AuthService{
+			logger: logger.NewMockLogger(),
 			userRepository: &mockUserRepo{
 				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
 					return &matchUser, nil

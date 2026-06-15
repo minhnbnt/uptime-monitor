@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 )
 
@@ -161,7 +162,7 @@ func TestServerHandler_GetServer(t *testing.T) {
 		h := &ServerHandler{
 			ontimeService: &mockOntimeService{
 				getServerWithOntimeFn: func(_ context.Context, _ uint) (*dto.ServerWithOntime, error) {
-					return nil, errors.New("not found")
+					return nil, apperrors.ErrNotFound
 				},
 			},
 		}
@@ -202,7 +203,7 @@ func TestServerHandler_UpdateServer(t *testing.T) {
 		h := &ServerHandler{
 			serverService: &mockServerService{
 				updateServerFn: func(_ context.Context, _ uint, _ dto.UpdateServerRequest) (*dto.Server, error) {
-					return nil, errors.New("not found")
+					return nil, apperrors.ErrNotFound
 				},
 			},
 		}
@@ -237,7 +238,7 @@ func TestServerHandler_DeleteServer(t *testing.T) {
 		h := &ServerHandler{
 			serverService: &mockServerService{
 				deleteServerFn: func(_ context.Context, _ uint) error {
-					return errors.New("not found")
+					return apperrors.ErrNotFound
 				},
 			},
 		}

@@ -6,6 +6,8 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	authservice "github.com/minhnbnt/uptime-monitor/internal/server/service/auth"
 )
 
@@ -23,12 +25,14 @@ func GetUserID(ctx context.Context) uint {
 
 type AuthMiddleware struct {
 	tokenValidator *authservice.TokenValidator
+	logger         logger.Logger
 }
 
 func RegisterAuthMiddleware(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*AuthMiddleware, error) {
 		return &AuthMiddleware{
 			tokenValidator: do.MustInvoke[*authservice.TokenValidator](i),
+			logger:         do.MustInvoke[logger.Logger](i),
 		}, nil
 	})
 }
@@ -37,7 +41,8 @@ func (m *AuthMiddleware) HandleBearerAuth(ctx context.Context, _ api.OperationNa
 
 	userID, err := m.tokenValidator.ValidateAccessToken(t.Token)
 	if err != nil {
-		return ctx, err
+		m.logger.Debug("bearer auth failed", logger.Error(err))
+		return ctx, apperrors.ErrInvalidCredentials
 	}
 
 	return context.WithValue(ctx, userIDKey{}, userID), nil

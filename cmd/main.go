@@ -149,22 +149,23 @@ func runWorker(ctx context.Context, i do.Injector) {
 	}
 }
 
-func errorHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
-
-	_ = json.NewEncoder(w).Encode(api.ErrorResponse{
-		Error: api.ErrorResponseError{
-			Code:    "VALIDATION_ERROR",
-			Message: err.Error(),
-		},
-	})
-}
-
 func runWebServer(ctx context.Context, i do.Injector, dev bool) {
 
 	logger := do.MustInvoke[*zap.Logger](i)
+
+	errorHandler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
+		logger.Error("request validation failed", zap.Error(err))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+
+		_ = json.NewEncoder(w).Encode(api.ErrorResponse{
+			Error: api.ErrorResponseError{
+				Code:    "VALIDATION_ERROR",
+				Message: "invalid request",
+			},
+		})
+	}
 
 	compositeHandler := do.MustInvoke[*server.CompositeHandler](i)
 	authMiddleware := do.MustInvoke[*middleware.AuthMiddleware](i)

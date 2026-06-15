@@ -47,18 +47,12 @@ func (h *EndpointHandler) SetCheckMethod(
 	}
 
 	if err := h.endpointService.SetCheckMethod(ctx, uint(params.ID), dtoReq); err != nil {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusInternalServerError,
-			Response:   errResponse("INTERNAL_ERROR", err.Error()),
-		}
+		return nil, ToAPIError(err)
 	}
 
 	server, err := h.serverService.GetServer(ctx, uint(params.ID))
 	if err != nil {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusNotFound,
-			Response:   errResponse("NOT_FOUND", "Server not found"),
-		}
+		return nil, ToAPIError(err)
 	}
 
 	return &api.ServerResponse{Data: toAPIServer(server)}, nil
@@ -78,10 +72,7 @@ func (h *EndpointHandler) TestEndpoint(ctx context.Context, req *api.TestEndpoin
 
 	result, err := h.endpointService.TestEndpoint(ctx, dtoReq)
 	if err != nil {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusInternalServerError,
-			Response:   errResponse("INTERNAL_ERROR", err.Error()),
-		}
+		return nil, ToAPIError(err)
 	}
 
 	resp := &api.TestEndpointResponse{

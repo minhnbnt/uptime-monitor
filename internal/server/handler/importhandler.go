@@ -3,7 +3,6 @@ package handler
 import (
 	"bytes"
 	"context"
-	"net/http"
 
 	"github.com/samber/do/v2"
 
@@ -30,10 +29,7 @@ func (h *ImportHandler) ImportServers(ctx context.Context, req *api.ImportServer
 
 	result, err := h.importService.ImportServers(ctx, userID, req.File.File)
 	if err != nil {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusBadRequest,
-			Response:   errResponse("IMPORT_FAILED", err.Error()),
-		}
+		return nil, ToAPIError(err)
 	}
 
 	successes := make([]api.ImportServerSuccess, len(result.Successes))
@@ -74,10 +70,7 @@ func (h *ImportHandler) DownloadImportTemplate(ctx context.Context) (api.Downloa
 	buf := new(bytes.Buffer)
 
 	if err := h.importService.GenerateTemplate(buf); err != nil {
-		return api.DownloadImportTemplateOK{}, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusInternalServerError,
-			Response:   errResponse("TEMPLATE_ERROR", err.Error()),
-		}
+		return api.DownloadImportTemplateOK{}, ToAPIError(err)
 	}
 
 	return api.DownloadImportTemplateOK{Data: buf}, nil

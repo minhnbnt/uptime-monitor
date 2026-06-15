@@ -2,12 +2,14 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/server/middleware"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
@@ -36,10 +38,7 @@ func (h *ServerHandler) ListServers(ctx context.Context, params api.ListServersP
 	userID := middleware.GetUserID(ctx)
 	result, err := h.serverService.ListServers(ctx, userID, page, perPage)
 	if err != nil {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusInternalServerError,
-			Response:   errResponse("INTERNAL_ERROR", err.Error()),
-		}
+		return nil, ToAPIError(err)
 	}
 
 	return &api.ServerListResponse{
@@ -57,10 +56,7 @@ func (h *ServerHandler) CreateServer(ctx context.Context, req *api.CreateServerR
 	userID := middleware.GetUserID(ctx)
 	result, err := h.serverService.CreateServer(ctx, dtoReq, userID)
 	if err != nil {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusInternalServerError,
-			Response:   errResponse("INTERNAL_ERROR", err.Error()),
-		}
+		return nil, ToAPIError(err)
 	}
 
 	return &api.ServerResponse{Data: toAPIServer(result)}, nil
@@ -70,10 +66,7 @@ func (h *ServerHandler) GetServer(ctx context.Context, params api.GetServerParam
 
 	result, err := h.ontimeService.GetServerWithOntime(ctx, uint(params.ID))
 	if err != nil {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusNotFound,
-			Response:   errResponse("NOT_FOUND", "Server not found"),
-		}
+		return nil, ToAPIError(err)
 	}
 
 	obj := toAPIServer(&result.Server)
@@ -91,10 +84,7 @@ func (h *ServerHandler) UpdateServer(ctx context.Context, req *api.UpdateServerR
 
 	result, err := h.serverService.UpdateServer(ctx, uint(params.ID), dtoReq)
 	if err != nil {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusNotFound,
-			Response:   errResponse("NOT_FOUND", "Server not found"),
-		}
+		return nil, ToAPIError(err)
 	}
 
 	return &api.ServerResponse{Data: toAPIServer(result)}, nil
@@ -102,10 +92,7 @@ func (h *ServerHandler) UpdateServer(ctx context.Context, req *api.UpdateServerR
 
 func (h *ServerHandler) DeleteServer(ctx context.Context, params api.DeleteServerParams) error {
 	if err := h.serverService.DeleteServer(ctx, uint(params.ID)); err != nil {
-		return &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusNotFound,
-			Response:   errResponse("NOT_FOUND", "Server not found"),
-		}
+		return ToAPIError(err)
 	}
 
 	return nil
@@ -119,10 +106,7 @@ func (h *ServerHandler) ListServersOntime(ctx context.Context, params api.ListSe
 	userID := middleware.GetUserID(ctx)
 	result, total, err := h.ontimeService.ListServersWithOntime(ctx, userID, page, perPage)
 	if err != nil {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusInternalServerError,
-			Response:   errResponse("INTERNAL_ERROR", err.Error()),
-		}
+		return nil, ToAPIError(err)
 	}
 
 	data := lo.Map(result, func(item dto.ServerWithOntime, _ int) api.ServerWithOntime {
@@ -136,6 +120,42 @@ func (h *ServerHandler) ListServersOntime(ctx context.Context, params api.ListSe
 		Data: data,
 		Meta: toPaginationMeta(page, perPage, total),
 	}, nil
+}
+
+func ToAPIError(err error) *api.ErrorResponseStatusCode {
+
+	if errors.Is(err, apperrors.ErrNotFound) {
+		return &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusNotFound,
+			Response:   errResponse("NOT_FOUND", err.Error()),
+		}
+	}
+
+	if errors.Is(err, apperrors.ErrEmailOrUsernameTaken) {
+		return &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusConflict,
+			Response:   errResponse("CONFLICT", err.Error()),
+		}
+	}
+
+	if errors.Is(err, apperrors.ErrInvalidCredentials) {
+		return &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusUnauthorized,
+			Response:   errResponse("UNAUTHORIZED", err.Error()),
+		}
+	}
+
+	if errors.Is(err, apperrors.ErrBadRequest) {
+		return &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusBadRequest,
+			Response:   errResponse("BAD_REQUEST", err.Error()),
+		}
+	}
+
+	return &api.ErrorResponseStatusCode{
+		StatusCode: http.StatusInternalServerError,
+		Response:   errResponse("INTERNAL_ERROR", err.Error()),
+	}
 }
 
 func errResponse(code, msg string) api.ErrorResponse {

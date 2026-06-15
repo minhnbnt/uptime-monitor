@@ -9,6 +9,7 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
+	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
 )
 
@@ -28,7 +29,7 @@ func setupProviderWithConfig(t *testing.T) (*jwtutil.Provider, *config.TokenConf
 
 func TestValidateAccessToken_Success(t *testing.T) {
 	p, tc := setupProviderWithConfig(t)
-	tv := &TokenValidator{provider: p, tokenConfig: tc}
+	tv := &TokenValidator{provider: p, tokenConfig: tc, logger: logger.NewMockLogger()}
 
 	token, err := p.NewToken(tc.GetAccessTokenIssuer(), map[string]any{
 		"sub":      "42",
@@ -51,7 +52,7 @@ func TestValidateAccessToken_Success(t *testing.T) {
 
 func TestValidateAccessToken_WrongIssuer(t *testing.T) {
 	p, tc := setupProviderWithConfig(t)
-	tv := &TokenValidator{provider: p, tokenConfig: tc}
+	tv := &TokenValidator{provider: p, tokenConfig: tc, logger: logger.NewMockLogger()}
 
 	token, err := p.NewToken(tc.GetRefreshTokenIssuer(), map[string]any{
 		"sub": "42",
@@ -69,7 +70,7 @@ func TestValidateAccessToken_WrongIssuer(t *testing.T) {
 
 func TestValidateAccessToken_Expired(t *testing.T) {
 	p, tc := setupProviderWithConfig(t)
-	tv := &TokenValidator{provider: p, tokenConfig: tc}
+	tv := &TokenValidator{provider: p, tokenConfig: tc, logger: logger.NewMockLogger()}
 
 	token, err := p.NewToken(tc.GetAccessTokenIssuer(), map[string]any{
 		"sub": "42",
@@ -87,7 +88,7 @@ func TestValidateAccessToken_Expired(t *testing.T) {
 
 func TestValidateAccessToken_Malformed(t *testing.T) {
 	p, tc := setupProviderWithConfig(t)
-	tv := &TokenValidator{provider: p, tokenConfig: tc}
+	tv := &TokenValidator{provider: p, tokenConfig: tc, logger: logger.NewMockLogger()}
 
 	_, err := tv.ValidateAccessToken("not-a-valid-token")
 	if err == nil {
@@ -97,7 +98,7 @@ func TestValidateAccessToken_Malformed(t *testing.T) {
 
 func TestValidateRefreshToken_Success(t *testing.T) {
 	p, tc := setupProviderWithConfig(t)
-	tv := &TokenValidator{provider: p, tokenConfig: tc, revokedTokenRepo: &mockRevokedTokenRepo{}}
+	tv := &TokenValidator{provider: p, tokenConfig: tc, revokedTokenRepo: &mockRevokedTokenRepo{}, logger: logger.NewMockLogger()}
 
 	token, err := p.NewToken(tc.GetRefreshTokenIssuer(), map[string]any{
 		"sub": "42",
@@ -122,7 +123,7 @@ func TestValidateRefreshToken_Success(t *testing.T) {
 
 func TestValidateRefreshToken_WrongIssuer(t *testing.T) {
 	p, tc := setupProviderWithConfig(t)
-	tv := &TokenValidator{provider: p, tokenConfig: tc, revokedTokenRepo: &mockRevokedTokenRepo{}}
+	tv := &TokenValidator{provider: p, tokenConfig: tc, revokedTokenRepo: &mockRevokedTokenRepo{}, logger: logger.NewMockLogger()}
 
 	token, err := p.NewToken(tc.GetAccessTokenIssuer(), map[string]any{
 		"sub": "42",
@@ -141,7 +142,7 @@ func TestValidateRefreshToken_WrongIssuer(t *testing.T) {
 
 func TestValidateRefreshToken_Expired(t *testing.T) {
 	p, tc := setupProviderWithConfig(t)
-	tv := &TokenValidator{provider: p, tokenConfig: tc, revokedTokenRepo: &mockRevokedTokenRepo{}}
+	tv := &TokenValidator{provider: p, tokenConfig: tc, revokedTokenRepo: &mockRevokedTokenRepo{}, logger: logger.NewMockLogger()}
 
 	token, err := p.NewToken(tc.GetRefreshTokenIssuer(), map[string]any{
 		"sub": "42",
@@ -160,7 +161,7 @@ func TestValidateRefreshToken_Expired(t *testing.T) {
 
 func TestValidateRefreshToken_MissingJTI(t *testing.T) {
 	p, tc := setupProviderWithConfig(t)
-	tv := &TokenValidator{provider: p, tokenConfig: tc, revokedTokenRepo: &mockRevokedTokenRepo{}}
+	tv := &TokenValidator{provider: p, tokenConfig: tc, revokedTokenRepo: &mockRevokedTokenRepo{}, logger: logger.NewMockLogger()}
 
 	token, err := p.NewToken(tc.GetRefreshTokenIssuer(), map[string]any{
 		"sub": "42",
@@ -178,7 +179,7 @@ func TestValidateRefreshToken_MissingJTI(t *testing.T) {
 
 func TestValidateRefreshToken_Malformed(t *testing.T) {
 	p, tc := setupProviderWithConfig(t)
-	tv := &TokenValidator{provider: p, tokenConfig: tc, revokedTokenRepo: &mockRevokedTokenRepo{}}
+	tv := &TokenValidator{provider: p, tokenConfig: tc, revokedTokenRepo: &mockRevokedTokenRepo{}, logger: logger.NewMockLogger()}
 
 	_, _, err := tv.ValidateRefreshToken(t.Context(), "not-a-valid-token")
 	if err == nil {
@@ -196,6 +197,7 @@ func TestValidateRefreshToken_Revoked(t *testing.T) {
 				return true, nil
 			},
 		},
+		logger: logger.NewMockLogger(),
 	}
 
 	token, err := p.NewToken(tc.GetRefreshTokenIssuer(), map[string]any{

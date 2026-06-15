@@ -59,3 +59,75 @@ internal/utils/             ← TruncateDay, Last30Days, PageValidator
 - **Import order** (enforced by gci): std → third-party → `github.com/minhnbnt/uptime-monitor/`.
 - **`interface{}` → `any`** enforced by gofmt rewrite rule in `.golangci.yml`.
 - **Before committing**: run `golangci-lint run ./...` to ensure code quality.
+
+## Error handling conventions
+
+### Sentinel errors
+
+All sentinel errors live in `internal/errors/errors.go` (package `apperrors`). The package is always imported with `apperrors` alias:
+
+```go
+import apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+```
+
+### Repository layer
+
+Check DB-level errors first and wrap with sentinel before returning:
+
+```go
+func (sr *ServerRepository) GetByID(ctx context.Context, id uint) (*domain.Server, error) {
+    server, err := gorm.G[domain.Server](sr.db).Where("id = ?", id).First(ctx)
+    if errors.Is(err, gorm.ErrRecordNotFound) {
+        return nil, fmt.Errorf("server %d: %w", id, apperrors.ErrNotFound)
+    }
+    if err != nil {
+        return nil, fmt.Errorf("failed to get server: %w", err)
+    }
+    return &server, nil
+}
+```
+
+### Service layer
+
+Log the full error detail, then check sentinels with `errors.Is` — always **before** the generic `if err != nil`:
+
+```go
+server, err := ss.serverRepository.GetByID(ctx, id)
+if errors.Is(err, apperrors.ErrNotFound) {
+    return nil, apperrors.ErrNotFound
+}
+if err != nil {
+	ss.logger.Error("failed to get server", logger.Error(err))
+    return nil, apperrors.ErrInternal
+}
+```
+
+Rules:
+- Do **not** nest `if errors.Is(...)` inside `if err != nil` — keep them as sibling blocks at the same indentation.
+- Log actual error with `logger.Error("msg", logger.Error(err))` — the message returned to the client is the sentinel's own message, so no `fmt.Errorf` wrapping needed.
+- `ListServers` / `CreateServer` / methods that shouldn't return 404: just return `apperrors.ErrInternal`.
+
+### Handler layer
+
+Use the exported `handler.ToAPIError(err)` for automatic status mapping:
+
+```go
+func ToAPIError(err error) *api.ErrorResponseStatusCode {
+    if errors.Is(err, apperrors.ErrNotFound) {
+        return &api.ErrorResponseStatusCode{
+            StatusCode: http.StatusNotFound,
+            Response:   errResponse("NOT_FOUND", err.Error()),
+        }
+    }
+    return &api.ErrorResponseStatusCode{
+        StatusCode: http.StatusInternalServerError,
+        Response:   errResponse("INTERNAL_ERROR", err.Error()),
+    }
+}
+```
+
+Composite's `NewError` also delegates to `handler.ToAPIError` after logging.
+
+### Logger
+
+Always use the `logger.Logger` interface from `internal/logger`, injected via DI (`logger.RegisterLogger`). In tests, use `logger.NewMockLogger()`.
