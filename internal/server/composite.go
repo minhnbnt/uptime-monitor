@@ -6,6 +6,7 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	"github.com/minhnbnt/uptime-monitor/internal/server/handler"
 )
@@ -32,5 +33,5 @@ func RegisterCompositeHandler(i do.Injector) {
 
 func (h *CompositeHandler) NewError(_ context.Context, err error) *api.ErrorResponseStatusCode {
 	h.logger.Error("unhandled error", logger.Error(err))
-	return handler.ToAPIError(err)
+	return apperrors.ToAPIError(err)
 }

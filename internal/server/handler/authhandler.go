@@ -6,6 +6,7 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	authservice "github.com/minhnbnt/uptime-monitor/internal/server/service/auth"
 )
@@ -33,7 +34,7 @@ func (h *AuthHandler) Register(ctx context.Context, req *api.RegisterRequest) (*
 
 	result, err := h.authService.Register(ctx, dtoReq)
 	if err != nil {
-		return nil, ToAPIError(err)
+		return nil, apperrors.ToAPIError(err)
 	}
 
 	return &api.AuthResponse{
@@ -57,7 +58,7 @@ func (h *AuthHandler) Login(ctx context.Context, req *api.LoginRequest) (*api.Au
 
 	result, err := h.authService.Login(ctx, dtoReq)
 	if err != nil {
-		return nil, ToAPIError(err)
+		return nil, apperrors.ToAPIError(err)
 	}
 
 	return &api.AuthResponse{
@@ -78,7 +79,7 @@ func (h *AuthHandler) LoginRefresh(ctx context.Context, req *api.RefreshTokenReq
 
 	result, err := h.authService.Refresh(ctx, dtoReq)
 	if err != nil {
-		return nil, ToAPIError(err)
+		return nil, apperrors.ToAPIError(err)
 	}
 
 	return &api.AuthResponse{
@@ -97,7 +98,7 @@ func (h *AuthHandler) Logout(ctx context.Context, req *api.RefreshTokenRequest) 
 
 	err := h.authService.Logout(ctx, req.RefreshToken)
 	if err != nil {
-		return ToAPIError(err)
+		return apperrors.ToAPIError(err)
 	}
 
 	return nil

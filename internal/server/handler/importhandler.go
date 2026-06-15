@@ -7,6 +7,7 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/server/middleware"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 )
@@ -29,7 +30,7 @@ func (h *ImportHandler) ImportServers(ctx context.Context, req *api.ImportServer
 
 	result, err := h.importService.ImportServers(ctx, userID, req.File.File)
 	if err != nil {
-		return nil, ToAPIError(err)
+		return nil, apperrors.ToAPIError(err)
 	}
 
 	successes := make([]api.ImportServerSuccess, len(result.Successes))
@@ -70,7 +71,7 @@ func (h *ImportHandler) DownloadImportTemplate(ctx context.Context) (api.Downloa
 	buf := new(bytes.Buffer)
 
 	if err := h.importService.GenerateTemplate(buf); err != nil {
-		return api.DownloadImportTemplateOK{}, ToAPIError(err)
+		return api.DownloadImportTemplateOK{}, apperrors.ToAPIError(err)
 	}
 
 	return api.DownloadImportTemplateOK{Data: buf}, nil
