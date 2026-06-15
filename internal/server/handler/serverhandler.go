@@ -96,6 +96,27 @@ func (h *ServerHandler) DeleteServer(ctx context.Context, params api.DeleteServe
 	return nil
 }
 
+func (h *ServerHandler) SearchServers(ctx context.Context, params api.SearchServersParams) (*api.ServerListResponse, error) {
+
+	page := params.Page.Or(1)
+	perPage := params.PerPage.Or(20)
+
+	userID := middleware.GetUserID(ctx)
+	result, total, err := h.serverService.SearchServers(ctx, params.Q, userID, page, perPage)
+	if err != nil {
+		return nil, apperrors.ToAPIError(err)
+	}
+
+	data := lo.Map(result, func(item dto.Server, _ int) api.ServerObject {
+		return toAPIServer(&item)
+	})
+
+	return &api.ServerListResponse{
+		Meta: toPaginationMeta(page, perPage, total),
+		Data: data,
+	}, nil
+}
+
 func (h *ServerHandler) ListServersOntime(ctx context.Context, params api.ListServersOntimeParams) (*api.ServerOntimeListResponse, error) {
 
 	page := params.Page.Or(1)

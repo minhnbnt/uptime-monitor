@@ -73,17 +73,26 @@ func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 	sqlDB.SetConnMaxLifetime(30 * time.Minute)
 
 	schemas := []any{
+		&domain.User{},
 		&domain.Server{},
 		&domain.Endpoint{},
 		&domain.ServerEvent{},
-		&domain.User{},
 	}
 
 	if err := db.AutoMigrate(schemas...); err != nil {
 		return nil, err
 	}
 
-	return &GORMWrapper{db: db}, nil
+	var searchEnabled bool
+	if err := db.Exec("CREATE EXTENSION IF NOT EXISTS pg_search").Error; err != nil {
+		logger.Warn("pg_search extension not available, ParadeDB search disabled", zap.Error(err))
+	} else if err := db.Exec(`CREATE INDEX IF NOT EXISTS servers_search_idx ON servers USING bm25 (id, name) WITH (key_field='id')`).Error; err != nil {
+		logger.Warn("failed to create BM25 index, ParadeDB search disabled", zap.Error(err))
+	} else {
+		searchEnabled = true
+	}
+
+	return &GORMWrapper{db: db, SearchEnabled: searchEnabled}, nil
 }
 
 func RegisterGORMDB(i do.Injector) {
@@ -92,7 +101,8 @@ func RegisterGORMDB(i do.Injector) {
 }
 
 type GORMWrapper struct {
-	db *gorm.DB
+	db            *gorm.DB
+	SearchEnabled bool
 }
 
 func (gw *GORMWrapper) GetDB() *gorm.DB {

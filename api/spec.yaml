@@ -13,6 +13,8 @@ paths:
     $ref: "./paths/servers.yaml#/servers"
   /api/v1/servers/ontime:
     $ref: "./paths/servers.yaml#/servers-ontime"
+  /api/v1/servers/search:
+    $ref: "./paths/servers.yaml#/servers-search"
   /api/v1/servers/{id}:
     $ref: "./paths/servers.yaml#/servers-id"
   /api/v1/servers/{id}/check_method:

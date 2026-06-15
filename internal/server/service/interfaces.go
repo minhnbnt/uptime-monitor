@@ -25,6 +25,10 @@ type EndpointRepository interface {
 	BatchCreateEndpoints(ctx context.Context, endpoints []domain.Endpoint) error
 }
 
+type ServerSearchRepository interface {
+	Search(ctx context.Context, q string, createdByID uint, limit, offset int) ([]domain.Server, int64, error)
+}
+
 type OntimeCacheRepository interface {
 	MGet(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error)
 	MSet(ctx context.Context, items map[dto.BatchGetOntimeItem]float64) error

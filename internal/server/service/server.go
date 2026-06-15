@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
@@ -10,12 +11,14 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
+	"github.com/minhnbnt/uptime-monitor/internal/repository/search"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 )
 
 type ServerService struct {
 	serverRepository   ServerRepository
+	searchRepository   ServerSearchRepository
 	endpointRepository EndpointRepository
 	logger             logger.Logger
 }
@@ -25,6 +28,7 @@ func RegisterServerService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ServerService, error) {
 		return &ServerService{
 			serverRepository:   do.MustInvoke[*serverrepo.ServerRepository](i),
+			searchRepository:   do.MustInvoke[*search.ParadeDBSearcher](i),
 			endpointRepository: do.MustInvoke[*serverrepo.EndpointRepository](i),
 			logger:             do.MustInvoke[logger.Logger](i),
 		}, nil
@@ -127,4 +131,28 @@ func (ss *ServerService) DeleteServer(ctx context.Context, id uint) error {
 	}
 
 	return nil
+}
+
+func (ss *ServerService) SearchServers(
+	ctx context.Context, q string, createdByID uint, page, perPage int,
+) ([]dto.Server, int64, error) {
+
+	if ss.searchRepository == nil {
+		ss.logger.Error("search not available")
+		return nil, 0, fmt.Errorf("search: %w", apperrors.ErrInternal)
+	}
+
+	limit, offset := perPage, (page-1)*perPage
+
+	servers, total, err := ss.searchRepository.Search(ctx, q, createdByID, limit, offset)
+	if err != nil {
+		ss.logger.Error("failed to search servers", logger.Error(err))
+		return nil, 0, apperrors.ErrInternal
+	}
+
+	result := lo.Map(servers, func(item domain.Server, _ int) dto.Server {
+		return dto.ServerFromDomain(item)
+	})
+
+	return result, total, nil
 }

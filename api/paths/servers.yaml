@@ -252,6 +252,49 @@ check-method:
             schema:
               $ref: "../schemas/common.yaml#/ErrorResponse"
 
+servers-search:
+  get:
+    summary: Search servers by name
+    operationId: SearchServers
+    x-ogen-operation-group: Servers
+    tags:
+      - servers
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: q
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+          minimum: 1
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 100
+    responses:
+      "200":
+        description: Search results
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/server.yaml#/ServerListResponse"
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
 import-servers:
   post:
     summary: Import servers from Excel file

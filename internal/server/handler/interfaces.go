@@ -13,6 +13,7 @@ type ServerService interface {
 	GetServer(ctx context.Context, id uint) (*dto.Server, error)
 	UpdateServer(ctx context.Context, id uint, req dto.UpdateServerRequest) (*dto.Server, error)
 	DeleteServer(ctx context.Context, id uint) error
+	SearchServers(ctx context.Context, q string, createdByID uint, page, perPage int) ([]dto.Server, int64, error)
 }
 
 type OntimeService interface {
