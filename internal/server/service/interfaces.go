@@ -26,7 +26,7 @@ type EndpointRepository interface {
 }
 
 type ServerSearchRepository interface {
-	Search(ctx context.Context, q string, createdByID uint, limit, offset int) ([]domain.Server, int64, error)
+	Search(ctx context.Context, params dto.SearchParams, createdByID uint) ([]domain.Server, int64, error)
 }
 
 type OntimeCacheRepository interface {

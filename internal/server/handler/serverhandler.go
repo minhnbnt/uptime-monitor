@@ -98,11 +98,16 @@ func (h *ServerHandler) DeleteServer(ctx context.Context, params api.DeleteServe
 
 func (h *ServerHandler) SearchServers(ctx context.Context, params api.SearchServersParams) (*api.ServerListResponse, error) {
 
-	page := params.Page.Or(1)
-	perPage := params.PerPage.Or(20)
+	searchParams := dto.SearchParams{
+		Q:         params.Q,
+		Page:      params.Page.Or(1),
+		PerPage:   params.PerPage.Or(20),
+		SortBy:    string(params.SortBy.Or(api.SearchServersSortByScore)),
+		SortOrder: string(params.SortOrder.Or(api.SearchServersSortOrderDesc)),
+	}
 
 	userID := middleware.GetUserID(ctx)
-	result, total, err := h.serverService.SearchServers(ctx, params.Q, userID, page, perPage)
+	result, total, err := h.serverService.SearchServers(ctx, searchParams, userID)
 	if err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}
@@ -112,7 +117,7 @@ func (h *ServerHandler) SearchServers(ctx context.Context, params api.SearchServ
 	})
 
 	return &api.ServerListResponse{
-		Meta: toPaginationMeta(page, perPage, total),
+		Meta: toPaginationMeta(searchParams.Page, searchParams.PerPage, total),
 		Data: data,
 	}, nil
 }

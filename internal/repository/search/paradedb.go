@@ -4,13 +4,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/samber/do/v2"
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 )
+
+var sortFieldMap = map[string]string{
+	"name":       "name",
+	"created_at": "created_at",
+	"status":     "status",
+	"score":      "pdb.score(id)",
+}
 
 type ParadeDBSearcher struct {
 	db *gorm.DB
@@ -29,11 +38,24 @@ func RegisterParadeDBSearcher(i do.Injector) {
 }
 
 func (s *ParadeDBSearcher) Search(
-	ctx context.Context, q string, createdByID uint, limit, offset int,
+	ctx context.Context, params dto.SearchParams, createdByID uint,
 ) ([]domain.Server, int64, error) {
 
+	field, ok := sortFieldMap[params.SortBy]
+	if !ok {
+		field = sortFieldMap["score"]
+	}
+	order := "DESC"
+	if strings.EqualFold(params.SortOrder, "asc") {
+		order = "ASC"
+	}
+	safeOrder := fmt.Sprintf("%s %s", field, order)
+
+	limit := params.PerPage
+	offset := (params.Page - 1) * params.PerPage
+
 	total, err := gorm.G[domain.Server](s.db).
-		Where("created_by_id = ? AND name @@@ ?", createdByID, q).
+		Where("created_by_id = ? AND name @@@ ?", createdByID, params.Q).
 		Count(ctx, "*")
 
 	if err != nil {
@@ -45,8 +67,10 @@ func (s *ParadeDBSearcher) Search(
 	}
 
 	servers, err := gorm.G[domain.Server](s.db).
-		Where("created_by_id = ? AND name @@@ ?", createdByID, q).
-		Order("pdb.score(id) DESC").
+		Where("created_by_id = ? AND name @@@ ?", createdByID, params.Q).
+		Order(safeOrder).
+		Limit(limit).
+		Offset(offset).
 		Find(ctx)
 
 	if err != nil {

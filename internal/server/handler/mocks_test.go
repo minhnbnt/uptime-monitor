@@ -31,7 +31,7 @@ type mockServerService struct {
 	getServerFn     func(ctx context.Context, id uint) (*dto.Server, error)
 	updateServerFn  func(ctx context.Context, id uint, req dto.UpdateServerRequest) (*dto.Server, error)
 	deleteServerFn  func(ctx context.Context, id uint) error
-	searchServersFn func(ctx context.Context, q string, createdByID uint, page, perPage int) ([]dto.Server, int64, error)
+	searchServersFn func(ctx context.Context, params dto.SearchParams, createdByID uint) ([]dto.Server, int64, error)
 }
 
 func (m *mockServerService) ListServers(ctx context.Context, createdByID uint, page, perPage int) ([]dto.Server, error) {
@@ -49,11 +49,11 @@ func (m *mockServerService) UpdateServer(ctx context.Context, id uint, req dto.U
 func (m *mockServerService) DeleteServer(ctx context.Context, id uint) error {
 	return m.deleteServerFn(ctx, id)
 }
-func (m *mockServerService) SearchServers(ctx context.Context, q string, createdByID uint, page, perPage int) ([]dto.Server, int64, error) {
+func (m *mockServerService) SearchServers(ctx context.Context, params dto.SearchParams, createdByID uint) ([]dto.Server, int64, error) {
 	if m.searchServersFn == nil {
 		return nil, 0, nil
 	}
-	return m.searchServersFn(ctx, q, createdByID, page, perPage)
+	return m.searchServersFn(ctx, params, createdByID)
 }
 
 type mockOntimeService struct {

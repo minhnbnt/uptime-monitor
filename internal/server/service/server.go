@@ -134,7 +134,7 @@ func (ss *ServerService) DeleteServer(ctx context.Context, id uint) error {
 }
 
 func (ss *ServerService) SearchServers(
-	ctx context.Context, q string, createdByID uint, page, perPage int,
+	ctx context.Context, params dto.SearchParams, createdByID uint,
 ) ([]dto.Server, int64, error) {
 
 	if ss.searchRepository == nil {
@@ -142,9 +142,7 @@ func (ss *ServerService) SearchServers(
 		return nil, 0, fmt.Errorf("search: %w", apperrors.ErrInternal)
 	}
 
-	limit, offset := perPage, (page-1)*perPage
-
-	servers, total, err := ss.searchRepository.Search(ctx, q, createdByID, limit, offset)
+	servers, total, err := ss.searchRepository.Search(ctx, params, createdByID)
 	if err != nil {
 		ss.logger.Error("failed to search servers", logger.Error(err))
 		return nil, 0, apperrors.ErrInternal

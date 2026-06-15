@@ -13,6 +13,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
+	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
@@ -27,7 +28,7 @@ type OntimeService struct {
 func RegisterOntimeService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*OntimeService, error) {
 		return &OntimeService{
-			serverRepository: do.MustInvoke[service.ServerRepository](i),
+			serverRepository: do.MustInvoke[*serverrepo.ServerRepository](i),
 			batcher:          do.MustInvoke[*Batcher](i),
 			logger:           do.MustInvoke[logger.Logger](i),
 		}, nil
