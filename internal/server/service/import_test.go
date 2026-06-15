@@ -52,8 +52,8 @@ func TestImportService_ImportServers(t *testing.T) {
 		if result.Imported != 2 {
 			t.Errorf("Imported = %d, want 2", result.Imported)
 		}
-		if len(result.Errors) != 0 {
-			t.Errorf("Errors = %v, want empty", result.Errors)
+		if len(result.RowErrors)+len(result.BatchErrors) != 0 {
+			t.Errorf("unexpected errors: row=%v batch=%v", result.RowErrors, result.BatchErrors)
 		}
 		if len(gotServers) != 2 {
 			t.Fatalf("got %d servers, want 2", len(gotServers))
@@ -176,8 +176,8 @@ func TestImportService_ImportServers(t *testing.T) {
 		if result.Imported != 0 {
 			t.Errorf("Imported = %d, want 0", result.Imported)
 		}
-		if len(result.Errors) != 2 {
-			t.Fatalf("got %d errors, want 2", len(result.Errors))
+		if len(result.RowErrors) != 2 {
+			t.Fatalf("got %d row errors, want 2", len(result.RowErrors))
 		}
 	})
 
@@ -215,8 +215,8 @@ func TestImportService_ImportServers(t *testing.T) {
 		if result.Imported != 1 {
 			t.Errorf("Imported = %d, want 1", result.Imported)
 		}
-		if len(result.Errors) != 1 {
-			t.Fatalf("got %d errors, want 1", len(result.Errors))
+		if len(result.RowErrors) != 1 {
+			t.Fatalf("got %d row errors, want 1", len(result.RowErrors))
 		}
 	})
 
@@ -245,11 +245,11 @@ func TestImportService_ImportServers(t *testing.T) {
 		if result.Imported != 0 {
 			t.Errorf("Imported = %d, want 0", result.Imported)
 		}
-		if len(result.Errors) != 1 {
-			t.Fatalf("got %d errors, want 1", len(result.Errors))
+		if len(result.BatchErrors) != 1 {
+			t.Fatalf("got %d batch errors, want 1", len(result.BatchErrors))
 		}
-		if result.Errors[0].Message != "failed to create servers: connection refused" {
-			t.Errorf("Message = %q, want %q", result.Errors[0].Message, "failed to create servers: connection refused")
+		if result.BatchErrors[0].Message != "failed to create servers: connection refused" {
+			t.Errorf("Message = %q, want %q", result.BatchErrors[0].Message, "failed to create servers: connection refused")
 		}
 	})
 
@@ -289,11 +289,11 @@ func TestImportService_ImportServers(t *testing.T) {
 		if result.Imported != 2 {
 			t.Errorf("Imported = %d, want 2", result.Imported)
 		}
-		if len(result.Errors) != 1 {
-			t.Fatalf("got %d errors, want 1", len(result.Errors))
+		if len(result.BatchErrors) != 1 {
+			t.Fatalf("got %d batch errors, want 1", len(result.BatchErrors))
 		}
-		if result.Errors[0].Message != "failed to create endpoints: timeout" {
-			t.Errorf("Message = %q", result.Errors[0].Message)
+		if result.BatchErrors[0].Message != "failed to create endpoints: timeout" {
+			t.Errorf("Message = %q", result.BatchErrors[0].Message)
 		}
 	})
 }

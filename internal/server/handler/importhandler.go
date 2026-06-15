@@ -6,10 +6,8 @@ import (
 	"net/http"
 
 	"github.com/samber/do/v2"
-	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
-	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/server/middleware"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 )
@@ -38,12 +36,21 @@ func (h *ImportHandler) ImportServers(ctx context.Context, req *api.ImportServer
 		}
 	}
 
-	apiErrors := lo.Map(result.Errors, func(e dto.ImportRowError, _ int) api.ImportServerRowError {
-		return api.ImportServerRowError{
+	n := len(result.RowErrors) + len(result.BatchErrors)
+	apiErrors := make([]api.ImportServerRowError, 0, n)
+
+	for _, e := range result.RowErrors {
+		apiErrors = append(apiErrors, api.ImportServerRowError{
 			Row:     api.NewOptInt(e.Row),
 			Message: api.NewOptString(e.Message),
-		}
-	})
+		})
+	}
+
+	for _, e := range result.BatchErrors {
+		apiErrors = append(apiErrors, api.ImportServerRowError{
+			Message: api.NewOptString(e.Message),
+		})
+	}
 
 	return &api.ImportServersResponse{
 		Imported: api.NewOptInt(result.Imported),

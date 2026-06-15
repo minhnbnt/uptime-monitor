@@ -185,8 +185,8 @@ func TestIntegration_ImportServers_Success(t *testing.T) {
 	if result.Imported != 3 {
 		t.Errorf("Imported = %d, want 3", result.Imported)
 	}
-	if len(result.Errors) != 0 {
-		t.Errorf("Errors = %v, want empty", result.Errors)
+	if len(result.RowErrors)+len(result.BatchErrors) != 0 {
+		t.Errorf("unexpected errors: row=%v batch=%v", result.RowErrors, result.BatchErrors)
 	}
 
 	var servers []domain.Server
@@ -263,7 +263,7 @@ func TestIntegration_ImportServers_ParseErrors(t *testing.T) {
 	if result.Imported != 0 {
 		t.Errorf("Imported = %d, want 0", result.Imported)
 	}
-	if len(result.Errors) == 0 {
+	if len(result.RowErrors) == 0 {
 		t.Errorf("expected parse errors, got none")
 	}
 
@@ -292,7 +292,7 @@ func TestIntegration_ImportServers_PartialErrors(t *testing.T) {
 	if result.Imported != 1 {
 		t.Errorf("Imported = %d, want 1", result.Imported)
 	}
-	if len(result.Errors) == 0 {
+	if len(result.RowErrors) == 0 {
 		t.Errorf("expected parse errors, got none")
 	}
 
@@ -358,8 +358,8 @@ func TestIntegration_ImportServers_DefaultValues(t *testing.T) {
 	if result.Imported != 1 {
 		t.Errorf("Imported = %d, want 1", result.Imported)
 	}
-	if len(result.Errors) != 0 {
-		t.Errorf("Errors = %v, want empty", result.Errors)
+	if len(result.RowErrors)+len(result.BatchErrors) != 0 {
+		t.Errorf("unexpected errors: row=%v batch=%v", result.RowErrors, result.BatchErrors)
 	}
 
 	var endpoint domain.Endpoint

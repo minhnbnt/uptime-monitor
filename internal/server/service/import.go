@@ -38,6 +38,8 @@ func RegisterImportService(i do.Injector) {
 	})
 }
 
+const chunkSize = 100
+
 func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.Reader) (*dto.ImportResult, error) {
 
 	rows, rowErrors, err := s.excelGenerator.ParseImportFile(file)
@@ -46,49 +48,57 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 	}
 
 	if len(rows) == 0 {
-		return &dto.ImportResult{Errors: rowErrors}, nil
+		return &dto.ImportResult{RowErrors: rowErrors}, nil
 	}
 
-	servers := lo.Map(rows, func(r dto.ImportRow, _ int) domain.Server {
-		return domain.Server{
-			Name:        r.Name,
-			Status:      domain.StatusActive,
-			CreatedByID: userID,
-		}
-	})
+	rowIter := slices.Values(rows)
 
-	if err := s.serverRepository.BatchCreateServers(ctx, servers); err != nil {
-		rowErrors = append(rowErrors, dto.ImportRowError{
-			Message: fmt.Sprintf("failed to create servers: %v", err),
+	insertedCount := 0
+	var batchErrors []dto.ImportError
+
+	for chunks := range it.Chunk(rowIter, chunkSize) {
+
+		servers := lo.Map(chunks, func(r dto.ImportRow, _ int) domain.Server {
+			return domain.Server{
+				Name:        r.Name,
+				Status:      domain.StatusActive,
+				CreatedByID: userID,
+			}
 		})
-		return &dto.ImportResult{Errors: rowErrors}, nil
-	}
 
-	serversIter := slices.Values(servers)
-
-	endpoints := it.MapI(serversIter, func(sv domain.Server, index int) domain.Endpoint {
-		return domain.Endpoint{
-			ServerID:     sv.ID,
-			URL:          rows[index].URL,
-			Status:       domain.StatusActive,
-			Interval:     time.Duration(rows[index].Interval) * time.Second,
-			Timeout:      time.Duration(rows[index].Timeout) * time.Second,
-			Method:       rows[index].Method,
-			ExpectedCode: rows[index].ExpectedCode,
+		err := s.serverRepository.BatchCreateServers(ctx, servers)
+		if err != nil {
+			batchErrors = append(batchErrors, dto.ImportError{
+				Message: fmt.Sprintf("failed to create servers: %v", err),
+			})
+			continue
 		}
-	})
 
-	endpoints = it.Filter(endpoints, func(e domain.Endpoint) bool { return e.URL != "" })
+		insertedCount += len(servers)
 
-	for chunk := range it.Chunk(endpoints, 100) {
-		if err := s.endpointRepository.BatchCreateEndpoints(ctx, chunk); err != nil {
-			rowErrors = append(rowErrors, dto.ImportRowError{
+		serverIter := slices.Values(servers)
+		endpoints := it.MapI(serverIter, func(sv domain.Server, index int) domain.Endpoint {
+			return domain.Endpoint{
+				ServerID:     sv.ID,
+				URL:          chunks[index].URL,
+				Status:       domain.StatusActive,
+				Interval:     time.Duration(chunks[index].Interval) * time.Second,
+				Timeout:      time.Duration(chunks[index].Timeout) * time.Second,
+				Method:       chunks[index].Method,
+				ExpectedCode: chunks[index].ExpectedCode,
+			}
+		})
+
+		endpoints = it.Filter(endpoints, func(e domain.Endpoint) bool { return e.URL != "" })
+
+		if err := s.endpointRepository.BatchCreateEndpoints(ctx, slices.Collect(endpoints)); err != nil {
+			batchErrors = append(batchErrors, dto.ImportError{
 				Message: fmt.Sprintf("failed to create endpoints: %v", err),
 			})
 		}
 	}
 
-	return &dto.ImportResult{Imported: len(servers), Errors: rowErrors}, nil
+	return &dto.ImportResult{Imported: insertedCount, RowErrors: rowErrors, BatchErrors: batchErrors}, nil
 }
 
 func (s *ImportService) GenerateTemplate(w io.Writer) error {

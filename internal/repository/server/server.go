@@ -90,11 +90,8 @@ func (sr *ServerRepository) Delete(ctx context.Context, id uint) error {
 }
 
 func (sr *ServerRepository) BatchCreateServers(ctx context.Context, servers []domain.Server) error {
-	db := sr.db.WithContext(ctx)
-	for i := range servers {
-		if err := gorm.G[domain.Server](db).Create(ctx, &servers[i]); err != nil {
-			return fmt.Errorf("failed to batch create servers: %w", err)
-		}
+	if err := sr.db.WithContext(ctx).Create(servers).Error; err != nil {
+		return fmt.Errorf("failed to batch create servers: %w", err)
 	}
 	return nil
 }
