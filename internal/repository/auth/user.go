@@ -24,13 +24,17 @@ func RegisterUserRepository(i do.Injector) {
 }
 
 func (r *UserRepository) FindByID(ctx context.Context, id uint) (*domain.User, error) {
+
 	user, err := gorm.G[domain.User](r.db).Where("id = ?", id).First(ctx)
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("find user by id: %w", err)
 	}
+
 	return &user, nil
 }
 
@@ -44,10 +48,11 @@ func (r *UserRepository) FindByEmailOrUsername(ctx context.Context, login string
 		Where("email = ? OR username = ?", login, login).
 		First(ctx)
 
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("find user: %w", err)
 	}
 
