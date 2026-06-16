@@ -2,11 +2,12 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrastructure"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
@@ -18,7 +19,8 @@ type Pinger interface {
 
 type EndpointService struct {
 	endpointRepository EndpointRepository
-	pingWorker         Pinger
+	pingWorker         *infra.PingWorker
+	logger             logger.Logger
 }
 
 func RegisterEndpointService(i do.Injector) {
@@ -26,6 +28,7 @@ func RegisterEndpointService(i do.Injector) {
 		return &EndpointService{
 			endpointRepository: do.MustInvoke[*serverrepo.EndpointRepository](i),
 			pingWorker:         do.MustInvoke[*infra.PingWorker](i),
+			logger:             do.MustInvoke[logger.Logger](i),
 		}, nil
 	})
 }
@@ -47,7 +50,8 @@ func (es *EndpointService) SetCheckMethod(ctx context.Context, serverID uint, re
 	endpoint := toDomainEndpoint(serverID, req)
 
 	if err := es.endpointRepository.UpsertEndpoint(ctx, endpoint); err != nil {
-		return fmt.Errorf("failed to upsert endpoint: %w", err)
+		es.logger.Error("failed to upsert endpoint", logger.Error(err))
+		return apperrors.ErrInternal
 	}
 
 	return nil

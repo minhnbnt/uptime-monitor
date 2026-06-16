@@ -2,21 +2,16 @@ package auth
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	authrepo "github.com/minhnbnt/uptime-monitor/internal/repository/auth"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
 	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
-)
-
-var (
-	ErrEmailOrUsernameTaken = errors.New("email or username already exists")
-	ErrInvalidCredentials   = errors.New("invalid email/username or password")
 )
 
 type UserRepository interface {
@@ -46,6 +41,7 @@ type AuthService struct {
 	tokenGenerator         TokenGenerator
 	tokenValidator         *TokenValidator
 	revokedTokenRepository RevokedTokenRepository
+	logger                 logger.Logger
 }
 
 func RegisterAuthService(i do.Injector) {
@@ -56,6 +52,7 @@ func RegisterAuthService(i do.Injector) {
 			tokenGenerator:         do.MustInvoke[TokenGenerator](i),
 			tokenValidator:         do.MustInvoke[*TokenValidator](i),
 			revokedTokenRepository: do.MustInvoke[RevokedTokenRepository](i),
+			logger:                 do.MustInvoke[logger.Logger](i),
 		}, nil
 	})
 }
@@ -73,16 +70,18 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 
 	existing, err := s.userRepository.FindByEmailOrUsername(ctx, req.Email)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find user: %w", err)
+		s.logger.Error("failed to find user", logger.Error(err))
+		return nil, apperrors.ErrInternal
 	}
 
 	if existing != nil {
-		return nil, ErrEmailOrUsernameTaken
+		return nil, apperrors.ErrEmailOrUsernameTaken
 	}
 
 	hash, err := s.passwordEncoder.Encode(req.Password)
 	if err != nil {
-		return nil, fmt.Errorf("failed to hash password: %w", err)
+		s.logger.Error("failed to hash password", logger.Error(err))
+		return nil, apperrors.ErrInternal
 	}
 
 	user := domain.User{
@@ -93,17 +92,20 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 	}
 
 	if err := s.userRepository.Create(ctx, &user); err != nil {
-		return nil, fmt.Errorf("failed to create user: %w", err)
+		s.logger.Error("failed to create user", logger.Error(err))
+		return nil, apperrors.ErrInternal
 	}
 
 	accessToken, err := s.tokenGenerator.GenerateAccessToken(&user)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate token: %w", err)
+		s.logger.Error("failed to generate access token", logger.Error(err))
+		return nil, apperrors.ErrInternal
 	}
 
 	refreshToken, err := s.tokenGenerator.GenerateRefreshToken(&user)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+		s.logger.Error("failed to generate refresh token", logger.Error(err))
+		return nil, apperrors.ErrInternal
 	}
 
 	return &dto.AuthResponse{
@@ -117,39 +119,48 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 
 	token, err := s.tokenValidator.ParseRefreshToken(refreshToken)
 	if err != nil {
-		return ErrInvalidCredentials
+		return apperrors.ErrInvalidCredentials
 	}
 
-	return s.revokedTokenRepository.Revoke(ctx, token)
+	if err := s.revokedTokenRepository.Revoke(ctx, token); err != nil {
+		s.logger.Error("failed to revoke token", logger.Error(err))
+		return apperrors.ErrInternal
+	}
+
+	return nil
 }
 
 func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.AuthResponse, error) {
 
 	user, err := s.userRepository.FindByEmailOrUsername(ctx, req.Login)
 	if err != nil {
-		return nil, fmt.Errorf("find user: %w", err)
+		s.logger.Error("failed to find user", logger.Error(err))
+		return nil, apperrors.ErrInternal
 	}
 	if user == nil {
-		return nil, ErrInvalidCredentials
+		return nil, apperrors.ErrInvalidCredentials
 	}
 
 	ok, err := s.passwordEncoder.Verify(req.Password, user.Password)
 	if err != nil {
-		return nil, fmt.Errorf("failed to verify password: %w", err)
+		s.logger.Error("failed to verify password", logger.Error(err))
+		return nil, apperrors.ErrInternal
 	}
 
 	if !ok {
-		return nil, ErrInvalidCredentials
+		return nil, apperrors.ErrInvalidCredentials
 	}
 
 	accessToken, err := s.tokenGenerator.GenerateAccessToken(user)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate token: %w", err)
+		s.logger.Error("failed to generate access token", logger.Error(err))
+		return nil, apperrors.ErrInternal
 	}
 
 	refreshToken, err := s.tokenGenerator.GenerateRefreshToken(user)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+		s.logger.Error("failed to generate refresh token", logger.Error(err))
+		return nil, apperrors.ErrInternal
 	}
 
 	return &dto.AuthResponse{
@@ -163,25 +174,28 @@ func (s *AuthService) Refresh(ctx context.Context, req dto.RefreshRequest) (*dto
 
 	userID, _, err := s.tokenValidator.ValidateRefreshToken(ctx, req.RefreshToken)
 	if err != nil {
-		return nil, ErrInvalidCredentials
+		return nil, apperrors.ErrInvalidCredentials
 	}
 
 	user, err := s.userRepository.FindByID(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("find user: %w", err)
+		s.logger.Error("failed to find user", logger.Error(err))
+		return nil, apperrors.ErrInternal
 	}
 	if user == nil {
-		return nil, ErrInvalidCredentials
+		return nil, apperrors.ErrInvalidCredentials
 	}
 
 	accessToken, err := s.tokenGenerator.GenerateAccessToken(user)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate access token: %w", err)
+		s.logger.Error("failed to generate access token", logger.Error(err))
+		return nil, apperrors.ErrInternal
 	}
 
 	refreshToken, err := s.tokenGenerator.GenerateRefreshToken(user)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+		s.logger.Error("failed to generate refresh token", logger.Error(err))
+		return nil, apperrors.ErrInternal
 	}
 
 	return &dto.AuthResponse{

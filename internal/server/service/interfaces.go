@@ -16,11 +16,17 @@ type ServerRepository interface {
 	Update(ctx context.Context, s *domain.Server) error
 	Delete(ctx context.Context, id uint) error
 	BatchGetOntime(ctx context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error)
+	BatchCreateServers(ctx context.Context, servers []domain.Server) error
 }
 
 type EndpointRepository interface {
 	UpsertEndpoint(ctx context.Context, endpoint domain.Endpoint) error
 	DeleteByServerID(ctx context.Context, serverID uint) error
+	BatchCreateEndpoints(ctx context.Context, endpoints []domain.Endpoint) error
+}
+
+type ServerSearchRepository interface {
+	Search(ctx context.Context, params dto.SearchParams, createdByID uint) ([]domain.Server, int64, error)
 }
 
 type OntimeCacheRepository interface {

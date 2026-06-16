@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type BatchGetOntimeRequest struct {
@@ -26,10 +28,7 @@ func (sr *ServerRepository) BatchGetOntime(ctx context.Context, req []BatchGetOn
 		return nil, err
 	}
 
-	var rows []RawEvent
-	result := sr.db.WithContext(ctx).Raw(rawEventSQL, string(payload)).Scan(&rows)
-
-	return rows, result.Error
+	return gorm.G[RawEvent](sr.db).Raw(rawEventSQL, string(payload)).Find(ctx)
 }
 
 const rawEventSQL = `

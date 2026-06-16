@@ -21,6 +21,10 @@ type EndpointRepository struct {
 	statusStore *monitorrepo.RedisServerEventRepository
 }
 
+func NewEndpointRepository(db *gorm.DB) *EndpointRepository {
+	return &EndpointRepository{db: db}
+}
+
 func RegisterEndpointRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointRepository, error) {
 
@@ -102,4 +106,15 @@ func (er *EndpointRepository) UpsertEndpoint(ctx context.Context, endpoint domai
 
 		return er.scheduler.Register(ctx, &endpoint)
 	})
+}
+
+func (er *EndpointRepository) BatchCreateEndpoints(ctx context.Context, endpoints []domain.Endpoint) error {
+
+	result := er.db.WithContext(ctx).Create(endpoints)
+
+	if err := result.Error; err != nil {
+		return fmt.Errorf("failed to batch create endpoints: %w", err)
+	}
+
+	return nil
 }

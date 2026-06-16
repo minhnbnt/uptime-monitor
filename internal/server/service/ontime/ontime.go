@@ -2,7 +2,7 @@ package ontime
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"slices"
 	"time"
 
@@ -11,6 +11,9 @@ import (
 	"github.com/samber/lo/it"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+	"github.com/minhnbnt/uptime-monitor/internal/logger"
+	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
@@ -19,13 +22,15 @@ import (
 type OntimeService struct {
 	serverRepository service.ServerRepository
 	batcher          *Batcher
+	logger           logger.Logger
 }
 
 func RegisterOntimeService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*OntimeService, error) {
 		return &OntimeService{
-			serverRepository: do.MustInvoke[service.ServerRepository](i),
+			serverRepository: do.MustInvoke[*serverrepo.ServerRepository](i),
 			batcher:          do.MustInvoke[*Batcher](i),
+			logger:           do.MustInvoke[logger.Logger](i),
 		}, nil
 	})
 }
@@ -39,12 +44,14 @@ func (s *OntimeService) ListServersWithOntime(ctx context.Context, createdByID u
 
 	servers, err := s.serverRepository.List(ctx, createdByID, perPage, (page-1)*perPage)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to list servers: %w", err)
+		s.logger.Error("failed to list servers", logger.Error(err))
+		return nil, 0, apperrors.ErrInternal
 	}
 
 	total, err := s.serverRepository.Count(ctx, createdByID)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to count servers: %w", err)
+		s.logger.Error("failed to count servers", logger.Error(err))
+		return nil, 0, apperrors.ErrInternal
 	}
 
 	ontimeMap, err := s.getServersOntime(ctx, servers)
@@ -65,8 +72,12 @@ func (s *OntimeService) ListServersWithOntime(ctx context.Context, createdByID u
 func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID uint) (*dto.ServerWithOntime, error) {
 
 	server, err := s.serverRepository.GetByID(ctx, serverID)
+	if errors.Is(err, apperrors.ErrNotFound) {
+		return nil, apperrors.ErrNotFound
+	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to get server: %w", err)
+		s.logger.Error("failed to get server", logger.Error(err))
+		return nil, apperrors.ErrInternal
 	}
 
 	ontimeMap, err := s.getServersOntime(ctx, []domain.Server{*server})
@@ -111,7 +122,8 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []domain.S
 
 	results, err := s.batcher.BatchGetOntime(ctx, items)
 	if err != nil {
-		return nil, fmt.Errorf("failed to batch get ontime: %w", err)
+		s.logger.Error("failed to batch get ontime", logger.Error(err))
+		return nil, apperrors.ErrInternal
 	}
 
 	lookup := buildOntimeLookup(results)

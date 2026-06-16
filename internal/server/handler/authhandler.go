@@ -2,12 +2,11 @@ package handler
 
 import (
 	"context"
-	"errors"
-	"net/http"
 
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	authservice "github.com/minhnbnt/uptime-monitor/internal/server/service/auth"
 )
@@ -34,17 +33,8 @@ func (h *AuthHandler) Register(ctx context.Context, req *api.RegisterRequest) (*
 	}
 
 	result, err := h.authService.Register(ctx, dtoReq)
-	if errors.Is(err, authservice.ErrEmailOrUsernameTaken) {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusConflict,
-			Response:   errResponse("CONFLICT", err.Error()),
-		}
-	}
 	if err != nil {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusInternalServerError,
-			Response:   errResponse("INTERNAL_ERROR", err.Error()),
-		}
+		return nil, apperrors.ToAPIError(err)
 	}
 
 	return &api.AuthResponse{
@@ -67,18 +57,8 @@ func (h *AuthHandler) Login(ctx context.Context, req *api.LoginRequest) (*api.Au
 	}
 
 	result, err := h.authService.Login(ctx, dtoReq)
-	if errors.Is(err, authservice.ErrInvalidCredentials) {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusUnauthorized,
-			Response:   errResponse("UNAUTHORIZED", err.Error()),
-		}
-	}
-
 	if err != nil {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusInternalServerError,
-			Response:   errResponse("INTERNAL_ERROR", err.Error()),
-		}
+		return nil, apperrors.ToAPIError(err)
 	}
 
 	return &api.AuthResponse{
@@ -98,18 +78,8 @@ func (h *AuthHandler) LoginRefresh(ctx context.Context, req *api.RefreshTokenReq
 	dtoReq := dto.RefreshRequest{RefreshToken: req.RefreshToken}
 
 	result, err := h.authService.Refresh(ctx, dtoReq)
-	if errors.Is(err, authservice.ErrInvalidCredentials) {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusUnauthorized,
-			Response:   errResponse("UNAUTHORIZED", err.Error()),
-		}
-	}
-
 	if err != nil {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusInternalServerError,
-			Response:   errResponse("INTERNAL_ERROR", err.Error()),
-		}
+		return nil, apperrors.ToAPIError(err)
 	}
 
 	return &api.AuthResponse{
@@ -127,18 +97,8 @@ func (h *AuthHandler) LoginRefresh(ctx context.Context, req *api.RefreshTokenReq
 func (h *AuthHandler) Logout(ctx context.Context, req *api.RefreshTokenRequest) error {
 
 	err := h.authService.Logout(ctx, req.RefreshToken)
-	if errors.Is(err, authservice.ErrInvalidCredentials) {
-		return &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusUnauthorized,
-			Response:   errResponse("UNAUTHORIZED", err.Error()),
-		}
-	}
-
 	if err != nil {
-		return &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusInternalServerError,
-			Response:   errResponse("INTERNAL_ERROR", err.Error()),
-		}
+		return apperrors.ToAPIError(err)
 	}
 
 	return nil

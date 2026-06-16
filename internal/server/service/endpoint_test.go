@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 )
 
@@ -22,7 +23,7 @@ func TestEndpointService_SetCheckMethod(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		var captured *domain.Endpoint
-		svc := &EndpointService{
+		svc := &EndpointService{logger: logger.NewMockLogger(),
 			endpointRepository: &mockEndpointRepo{
 				upsertEndpointFn: func(_ context.Context, e domain.Endpoint) error {
 					captured = &e
@@ -62,7 +63,7 @@ func TestEndpointService_SetCheckMethod(t *testing.T) {
 	})
 
 	t.Run("repo error", func(t *testing.T) {
-		svc := &EndpointService{
+		svc := &EndpointService{logger: logger.NewMockLogger(),
 			endpointRepository: &mockEndpointRepo{
 				upsertEndpointFn: func(_ context.Context, _ domain.Endpoint) error {
 					return errors.New("upsert failed")

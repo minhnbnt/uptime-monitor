@@ -3,13 +3,11 @@ package handler
 import (
 	"bytes"
 	"context"
-	"net/http"
 
 	"github.com/samber/do/v2"
-	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
-	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/server/middleware"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 )
@@ -32,22 +30,39 @@ func (h *ImportHandler) ImportServers(ctx context.Context, req *api.ImportServer
 
 	result, err := h.importService.ImportServers(ctx, userID, req.File.File)
 	if err != nil {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusBadRequest,
-			Response:   errResponse("IMPORT_FAILED", err.Error()),
+		return nil, apperrors.ToAPIError(err)
+	}
+
+	successes := make([]api.ImportServerSuccess, len(result.Successes))
+	for i, s := range result.Successes {
+		successes[i] = api.ImportServerSuccess{
+			Row:      api.NewOptInt(s.Row),
+			Name:     api.NewOptString(s.Name),
+			URL:      api.NewOptString(s.URL),
+			ServerID: api.NewOptInt(int(s.ServerID)),
 		}
 	}
 
-	apiErrors := lo.Map(result.Errors, func(e dto.ImportRowError, _ int) api.ImportServerRowError {
-		return api.ImportServerRowError{
+	failed := make([]api.ImportServerRowError, 0, len(result.RowErrors)+len(result.BatchErrors))
+
+	for _, e := range result.RowErrors {
+		failed = append(failed, api.ImportServerRowError{
 			Row:     api.NewOptInt(e.Row),
 			Message: api.NewOptString(e.Message),
-		}
-	})
+		})
+	}
+
+	for _, e := range result.BatchErrors {
+		failed = append(failed, api.ImportServerRowError{
+			Message: api.NewOptString(e.Message),
+		})
+	}
 
 	return &api.ImportServersResponse{
-		Imported: api.NewOptInt(result.Imported),
-		Errors:   apiErrors,
+		SuccessCount: len(result.Successes),
+		Successes:    successes,
+		FailedCount:  len(failed),
+		Failed:       failed,
 	}, nil
 }
 
@@ -56,10 +71,7 @@ func (h *ImportHandler) DownloadImportTemplate(ctx context.Context) (api.Downloa
 	buf := new(bytes.Buffer)
 
 	if err := h.importService.GenerateTemplate(buf); err != nil {
-		return api.DownloadImportTemplateOK{}, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusInternalServerError,
-			Response:   errResponse("TEMPLATE_ERROR", err.Error()),
-		}
+		return api.DownloadImportTemplateOK{}, apperrors.ToAPIError(err)
 	}
 
 	return api.DownloadImportTemplateOK{Data: buf}, nil

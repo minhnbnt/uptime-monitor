@@ -14,7 +14,10 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
-const schedulerQueueKey = "scheduler:queue"
+const (
+	schedulerQueueKey = "scheduler:queue"
+	claimLock         = 10 * time.Second
+)
 
 type ScheduledTask struct {
 	EndpointID uint
@@ -63,20 +66,21 @@ func (r *ZSetScheduleRepository) Unregister(ctx context.Context, endpointID uint
 // KEYS[1] = scheduler:queue
 // ARGV[1] = now in UnixMilliseconds
 // ARGV[2] = max number of due tasks to claim
+// ARGV[3] = claim lock duration in milliseconds
 // Returns: {due_array, next_array}
 //
-//	due_array:  [member1, score1, member2, score2, ...] — atomically removed from ZSET
+//	due_array:  [member1, score1, member2, score2, ...] — scores bumped to now+lockMs
 //	next_array: [member, score] — stays in ZSET, or [] if none
 var claimScript = redis.NewScript(`
 	local due = redis.call("ZRANGEBYSCORE", KEYS[1], "-inf", ARGV[1], "WITHSCORES", "LIMIT", "0", ARGV[2])
 	local next = redis.call("ZRANGEBYSCORE", KEYS[1], "(" .. ARGV[1], "+inf", "WITHSCORES", "LIMIT", "0", "1")
-	if #due > 0 then
-		local members = {}
-		for i = 1, #due, 2 do
-			members[#members + 1] = due[i]
-		end
-		redis.call("ZREM", KEYS[1], unpack(members))
+
+	local lockScore = tonumber(ARGV[1]) + tonumber(ARGV[3])
+
+	for i = 1, #due, 2 do
+		redis.call("ZADD", KEYS[1], lockScore, due[i])
 	end
+
 	return {due, next}
 `)
 
@@ -123,6 +127,7 @@ func (r *ZSetScheduleRepository) ClaimDueTasks(
 		ctx, r.client, []string{schedulerQueueKey},
 		fmt.Sprint(now.UnixMilli()),
 		fmt.Sprint(limit),
+		fmt.Sprint(claimLock.Milliseconds()),
 	)
 
 	dueRaw, nextRaw, err := collectRawValues(cmd)

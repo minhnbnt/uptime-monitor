@@ -11,6 +11,7 @@ import (
 	"github.com/samber/lo/it"
 
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
+	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
@@ -20,8 +21,8 @@ import (
 func RegisterBatcher(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*Batcher, error) {
 		return &Batcher{
-			serverRepository:      do.MustInvoke[service.ServerRepository](i),
-			ontimeCacheRepository: do.MustInvoke[service.OntimeCacheRepository](i),
+			serverRepository:      do.MustInvoke[*serverrepo.ServerRepository](i),
+			ontimeCacheRepository: do.MustInvoke[*ontimerepo.OntimeCacheRepository](i),
 			logger:                do.MustInvoke[logger.Logger](i),
 			calculator:            OntimeCalculator{},
 		}, nil

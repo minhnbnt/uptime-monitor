@@ -8,6 +8,7 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 )
@@ -33,7 +34,12 @@ func (h *EndpointHandler) SetCheckMethod(
 	if req.Method == api.CheckMethodTypePush {
 		return nil, &api.ErrorResponseStatusCode{
 			StatusCode: http.StatusNotImplemented,
-			Response:   errResponse("NOT_IMPLEMENTED", "Push check method is not yet implemented"),
+			Response: api.ErrorResponse{
+				Error: api.ErrorResponseError{
+					Code:    "NOT_IMPLEMENTED",
+					Message: "Push check method is not yet implemented",
+				},
+			},
 		}
 	}
 
@@ -47,18 +53,12 @@ func (h *EndpointHandler) SetCheckMethod(
 	}
 
 	if err := h.endpointService.SetCheckMethod(ctx, uint(params.ID), dtoReq); err != nil {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusInternalServerError,
-			Response:   errResponse("INTERNAL_ERROR", err.Error()),
-		}
+		return nil, apperrors.ToAPIError(err)
 	}
 
 	server, err := h.serverService.GetServer(ctx, uint(params.ID))
 	if err != nil {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusNotFound,
-			Response:   errResponse("NOT_FOUND", "Server not found"),
-		}
+		return nil, apperrors.ToAPIError(err)
 	}
 
 	return &api.ServerResponse{Data: toAPIServer(server)}, nil
@@ -78,10 +78,7 @@ func (h *EndpointHandler) TestEndpoint(ctx context.Context, req *api.TestEndpoin
 
 	result, err := h.endpointService.TestEndpoint(ctx, dtoReq)
 	if err != nil {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusInternalServerError,
-			Response:   errResponse("INTERNAL_ERROR", err.Error()),
-		}
+		return nil, apperrors.ToAPIError(err)
 	}
 
 	resp := &api.TestEndpointResponse{

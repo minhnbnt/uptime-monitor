@@ -594,6 +594,7 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 				},
 				logger: logger.NewMockLogger(),
 			},
+			logger: logger.NewMockLogger(),
 		}
 
 		got, err := svc.GetServerWithOntime(t.Context(), 1)
@@ -619,6 +620,7 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 				},
 			},
 			batcher: &Batcher{},
+			logger:  logger.NewMockLogger(),
 		}
 
 		_, err := svc.GetServerWithOntime(t.Context(), 99)
@@ -635,6 +637,7 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 				},
 			},
 			batcher: &Batcher{},
+			logger:  logger.NewMockLogger(),
 		}
 
 		_, err := svc.GetServerWithOntime(t.Context(), 1)
@@ -707,6 +710,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 				},
 				logger: logger.NewMockLogger(),
 			},
+			logger: logger.NewMockLogger(),
 		}
 
 		got, total, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
@@ -748,6 +752,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 				},
 			},
 			batcher: &Batcher{},
+			logger:  logger.NewMockLogger(),
 		}
 
 		got, total, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
@@ -770,6 +775,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 				},
 			},
 			batcher: &Batcher{},
+			logger:  logger.NewMockLogger(),
 		}
 
 		_, _, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
@@ -791,6 +797,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 				},
 			},
 			batcher: &Batcher{},
+			logger:  logger.NewMockLogger(),
 		}
 
 		_, _, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
@@ -827,6 +834,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 				},
 				logger: logger.NewMockLogger(),
 			},
+			logger: logger.NewMockLogger(),
 		}
 
 		got, total, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)

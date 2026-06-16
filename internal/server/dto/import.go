@@ -10,12 +10,24 @@ type ImportRow struct {
 	ExpectedCode int
 }
 
-type ImportResult struct {
-	Imported int
-	Errors   []ImportRowError
+type ImportSuccess struct {
+	Row      int
+	Name     string
+	URL      string
+	ServerID uint
 }
 
 type ImportRowError struct {
 	Row     int
 	Message string
+}
+
+type ImportError struct {
+	Message string
+}
+
+type ImportResult struct {
+	Successes   []ImportSuccess
+	RowErrors   []ImportRowError
+	BatchErrors []ImportError
 }

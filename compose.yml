@@ -61,7 +61,7 @@ services:
     command: "redis-server --appendonly yes"
 
   postgres:
-    image: postgres:17-alpine
+    image: paradedb/paradedb:pg17
 
     ports:
       - "5432:5432"
@@ -72,7 +72,7 @@ services:
       POSTGRES_PASSWORD: postgres
 
     volumes:
-      - postgres-data:/var/lib/postgresql
+      - postgres-data:/var/lib/postgresql/
 
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d uptime_monitor"]

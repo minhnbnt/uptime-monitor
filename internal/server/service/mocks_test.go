@@ -2,12 +2,14 @@ package service
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
+	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 )
 
 func gormModel(id uint, t time.Time) gorm.Model {
@@ -15,13 +17,14 @@ func gormModel(id uint, t time.Time) gorm.Model {
 }
 
 type mockServerRepo struct {
-	listFn           func(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error)
-	countFn          func(ctx context.Context, createdByID uint) (int64, error)
-	createFn         func(ctx context.Context, s *domain.Server) error
-	getByIDFn        func(ctx context.Context, id uint) (*domain.Server, error)
-	updateFn         func(ctx context.Context, s *domain.Server) error
-	deleteFn         func(ctx context.Context, id uint) error
-	batchGetOntimeFn func(ctx context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error)
+	listFn               func(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error)
+	countFn              func(ctx context.Context, createdByID uint) (int64, error)
+	createFn             func(ctx context.Context, s *domain.Server) error
+	getByIDFn            func(ctx context.Context, id uint) (*domain.Server, error)
+	updateFn             func(ctx context.Context, s *domain.Server) error
+	deleteFn             func(ctx context.Context, id uint) error
+	batchGetOntimeFn     func(ctx context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error)
+	batchCreateServersFn func(ctx context.Context, servers []domain.Server) error
 }
 
 func (m *mockServerRepo) List(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error) {
@@ -46,9 +49,14 @@ func (m *mockServerRepo) BatchGetOntime(ctx context.Context, req []serverrepo.Ba
 	return m.batchGetOntimeFn(ctx, req)
 }
 
+func (m *mockServerRepo) BatchCreateServers(ctx context.Context, servers []domain.Server) error {
+	return m.batchCreateServersFn(ctx, servers)
+}
+
 type mockEndpointRepo struct {
-	upsertEndpointFn   func(ctx context.Context, endpoint domain.Endpoint) error
-	deleteByServerIDFn func(ctx context.Context, serverID uint) error
+	upsertEndpointFn       func(ctx context.Context, endpoint domain.Endpoint) error
+	deleteByServerIDFn     func(ctx context.Context, serverID uint) error
+	batchCreateEndpointsFn func(ctx context.Context, endpoints []domain.Endpoint) error
 }
 
 func (m *mockEndpointRepo) UpsertEndpoint(ctx context.Context, endpoint domain.Endpoint) error {
@@ -60,4 +68,21 @@ func (m *mockEndpointRepo) DeleteByServerID(ctx context.Context, serverID uint) 
 		return nil
 	}
 	return m.deleteByServerIDFn(ctx, serverID)
+}
+
+func (m *mockEndpointRepo) BatchCreateEndpoints(ctx context.Context, endpoints []domain.Endpoint) error {
+	return m.batchCreateEndpointsFn(ctx, endpoints)
+}
+
+type mockExcelGenerator struct {
+	generateTemplateFn func(w io.Writer) error
+	parseImportFileFn  func(file io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error)
+}
+
+func (m *mockExcelGenerator) GenerateTemplate(w io.Writer) error {
+	return m.generateTemplateFn(w)
+}
+
+func (m *mockExcelGenerator) ParseImportFile(file io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error) {
+	return m.parseImportFileFn(file)
 }
