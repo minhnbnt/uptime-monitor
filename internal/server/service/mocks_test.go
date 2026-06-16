@@ -74,6 +74,22 @@ func (m *mockEndpointRepo) BatchCreateEndpoints(ctx context.Context, endpoints [
 	return m.batchCreateEndpointsFn(ctx, endpoints)
 }
 
+type mockSearchRepo struct {
+	searchFn func(ctx context.Context, params dto.SearchParams, createdByID uint) ([]domain.Server, int64, error)
+}
+
+func (m *mockSearchRepo) Search(ctx context.Context, params dto.SearchParams, createdByID uint) ([]domain.Server, int64, error) {
+	return m.searchFn(ctx, params, createdByID)
+}
+
+type mockPinger struct {
+	pingFn func(ctx context.Context, method, url string) (int, error)
+}
+
+func (m *mockPinger) Ping(ctx context.Context, method, url string) (int, error) {
+	return m.pingFn(ctx, method, url)
+}
+
 type mockExcelGenerator struct {
 	generateTemplateFn func(w io.Writer) error
 	parseImportFileFn  func(file io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error)

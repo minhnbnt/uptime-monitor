@@ -249,6 +249,59 @@ func TestServerService_UpdateServer(t *testing.T) {
 	})
 }
 
+func TestServerService_SearchServers(t *testing.T) {
+	now := time.Now()
+	domainServers := []domain.Server{
+		{Model: gormModel(1, now), Name: "server-a", Status: domain.StatusActive},
+		{Model: gormModel(2, now), Name: "server-b", Status: domain.StatusPaused},
+	}
+
+	t.Run("success", func(t *testing.T) {
+		svc := &ServerService{
+			logger: logger.NewMockLogger(),
+			searchRepository: &mockSearchRepo{
+				searchFn: func(_ context.Context, params dto.SearchParams, createdByID uint) ([]domain.Server, int64, error) {
+					if createdByID != 1 {
+						t.Errorf("createdByID = %d, want 1", createdByID)
+					}
+					return domainServers, 2, nil
+				},
+			},
+		}
+
+		params := dto.SearchParams{Q: "server", From: 1, To: 10}
+		got, total, err := svc.SearchServers(t.Context(), params, 1)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if total != 2 {
+			t.Errorf("total = %d, want 2", total)
+		}
+		if len(got) != 2 {
+			t.Fatalf("got %d, want 2", len(got))
+		}
+		if got[0].Name != "server-a" || got[1].Name != "server-b" {
+			t.Errorf("names: %v", got)
+		}
+	})
+
+	t.Run("search error", func(t *testing.T) {
+		svc := &ServerService{
+			logger: logger.NewMockLogger(),
+			searchRepository: &mockSearchRepo{
+				searchFn: func(_ context.Context, _ dto.SearchParams, _ uint) ([]domain.Server, int64, error) {
+					return nil, 0, errors.New("search error")
+				},
+			},
+		}
+
+		_, _, err := svc.SearchServers(t.Context(), dto.SearchParams{}, 1)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+}
+
 func TestServerService_DeleteServer(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		var deleted uint

@@ -196,6 +196,76 @@ func TestValidateRefreshToken_Malformed(t *testing.T) {
 	}
 }
 
+func TestParseRefreshToken_Success(t *testing.T) {
+	p, tc := setupProviderWithConfig(t)
+	tv := &TokenValidator{provider: p, tokenConfig: tc, logger: logger.NewMockLogger()}
+
+	tokenStr, err := p.NewToken(tc.GetRefreshTokenIssuer(), map[string]any{
+		"sub": "42",
+		"jti": "0195f0b0-0000-7000-8000-000000000000",
+		"exp": time.Now().Add(7 * 24 * time.Hour).Unix(),
+	})
+	if err != nil {
+		t.Fatalf("NewToken error: %v", err)
+	}
+
+	token, err := tv.ParseRefreshToken(tokenStr)
+	if err != nil {
+		t.Fatalf("ParseRefreshToken error: %v", err)
+	}
+	sub, _ := token.Subject()
+	if sub != "42" {
+		t.Errorf("subject = %q, want 42", sub)
+	}
+}
+
+func TestParseRefreshToken_WrongIssuer(t *testing.T) {
+	p, tc := setupProviderWithConfig(t)
+	tv := &TokenValidator{provider: p, tokenConfig: tc, logger: logger.NewMockLogger()}
+
+	tokenStr, err := p.NewToken(tc.GetAccessTokenIssuer(), map[string]any{
+		"sub": "42",
+		"exp": time.Now().Add(15 * time.Minute).Unix(),
+	})
+	if err != nil {
+		t.Fatalf("NewToken error: %v", err)
+	}
+
+	_, err = tv.ParseRefreshToken(tokenStr)
+	if err == nil {
+		t.Fatal("expected error for wrong issuer")
+	}
+}
+
+func TestParseRefreshToken_Expired(t *testing.T) {
+	p, tc := setupProviderWithConfig(t)
+	tv := &TokenValidator{provider: p, tokenConfig: tc, logger: logger.NewMockLogger()}
+
+	tokenStr, err := p.NewToken(tc.GetRefreshTokenIssuer(), map[string]any{
+		"sub": "42",
+		"jti": "0195f0b0-0000-7000-8000-000000000000",
+		"exp": time.Now().Add(-time.Hour).Unix(),
+	})
+	if err != nil {
+		t.Fatalf("NewToken error: %v", err)
+	}
+
+	_, err = tv.ParseRefreshToken(tokenStr)
+	if err == nil {
+		t.Fatal("expected error for expired token")
+	}
+}
+
+func TestParseRefreshToken_Malformed(t *testing.T) {
+	p, tc := setupProviderWithConfig(t)
+	tv := &TokenValidator{provider: p, tokenConfig: tc, logger: logger.NewMockLogger()}
+
+	_, err := tv.ParseRefreshToken("not-a-valid-token")
+	if err == nil {
+		t.Fatal("expected error for malformed token")
+	}
+}
+
 func TestValidateRefreshToken_Revoked(t *testing.T) {
 	p, tc := setupProviderWithConfig(t)
 	tv := &TokenValidator{

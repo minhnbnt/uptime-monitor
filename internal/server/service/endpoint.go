@@ -19,7 +19,7 @@ type Pinger interface {
 
 type EndpointService struct {
 	endpointRepository EndpointRepository
-	pingWorker         *infra.PingWorker
+	pingWorker         Pinger
 	logger             logger.Logger
 }
 
