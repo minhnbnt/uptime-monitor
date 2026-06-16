@@ -1,29 +1,34 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
+	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
 	"github.com/minhnbnt/uptime-monitor/internal/server/middleware"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 	ontime "github.com/minhnbnt/uptime-monitor/internal/server/service/ontime"
 )
 
 type ServerHandler struct {
-	serverService ServerService
-	ontimeService OntimeService
+	serverService  ServerService
+	ontimeService  OntimeService
+	excelGenerator *infrastructure.ExcelGenerator
 }
 
 func RegisterServerHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ServerHandler, error) {
 		return &ServerHandler{
-			serverService: do.MustInvoke[*service.ServerService](i),
-			ontimeService: do.MustInvoke[*ontime.OntimeService](i),
+			serverService:  do.MustInvoke[*service.ServerService](i),
+			ontimeService:  do.MustInvoke[*ontime.OntimeService](i),
+			excelGenerator: do.MustInvoke[*infrastructure.ExcelGenerator](i),
 		}, nil
 	})
 }
@@ -98,10 +103,13 @@ func (h *ServerHandler) DeleteServer(ctx context.Context, params api.DeleteServe
 
 func (h *ServerHandler) SearchServers(ctx context.Context, params api.SearchServersParams) (*api.ServerListResponse, error) {
 
+	page := params.Page.Or(1)
+	perPage := params.PerPage.Or(20)
+
 	searchParams := dto.SearchParams{
 		Q:         params.Q,
-		Page:      params.Page.Or(1),
-		PerPage:   params.PerPage.Or(20),
+		From:      (page - 1) * perPage,
+		To:        perPage,
 		SortBy:    string(params.SortBy.Or(api.SearchServersSortByScore)),
 		SortOrder: string(params.SortOrder.Or(api.SearchServersSortOrderDesc)),
 	}
@@ -117,9 +125,38 @@ func (h *ServerHandler) SearchServers(ctx context.Context, params api.SearchServ
 	})
 
 	return &api.ServerListResponse{
-		Meta: toPaginationMeta(searchParams.Page, searchParams.PerPage, total),
+		Meta: toPaginationMeta(page, perPage, total),
 		Data: data,
 	}, nil
+}
+
+func (h *ServerHandler) ExportServers(ctx context.Context, params api.ExportServersParams) (api.ExportServersOK, error) {
+
+	searchParams := dto.SearchParams{
+		Q:         params.Q.Or(""),
+		From:      params.From.Or(0),
+		To:        params.To.Or(100),
+		SortBy:    string(params.SortBy.Or(api.ExportServersSortByName)),
+		SortOrder: string(params.SortOrder.Or(api.ExportServersSortOrderAsc)),
+	}
+
+	if v, ok := params.Status.Get(); ok {
+		s := domain.Status(v)
+		searchParams.Status = &s
+	}
+
+	userID := middleware.GetUserID(ctx)
+	result, _, err := h.serverService.SearchServers(ctx, searchParams, userID)
+	if err != nil {
+		return api.ExportServersOK{}, apperrors.ToAPIError(err)
+	}
+
+	buf := new(bytes.Buffer)
+	if err := h.excelGenerator.GenerateExportFile(buf, result); err != nil {
+		return api.ExportServersOK{}, apperrors.ToAPIError(err)
+	}
+
+	return api.ExportServersOK{Data: buf}, nil
 }
 
 func (h *ServerHandler) ListServersOntime(ctx context.Context, params api.ListServersOntimeParams) (*api.ServerOntimeListResponse, error) {
@@ -141,7 +178,7 @@ func (h *ServerHandler) ListServersOntime(ctx context.Context, params api.ListSe
 	})
 
 	return &api.ServerOntimeListResponse{
-		Data: data,
 		Meta: toPaginationMeta(page, perPage, total),
+		Data: data,
 	}, nil
 }

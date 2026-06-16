@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/samber/do/v2"
 	"github.com/samber/lo/it"
@@ -28,15 +29,16 @@ func (g *ExcelGenerator) GenerateTemplate(w io.Writer) error {
 	xl := excelize.NewFile()
 	defer xl.Close()
 
-	headers := []string{"server_name", "url", "method", "interval_sec", "timeout_sec", "expected_code"}
-	for i, h := range headers {
-		cell, err := excelize.CoordinatesToCellName(i+1, 1)
-		if err != nil {
-			return fmt.Errorf("failed to create cell name: %w", err)
-		}
-		if err := xl.SetCellValue("Sheet1", cell, h); err != nil {
-			return fmt.Errorf("failed to set cell value: %w", err)
-		}
+	headers := []string{
+		"server_name",
+		"url", "method",
+		"interval_sec",
+		"timeout_sec",
+		"expected_code",
+	}
+
+	if err := setHeader(xl, "Sheet1", headers); err != nil {
+		return fmt.Errorf("failed to set header: %w", err)
 	}
 
 	if err := xl.SetCellValue("Sheet1", "A2", "My Server"); err != nil {
@@ -44,6 +46,70 @@ func (g *ExcelGenerator) GenerateTemplate(w io.Writer) error {
 	}
 	if err := xl.SetCellValue("Sheet1", "B2", "https://example.com/health"); err != nil {
 		return fmt.Errorf("failed to set cell value: %w", err)
+	}
+
+	if err := xl.Write(w); err != nil {
+		return fmt.Errorf("failed to write Excel file: %w", err)
+	}
+
+	return nil
+}
+
+func setHeader(f *excelize.File, sheet string, headers []string) error {
+
+	for i, h := range headers {
+
+		cell, err := excelize.CoordinatesToCellName(i+1, 1)
+		if err != nil {
+			return fmt.Errorf("failed to create cell name: %w", err)
+		}
+
+		if err := f.SetCellValue(sheet, cell, h); err != nil {
+			return fmt.Errorf("failed to set cell value: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (g *ExcelGenerator) GenerateExportFile(w io.Writer, servers []dto.Server) error {
+
+	xl := excelize.NewFile()
+	defer xl.Close()
+
+	headers := []string{
+		"server_name",
+		"status",
+		"endpoint_url",
+		"created_at",
+		"updated_at",
+	}
+	if err := setHeader(xl, "Sheet1", headers); err != nil {
+		return fmt.Errorf("failed to set header: %w", err)
+	}
+
+	for i, sv := range servers {
+
+		url := ""
+
+		if sv.Endpoint != nil {
+			url = sv.Endpoint.URL
+		}
+
+		row := i + 2
+		values := map[string]string{
+			fmt.Sprintf("A%d", row): sv.Name,
+			fmt.Sprintf("B%d", row): string(sv.Status),
+			fmt.Sprintf("C%d", row): url,
+			fmt.Sprintf("D%d", row): sv.CreatedAt.Format(time.RFC3339),
+			fmt.Sprintf("E%d", row): sv.UpdatedAt.Format(time.RFC3339),
+		}
+
+		for cell, value := range values {
+			if err := xl.SetCellValue("Sheet1", cell, value); err != nil {
+				return fmt.Errorf("failed to set cell value: %w", err)
+			}
+		}
 	}
 
 	if err := xl.Write(w); err != nil {

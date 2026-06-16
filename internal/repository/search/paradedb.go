@@ -14,13 +14,6 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 )
 
-var sortFieldMap = map[string]string{
-	"name":       "name",
-	"created_at": "created_at",
-	"status":     "status",
-	"score":      "pdb.score(id)",
-}
-
 type ParadeDBSearcher struct {
 	db *gorm.DB
 }
@@ -41,23 +34,20 @@ func (s *ParadeDBSearcher) Search(
 	ctx context.Context, params dto.SearchParams, createdByID uint,
 ) ([]domain.Server, int64, error) {
 
-	field, ok := sortFieldMap[params.SortBy]
-	if !ok {
-		field = sortFieldMap["score"]
+	safeOrder, limit, offset := getQueryOptions(&params)
+
+	query := gorm.G[domain.Server](s.db).
+		Where("created_by_id = ?", createdByID)
+
+	if params.Q != "" {
+		query = query.Where("name @@@ ?", params.Q)
 	}
-	order := "DESC"
-	if strings.EqualFold(params.SortOrder, "asc") {
-		order = "ASC"
+
+	if params.Status != nil {
+		query = query.Where("status = ?", *params.Status)
 	}
-	safeOrder := fmt.Sprintf("%s %s", field, order)
 
-	limit := params.PerPage
-	offset := (params.Page - 1) * params.PerPage
-
-	total, err := gorm.G[domain.Server](s.db).
-		Where("created_by_id = ? AND name @@@ ?", createdByID, params.Q).
-		Count(ctx, "*")
-
+	total, err := query.Count(ctx, "*")
 	if err != nil {
 		return nil, 0, fmt.Errorf("search count: %w", err)
 	}
@@ -66,8 +56,7 @@ func (s *ParadeDBSearcher) Search(
 		return nil, 0, nil
 	}
 
-	servers, err := gorm.G[domain.Server](s.db).
-		Where("created_by_id = ? AND name @@@ ?", createdByID, params.Q).
+	servers, err := query.
 		Order(safeOrder).
 		Limit(limit).
 		Offset(offset).
@@ -78,4 +67,33 @@ func (s *ParadeDBSearcher) Search(
 	}
 
 	return servers, total, nil
+}
+
+var sortFieldMap = map[string]string{
+	"name":       "name",
+	"created_at": "created_at",
+	"status":     "status",
+	"score":      "pdb.score(id)",
+}
+
+func getQueryOptions(params *dto.SearchParams) (safeOrder string, limit, offset int) {
+
+	field, ok := sortFieldMap[params.SortBy]
+	if !ok {
+		field = sortFieldMap["score"]
+	}
+
+	order := "DESC"
+	if strings.EqualFold(params.SortOrder, "asc") {
+		order = "ASC"
+	}
+
+	safeOrder = fmt.Sprintf("%s %s", field, order)
+
+	limit = params.To
+	if limit == 0 {
+		limit = 100
+	}
+
+	return safeOrder, limit, params.From
 }

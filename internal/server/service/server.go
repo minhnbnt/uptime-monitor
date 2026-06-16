@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
@@ -38,7 +37,6 @@ func RegisterServerService(i do.Injector) {
 func (ss *ServerService) ListServers(ctx context.Context, createdByID uint, page, perPage int) ([]dto.Server, error) {
 
 	limit, offset := perPage, (page-1)*perPage
-
 	result, err := ss.serverRepository.List(ctx, createdByID, limit, offset)
 	if err != nil {
 		ss.logger.Error("failed to get servers", logger.Error(err))
@@ -136,11 +134,6 @@ func (ss *ServerService) DeleteServer(ctx context.Context, id uint) error {
 func (ss *ServerService) SearchServers(
 	ctx context.Context, params dto.SearchParams, createdByID uint,
 ) ([]dto.Server, int64, error) {
-
-	if ss.searchRepository == nil {
-		ss.logger.Error("search not available")
-		return nil, 0, fmt.Errorf("search: %w", apperrors.ErrInternal)
-	}
 
 	servers, total, err := ss.searchRepository.Search(ctx, params, createdByID)
 	if err != nil {
