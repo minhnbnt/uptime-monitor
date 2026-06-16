@@ -4,7 +4,7 @@ services:
     ports:
       - 8080:8080
 
-    command: ["--worker=false", "--scheduler-backend=redis", "--dev"]
+    command: ["--worker=false", "--dev"]
 
     env_file:
       - ./.env
@@ -17,7 +17,7 @@ services:
 
   worker:
     build: .
-    command: ["--server=false", "--scheduler-backend=redis"]
+    command: ["--server=false"]
 
     env_file:
       - ./.env
@@ -80,6 +80,19 @@ services:
       timeout: 5s
       retries: 5
 
+  temporal:
+    image: temporalio/temporal:latest
+
+    ports:
+      - 7233:7233
+      - 8233:8233
+
+    volumes:
+      - temporal-data:/home/temporal
+
+    command: server start-dev --ip 0.0.0.0 --db-filename /home/temporal/temporal.db
+
 volumes:
   postgres-data:
   redis_data:
+  temporal-data:

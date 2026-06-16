@@ -16,7 +16,7 @@ import (
 	"github.com/samber/do/v2"
 	"go.uber.org/zap"
 
-	"github.com/minhnbnt/uptime-monitor/api"
+	apidocs "github.com/minhnbnt/uptime-monitor/api"
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	temporalcfg "github.com/minhnbnt/uptime-monitor/internal/config/temporal"
@@ -47,8 +47,6 @@ func main() {
 
 	enableServer := flag.Bool("server", true, "start HTTP API server")
 	enableWorker := flag.Bool("worker", true, "start background worker")
-
-	schedulerBackend := flag.String("scheduler-backend", "temporal", "scheduler backend: temporal | redis")
 
 	dev := flag.Bool("dev", false, "enable dev features (API docs)")
 
@@ -113,11 +111,6 @@ func main() {
 		monitorhandler.RegisterZSetWorkerRunner,
 	)
 
-	schedulerrepo.RegisterSchedulerBackend(
-		injector,
-		schedulerrepo.SchedulerBackend(*schedulerBackend),
-	)
-
 	ctx, stop := signal.NotifyContext(
 		context.Background(),
 		os.Interrupt,
@@ -142,16 +135,23 @@ func main() {
 
 func runWorker(ctx context.Context, i do.Injector) {
 
-	backend := do.MustInvoke[*schedulerrepo.SchedulerBackend](i)
+	cfg := do.MustInvoke[*config.Config](i)
+	log := do.MustInvoke[logger.Logger](i)
 
-	switch *backend {
-	case schedulerrepo.SchedulerBackendTemporal:
+	switch cfg.Scheduler.Backend {
+	case "temporal":
 		runner := do.MustInvoke[*monitorhandler.TemporalWorkerRunner](i)
 		runner.RunTemporalWorker(ctx)
 
-	case schedulerrepo.SchedulerBackendRedis:
+	case "redis":
 		runner := do.MustInvoke[*monitorhandler.ZSetWorkerRunner](i)
 		_ = runner.RunZSetWorker(ctx)
+
+	default:
+		log.Panic(
+			"unknown scheduler backend",
+			logger.String("backend", cfg.Scheduler.Backend),
+		)
 	}
 }
 

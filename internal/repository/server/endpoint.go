@@ -11,6 +11,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/repository/monitor"
 	"github.com/minhnbnt/uptime-monitor/internal/repository/scheduler"
 )
@@ -25,22 +26,38 @@ func NewEndpointRepository(db *gorm.DB) *EndpointRepository {
 	return &EndpointRepository{db: db}
 }
 
+func getSchedulerRepository(i do.Injector) scheduler.SchedulerRepository {
+
+	cfg := do.MustInvoke[*config.Config](i)
+	log := do.MustInvoke[logger.Logger](i)
+
+	backend := cfg.Scheduler.Backend
+
+	switch backend {
+	case "temporal":
+		return do.MustInvoke[*scheduler.TemporalSchedulerRepository](i)
+
+	case "redis":
+		return do.MustInvoke[*scheduler.ZSetScheduleRepository](i)
+
+	default:
+		log.Panic(
+			"unsupported scheduler backend",
+			logger.String("backend", backend),
+		)
+	}
+
+	return nil
+}
+
 func RegisterEndpointRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointRepository, error) {
 
 		dbWrapper := do.MustInvoke[*config.GORMWrapper](i)
-		backend := do.MustInvoke[*scheduler.SchedulerBackend](i)
-
-		var sched scheduler.SchedulerRepository
-		if *backend == scheduler.SchedulerBackendTemporal {
-			sched = do.MustInvoke[*scheduler.TemporalSchedulerRepository](i)
-		} else {
-			sched = do.MustInvoke[*scheduler.ZSetScheduleRepository](i)
-		}
 
 		return &EndpointRepository{
 			db:          dbWrapper.GetDB(),
-			scheduler:   sched,
+			scheduler:   getSchedulerRepository(i),
 			statusStore: do.MustInvoke[*monitorrepo.RedisServerEventRepository](i),
 		}, nil
 	})

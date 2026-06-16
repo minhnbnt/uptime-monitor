@@ -61,6 +61,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("temporal.task_queue", "ping-task-queue")
 	v.SetDefault("temporal.workflow_name", "ping-workflow")
 
+	v.SetDefault("scheduler.backend", "redis")
 	v.SetDefault("db.port", "5432")
 	v.SetDefault("redis.db", 0)
 }

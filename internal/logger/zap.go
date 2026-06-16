@@ -49,6 +49,10 @@ func (l *ZapLogger) Fatal(msg string, fields ...Field) {
 	l.logger.Fatal(msg, toZapFields(fields)...)
 }
 
+func (l *ZapLogger) Panic(msg string, fields ...Field) {
+	l.logger.Panic(msg, toZapFields(fields)...)
+}
+
 func (l *ZapLogger) With(fields ...Field) Logger {
 	return &ZapLogger{logger: l.logger.With(toZapFields(fields)...)}
 }

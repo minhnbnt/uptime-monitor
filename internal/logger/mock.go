@@ -6,13 +6,16 @@ type MockLogger struct {
 	ErrorCalled bool
 	DebugCalled bool
 	FatalCalled bool
-	LastMsg     string
+	PanicCalled bool
+
+	LastMsg string
 
 	InfoFunc  func(msg string, fields ...Field)
 	WarnFunc  func(msg string, fields ...Field)
 	ErrorFunc func(msg string, fields ...Field)
 	DebugFunc func(msg string, fields ...Field)
 	FatalFunc func(msg string, fields ...Field)
+	PanicFunc func(msg string, fields ...Field)
 	WithFunc  func(fields ...Field) Logger
 }
 
@@ -36,6 +39,10 @@ func NewMockLogger() *MockLogger {
 	}
 	m.FatalFunc = func(msg string, fields ...Field) {
 		m.FatalCalled = true
+		m.LastMsg = msg
+	}
+	m.PanicFunc = func(msg string, fields ...Field) {
+		m.PanicCalled = true
 		m.LastMsg = msg
 	}
 	m.WithFunc = func(fields ...Field) Logger {
@@ -71,6 +78,12 @@ func (m *MockLogger) Debug(msg string, fields ...Field) {
 func (m *MockLogger) Fatal(msg string, fields ...Field) {
 	if m.FatalFunc != nil {
 		m.FatalFunc(msg, fields...)
+	}
+}
+
+func (m *MockLogger) Panic(msg string, fields ...Field) {
+	if m.PanicFunc != nil {
+		m.PanicFunc(msg, fields...)
 	}
 }
 

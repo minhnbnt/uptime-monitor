@@ -82,7 +82,7 @@ func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 	}
 
 	if err := db.AutoMigrate(schemas...); err != nil {
-		return nil, err
+		logger.Warn("failed to run migrations", zap.Error(err))
 	}
 
 	searchEnabled := false
