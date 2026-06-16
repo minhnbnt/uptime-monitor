@@ -4,6 +4,8 @@ import (
 	"github.com/samber/do/v2"
 	temporalclient "go.temporal.io/sdk/client"
 	"go.uber.org/zap"
+
+	"github.com/minhnbnt/uptime-monitor/internal/config"
 )
 
 type ClientWrapper struct {
@@ -12,13 +14,13 @@ type ClientWrapper struct {
 
 func newClientOption(i do.Injector) (*temporalclient.Options, error) {
 
-	cfg := do.MustInvoke[*Config](i)
+	cfg := do.MustInvoke[*config.Config](i)
 
 	logger := do.MustInvoke[*zap.Logger](i)
 	logger = logger.WithOptions(zap.AddCallerSkip(1))
 
 	return &temporalclient.Options{
-		HostPort: cfg.Host,
+		HostPort: cfg.Temporal.Host,
 		Logger:   &TemporalLogger{logger: logger.Sugar()},
 	}, nil
 }

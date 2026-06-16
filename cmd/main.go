@@ -43,14 +43,18 @@ import (
 
 func main() {
 
+	configPath := flag.String("config", "", "path to config file")
+
 	enableServer := flag.Bool("server", true, "start HTTP API server")
 	enableWorker := flag.Bool("worker", true, "start background worker")
+
 	schedulerBackend := flag.String("scheduler-backend", "temporal", "scheduler backend: temporal | redis")
+
 	dev := flag.Bool("dev", false, "enable dev features (API docs)")
-	flag.Parse()
 
 	injector := do.New(
 
+		config.RegisterConfigPath(*configPath),
 		config.RegisterZapLogger,
 		config.RegisterGORMDB,
 		config.RegisterRedisClient,

@@ -1,10 +1,6 @@
 package config
 
 import (
-	"fmt"
-	"os"
-	"strconv"
-
 	"github.com/redis/go-redis/v9"
 	"github.com/samber/do/v2"
 )
@@ -21,22 +17,15 @@ func (r *RedisClientWrapper) Shutdown() error {
 	return r.client.Close()
 }
 
-func newRedisConfig(i do.Injector) (*redis.Options, error) {
-
-	dbIndex, err := strconv.Atoi(os.Getenv("REDIS_DB"))
-	if err != nil {
-		return nil, fmt.Errorf("invalid REDIS_DB: %w", err)
-	}
-
+func newRedisConfig(cfg *Config) (*redis.Options, error) {
 	return &redis.Options{
-		Addr:     os.Getenv("REDIS_ADDR"),
-		Password: os.Getenv("REDIS_PASSWORD"),
-		DB:       dbIndex,
+		Addr:     cfg.Redis.Addr,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
 	}, nil
 }
 
 func newRedisClientWrapper(i do.Injector) (*RedisClientWrapper, error) {
-
 	config := do.MustInvoke[*redis.Options](i)
 	client := redis.NewClient(config)
 
@@ -44,6 +33,15 @@ func newRedisClientWrapper(i do.Injector) (*RedisClientWrapper, error) {
 }
 
 func RegisterRedisClient(i do.Injector) {
+	do.Provide(i, func(i do.Injector) (*redis.Options, error) {
+		cfg := do.MustInvoke[*Config](i)
+		return newRedisConfig(cfg)
+	})
 	do.Provide(i, newRedisClientWrapper)
-	do.Provide(i, newRedisConfig)
+}
+
+type RedisConfig struct {
+	Addr     string `mapstructure:"addr"`
+	Password string `mapstructure:"password"`
+	DB       int    `mapstructure:"db"`
 }

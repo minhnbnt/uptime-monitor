@@ -29,15 +29,36 @@ func (c *TokenConfig) GetRefreshTokenIssuer() string {
 	return c.refreshTokenIssuer
 }
 
-func newTokenConfig(i do.Injector) (*TokenConfig, error) {
+func newTokenConfig(cfg *Config) (*TokenConfig, error) {
+
+	accessTTL, err := time.ParseDuration(cfg.Token.AccessTTL)
+	if err != nil {
+		accessTTL = 15 * time.Minute
+	}
+
+	refreshTTL, err := time.ParseDuration(cfg.Token.RefreshTTL)
+	if err != nil {
+		refreshTTL = 7 * 24 * time.Hour
+	}
+
 	return &TokenConfig{
-		accessTokenTTL:     15 * time.Minute,
-		refreshTokenTTL:    7 * 24 * time.Hour,
-		accessTokenIssuer:  "uptime-monitor",
-		refreshTokenIssuer: "uptime-monitor-refresh",
+		accessTokenTTL:     accessTTL,
+		refreshTokenTTL:    refreshTTL,
+		accessTokenIssuer:  cfg.Token.AccessIssuer,
+		refreshTokenIssuer: cfg.Token.RefreshIssuer,
 	}, nil
 }
 
 func RegisterTokenConfig(i do.Injector) {
-	do.Provide(i, newTokenConfig)
+	do.Provide(i, func(i do.Injector) (*TokenConfig, error) {
+		cfg := do.MustInvoke[*Config](i)
+		return newTokenConfig(cfg)
+	})
+}
+
+type TokenCfg struct {
+	AccessTTL     string `mapstructure:"access_ttl"`
+	RefreshTTL    string `mapstructure:"refresh_ttl"`
+	AccessIssuer  string `mapstructure:"access_issuer"`
+	RefreshIssuer string `mapstructure:"refresh_issuer"`
 }

@@ -1,7 +1,6 @@
 package jwt
 
 import (
-	"os"
 	"testing"
 	"time"
 
@@ -10,12 +9,16 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 )
 
+func testConfig() *config.Config {
+	return &config.Config{
+		JWT: config.JWTConfig{Key: "test-signing-key"},
+	}
+}
+
 func TestParser_ExpiredToken(t *testing.T) {
 
-	os.Setenv("JWT_KEY", "test-signing-key-for-jwt-parser-test")
-	t.Cleanup(func() { os.Unsetenv("JWT_KEY") })
-
 	i := do.New()
+	config.RegisterConfig(testConfig())(i)
 	config.RegisterJwtConfig(i)
 	RegisterProvider(i)
 
@@ -37,10 +40,8 @@ func TestParser_ExpiredToken(t *testing.T) {
 
 func TestParser_RoundTrip(t *testing.T) {
 
-	os.Setenv("JWT_KEY", "test-signing-key-for-jwt-parser-test")
-	t.Cleanup(func() { os.Unsetenv("JWT_KEY") })
-
 	i := do.New()
+	config.RegisterConfig(testConfig())(i)
 	config.RegisterJwtConfig(i)
 	RegisterProvider(i)
 

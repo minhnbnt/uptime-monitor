@@ -1,0 +1,35 @@
+db:
+  host: localhost
+  port: 6432
+  user: postgres
+  password: postgres
+  dbname: uptime_monitor
+
+redis:
+  addr: localhost:6379
+  password: ""
+  db: 0
+
+jwt:
+  key: your-secret-key-here
+
+token:
+  access_ttl: 15m
+  refresh_ttl: 168h
+  access_issuer: uptime-monitor
+  refresh_issuer: uptime-monitor-refresh
+
+argon2:
+  memory: 16384
+  iterations: 2
+  parallelism: 1
+  salt_length: 16
+  key_length: 32
+
+temporal:
+  host: localhost:7233
+  task_queue: ping-task-queue
+  workflow_name: ping-workflow
+
+log:
+  level: info

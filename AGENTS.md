@@ -31,7 +31,9 @@ hurl --test --variable base_url=http://localhost:8080 tests/*.hurl
 ```
 api/spec.yaml               ← source of truth for routes
 generated/api/gen.go        ← auto-generated, do not edit
-internal/config/            ← GORM, Temporal, Zap setup (env-driven)
+internal/config/            ← Viper-powered config: YAML file, env vars, CLI flags
+  config.go                 ← unified Config struct (all settings in one place)
+  viper.go                  ← InitConfig() + RegisterConfig() for DI
 internal/monitor/           ← Temporal workflows, ping, record status
   infrastructure/           ← PingWorker, RecordStatusWorker
     repository/             ← ServerEvent (GORM), RedisServerEvent (Redis)
@@ -51,8 +53,13 @@ internal/utils/             ← TruncateDay, Last30Days, PageValidator
 
 - **OpenAPI required fields** drive generated types. Marking a field `required` in `api/spec.yaml` makes it a value type (not `*T`) in generated code. Always update the spec then regenerate.
 - **Validation**: `RequestValidator` (DI-injected) wraps `go-playground/validator/v10`. Validated at the DTO layer in handlers using `validate` tags.
-- **Temporal**: `TemporalSchedulerRepository` reads `TEMPORAL_TASK_QUEUE` and `TEMPORAL_WORKFLOW_NAME` from env. Temporal server runs via compose.
-- **Environment** (compose.yml): `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `TEMPORAL_TASK_QUEUE`, `TEMPORAL_WORKFLOW_NAME`.
+- **Configuration** powered by `spf13/viper` with precedence: CLI flags > env vars > `config.yaml` > defaults.
+  - Config file: `config.yaml` in working directory (or `--config` flag).
+  - Env vars: all existing names (`DB_HOST`, `REDIS_ADDR`, `JWT_KEY`, ...) still work.
+  - Defaults match previous hardcoded values (token TTLs, Argon2 params, etc.).
+  - Run `InitConfig()` once in `main.go` before building the DI injector.
+  - The unified `*config.Config` struct is registered in DI; individual configs (`*JwtConfig`, `*TokenConfig`, etc.) are populated from it.
+- **Temporal**: `TemporalSchedulerRepository` reads `TEMPORAL_TASK_QUEUE` and `TEMPORAL_WORKFLOW_NAME` from env (or `config.yaml`). Temporal server runs via compose.
 - **Running integration tests**: `podman compose up -d --build` (or `docker compose up -d --build`) rebuilds and starts postgres + temporal + app. Hurl tests call the running instance on `:8080`. Use whichever compose tool is available — never use the hyphenated `podman-compose` or `docker-compose`.
 - **Database**: PostgreSQL with GORM auto-migrate (`Server`, `Endpoint` models). No manual migrations. Endpoint upsert uses `ON CONFLICT (server_id) DO UPDATE`.
 - **Redis cleanup**: Deleting a server removes associated Redis keys (status, ZSet, metadata hash) and unregisters from the scheduler (Temporal/ZSet).

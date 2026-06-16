@@ -1,15 +1,13 @@
 package config
 
 import (
-	"os"
-
 	"github.com/samber/do/v2"
 	"go.uber.org/zap"
 )
 
-func newZapLogger(i do.Injector) (*zap.Logger, error) {
+func newZapLogger(cfg *Config) (*zap.Logger, error) {
 
-	level := os.Getenv("LOG_LEVEL")
+	level := cfg.Log.Level
 	if level == "" {
 		level = "info"
 	}
@@ -19,7 +17,7 @@ func newZapLogger(i do.Injector) (*zap.Logger, error) {
 		zapLevel = zap.NewAtomicLevelAt(zap.InfoLevel)
 	}
 
-	cfg := zap.Config{
+	zapCfg := zap.Config{
 		Level:            zapLevel,
 		Encoding:         "json",
 		EncoderConfig:    zap.NewProductionEncoderConfig(),
@@ -27,9 +25,16 @@ func newZapLogger(i do.Injector) (*zap.Logger, error) {
 		ErrorOutputPaths: []string{"stderr"},
 	}
 
-	return cfg.Build()
+	return zapCfg.Build()
 }
 
 func RegisterZapLogger(i do.Injector) {
-	do.Provide(i, newZapLogger)
+	do.Provide(i, func(i do.Injector) (*zap.Logger, error) {
+		cfg := do.MustInvoke[*Config](i)
+		return newZapLogger(cfg)
+	})
+}
+
+type LogConfig struct {
+	Level string `mapstructure:"level"`
 }

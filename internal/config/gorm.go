@@ -2,11 +2,11 @@ package config
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/samber/do/v2"
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -15,26 +15,23 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 )
 
-func newPostgresDriver(i do.Injector) (gorm.Dialector, error) {
+func newPostgresDriver(cfg *Config) (gorm.Dialector, error) {
 
 	config := map[string]string{
-		"host":     os.Getenv("DB_HOST"),
-		"port":     os.Getenv("DB_PORT"),
-		"user":     os.Getenv("DB_USER"),
-		"password": os.Getenv("DB_PASSWORD"),
-		"dbname":   os.Getenv("DB_NAME"),
+		"host":     cfg.DB.Host,
+		"port":     cfg.DB.Port,
+		"user":     cfg.DB.User,
+		"password": cfg.DB.Password,
+		"dbname":   cfg.DB.DBName,
 		"sslmode":  "disable",
 	}
 
-	tokens := make([]string, 0, len(config))
-	for k, v := range config {
-		if len(v) > 0 {
-			token := fmt.Sprintf("%s=%s", k, v)
-			tokens = append(tokens, token)
-		}
-	}
+	props := lo.MapToSlice(config, func(k string, v string) string {
+		return fmt.Sprintf("%s=%s", k, v)
+	})
 
-	dsn := strings.Join(tokens, " ")
+	dsn := strings.Join(props, " ")
+
 	return postgres.Open(dsn), nil
 }
 
@@ -55,7 +52,12 @@ func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 			break
 		}
 
-		logger.Warn("gorm open failed, retrying", zap.Int("attempt", attempt+1), zap.Error(err))
+		logger.Warn(
+			"gorm open failed, retrying",
+			zap.Int("attempt", attempt+1),
+			zap.Error(err),
+		)
+
 		time.Sleep(time.Second)
 	}
 
@@ -83,7 +85,7 @@ func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 		return nil, err
 	}
 
-	var searchEnabled bool
+	searchEnabled := false
 	if err := db.Exec("CREATE EXTENSION IF NOT EXISTS pg_search").Error; err != nil {
 		logger.Warn("pg_search extension not available, ParadeDB search disabled", zap.Error(err))
 	} else if err := db.Exec(`CREATE INDEX IF NOT EXISTS servers_search_idx ON servers USING bm25 (id, name) WITH (key_field='id')`).Error; err != nil {
@@ -96,7 +98,12 @@ func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 }
 
 func RegisterGORMDB(i do.Injector) {
-	do.Provide(i, newPostgresDriver)
+
+	do.Provide(i, func(i do.Injector) (gorm.Dialector, error) {
+		cfg := do.MustInvoke[*Config](i)
+		return newPostgresDriver(cfg)
+	})
+
 	do.Provide(i, newGORMDatabase)
 }
 
@@ -110,11 +117,18 @@ func (gw *GORMWrapper) GetDB() *gorm.DB {
 }
 
 func (gw *GORMWrapper) Shutdown() error {
-
 	sqlDB, err := gw.db.DB()
 	if err != nil {
 		return err
 	}
 
 	return sqlDB.Close()
+}
+
+type DBConfig struct {
+	Host     string `mapstructure:"host"`
+	Port     string `mapstructure:"port"`
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
+	DBName   string `mapstructure:"dbname"`
 }

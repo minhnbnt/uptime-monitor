@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -13,13 +12,23 @@ import (
 	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
 )
 
+func testConfig() *config.Config {
+	return &config.Config{
+		JWT: config.JWTConfig{Key: "test-signing-key-for-token-validator"},
+		Token: config.TokenCfg{
+			AccessTTL:     "15m",
+			RefreshTTL:    "168h",
+			AccessIssuer:  "uptime-monitor",
+			RefreshIssuer: "uptime-monitor-refresh",
+		},
+	}
+}
+
 func setupProviderWithConfig(t *testing.T) (*jwtutil.Provider, *config.TokenConfig) {
 	t.Helper()
 
-	os.Setenv("JWT_KEY", "test-signing-key-for-token-validator")
-	t.Cleanup(func() { os.Unsetenv("JWT_KEY") })
-
 	i := do.New()
+	config.RegisterConfig(testConfig())(i)
 	config.RegisterJwtConfig(i)
 	config.RegisterTokenConfig(i)
 	jwtutil.RegisterProvider(i)

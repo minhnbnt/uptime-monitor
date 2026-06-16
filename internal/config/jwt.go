@@ -1,8 +1,6 @@
 package config
 
 import (
-	"os"
-
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/samber/do/v2"
 )
@@ -25,9 +23,9 @@ func (c *JwtConfig) GetMethod() jwt.SigningMethod {
 	return c.method
 }
 
-func newJwtConfig(i do.Injector) (*JwtConfig, error) {
+func newJwtConfig(cfg *Config) (*JwtConfig, error) {
 
-	key := os.Getenv("JWT_KEY")
+	key := cfg.JWT.Key
 	method := jwt.SigningMethodHS256
 
 	return &JwtConfig{
@@ -38,5 +36,12 @@ func newJwtConfig(i do.Injector) (*JwtConfig, error) {
 }
 
 func RegisterJwtConfig(i do.Injector) {
-	do.Provide(i, newJwtConfig)
+	do.Provide(i, func(i do.Injector) (*JwtConfig, error) {
+		cfg := do.MustInvoke[*Config](i)
+		return newJwtConfig(cfg)
+	})
+}
+
+type JWTConfig struct {
+	Key string `mapstructure:"key"`
 }

@@ -1,9 +1,9 @@
 package temporal
 
 import (
-	"os"
-
 	"github.com/samber/do/v2"
+
+	"github.com/minhnbnt/uptime-monitor/internal/config"
 )
 
 type Config struct {
@@ -12,30 +12,20 @@ type Config struct {
 	WorkflowName string
 }
 
-func newConfig(i do.Injector) (*Config, error) {
+func newConfig(cfg *config.Config) (*Config, error) {
 
-	host := os.Getenv("TEMPORAL_HOST")
-	if host == "" {
-		host = "localhost:7233"
-	}
-
-	taskQueue := os.Getenv("TEMPORAL_TASK_QUEUE")
-	if taskQueue == "" {
-		taskQueue = "ping-task-queue"
-	}
-
-	workflow := os.Getenv("TEMPORAL_WORKFLOW_NAME")
-	if workflow == "" {
-		workflow = "ping-workflow"
-	}
+	temporalCfg := cfg.Temporal
 
 	return &Config{
-		Host:         host,
-		TaskQueue:    taskQueue,
-		WorkflowName: workflow,
+		Host:         temporalCfg.Host,
+		TaskQueue:    temporalCfg.TaskQueue,
+		WorkflowName: temporalCfg.WorkflowName,
 	}, nil
 }
 
 func RegisterConfig(i do.Injector) {
-	do.Provide(i, newConfig)
+	do.Provide(i, func(i do.Injector) (*Config, error) {
+		cfg := do.MustInvoke[*config.Config](i)
+		return newConfig(cfg)
+	})
 }
