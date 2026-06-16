@@ -35,8 +35,7 @@ func RegisterServerHandler(i do.Injector) {
 
 func (h *ServerHandler) ListServers(ctx context.Context, params api.ListServersParams) (*api.ServerListResponse, error) {
 
-	page := params.Page.Or(1)
-	perPage := params.PerPage.Or(20)
+	page, perPage := params.Page.Or(1), params.PerPage.Or(20)
 
 	userID := middleware.GetUserID(ctx)
 	result, err := h.serverService.ListServers(ctx, userID, page, perPage)
@@ -45,10 +44,10 @@ func (h *ServerHandler) ListServers(ctx context.Context, params api.ListServersP
 	}
 
 	return &api.ServerListResponse{
+		Meta: toPaginationMeta(page, perPage, int64(len(result))),
 		Data: lo.Map(result, func(item dto.Server, _ int) api.ServerObject {
 			return toAPIServer(&item)
 		}),
-		Meta: toPaginationMeta(page, perPage, int64(len(result))),
 	}, nil
 }
 
@@ -103,8 +102,7 @@ func (h *ServerHandler) DeleteServer(ctx context.Context, params api.DeleteServe
 
 func (h *ServerHandler) SearchServers(ctx context.Context, params api.SearchServersParams) (*api.ServerListResponse, error) {
 
-	page := params.Page.Or(1)
-	perPage := params.PerPage.Or(20)
+	page, perPage := params.Page.Or(1), params.PerPage.Or(20)
 
 	searchParams := dto.SearchParams{
 		Q:         params.Q,
@@ -161,8 +159,7 @@ func (h *ServerHandler) ExportServers(ctx context.Context, params api.ExportServ
 
 func (h *ServerHandler) ListServersOntime(ctx context.Context, params api.ListServersOntimeParams) (*api.ServerOntimeListResponse, error) {
 
-	page := params.Page.Or(1)
-	perPage := params.PerPage.Or(20)
+	page, perPage := params.Page.Or(1), params.PerPage.Or(20)
 
 	userID := middleware.GetUserID(ctx)
 	result, total, err := h.ontimeService.ListServersWithOntime(ctx, userID, page, perPage)

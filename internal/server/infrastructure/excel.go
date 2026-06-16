@@ -224,60 +224,35 @@ func parseMethod(v string) (string, error) {
 	return utils.ValidateMethod(v)
 }
 
-func parseInterval(v string) (int, error) {
+func parseIntCell(v, field string, defaultValue int, validateFn func(int) error) (int, error) {
+
 	v = strings.TrimSpace(v)
 	if v == "" {
-		return 30, nil
+		return defaultValue, nil
 	}
 
-	sec, err := strconv.Atoi(v)
+	n, err := strconv.Atoi(v)
 	if err != nil {
-		return 0, fmt.Errorf("interval_sec must be a valid integer")
+		return 0, fmt.Errorf("%s must be a valid integer", field)
 	}
 
-	if err := utils.ValidateInterval(sec); err != nil {
+	if err := validateFn(n); err != nil {
 		return 0, err
 	}
 
-	return sec, nil
+	return n, nil
+}
+
+func parseInterval(v string) (int, error) {
+	return parseIntCell(v, "interval_sec", 30, utils.ValidateInterval)
 }
 
 func parseTimeout(v string) (int, error) {
-
-	v = strings.TrimSpace(v)
-	if v == "" {
-		return 10, nil
-	}
-
-	sec, err := strconv.Atoi(v)
-	if err != nil {
-		return 0, fmt.Errorf("timeout_sec must be a valid integer")
-	}
-
-	if err := utils.ValidateTimeout(sec); err != nil {
-		return 0, err
-	}
-
-	return sec, nil
+	return parseIntCell(v, "timeout_sec", 10, utils.ValidateTimeout)
 }
 
 func parseExpectedCode(v string) (int, error) {
-
-	v = strings.TrimSpace(v)
-	if v == "" {
-		return 200, nil
-	}
-
-	code, err := strconv.Atoi(v)
-	if err != nil {
-		return 0, fmt.Errorf("expected_code must be a valid integer")
-	}
-
-	if err := utils.ValidateExpectedCode(code); err != nil {
-		return 0, err
-	}
-
-	return code, nil
+	return parseIntCell(v, "expected_code", 200, utils.ValidateExpectedCode)
 }
 
 func getCell(row []string, idx int) string {

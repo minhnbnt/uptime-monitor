@@ -37,16 +37,7 @@ func (h *AuthHandler) Register(ctx context.Context, req *api.RegisterRequest) (*
 		return nil, apperrors.ToAPIError(err)
 	}
 
-	return &api.AuthResponse{
-		AccessToken:  result.AccessToken,
-		RefreshToken: result.RefreshToken,
-		User: api.UserProfile{
-			ID:       int(result.User.ID),
-			Email:    result.User.Email,
-			Username: result.User.Username,
-			Name:     result.User.Name,
-		},
-	}, nil
+	return toAPIAuthResponse(result), nil
 }
 
 func (h *AuthHandler) Login(ctx context.Context, req *api.LoginRequest) (*api.AuthResponse, error) {
@@ -61,16 +52,7 @@ func (h *AuthHandler) Login(ctx context.Context, req *api.LoginRequest) (*api.Au
 		return nil, apperrors.ToAPIError(err)
 	}
 
-	return &api.AuthResponse{
-		AccessToken:  result.AccessToken,
-		RefreshToken: result.RefreshToken,
-		User: api.UserProfile{
-			ID:       int(result.User.ID),
-			Email:    result.User.Email,
-			Username: result.User.Username,
-			Name:     result.User.Name,
-		},
-	}, nil
+	return toAPIAuthResponse(result), nil
 }
 
 func (h *AuthHandler) LoginRefresh(ctx context.Context, req *api.RefreshTokenRequest) (*api.AuthResponse, error) {
@@ -82,6 +64,10 @@ func (h *AuthHandler) LoginRefresh(ctx context.Context, req *api.RefreshTokenReq
 		return nil, apperrors.ToAPIError(err)
 	}
 
+	return toAPIAuthResponse(result), nil
+}
+
+func toAPIAuthResponse(result *dto.AuthResponse) *api.AuthResponse {
 	return &api.AuthResponse{
 		AccessToken:  result.AccessToken,
 		RefreshToken: result.RefreshToken,
@@ -91,7 +77,7 @@ func (h *AuthHandler) LoginRefresh(ctx context.Context, req *api.RefreshTokenReq
 			Username: result.User.Username,
 			Name:     result.User.Name,
 		},
-	}, nil
+	}
 }
 
 func (h *AuthHandler) Logout(ctx context.Context, req *api.RefreshTokenRequest) error {
