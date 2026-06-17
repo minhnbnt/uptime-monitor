@@ -50,7 +50,17 @@ func (sr *ServerRepository) List(ctx context.Context, createdByID uint, limit, o
 }
 
 func (sr *ServerRepository) Create(ctx context.Context, s *domain.Server) error {
-	return sr.BatchCreateServers(ctx, []domain.Server{*s})
+
+	servers := []domain.Server{*s}
+	err := sr.BatchCreateServers(ctx, servers)
+
+	if err != nil {
+		return fmt.Errorf("failed to create server: %w", err)
+	}
+
+	*s = servers[0]
+
+	return nil
 }
 
 func (sr *ServerRepository) GetByID(ctx context.Context, id uint) (*domain.Server, error) {
