@@ -27,27 +27,17 @@ func RegisterEndpointProvider(i do.Injector) {
 
 func (p *EndpointProvider) Get(ctx context.Context, id uint) (*domain.Endpoint, error) {
 
-	ep, err := p.cache.Get(ctx, id)
+	results, err := p.GetBatch(ctx, []uint{id})
 	if err != nil {
 		return nil, err
 	}
-	if ep != nil {
-		return ep, nil
+
+	result, has := results[id]
+	if !has {
+		return nil, fmt.Errorf("endpoint not found: %d", id)
 	}
 
-	eps, err := p.fetcher.Fetch(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if len(eps) == 0 {
-		return nil, nil
-	}
-
-	if err := p.cache.Set(ctx, &eps[0]); err != nil {
-		return nil, fmt.Errorf("cache set %d: %w", id, err)
-	}
-
-	return &eps[0], nil
+	return result, nil
 }
 
 func (p *EndpointProvider) GetBatch(ctx context.Context, ids []uint) (map[uint]*domain.Endpoint, error) {

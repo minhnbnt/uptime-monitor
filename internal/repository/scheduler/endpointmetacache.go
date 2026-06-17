@@ -33,19 +33,17 @@ func RegisterEndpointMetaCache(i do.Injector) {
 
 func (c *EndpointMetaCache) Get(ctx context.Context, id uint) (*domain.Endpoint, error) {
 
-	data, err := c.client.HGetAll(ctx, metaCacheKey(id)).Result()
+	results, err := c.MGet(ctx, []uint{id})
 	if err != nil {
-		return nil, fmt.Errorf("hgetall %d: %w", id, err)
-	}
-	if len(data) == 0 {
-		return nil, nil
+		return nil, err
 	}
 
-	ep, err := mapToEndpoint(id, data)
-	if err != nil {
-		return nil, nil
+	result, ok := results[id]
+	if !ok {
+		return nil, fmt.Errorf("endpoint %d not found", id)
 	}
-	return ep, nil
+
+	return result, nil
 }
 
 func (c *EndpointMetaCache) MGet(ctx context.Context, ids []uint) (map[uint]*domain.Endpoint, error) {
@@ -88,16 +86,8 @@ func (c *EndpointMetaCache) MGet(ctx context.Context, ids []uint) (map[uint]*dom
 	return result, nil
 }
 
-func (c *EndpointMetaCache) Set(ctx context.Context, ep *domain.Endpoint) error {
-
-	cmd := c.client.HSet(
-		ctx, metaCacheKey(ep.ID),
-		"url", ep.URL, "method", ep.Method,
-		"expected_code", fmt.Sprint(ep.ExpectedCode),
-		"interval_ns", fmt.Sprint(ep.Interval.Nanoseconds()),
-	)
-
-	return cmd.Err()
+func (c *EndpointMetaCache) Set(ctx context.Context, ep domain.Endpoint) error {
+	return c.SetMulti(ctx, []domain.Endpoint{ep})
 }
 
 func (c *EndpointMetaCache) SetMulti(ctx context.Context, endpoints []domain.Endpoint) error {

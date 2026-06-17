@@ -22,11 +22,7 @@ func RegisterScoreUpdater(i do.Injector) {
 }
 
 func (u *ScoreUpdater) Update(ctx context.Context, endpointID uint, nextScore int64) error {
-
-	return u.client.ZAdd(ctx, schedulerQueueKey, redis.Z{
-		Score:  float64(nextScore),
-		Member: fmt.Sprint(endpointID),
-	}).Err()
+	return u.UpdateBatch(ctx, map[uint]int64{endpointID: nextScore})
 }
 
 func (u *ScoreUpdater) UpdateBatch(ctx context.Context, items map[uint]int64) error {

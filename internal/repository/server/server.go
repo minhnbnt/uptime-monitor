@@ -50,7 +50,7 @@ func (sr *ServerRepository) List(ctx context.Context, createdByID uint, limit, o
 }
 
 func (sr *ServerRepository) Create(ctx context.Context, s *domain.Server) error {
-	return gorm.G[domain.Server](sr.db).Create(ctx, s)
+	return sr.BatchCreateServers(ctx, []domain.Server{*s})
 }
 
 func (sr *ServerRepository) GetByID(ctx context.Context, id uint) (*domain.Server, error) {
