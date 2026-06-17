@@ -51,9 +51,9 @@ func sleepCtx(ctx context.Context, d time.Duration) {
 	}
 }
 
-func getSleepDuration(next *scheduler.ScheduledTask) time.Duration {
+func getSleepDuration(next scheduler.ScheduledTask, hasNext bool) time.Duration {
 
-	if next == nil {
+	if !hasNext {
 		return defaultSleepDuration
 	}
 
@@ -91,7 +91,7 @@ func (s *LoopService) Run(ctx context.Context, dueHandler DueHandler) error {
 
 	for ctx.Err() == nil {
 
-		due, next, err := s.schedulerStorage.ClaimDueTasks(ctx, defaultClaimLimit)
+		due, next, hasNext, err := s.schedulerStorage.ClaimDueTasks(ctx, defaultClaimLimit)
 		if err != nil {
 			s.logger.Error("failed to claim due tasks", logger.Error(err))
 			sleepCtx(ctx, defaultSleepDuration)
@@ -105,7 +105,7 @@ func (s *LoopService) Run(ctx context.Context, dueHandler DueHandler) error {
 			continue
 		}
 
-		sleepCtx(ctx, getSleepDuration(next))
+		sleepCtx(ctx, getSleepDuration(next, hasNext))
 	}
 
 	return ctx.Err()

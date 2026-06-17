@@ -61,6 +61,24 @@ func (r *ZSetScheduleRepository) Unregister(ctx context.Context, endpointID uint
 	return err
 }
 
+func (r *ZSetScheduleRepository) ClaimDueTasks(
+	ctx context.Context, limit int64,
+) (due []ScheduledTask, next ScheduledTask, hasNext bool, err error) {
+
+	if limit <= 0 {
+		return nil, ScheduledTask{}, false, nil
+	}
+
+	cmd := claimScript.Run(
+		ctx, r.client, []string{schedulerQueueKey},
+		fmt.Sprint(time.Now().UnixMilli()),
+		fmt.Sprint(limit),
+		fmt.Sprint(claimLock.Milliseconds()),
+	)
+
+	return collectScheduledTask(cmd)
+}
+
 // claimScript atomically claims at most N due tasks and peeks the next future task.
 //
 // KEYS[1] = scheduler:queue
@@ -84,62 +102,37 @@ var claimScript = redis.NewScript(`
 	return {due, next}
 `)
 
-func collectRawValues(cmd *redis.Cmd) (dueRaw, nextRaw []any, err error) {
+func collectScheduledTask(cmd *redis.Cmd) (due []ScheduledTask, next ScheduledTask, hasNext bool, err error) {
 
 	result, err := cmd.Result()
 	if err != nil {
-		return nil, nil, fmt.Errorf("claim due tasks: %w", err)
+		return nil, ScheduledTask{}, false, fmt.Errorf("claim due tasks: %w", err)
 	}
 
 	vals, ok := result.([]any)
 	if !ok {
-		return nil, nil, fmt.Errorf("unexpected script result type: %T", result)
+		return nil, ScheduledTask{}, false, fmt.Errorf("unexpected script result type: %T", result)
 	}
 
 	if len(vals) != 2 {
-		return nil, nil, fmt.Errorf("unexpected script result length: %d", len(vals))
+		return nil, ScheduledTask{}, false, fmt.Errorf("unexpected script result length: %d", len(vals))
 	}
 
-	dueRaw, ok = vals[0].([]any)
+	dueRaw, ok := vals[0].([]any)
 	if !ok {
-		return nil, nil, fmt.Errorf("invalid dueRaw type: %T", vals[0])
+		return nil, ScheduledTask{}, false, fmt.Errorf("invalid dueRaw type: %T", vals[0])
 	}
 
-	nextRaw, ok = vals[1].([]any)
+	nextRaw, ok := vals[1].([]any)
 	if !ok {
-		return nil, nil, fmt.Errorf("invalid nextRaw type: %T", vals[1])
-	}
-
-	return dueRaw, nextRaw, nil
-}
-
-func (r *ZSetScheduleRepository) ClaimDueTasks(
-	ctx context.Context, limit int64,
-) (due []ScheduledTask, next *ScheduledTask, err error) {
-
-	if limit <= 0 {
-		return nil, nil, nil
-	}
-
-	now := time.Now()
-
-	cmd := claimScript.Run(
-		ctx, r.client, []string{schedulerQueueKey},
-		fmt.Sprint(now.UnixMilli()),
-		fmt.Sprint(limit),
-		fmt.Sprint(claimLock.Milliseconds()),
-	)
-
-	dueRaw, nextRaw, err := collectRawValues(cmd)
-	if err != nil {
-		return nil, nil, err
+		return nil, ScheduledTask{}, false, fmt.Errorf("invalid nextRaw type: %T", vals[1])
 	}
 
 	for i := 0; i+1 < len(dueRaw); i += 2 {
 
 		task, err := getScheduledTask(dueRaw[i], dueRaw[i+1])
 		if err != nil {
-			return nil, nil, fmt.Errorf("parse due task at index %d: %w", i, err)
+			return nil, ScheduledTask{}, false, fmt.Errorf("parse due task at index %d: %w", i, err)
 		}
 
 		due = append(due, *task)
@@ -149,13 +142,14 @@ func (r *ZSetScheduleRepository) ClaimDueTasks(
 
 		task, err := getScheduledTask(nextRaw[0], nextRaw[1])
 		if err != nil {
-			return due, nil, fmt.Errorf("parse next task: %w", err)
+			return due, ScheduledTask{}, false, fmt.Errorf("parse next task: %w", err)
 		}
 
-		next = task
+		hasNext = true
+		next = *task
 	}
 
-	return due, next, nil
+	return due, next, hasNext, nil
 }
 
 func getScheduledTask(member, scoreStr any) (*ScheduledTask, error) {

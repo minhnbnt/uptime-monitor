@@ -10,6 +10,7 @@ import (
 	temporalcfg "github.com/minhnbnt/uptime-monitor/internal/config/temporal"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	"github.com/minhnbnt/uptime-monitor/internal/monitor/services"
+	monitorworkflow "github.com/minhnbnt/uptime-monitor/internal/monitor/workflow"
 )
 
 type TemporalWorkerRunner struct {
@@ -43,7 +44,7 @@ func (wr *TemporalWorkerRunner) RunTemporalWorker(ctx context.Context) {
 	worker := wr.worker
 
 	worker.RegisterWorkflowWithOptions(
-		wr.pingService.PingWorkflow,
+		monitorworkflow.PingWorkflow,
 		workflow.RegisterOptions{Name: "ping-workflow"},
 	)
 
