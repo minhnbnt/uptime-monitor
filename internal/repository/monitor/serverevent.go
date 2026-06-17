@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"context"
+	"time"
 
 	"github.com/samber/do/v2"
 	"gorm.io/gorm"
@@ -25,4 +26,40 @@ func RegisterServerEventRepository(i do.Injector) {
 
 func (r *ServerEventRepository) Save(ctx context.Context, event *domain.ServerEvent) error {
 	return gorm.G[domain.ServerEvent](r.db).Create(ctx, event)
+}
+
+type EnrichedEvent struct {
+	EndpointID uint
+	Status     domain.ServerStatus
+	Time       time.Time
+	URL        string
+	ServerName string
+}
+
+func (r *ServerEventRepository) GetEventsByUserAndDateRange(
+	ctx context.Context, userID uint, from, to time.Time,
+) ([]domain.ServerEvent, error) {
+	return gorm.G[domain.ServerEvent](r.db).Raw(`
+		SELECT se.id, se.endpoint_id, se.status, se.time
+		FROM server_events se
+		JOIN endpoints e ON e.id = se.endpoint_id AND e.deleted_at IS NULL
+		JOIN servers s ON s.id = e.server_id AND s.deleted_at IS NULL
+		JOIN users u ON u.id = s.created_by_id
+		WHERE u.id = ? AND se.time BETWEEN ? AND ?
+		ORDER BY se.time DESC
+	`, userID, from, to).Find(ctx)
+}
+
+func (r *ServerEventRepository) GetEnrichedEventsByUser(
+	ctx context.Context, userID uint, from, to time.Time,
+) ([]EnrichedEvent, error) {
+	return gorm.G[EnrichedEvent](r.db).Raw(`
+		SELECT se.endpoint_id, se.status, se.time, e.url, COALESCE(s.name, '') AS server_name
+		FROM server_events se
+		JOIN endpoints e ON e.id = se.endpoint_id AND e.deleted_at IS NULL
+		JOIN servers s ON s.id = e.server_id AND s.deleted_at IS NULL
+		JOIN users u ON u.id = s.created_by_id
+		WHERE u.id = ? AND se.time BETWEEN ? AND ?
+		ORDER BY se.time DESC
+	`, userID, from, to).Find(ctx)
 }

@@ -37,3 +37,9 @@ type AuthService interface {
 	Refresh(ctx context.Context, req dto.RefreshRequest) (*dto.AuthResponse, error)
 	Logout(ctx context.Context, refreshToken string) error
 }
+
+type NotificationService interface {
+	GetNotificationConfig(ctx context.Context, userID uint) (*dto.NotificationConfigResponse, error)
+	UpdateNotificationConfig(ctx context.Context, userID uint, req *dto.NotificationConfigRequest) error
+	SendReport(ctx context.Context, userID uint) error
+}

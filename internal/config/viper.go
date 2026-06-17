@@ -64,6 +64,12 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("scheduler.backend", "redis")
 	v.SetDefault("db.port", "5432")
 	v.SetDefault("redis.db", 0)
+
+	v.SetDefault("mail.smtp_host", "localhost")
+	v.SetDefault("mail.smtp_port", 587)
+	v.SetDefault("mail.smtp_user", "")
+	v.SetDefault("mail.smtp_password", "")
+	v.SetDefault("mail.from_address", "noreply@uptime.local")
 }
 
 func bindEnvVars(v *viper.Viper) error {
@@ -82,6 +88,12 @@ func bindEnvVars(v *viper.Viper) error {
 		"temporal.host":          "TEMPORAL_HOST",
 		"temporal.task_queue":    "TEMPORAL_TASK_QUEUE",
 		"temporal.workflow_name": "TEMPORAL_WORKFLOW_NAME",
+
+		"mail.smtp_host":     "SMTP_HOST",
+		"mail.smtp_port":     "SMTP_PORT",
+		"mail.smtp_user":     "SMTP_USER",
+		"mail.smtp_password": "SMTP_PASSWORD",
+		"mail.from_address":  "SMTP_FROM",
 	}
 
 	for key, env := range envMap {

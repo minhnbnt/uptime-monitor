@@ -16,17 +16,19 @@ type CompositeHandler struct {
 	*handler.EndpointHandler
 	*handler.AuthHandler
 	*handler.ImportHandler
+	*handler.NotificationHandler
 	logger logger.Logger
 }
 
 func RegisterCompositeHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*CompositeHandler, error) {
 		return &CompositeHandler{
-			ServerHandler:   do.MustInvoke[*handler.ServerHandler](i),
-			EndpointHandler: do.MustInvoke[*handler.EndpointHandler](i),
-			AuthHandler:     do.MustInvoke[*handler.AuthHandler](i),
-			ImportHandler:   do.MustInvoke[*handler.ImportHandler](i),
-			logger:          do.MustInvoke[logger.Logger](i),
+			ServerHandler:       do.MustInvoke[*handler.ServerHandler](i),
+			EndpointHandler:     do.MustInvoke[*handler.EndpointHandler](i),
+			AuthHandler:         do.MustInvoke[*handler.AuthHandler](i),
+			ImportHandler:       do.MustInvoke[*handler.ImportHandler](i),
+			NotificationHandler: do.MustInvoke[*handler.NotificationHandler](i),
+			logger:              do.MustInvoke[logger.Logger](i),
 		}, nil
 	})
 }

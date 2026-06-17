@@ -14,10 +14,11 @@ import (
 )
 
 type TemporalWorkerRunner struct {
-	worker      temporalworker.Worker
-	pingService *services.PingService
-
-	logger logger.Logger
+	worker        temporalworker.Worker
+	taskQueue     string
+	pingService   *services.PingService
+	digestService *services.DigestService
+	logger        logger.Logger
 }
 
 func RegisterTemporalWorkerRunner(i do.Injector) {
@@ -26,20 +27,23 @@ func RegisterTemporalWorkerRunner(i do.Injector) {
 		clientWrapper := do.MustInvoke[*temporalcfg.ClientWrapper](i)
 		temporalCfg := do.MustInvoke[*temporalcfg.Config](i)
 		pingService := do.MustInvoke[*services.PingService](i)
+		digestService := do.MustInvoke[*services.DigestService](i)
 		logger := do.MustInvoke[logger.Logger](i)
 
 		client := clientWrapper.GetClient()
 		worker := temporalworker.New(client, temporalCfg.TaskQueue, temporalworker.Options{})
 
 		return &TemporalWorkerRunner{
-			worker:      worker,
-			pingService: pingService,
-			logger:      logger,
+			worker:        worker,
+			taskQueue:     temporalCfg.TaskQueue,
+			pingService:   pingService,
+			digestService: digestService,
+			logger:        logger,
 		}, nil
 	})
 }
 
-func (wr *TemporalWorkerRunner) RunTemporalWorker(ctx context.Context) {
+func (wr *TemporalWorkerRunner) RunTemporalWorker(ctx context.Context) error {
 
 	worker := wr.worker
 
@@ -47,18 +51,21 @@ func (wr *TemporalWorkerRunner) RunTemporalWorker(ctx context.Context) {
 		monitorworkflow.PingWorkflow,
 		workflow.RegisterOptions{Name: "ping-workflow"},
 	)
-
 	worker.RegisterActivity(wr.pingService.Ping)
 	worker.RegisterActivity(wr.pingService.Record)
 
-	shutdownChan := make(chan any)
+	worker.RegisterWorkflowWithOptions(
+		monitorworkflow.SendReportWorkflow,
+		workflow.RegisterOptions{Name: "send-report"},
+	)
 
+	worker.RegisterActivity(wr.digestService.SendUserDigest)
+
+	shutdownChan := make(chan any)
 	go func() {
 		defer close(shutdownChan)
 		<-ctx.Done()
 	}()
 
-	if err := worker.Run(shutdownChan); err != nil {
-		wr.logger.Error("Temporal worker failed", logger.Error(err))
-	}
+	return worker.Run(shutdownChan)
 }

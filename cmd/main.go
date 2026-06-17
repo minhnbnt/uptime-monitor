@@ -26,6 +26,7 @@ import (
 	monitorservices "github.com/minhnbnt/uptime-monitor/internal/monitor/services"
 	authrepo "github.com/minhnbnt/uptime-monitor/internal/repository/auth"
 	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/repository/monitor"
+	notificationrepo "github.com/minhnbnt/uptime-monitor/internal/repository/notification"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
 	revokedtokenrepo "github.com/minhnbnt/uptime-monitor/internal/repository/revokedtoken"
 	schedulerrepo "github.com/minhnbnt/uptime-monitor/internal/repository/scheduler"
@@ -35,6 +36,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/server/handler"
 	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
 	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
+	serverinfratemporal "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/temporal"
 	"github.com/minhnbnt/uptime-monitor/internal/server/middleware"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 	authservice "github.com/minhnbnt/uptime-monitor/internal/server/service/auth"
@@ -73,10 +75,14 @@ func main() {
 		monitorrepo.RegisterServerEventRepository,
 		monitorrepo.RegisterRedisServerEventRepository,
 
+		notificationrepo.RegisterNotificationConfigRepository,
+
 		ontimerepo.RegisterOntimeCacheRepository,
 
 		infra.RegisterPingWorker,
 		infra.RegisterRecordStatusWorker,
+		config.RegisterMailClient,
+		infra.RegisterMailer,
 
 		schedulerrepo.RegisterZSetScheduleRepository,
 		schedulerrepo.RegisterScoreUpdater,
@@ -87,6 +93,7 @@ func main() {
 		jwtutil.RegisterProvider,
 		serverinfra.RegisterArgon2PasswordEncoder,
 		serverinfra.RegisterExcelGenerator,
+		serverinfratemporal.RegisterDigestStarter,
 
 		service.RegisterServerService,
 		service.RegisterEndpointService,
@@ -98,11 +105,14 @@ func main() {
 		authservice.RegisterTokenValidator,
 		monitorservices.RegisterPingService,
 		monitorservices.RegisterLoopService,
+		monitorservices.RegisterDigestService,
+		service.RegisterNotificationService,
 
 		handler.RegisterServerHandler,
 		handler.RegisterEndpointHandler,
 		handler.RegisterAuthHandler,
 		handler.RegisterImportHandler,
+		handler.RegisterNotificationHandler,
 
 		middleware.RegisterAuthMiddleware,
 
@@ -126,10 +136,22 @@ func main() {
 
 	if *enableWorker {
 		waitgroup.Go(func() { runWorker(ctx, injector) })
+		waitgroup.Go(func() { runTemporalWorker(ctx, injector) })
 	}
 
 	if *enableServer {
 		waitgroup.Go(func() { runWebServer(ctx, injector, *dev) })
+	}
+}
+
+func runTemporalWorker(ctx context.Context, i do.Injector) {
+
+	temporal := do.MustInvoke[*monitorhandler.TemporalWorkerRunner](i)
+	log := do.MustInvoke[logger.Logger](i)
+
+	err := temporal.RunTemporalWorker(ctx)
+	if err != nil {
+		log.Error("Temporal worker failed", logger.Error(err))
 	}
 }
 
@@ -139,13 +161,16 @@ func runWorker(ctx context.Context, i do.Injector) {
 	log := do.MustInvoke[logger.Logger](i)
 
 	switch cfg.Scheduler.Backend {
-	case "temporal":
-		runner := do.MustInvoke[*monitorhandler.TemporalWorkerRunner](i)
-		runner.RunTemporalWorker(ctx)
 
 	case "redis":
 		runner := do.MustInvoke[*monitorhandler.ZSetWorkerRunner](i)
-		_ = runner.RunZSetWorker(ctx)
+		err := runner.RunZSetWorker(ctx)
+		if err != nil {
+			log.Error("ZSet worker failed", logger.Error(err))
+		}
+
+	case "temporal":
+		return
 
 	default:
 		log.Panic(

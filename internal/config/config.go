@@ -9,6 +9,7 @@ type Config struct {
 	Temporal  TemporalConfig `mapstructure:"temporal"`
 	Scheduler SchedulerCfg   `mapstructure:"scheduler"`
 	Log       LogConfig      `mapstructure:"log"`
+	Mail      MailConfig     `mapstructure:"mail"`
 }
 
 type SchedulerCfg struct {

@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"bytes"
 	"context"
+	"io"
 
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
@@ -93,6 +93,7 @@ func (h *ServerHandler) UpdateServer(ctx context.Context, req *api.UpdateServerR
 }
 
 func (h *ServerHandler) DeleteServer(ctx context.Context, params api.DeleteServerParams) error {
+
 	if err := h.serverService.DeleteServer(ctx, uint(params.ID)); err != nil {
 		return apperrors.ToAPIError(err)
 	}
@@ -149,12 +150,17 @@ func (h *ServerHandler) ExportServers(ctx context.Context, params api.ExportServ
 		return api.ExportServersOK{}, apperrors.ToAPIError(err)
 	}
 
-	buf := new(bytes.Buffer)
-	if err := h.excelGenerator.GenerateExportFile(buf, result); err != nil {
-		return api.ExportServersOK{}, apperrors.ToAPIError(err)
-	}
+	pr, pw := io.Pipe()
+	go func() {
 
-	return api.ExportServersOK{Data: buf}, nil
+		defer pw.Close()
+
+		if err := h.excelGenerator.GenerateExportFile(pw, result); err != nil {
+			_ = pw.CloseWithError(err)
+		}
+	}()
+
+	return api.ExportServersOK{Data: pr}, nil
 }
 
 func (h *ServerHandler) ListServersOntime(ctx context.Context, params api.ListServersOntimeParams) (*api.ServerOntimeListResponse, error) {
