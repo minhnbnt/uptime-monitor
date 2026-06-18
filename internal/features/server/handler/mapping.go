@@ -6,7 +6,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
-	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 )
 
 func toAPIServer(s *dto.Server) api.ServerObject {

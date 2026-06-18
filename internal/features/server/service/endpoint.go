@@ -8,9 +8,9 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	infra "github.com/minhnbnt/uptime-monitor/internal/features/ping/infrastructure"
+	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
+	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
-	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 )
 
 type Pinger interface {

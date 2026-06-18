@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
+	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 )
 
 type Timeline struct {

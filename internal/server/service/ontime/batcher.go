@@ -10,11 +10,12 @@ import (
 	"github.com/samber/lo"
 	"github.com/samber/lo/it"
 
+	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
+	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
+	featservice "github.com/minhnbnt/uptime-monitor/internal/features/server/service"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
-	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
-	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
-	"github.com/minhnbnt/uptime-monitor/internal/server/service"
+	service "github.com/minhnbnt/uptime-monitor/internal/server/service"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
@@ -30,7 +31,7 @@ func RegisterBatcher(i do.Injector) {
 }
 
 type Batcher struct {
-	serverRepository      service.ServerRepository
+	serverRepository      featservice.ServerRepository
 	ontimeCacheRepository service.OntimeCacheRepository
 	logger                logger.Logger
 	calculator            OntimeCalculator

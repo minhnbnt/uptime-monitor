@@ -7,9 +7,10 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
-	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
-	"github.com/minhnbnt/uptime-monitor/internal/server/service"
+	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
+	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
+	featservice "github.com/minhnbnt/uptime-monitor/internal/features/server/service"
+	service "github.com/minhnbnt/uptime-monitor/internal/server/service"
 )
 
 func gormModel(id uint, t time.Time) gorm.Model {
@@ -59,7 +60,7 @@ func (m *mockServerRepo) BatchCreateServers(ctx context.Context, servers []domai
 	return m.batchCreateServersFn(ctx, servers)
 }
 
-var _ service.ServerRepository = (*mockServerRepo)(nil)
+var _ featservice.ServerRepository = (*mockServerRepo)(nil)
 
 type mockOntimeCacheRepo struct {
 	mGetFn func(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error)

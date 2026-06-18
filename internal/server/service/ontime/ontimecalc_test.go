@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
+	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 )
 
 func e(day, t time.Time, status string) serverrepo.RawEvent {

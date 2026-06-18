@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 
-	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 )
 
 type mockServerService struct {

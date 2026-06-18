@@ -15,9 +15,9 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
+	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
-	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 )
 
 // ---------- container lifecycle ----------

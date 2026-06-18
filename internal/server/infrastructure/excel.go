@@ -12,7 +12,7 @@ import (
 	"github.com/samber/lo/it"
 	"github.com/xuri/excelize/v2"
 
-	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 

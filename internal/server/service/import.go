@@ -12,9 +12,10 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
+	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
+	featservice "github.com/minhnbnt/uptime-monitor/internal/features/server/service"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
-	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
 )
 
@@ -24,8 +25,8 @@ type ExcelGenerator interface {
 }
 
 type ImportService struct {
-	serverRepository   ServerRepository
-	endpointRepository EndpointRepository
+	serverRepository   featservice.ServerRepository
+	endpointRepository featservice.EndpointRepository
 	excelGenerator     ExcelGenerator
 	logger             logger.Logger
 }

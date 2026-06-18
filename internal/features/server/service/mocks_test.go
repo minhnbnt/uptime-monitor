@@ -2,13 +2,18 @@ package service
 
 import (
 	"context"
-	"io"
+	"time"
+
+	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
-	featservice "github.com/minhnbnt/uptime-monitor/internal/features/server/service"
 )
+
+func gormModel(id uint, t time.Time) gorm.Model {
+	return gorm.Model{ID: id, CreatedAt: t, UpdatedAt: t}
+}
 
 type mockServerRepo struct {
 	listFn               func(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error)
@@ -39,7 +44,6 @@ func (m *mockServerRepo) Update(ctx context.Context, s *domain.Server) error {
 func (m *mockServerRepo) Delete(ctx context.Context, id uint) error {
 	return m.deleteFn(ctx, id)
 }
-
 func (m *mockServerRepo) BatchGetOntime(ctx context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
 	return m.batchGetOntimeFn(ctx, req)
 }
@@ -47,8 +51,6 @@ func (m *mockServerRepo) BatchGetOntime(ctx context.Context, req []serverrepo.Ba
 func (m *mockServerRepo) BatchCreateServers(ctx context.Context, servers []domain.Server) error {
 	return m.batchCreateServersFn(ctx, servers)
 }
-
-var _ featservice.ServerRepository = (*mockServerRepo)(nil)
 
 type mockEndpointRepo struct {
 	upsertEndpointFn       func(ctx context.Context, endpoint domain.Endpoint) error
@@ -71,17 +73,18 @@ func (m *mockEndpointRepo) BatchCreateEndpoints(ctx context.Context, endpoints [
 	return m.batchCreateEndpointsFn(ctx, endpoints)
 }
 
-var _ featservice.EndpointRepository = (*mockEndpointRepo)(nil)
-
-type mockExcelGenerator struct {
-	generateTemplateFn func(w io.Writer) error
-	parseImportFileFn  func(file io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error)
+type mockSearchRepo struct {
+	searchFn func(ctx context.Context, params dto.SearchParams, createdByID uint) ([]domain.Server, int64, error)
 }
 
-func (m *mockExcelGenerator) GenerateTemplate(w io.Writer) error {
-	return m.generateTemplateFn(w)
+func (m *mockSearchRepo) Search(ctx context.Context, params dto.SearchParams, createdByID uint) ([]domain.Server, int64, error) {
+	return m.searchFn(ctx, params, createdByID)
 }
 
-func (m *mockExcelGenerator) ParseImportFile(file io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error) {
-	return m.parseImportFileFn(file)
+type mockPinger struct {
+	pingFn func(ctx context.Context, method, url string) (int, error)
+}
+
+func (m *mockPinger) Ping(ctx context.Context, method, url string) (int, error) {
+	return m.pingFn(ctx, method, url)
 }

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
-	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 )
 
 func TestEndpointHandler_SetCheckMethod(t *testing.T) {

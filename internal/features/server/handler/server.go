@@ -11,9 +11,9 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/middleware"
-	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/features/server/service"
 	"github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
-	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 	ontime "github.com/minhnbnt/uptime-monitor/internal/server/service/ontime"
 )
 

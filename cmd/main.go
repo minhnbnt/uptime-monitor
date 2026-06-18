@@ -32,10 +32,12 @@ import (
 	pingrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
 	pingsched "github.com/minhnbnt/uptime-monitor/internal/features/ping/scheduler"
 	pingservice "github.com/minhnbnt/uptime-monitor/internal/features/ping/service"
+	featserverhandler "github.com/minhnbnt/uptime-monitor/internal/features/server/handler"
+	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
+	featservice "github.com/minhnbnt/uptime-monitor/internal/features/server/service"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
 	searchrepo "github.com/minhnbnt/uptime-monitor/internal/repository/search"
-	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/handler"
 	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
@@ -95,8 +97,8 @@ func main() {
 		serverinfra.RegisterExcelGenerator,
 		pinginfra.RegisterDigestStarter,
 
-		service.RegisterServerService,
-		service.RegisterEndpointService,
+		featservice.RegisterServerService,
+		featservice.RegisterEndpointService,
 		service.RegisterImportService,
 		ontime.RegisterBatcher,
 		ontime.RegisterOntimeService,
@@ -108,8 +110,8 @@ func main() {
 		pingservice.RegisterDigestService,
 		service.RegisterNotificationService,
 
-		handler.RegisterServerHandler,
-		handler.RegisterEndpointHandler,
+		featserverhandler.RegisterServerHandler,
+		featserverhandler.RegisterEndpointHandler,
 		authhandler.RegisterAuthHandler,
 		handler.RegisterImportHandler,
 		handler.RegisterNotificationHandler,
