@@ -7,8 +7,8 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+	infra "github.com/minhnbnt/uptime-monitor/internal/features/ping/infrastructure"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrastructure"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
 )

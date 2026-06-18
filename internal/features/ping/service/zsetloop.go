@@ -1,4 +1,4 @@
-package services
+package service
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	scheduler "github.com/minhnbnt/uptime-monitor/internal/features/ping/scheduler"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	scheduler "github.com/minhnbnt/uptime-monitor/internal/repository/scheduler"
 )
 
 const (

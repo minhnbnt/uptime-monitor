@@ -1,4 +1,4 @@
-package temporal
+package infrastructure
 
 import (
 	"context"

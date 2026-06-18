@@ -1,4 +1,4 @@
-package services
+package service
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/repository/monitor"
+	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
 )
 
 type UserRepository interface {

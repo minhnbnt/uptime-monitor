@@ -9,21 +9,21 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/features/ping/service"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	"github.com/minhnbnt/uptime-monitor/internal/monitor/services"
 )
 
 type ZSetWorkerRunner struct {
-	loopService *services.LoopService
-	pingService *services.PingService
+	loopService *service.LoopService
+	pingService *service.PingService
 	logger      logger.Logger
 }
 
 func RegisterZSetWorkerRunner(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ZSetWorkerRunner, error) {
 		return &ZSetWorkerRunner{
-			loopService: do.MustInvoke[*services.LoopService](i),
-			pingService: do.MustInvoke[*services.PingService](i),
+			loopService: do.MustInvoke[*service.LoopService](i),
+			pingService: do.MustInvoke[*service.PingService](i),
 			logger:      do.MustInvoke[logger.Logger](i),
 		}, nil
 	})

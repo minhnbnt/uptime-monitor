@@ -27,20 +27,18 @@ import (
 	authrepo "github.com/minhnbnt/uptime-monitor/internal/features/auth/repository"
 	authservice "github.com/minhnbnt/uptime-monitor/internal/features/auth/service"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/token"
+	pinghandler "github.com/minhnbnt/uptime-monitor/internal/features/ping/handler"
+	pinginfra "github.com/minhnbnt/uptime-monitor/internal/features/ping/infrastructure"
+	pingrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
+	pingsched "github.com/minhnbnt/uptime-monitor/internal/features/ping/scheduler"
+	pingservice "github.com/minhnbnt/uptime-monitor/internal/features/ping/service"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	monitorhandler "github.com/minhnbnt/uptime-monitor/internal/monitor/handler"
-	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrastructure"
-	monitorservices "github.com/minhnbnt/uptime-monitor/internal/monitor/services"
-	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/repository/monitor"
-	notificationrepo "github.com/minhnbnt/uptime-monitor/internal/repository/notification"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
-	schedulerrepo "github.com/minhnbnt/uptime-monitor/internal/repository/scheduler"
 	searchrepo "github.com/minhnbnt/uptime-monitor/internal/repository/search"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/handler"
 	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
-	serverinfratemporal "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/temporal"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
 	ontime "github.com/minhnbnt/uptime-monitor/internal/server/service/ontime"
 )
@@ -69,33 +67,33 @@ func main() {
 		logger.RegisterLogger,
 		serverrepo.RegisterServerRepository,
 		serverrepo.RegisterEndpointRepository,
-		schedulerrepo.RegisterTemporalSchedulerRepository,
+		pingsched.RegisterTemporalSchedulerRepository,
 		authrepo.RegisterUserRepository,
 		authrepo.RegisterRedisRevokedTokenRepository,
 		searchrepo.RegisterParadeDBSearcher,
 
-		monitorrepo.RegisterServerEventRepository,
-		monitorrepo.RegisterRedisServerEventRepository,
+		pingrepo.RegisterServerEventRepository,
+		pingrepo.RegisterRedisServerEventRepository,
 
-		notificationrepo.RegisterNotificationConfigRepository,
+		pingrepo.RegisterNotificationConfigRepository,
 
 		ontimerepo.RegisterOntimeCacheRepository,
 
-		infra.RegisterPingWorker,
-		infra.RegisterRecordStatusWorker,
+		pinginfra.RegisterPingWorker,
+		pinginfra.RegisterRecordStatusWorker,
 		config.RegisterMailClient,
-		infra.RegisterMailer,
+		pinginfra.RegisterMailer,
 
-		schedulerrepo.RegisterZSetScheduleRepository,
-		schedulerrepo.RegisterScoreUpdater,
-		schedulerrepo.RegisterEndpointFetcher,
-		schedulerrepo.RegisterEndpointProvider,
-		schedulerrepo.RegisterEndpointMetaCache,
+		pingsched.RegisterZSetScheduleRepository,
+		pingsched.RegisterScoreUpdater,
+		pingsched.RegisterEndpointFetcher,
+		pingsched.RegisterEndpointProvider,
+		pingsched.RegisterEndpointMetaCache,
 
 		jwt.RegisterProvider,
 		argon2.RegisterArgon2PasswordEncoder,
 		serverinfra.RegisterExcelGenerator,
-		serverinfratemporal.RegisterDigestStarter,
+		pinginfra.RegisterDigestStarter,
 
 		service.RegisterServerService,
 		service.RegisterEndpointService,
@@ -105,9 +103,9 @@ func main() {
 		authservice.RegisterAuthService,
 		token.RegisterTokenGenerator,
 		token.RegisterTokenValidator,
-		monitorservices.RegisterPingService,
-		monitorservices.RegisterLoopService,
-		monitorservices.RegisterDigestService,
+		pingservice.RegisterPingService,
+		pingservice.RegisterLoopService,
+		pingservice.RegisterDigestService,
 		service.RegisterNotificationService,
 
 		handler.RegisterServerHandler,
@@ -119,8 +117,8 @@ func main() {
 		authmiddleware.RegisterAuthMiddleware,
 
 		server.RegisterCompositeHandler,
-		monitorhandler.RegisterTemporalWorkerRunner,
-		monitorhandler.RegisterZSetWorkerRunner,
+		pinghandler.RegisterTemporalWorkerRunner,
+		pinghandler.RegisterZSetWorkerRunner,
 	)
 
 	ctx, stop := signal.NotifyContext(
@@ -148,7 +146,7 @@ func main() {
 
 func runTemporalWorker(ctx context.Context, i do.Injector) {
 
-	temporal := do.MustInvoke[*monitorhandler.TemporalWorkerRunner](i)
+	temporal := do.MustInvoke[*pinghandler.TemporalWorkerRunner](i)
 	log := do.MustInvoke[logger.Logger](i)
 
 	err := temporal.RunTemporalWorker(ctx)
@@ -165,7 +163,7 @@ func runWorker(ctx context.Context, i do.Injector) {
 	switch cfg.Scheduler.Backend {
 
 	case "redis":
-		runner := do.MustInvoke[*monitorhandler.ZSetWorkerRunner](i)
+		runner := do.MustInvoke[*pinghandler.ZSetWorkerRunner](i)
 		err := runner.RunZSetWorker(ctx)
 		if err != nil {
 			log.Error("ZSet worker failed", logger.Error(err))

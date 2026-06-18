@@ -1,4 +1,4 @@
-package services
+package service
 
 import (
 	"context"
@@ -9,10 +9,9 @@ import (
 
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	authrepo "github.com/minhnbnt/uptime-monitor/internal/features/auth/repository"
+	infra "github.com/minhnbnt/uptime-monitor/internal/features/ping/infrastructure"
+	pingrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrastructure"
-	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/repository/monitor"
-	notificationrepo "github.com/minhnbnt/uptime-monitor/internal/repository/notification"
 )
 
 const thirtyDays = 30 * 24 * time.Hour
@@ -29,9 +28,9 @@ type DigestService struct {
 func RegisterDigestService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*DigestService, error) {
 		return &DigestService{
-			eventRepo:  do.MustInvoke[*monitorrepo.ServerEventRepository](i),
+			eventRepo:  do.MustInvoke[*pingrepo.ServerEventRepository](i),
 			userRepo:   do.MustInvoke[*authrepo.UserRepository](i),
-			configRepo: do.MustInvoke[*notificationrepo.NotificationConfigRepository](i),
+			configRepo: do.MustInvoke[*pingrepo.NotificationConfigRepository](i),
 			mailer:     do.MustInvoke[*infra.Mailer](i),
 			logger:     do.MustInvoke[logger.Logger](i),
 		}, nil
@@ -102,8 +101,8 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 }
 
 var (
-	_ EventRepository              = (*monitorrepo.ServerEventRepository)(nil)
+	_ EventRepository              = (*pingrepo.ServerEventRepository)(nil)
 	_ UserRepository               = (*authrepo.UserRepository)(nil)
 	_ MailSender                   = (*infra.Mailer)(nil)
-	_ NotificationConfigRepository = (*notificationrepo.NotificationConfigRepository)(nil)
+	_ NotificationConfigRepository = (*pingrepo.NotificationConfigRepository)(nil)
 )

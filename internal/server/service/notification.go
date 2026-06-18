@@ -8,10 +8,10 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+	temporal "github.com/minhnbnt/uptime-monitor/internal/features/ping/infrastructure"
+	notificationrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	notificationrepo "github.com/minhnbnt/uptime-monitor/internal/repository/notification"
 	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
-	"github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/temporal"
 )
 
 const dateLayout = "2006-01-02"

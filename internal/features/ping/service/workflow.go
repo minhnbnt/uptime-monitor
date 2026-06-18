@@ -1,4 +1,4 @@
-package services
+package service
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrastructure"
+	infra "github.com/minhnbnt/uptime-monitor/internal/features/ping/infrastructure"
 )
 
 type PingService struct {

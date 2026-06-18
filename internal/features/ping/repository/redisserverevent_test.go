@@ -1,4 +1,4 @@
-package monitor
+package repository
 
 import "testing"
 

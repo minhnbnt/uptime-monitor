@@ -7,8 +7,8 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/repository/monitor"
 )
 
 type RecordStatusWorker struct {

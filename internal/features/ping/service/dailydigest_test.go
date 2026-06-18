@@ -1,4 +1,4 @@
-package services
+package service
 
 import (
 	"context"
@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/repository/monitor"
 )
 
 type mockUserRepo struct {

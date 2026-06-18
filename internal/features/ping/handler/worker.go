@@ -8,16 +8,16 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	temporalcfg "github.com/minhnbnt/uptime-monitor/internal/config/temporal"
+	pingservice "github.com/minhnbnt/uptime-monitor/internal/features/ping/service"
+	pingworkflow "github.com/minhnbnt/uptime-monitor/internal/features/ping/workflow"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	"github.com/minhnbnt/uptime-monitor/internal/monitor/services"
-	monitorworkflow "github.com/minhnbnt/uptime-monitor/internal/monitor/workflow"
 )
 
 type TemporalWorkerRunner struct {
 	worker        temporalworker.Worker
 	taskQueue     string
-	pingService   *services.PingService
-	digestService *services.DigestService
+	pingService   *pingservice.PingService
+	digestService *pingservice.DigestService
 	logger        logger.Logger
 }
 
@@ -26,8 +26,8 @@ func RegisterTemporalWorkerRunner(i do.Injector) {
 
 		clientWrapper := do.MustInvoke[*temporalcfg.ClientWrapper](i)
 		temporalCfg := do.MustInvoke[*temporalcfg.Config](i)
-		pingService := do.MustInvoke[*services.PingService](i)
-		digestService := do.MustInvoke[*services.DigestService](i)
+		pingService := do.MustInvoke[*pingservice.PingService](i)
+		digestService := do.MustInvoke[*pingservice.DigestService](i)
 		logger := do.MustInvoke[logger.Logger](i)
 
 		client := clientWrapper.GetClient()
@@ -48,14 +48,14 @@ func (wr *TemporalWorkerRunner) RunTemporalWorker(ctx context.Context) error {
 	worker := wr.worker
 
 	worker.RegisterWorkflowWithOptions(
-		monitorworkflow.PingWorkflow,
+		pingworkflow.PingWorkflow,
 		workflow.RegisterOptions{Name: "ping-workflow"},
 	)
 	worker.RegisterActivity(wr.pingService.Ping)
 	worker.RegisterActivity(wr.pingService.Record)
 
 	worker.RegisterWorkflowWithOptions(
-		monitorworkflow.SendReportWorkflow,
+		pingworkflow.SendReportWorkflow,
 		workflow.RegisterOptions{Name: "send-report"},
 	)
 
