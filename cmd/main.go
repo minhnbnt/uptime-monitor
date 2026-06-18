@@ -37,7 +37,6 @@ import (
 	featservice "github.com/minhnbnt/uptime-monitor/internal/features/server/service"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
-	searchrepo "github.com/minhnbnt/uptime-monitor/internal/repository/search"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/handler"
 	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
@@ -72,7 +71,7 @@ func main() {
 		pingsched.RegisterTemporalSchedulerRepository,
 		authrepo.RegisterUserRepository,
 		authrepo.RegisterRedisRevokedTokenRepository,
-		searchrepo.RegisterParadeDBSearcher,
+		serverrepo.RegisterParadeDBSearcher,
 
 		pingrepo.RegisterServerEventRepository,
 		pingrepo.RegisterRedisServerEventRepository,

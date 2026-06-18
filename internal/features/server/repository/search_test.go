@@ -1,98 +1,13 @@
-package search
+package repository
 
 import (
-	"context"
-	"flag"
-	"fmt"
-	"os"
 	"testing"
-	"time"
 
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 )
-
-var testDB *gorm.DB
-
-func TestMain(m *testing.M) {
-	flag.Parse()
-	if !testing.Short() {
-		ctx := context.Background()
-
-		container, dsn := startParadeDB(ctx)
-		defer func() { _ = container.Terminate(ctx) }()
-
-		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "gorm open: %v\n", err)
-			os.Exit(1)
-		}
-
-		if err := db.AutoMigrate(&domain.Server{}); err != nil {
-			fmt.Fprintf(os.Stderr, "auto-migrate: %v\n", err)
-			os.Exit(1)
-		}
-
-		if err := db.Exec("CREATE EXTENSION IF NOT EXISTS pg_search").Error; err != nil {
-			fmt.Fprintf(os.Stderr, "create extension: %v\n", err)
-			os.Exit(1)
-		}
-
-		if err := db.Exec(`CREATE INDEX IF NOT EXISTS servers_search_idx ON servers USING bm25 (id, name) WITH (key_field='id')`).Error; err != nil {
-			fmt.Fprintf(os.Stderr, "create bm25 index: %v\n", err)
-			os.Exit(1)
-		}
-
-		testDB = db
-	}
-
-	os.Exit(m.Run())
-}
-
-func startParadeDB(ctx context.Context) (testcontainers.Container, string) {
-	req := testcontainers.ContainerRequest{
-		Image:        "paradedb/paradedb:pg17",
-		ExposedPorts: []string{"5432/tcp"},
-		Env: map[string]string{
-			"POSTGRES_USER":     "test",
-			"POSTGRES_PASSWORD": "test",
-			"POSTGRES_DB":       "uptime_test",
-		},
-		WaitingFor: wait.ForLog("database system is ready to accept connections").
-			WithOccurrence(2).WithStartupTimeout(120 * time.Second),
-	}
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "start container: %v\n", err)
-		os.Exit(1)
-	}
-
-	host, err := container.Host(ctx)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "container host: %v\n", err)
-		os.Exit(1)
-	}
-	port, err := container.MappedPort(ctx, "5432")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "container port: %v\n", err)
-		os.Exit(1)
-	}
-
-	dsn := fmt.Sprintf(
-		"postgres://test:test@%s:%s/uptime_test?sslmode=disable",
-		host, port.Port(),
-	)
-
-	return container, dsn
-}
 
 func searcher() *ParadeDBSearcher {
 	return &ParadeDBSearcher{db: testDB}

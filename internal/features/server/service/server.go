@@ -12,7 +12,6 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	"github.com/minhnbnt/uptime-monitor/internal/repository/search"
 )
 
 type ServerService struct {
@@ -27,7 +26,7 @@ func RegisterServerService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ServerService, error) {
 		return &ServerService{
 			serverRepository:   do.MustInvoke[*serverrepo.ServerRepository](i),
-			searchRepository:   do.MustInvoke[*search.ParadeDBSearcher](i),
+			searchRepository:   do.MustInvoke[*serverrepo.ParadeDBSearcher](i),
 			endpointRepository: do.MustInvoke[*serverrepo.EndpointRepository](i),
 			logger:             do.MustInvoke[logger.Logger](i),
 		}, nil

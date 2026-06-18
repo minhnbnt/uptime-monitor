@@ -1,4 +1,4 @@
-package server
+package repository
 
 import (
 	"context"
@@ -43,6 +43,13 @@ func TestMain(m *testing.M) {
 		}
 
 		testDB = db
+
+		if err := testDB.Exec("CREATE EXTENSION IF NOT EXISTS pg_search").Error; err != nil {
+			fmt.Fprintf(os.Stderr, "warning: pg_search extension not available: %v\n", err)
+		} else {
+			_ = testDB.Exec(`CREATE INDEX IF NOT EXISTS servers_search_idx ON servers USING bm25 (id, name) WITH (key_field='id')`)
+		}
+
 		testDB.Create(&domain.User{
 			Model:    gorm.Model{ID: 1},
 			Email:    "test@test.com",
@@ -57,7 +64,7 @@ func TestMain(m *testing.M) {
 
 func startPostgres(ctx context.Context) (testcontainers.Container, string) {
 	req := testcontainers.ContainerRequest{
-		Image:        "postgres:17-alpine",
+		Image:        "paradedb/paradedb:pg17",
 		ExposedPorts: []string{"5432/tcp"},
 		Env: map[string]string{
 			"POSTGRES_USER":     "test",
@@ -65,7 +72,7 @@ func startPostgres(ctx context.Context) (testcontainers.Container, string) {
 			"POSTGRES_DB":       "uptime_test",
 		},
 		WaitingFor: wait.ForLog("database system is ready to accept connections").
-			WithOccurrence(2).WithStartupTimeout(60 * time.Second),
+			WithOccurrence(2).WithStartupTimeout(120 * time.Second),
 	}
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
