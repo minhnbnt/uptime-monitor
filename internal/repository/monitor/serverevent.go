@@ -15,9 +15,13 @@ type ServerEventRepository struct {
 	db *gorm.DB
 }
 
+func NewServerEventRepository(db *gorm.DB) *ServerEventRepository {
+	return &ServerEventRepository{db: db}
+}
+
 func newServerEventRepository(i do.Injector) (*ServerEventRepository, error) {
 	dbWrapper := do.MustInvoke[*config.GORMWrapper](i)
-	return &ServerEventRepository{db: dbWrapper.GetDB()}, nil
+	return NewServerEventRepository(dbWrapper.GetDB()), nil
 }
 
 func RegisterServerEventRepository(i do.Injector) {

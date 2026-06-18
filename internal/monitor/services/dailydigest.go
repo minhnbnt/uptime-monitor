@@ -19,10 +19,10 @@ const thirtyDays = 30 * 24 * time.Hour
 const maxDigestRange = thirtyDays
 
 type DigestService struct {
-	eventRepo  *monitorrepo.ServerEventRepository
-	userRepo   *authrepo.UserRepository
-	configRepo *notificationrepo.NotificationConfigRepository
-	mailer     *infra.Mailer
+	eventRepo  EventRepository
+	userRepo   UserRepository
+	configRepo NotificationConfigRepository
+	mailer     MailSender
 	logger     logger.Logger
 }
 

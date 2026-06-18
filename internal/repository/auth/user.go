@@ -16,10 +16,14 @@ type UserRepository struct {
 	db *gorm.DB
 }
 
+func NewUserRepository(db *gorm.DB) *UserRepository {
+	return &UserRepository{db: db}
+}
+
 func RegisterUserRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*UserRepository, error) {
 		dbWrapper := do.MustInvoke[*config.GORMWrapper](i)
-		return &UserRepository{db: dbWrapper.GetDB()}, nil
+		return NewUserRepository(dbWrapper.GetDB()), nil
 	})
 }
 
