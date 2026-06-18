@@ -42,7 +42,8 @@ func (s *DigestService) SendUserDigest(ctx context.Context, userID uint) error {
 
 	cfg, err := s.configRepo.GetByUserID(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("get config: %w", err)
+		s.logger.Error("failed to get notification config", logger.Error(err))
+		return apperrors.ErrInternal
 	}
 
 	if cfg == nil || !cfg.Active {
@@ -56,9 +57,11 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("find user: %w", err)
+		s.logger.Error("failed to find user", logger.Error(err))
+		return apperrors.ErrInternal
 	}
 	if user == nil {
+		s.logger.Error("user not found", logger.Int("user_id", int(userID)))
 		return fmt.Errorf("user %d: %w", userID, apperrors.ErrNotFound)
 	}
 
@@ -69,7 +72,8 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 	events, err := s.eventRepo.GetEnrichedEventsByUser(ctx, userID, from, now)
 	if err != nil {
-		return fmt.Errorf("get events: %w", err)
+		s.logger.Error("failed to get enriched events", logger.Error(err))
+		return apperrors.ErrInternal
 	}
 
 	rows := make([]infra.ReportRow, len(events))
@@ -84,13 +88,22 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 	excelBytes, err := infra.GenerateStatusReport(rows)
 	if err != nil {
-		return fmt.Errorf("generate excel: %w", err)
+		s.logger.Error("failed to generate excel report", logger.Error(err))
+		return apperrors.ErrInternal
 	}
 
 	subject := fmt.Sprintf("Uptime Monitor - Daily Digest - %s", now.Format("2006-01-02"))
 	if err := s.mailer.Send(user.Email, subject, excelBytes); err != nil {
-		return fmt.Errorf("send mail: %w", err)
+		s.logger.Error("failed to send mail", logger.Error(err))
+		return apperrors.ErrInternal
 	}
 
 	return nil
 }
+
+var (
+	_ EventRepository              = (*monitorrepo.ServerEventRepository)(nil)
+	_ UserRepository               = (*authrepo.UserRepository)(nil)
+	_ MailSender                   = (*infra.Mailer)(nil)
+	_ NotificationConfigRepository = (*notificationrepo.NotificationConfigRepository)(nil)
+)

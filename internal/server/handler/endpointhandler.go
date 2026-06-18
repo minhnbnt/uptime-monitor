@@ -64,6 +64,8 @@ func (h *EndpointHandler) SetCheckMethod(
 	return &api.ServerResponse{Data: toAPIServer(server)}, nil
 }
 
+var _ EndpointService = (*service.EndpointService)(nil)
+
 func (h *EndpointHandler) TestEndpoint(ctx context.Context, req *api.TestEndpointRequest) (*api.TestEndpointResponse, error) {
 
 	timeout := req.Timeout.Or(10)

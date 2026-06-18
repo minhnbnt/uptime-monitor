@@ -43,6 +43,49 @@ func RegisterImportService(i do.Injector) {
 
 const chunkSize = 100
 
+func buildServers(chunk []dto.ImportRow, userID uint) []domain.Server {
+	return lo.Map(chunk, func(r dto.ImportRow, _ int) domain.Server {
+		return domain.Server{
+			Name:        r.Name,
+			Status:      domain.StatusActive,
+			CreatedByID: userID,
+		}
+	})
+}
+
+func buildSuccesses(chunk []dto.ImportRow, servers []domain.Server) []dto.ImportSuccess {
+	res := make([]dto.ImportSuccess, len(servers))
+	for i, sv := range servers {
+		res[i] = dto.ImportSuccess{
+			Row:      chunk[i].Row,
+			Name:     sv.Name,
+			URL:      chunk[i].URL,
+			ServerID: sv.ID,
+		}
+	}
+	return res
+}
+
+func buildEndpoints(chunk []dto.ImportRow, servers []domain.Server) []domain.Endpoint {
+	endpoints := make([]domain.Endpoint, 0, len(servers))
+	for i, sv := range servers {
+		url := chunk[i].URL
+		if url == "" {
+			continue
+		}
+		endpoints = append(endpoints, domain.Endpoint{
+			ServerID:     sv.ID,
+			URL:          url,
+			Status:       domain.StatusActive,
+			Interval:     time.Duration(chunk[i].Interval) * time.Second,
+			Timeout:      time.Duration(chunk[i].Timeout) * time.Second,
+			Method:       chunk[i].Method,
+			ExpectedCode: chunk[i].ExpectedCode,
+		})
+	}
+	return endpoints
+}
+
 func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.Reader) (*dto.ImportResult, error) {
 
 	rows, rowErrors, err := s.excelGenerator.ParseImportFile(file)
@@ -55,66 +98,38 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 		return &dto.ImportResult{RowErrors: rowErrors}, nil
 	}
 
-	rowIter := slices.Values(rows)
-
 	var (
 		successes   []dto.ImportSuccess
 		batchErrors []dto.ImportError
 	)
 
-	for chunks := range it.Chunk(rowIter, chunkSize) {
+	for chunks := range it.Chunk(slices.Values(rows), chunkSize) {
 
-		servers := lo.Map(chunks, func(r dto.ImportRow, _ int) domain.Server {
-			return domain.Server{
-				Name:        r.Name,
-				Status:      domain.StatusActive,
-				CreatedByID: userID,
-			}
-		})
+		servers := buildServers(chunks, userID)
 
-		err := s.serverRepository.BatchCreateServers(ctx, servers)
-		if err != nil {
+		if err := s.serverRepository.BatchCreateServers(ctx, servers); err != nil {
 			s.logger.Error("failed to create servers", logger.Error(err))
-			batchErrors = append(batchErrors, dto.ImportError{
-				Message: "failed to create servers",
-			})
+			batchErrors = append(batchErrors, dto.ImportError{Message: "failed to create servers"})
 			continue
 		}
 
-		for i, sv := range servers {
-			successes = append(successes, dto.ImportSuccess{
-				Row:      chunks[i].Row,
-				Name:     sv.Name,
-				URL:      chunks[i].URL,
-				ServerID: sv.ID,
-			})
+		successes = append(successes, buildSuccesses(chunks, servers)...)
+
+		endpoints := buildEndpoints(chunks, servers)
+		if len(endpoints) == 0 {
+			continue
 		}
 
-		serverIter := slices.Values(servers)
-		endpoints := it.MapI(serverIter, func(sv domain.Server, index int) domain.Endpoint {
-			return domain.Endpoint{
-				ServerID:     sv.ID,
-				URL:          chunks[index].URL,
-				Status:       domain.StatusActive,
-				Interval:     time.Duration(chunks[index].Interval) * time.Second,
-				Timeout:      time.Duration(chunks[index].Timeout) * time.Second,
-				Method:       chunks[index].Method,
-				ExpectedCode: chunks[index].ExpectedCode,
-			}
-		})
-
-		endpoints = it.Filter(endpoints, func(e domain.Endpoint) bool { return e.URL != "" })
-
-		if err := s.endpointRepository.BatchCreateEndpoints(ctx, slices.Collect(endpoints)); err != nil {
+		if err := s.endpointRepository.BatchCreateEndpoints(ctx, endpoints); err != nil {
 			s.logger.Error("failed to create endpoints", logger.Error(err))
-			batchErrors = append(batchErrors, dto.ImportError{
-				Message: "failed to create endpoints",
-			})
+			batchErrors = append(batchErrors, dto.ImportError{Message: "failed to create endpoints"})
 		}
 	}
 
 	return &dto.ImportResult{Successes: successes, RowErrors: rowErrors, BatchErrors: batchErrors}, nil
 }
+
+var _ ExcelGenerator = (*infrastructure.ExcelGenerator)(nil)
 
 func (s *ImportService) GenerateTemplate(w io.Writer) error {
 	if err := s.excelGenerator.GenerateTemplate(w); err != nil {

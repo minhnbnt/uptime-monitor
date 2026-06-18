@@ -95,6 +95,11 @@ func (s *NotificationService) UpdateNotificationConfig(ctx context.Context, user
 	return nil
 }
 
+var (
+	_ NotificationConfigRepository = (*notificationrepo.NotificationConfigRepository)(nil)
+	_ DigestStarter                = (*temporal.DigestStarter)(nil)
+)
+
 func (s *NotificationService) SendReport(ctx context.Context, userID uint) error {
 
 	if err := s.digestStarter.StartDigest(ctx, userID); err != nil {

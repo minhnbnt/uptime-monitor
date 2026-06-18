@@ -76,6 +76,8 @@ func (h *NotificationHandler) UpdateNotificationConfig(ctx context.Context, req 
 	return nil
 }
 
+var _ NotificationService = (*service.NotificationService)(nil)
+
 func (h *NotificationHandler) SendReport(ctx context.Context) error {
 
 	userID := middleware.GetUserID(ctx)

@@ -23,6 +23,8 @@ func RegisterAuthHandler(i do.Injector) {
 	})
 }
 
+var _ AuthService = (*authservice.AuthService)(nil)
+
 func (h *AuthHandler) Register(ctx context.Context, req *api.RegisterRequest) (*api.AuthResponse, error) {
 
 	dtoReq := dto.RegisterRequest{

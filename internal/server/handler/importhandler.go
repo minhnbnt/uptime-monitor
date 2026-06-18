@@ -66,6 +66,8 @@ func (h *ImportHandler) ImportServers(ctx context.Context, req *api.ImportServer
 	}, nil
 }
 
+var _ ImportService = (*service.ImportService)(nil)
+
 func (h *ImportHandler) DownloadImportTemplate(ctx context.Context) (api.DownloadImportTemplateOK, error) {
 
 	buf := new(bytes.Buffer)

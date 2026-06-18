@@ -57,6 +57,8 @@ func (es *EndpointService) SetCheckMethod(ctx context.Context, serverID uint, re
 	return nil
 }
 
+var _ Pinger = (*infra.PingWorker)(nil)
+
 func (es *EndpointService) TestEndpoint(ctx context.Context, req dto.TestEndpointRequest) (*dto.TestEndpointResponse, error) {
 
 	pingCtx, cancel := context.WithTimeout(ctx, req.Timeout)

@@ -163,6 +163,11 @@ func (h *ServerHandler) ExportServers(ctx context.Context, params api.ExportServ
 	return api.ExportServersOK{Data: pr}, nil
 }
 
+var (
+	_ ServerService = (*service.ServerService)(nil)
+	_ OntimeService = (*ontime.OntimeService)(nil)
+)
+
 func (h *ServerHandler) ListServersOntime(ctx context.Context, params api.ListServersOntimeParams) (*api.ServerOntimeListResponse, error) {
 
 	page, perPage := params.Page.Or(1), params.PerPage.Or(20)
