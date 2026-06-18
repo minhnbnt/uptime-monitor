@@ -50,17 +50,7 @@ func (sr *ServerRepository) List(ctx context.Context, createdByID uint, limit, o
 }
 
 func (sr *ServerRepository) Create(ctx context.Context, s *domain.Server) error {
-
-	servers := []domain.Server{*s}
-	err := sr.BatchCreateServers(ctx, servers)
-
-	if err != nil {
-		return fmt.Errorf("failed to create server: %w", err)
-	}
-
-	*s = servers[0]
-
-	return nil
+	return gorm.G[domain.Server](sr.db).Create(ctx, s)
 }
 
 func (sr *ServerRepository) GetByID(ctx context.Context, id uint) (*domain.Server, error) {
@@ -106,7 +96,7 @@ func (sr *ServerRepository) Delete(ctx context.Context, id uint) error {
 
 func (sr *ServerRepository) BatchCreateServers(ctx context.Context, servers []domain.Server) error {
 
-	result := sr.db.WithContext(ctx).Create(servers)
+	result := sr.db.WithContext(ctx).Create(&servers)
 
 	if err := result.Error; err != nil {
 		return fmt.Errorf("failed to batch create servers: %w", err)

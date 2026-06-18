@@ -19,6 +19,7 @@ require (
 	github.com/samber/lo v1.53.0
 	github.com/spf13/viper v1.21.0
 	github.com/testcontainers/testcontainers-go v0.42.0
+	github.com/wneessen/go-mail v0.7.3
 	github.com/xuri/excelize/v2 v2.10.1
 	go.temporal.io/sdk v1.43.0
 	go.uber.org/zap v1.28.0
@@ -117,7 +118,6 @@ require (
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect
 	github.com/tklauser/go-sysconf v0.3.16 // indirect
 	github.com/tklauser/numcpus v0.11.0 // indirect
-	github.com/wneessen/go-mail v0.7.3 // indirect
 	github.com/woodsbury/decimal128 v1.4.0 // indirect
 	github.com/xuri/efp v0.0.1 // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
