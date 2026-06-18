@@ -1,4 +1,4 @@
-package auth
+package service
 
 import (
 	"context"
@@ -7,11 +7,11 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/argon2"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/repository"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/token"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	authrepo "github.com/minhnbnt/uptime-monitor/internal/repository/auth"
-	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
-	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
-	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
 )
 
 type UserRepository interface {
@@ -25,33 +25,23 @@ type PasswordEncoder interface {
 	Verify(password, encodedHash string) (bool, error)
 }
 
-type TokenGenerator interface {
-	GenerateAccessToken(user *domain.User) (string, error)
-	GenerateRefreshToken(user *domain.User) (string, error)
-}
-
-type RevokedTokenRepository interface {
-	Revoke(ctx context.Context, token *jwtutil.Token) error
-	IsRevoked(ctx context.Context, jti string) (bool, error)
-}
-
 type AuthService struct {
 	userRepository         UserRepository
 	passwordEncoder        PasswordEncoder
-	tokenGenerator         TokenGenerator
-	tokenValidator         *TokenValidator
-	revokedTokenRepository RevokedTokenRepository
+	tokenGenerator         token.TokenGenerator
+	tokenValidator         *token.TokenValidator
+	revokedTokenRepository token.RevokedTokenRepository
 	logger                 logger.Logger
 }
 
 func RegisterAuthService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*AuthService, error) {
 		return &AuthService{
-			userRepository:         do.MustInvoke[*authrepo.UserRepository](i),
-			passwordEncoder:        do.MustInvoke[*serverinfra.Argon2PasswordEncoder](i),
-			tokenGenerator:         do.MustInvoke[TokenGenerator](i),
-			tokenValidator:         do.MustInvoke[*TokenValidator](i),
-			revokedTokenRepository: do.MustInvoke[RevokedTokenRepository](i),
+			userRepository:         do.MustInvoke[*repository.UserRepository](i),
+			passwordEncoder:        do.MustInvoke[*argon2.Argon2PasswordEncoder](i),
+			tokenGenerator:         do.MustInvoke[token.TokenGenerator](i),
+			tokenValidator:         do.MustInvoke[*token.TokenValidator](i),
+			revokedTokenRepository: do.MustInvoke[token.RevokedTokenRepository](i),
 			logger:                 do.MustInvoke[logger.Logger](i),
 		}, nil
 	})

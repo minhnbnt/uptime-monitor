@@ -7,8 +7,8 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/token"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	authservice "github.com/minhnbnt/uptime-monitor/internal/server/service/auth"
 )
 
 type userIDKey struct{}
@@ -28,14 +28,14 @@ type AccessTokenValidator interface {
 }
 
 type AuthMiddleware struct {
-	tokenValidator *authservice.TokenValidator
+	tokenValidator *token.TokenValidator
 	logger         logger.Logger
 }
 
 func RegisterAuthMiddleware(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*AuthMiddleware, error) {
 		return &AuthMiddleware{
-			tokenValidator: do.MustInvoke[*authservice.TokenValidator](i),
+			tokenValidator: do.MustInvoke[*token.TokenValidator](i),
 			logger:         do.MustInvoke[logger.Logger](i),
 		}, nil
 	})

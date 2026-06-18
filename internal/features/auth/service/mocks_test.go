@@ -1,4 +1,4 @@
-package auth
+package service
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/jwt"
 )
 
 func gormModel(id uint, t time.Time) gorm.Model {
@@ -65,11 +65,11 @@ func (m *mockTokenGenerator) GenerateRefreshToken(user *domain.User) (string, er
 }
 
 type mockRevokedTokenRepo struct {
-	revokeFn    func(ctx context.Context, token *jwtutil.Token) error
+	revokeFn    func(ctx context.Context, token *jwt.Token) error
 	isRevokedFn func(ctx context.Context, jti string) (bool, error)
 }
 
-func (m *mockRevokedTokenRepo) Revoke(ctx context.Context, token *jwtutil.Token) error {
+func (m *mockRevokedTokenRepo) Revoke(ctx context.Context, token *jwt.Token) error {
 	if m.revokeFn == nil {
 		return nil
 	}

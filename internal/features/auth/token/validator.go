@@ -1,4 +1,4 @@
-package auth
+package token
 
 import (
 	"context"
@@ -9,12 +9,12 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/jwt"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
 )
 
 type TokenValidator struct {
-	provider         *jwtutil.Provider
+	provider         *jwt.Provider
 	tokenConfig      *config.TokenConfig
 	revokedTokenRepo RevokedTokenRepository
 	logger           logger.Logger
@@ -23,12 +23,21 @@ type TokenValidator struct {
 func RegisterTokenValidator(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*TokenValidator, error) {
 		return &TokenValidator{
-			provider:         do.MustInvoke[*jwtutil.Provider](i),
+			provider:         do.MustInvoke[*jwt.Provider](i),
 			tokenConfig:      do.MustInvoke[*config.TokenConfig](i),
 			revokedTokenRepo: do.MustInvoke[RevokedTokenRepository](i),
 			logger:           do.MustInvoke[logger.Logger](i),
 		}, nil
 	})
+}
+
+func NewTokenValidator(provider *jwt.Provider, tokenConfig *config.TokenConfig, revokedTokenRepo RevokedTokenRepository, logger logger.Logger) *TokenValidator {
+	return &TokenValidator{
+		provider:         provider,
+		tokenConfig:      tokenConfig,
+		revokedTokenRepo: revokedTokenRepo,
+		logger:           logger,
+	}
 }
 
 func (tv *TokenValidator) ValidateAccessToken(tokenStr string) (uint, error) {
@@ -94,7 +103,7 @@ func (tv *TokenValidator) ValidateRefreshToken(ctx context.Context, tokenStr str
 	return uint(userID), jti, nil
 }
 
-func (tv *TokenValidator) ParseRefreshToken(tokenStr string) (*jwtutil.Token, error) {
+func (tv *TokenValidator) ParseRefreshToken(tokenStr string) (*jwt.Token, error) {
 	expectedIssuer := tv.tokenConfig.GetRefreshTokenIssuer()
 	return tv.provider.ParseWithIssuer(tokenStr, expectedIssuer)
 }

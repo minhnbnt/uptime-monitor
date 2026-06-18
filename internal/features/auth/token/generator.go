@@ -1,4 +1,4 @@
-package auth
+package token
 
 import (
 	"fmt"
@@ -9,18 +9,18 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/jwt"
 )
 
 type tokenGenerator struct {
-	provider    *jwtutil.Provider
+	provider    *jwt.Provider
 	tokenConfig *config.TokenConfig
 }
 
 func RegisterTokenGenerator(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (TokenGenerator, error) {
 		return &tokenGenerator{
-			provider:    do.MustInvoke[*jwtutil.Provider](i),
+			provider:    do.MustInvoke[*jwt.Provider](i),
 			tokenConfig: do.MustInvoke[*config.TokenConfig](i),
 		}, nil
 	})

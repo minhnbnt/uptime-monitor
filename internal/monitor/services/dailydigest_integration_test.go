@@ -18,8 +18,8 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	authrepo "github.com/minhnbnt/uptime-monitor/internal/features/auth/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	authrepo "github.com/minhnbnt/uptime-monitor/internal/repository/auth"
 	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/repository/monitor"
 )
 

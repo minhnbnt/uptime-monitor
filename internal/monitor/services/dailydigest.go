@@ -8,9 +8,9 @@ import (
 	"github.com/samber/do/v2"
 
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+	authrepo "github.com/minhnbnt/uptime-monitor/internal/features/auth/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrastructure"
-	authrepo "github.com/minhnbnt/uptime-monitor/internal/repository/auth"
 	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/repository/monitor"
 	notificationrepo "github.com/minhnbnt/uptime-monitor/internal/repository/notification"
 )

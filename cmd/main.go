@@ -20,26 +20,28 @@ import (
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	temporalcfg "github.com/minhnbnt/uptime-monitor/internal/config/temporal"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/argon2"
+	authhandler "github.com/minhnbnt/uptime-monitor/internal/features/auth/handler"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/jwt"
+	authmiddleware "github.com/minhnbnt/uptime-monitor/internal/features/auth/middleware"
+	authrepo "github.com/minhnbnt/uptime-monitor/internal/features/auth/repository"
+	authservice "github.com/minhnbnt/uptime-monitor/internal/features/auth/service"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/token"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	monitorhandler "github.com/minhnbnt/uptime-monitor/internal/monitor/handler"
 	infra "github.com/minhnbnt/uptime-monitor/internal/monitor/infrastructure"
 	monitorservices "github.com/minhnbnt/uptime-monitor/internal/monitor/services"
-	authrepo "github.com/minhnbnt/uptime-monitor/internal/repository/auth"
 	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/repository/monitor"
 	notificationrepo "github.com/minhnbnt/uptime-monitor/internal/repository/notification"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
-	revokedtokenrepo "github.com/minhnbnt/uptime-monitor/internal/repository/revokedtoken"
 	schedulerrepo "github.com/minhnbnt/uptime-monitor/internal/repository/scheduler"
 	searchrepo "github.com/minhnbnt/uptime-monitor/internal/repository/search"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/repository/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
 	"github.com/minhnbnt/uptime-monitor/internal/server/handler"
 	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
-	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
 	serverinfratemporal "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/temporal"
-	"github.com/minhnbnt/uptime-monitor/internal/server/middleware"
 	"github.com/minhnbnt/uptime-monitor/internal/server/service"
-	authservice "github.com/minhnbnt/uptime-monitor/internal/server/service/auth"
 	ontime "github.com/minhnbnt/uptime-monitor/internal/server/service/ontime"
 )
 
@@ -69,7 +71,7 @@ func main() {
 		serverrepo.RegisterEndpointRepository,
 		schedulerrepo.RegisterTemporalSchedulerRepository,
 		authrepo.RegisterUserRepository,
-		revokedtokenrepo.RegisterRedisRevokedTokenRepository,
+		authrepo.RegisterRedisRevokedTokenRepository,
 		searchrepo.RegisterParadeDBSearcher,
 
 		monitorrepo.RegisterServerEventRepository,
@@ -90,8 +92,8 @@ func main() {
 		schedulerrepo.RegisterEndpointProvider,
 		schedulerrepo.RegisterEndpointMetaCache,
 
-		jwtutil.RegisterProvider,
-		serverinfra.RegisterArgon2PasswordEncoder,
+		jwt.RegisterProvider,
+		argon2.RegisterArgon2PasswordEncoder,
 		serverinfra.RegisterExcelGenerator,
 		serverinfratemporal.RegisterDigestStarter,
 
@@ -101,8 +103,8 @@ func main() {
 		ontime.RegisterBatcher,
 		ontime.RegisterOntimeService,
 		authservice.RegisterAuthService,
-		authservice.RegisterTokenGenerator,
-		authservice.RegisterTokenValidator,
+		token.RegisterTokenGenerator,
+		token.RegisterTokenValidator,
 		monitorservices.RegisterPingService,
 		monitorservices.RegisterLoopService,
 		monitorservices.RegisterDigestService,
@@ -110,11 +112,11 @@ func main() {
 
 		handler.RegisterServerHandler,
 		handler.RegisterEndpointHandler,
-		handler.RegisterAuthHandler,
+		authhandler.RegisterAuthHandler,
 		handler.RegisterImportHandler,
 		handler.RegisterNotificationHandler,
 
-		middleware.RegisterAuthMiddleware,
+		authmiddleware.RegisterAuthMiddleware,
 
 		server.RegisterCompositeHandler,
 		monitorhandler.RegisterTemporalWorkerRunner,
@@ -199,7 +201,7 @@ func runWebServer(ctx context.Context, i do.Injector, dev bool) {
 	}
 
 	compositeHandler := do.MustInvoke[*server.CompositeHandler](i)
-	authMiddleware := do.MustInvoke[*middleware.AuthMiddleware](i)
+	authMiddleware := do.MustInvoke[*authmiddleware.AuthMiddleware](i)
 
 	server, err := api.NewServer(
 		compositeHandler,

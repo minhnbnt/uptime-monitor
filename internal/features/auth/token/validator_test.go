@@ -1,4 +1,4 @@
-package auth
+package token
 
 import (
 	"context"
@@ -8,8 +8,8 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/jwt"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
 )
 
 func testConfig() *config.Config {
@@ -24,16 +24,16 @@ func testConfig() *config.Config {
 	}
 }
 
-func setupProviderWithConfig(t *testing.T) (*jwtutil.Provider, *config.TokenConfig) {
+func setupProviderWithConfig(t *testing.T) (*jwt.Provider, *config.TokenConfig) {
 	t.Helper()
 
 	i := do.New()
 	config.RegisterConfig(testConfig())(i)
 	config.RegisterJwtConfig(i)
 	config.RegisterTokenConfig(i)
-	jwtutil.RegisterProvider(i)
+	jwt.RegisterProvider(i)
 
-	return do.MustInvoke[*jwtutil.Provider](i), do.MustInvoke[*config.TokenConfig](i)
+	return do.MustInvoke[*jwt.Provider](i), do.MustInvoke[*config.TokenConfig](i)
 }
 
 func TestValidateAccessToken_Success(t *testing.T) {

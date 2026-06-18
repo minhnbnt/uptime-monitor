@@ -7,8 +7,8 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
-	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
-	authservice "github.com/minhnbnt/uptime-monitor/internal/server/service/auth"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/service"
 )
 
 type AuthHandler struct {
@@ -18,12 +18,12 @@ type AuthHandler struct {
 func RegisterAuthHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*AuthHandler, error) {
 		return &AuthHandler{
-			authService: do.MustInvoke[*authservice.AuthService](i),
+			authService: do.MustInvoke[*service.AuthService](i),
 		}, nil
 	})
 }
 
-var _ AuthService = (*authservice.AuthService)(nil)
+var _ AuthService = (*service.AuthService)(nil)
 
 func (h *AuthHandler) Register(ctx context.Context, req *api.RegisterRequest) (*api.AuthResponse, error) {
 

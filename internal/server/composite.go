@@ -7,27 +7,28 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/handler"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	"github.com/minhnbnt/uptime-monitor/internal/server/handler"
+	serverhandler "github.com/minhnbnt/uptime-monitor/internal/server/handler"
 )
 
 type CompositeHandler struct {
-	*handler.ServerHandler
-	*handler.EndpointHandler
+	*serverhandler.ServerHandler
+	*serverhandler.EndpointHandler
 	*handler.AuthHandler
-	*handler.ImportHandler
-	*handler.NotificationHandler
+	*serverhandler.ImportHandler
+	*serverhandler.NotificationHandler
 	logger logger.Logger
 }
 
 func RegisterCompositeHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*CompositeHandler, error) {
 		return &CompositeHandler{
-			ServerHandler:       do.MustInvoke[*handler.ServerHandler](i),
-			EndpointHandler:     do.MustInvoke[*handler.EndpointHandler](i),
+			ServerHandler:       do.MustInvoke[*serverhandler.ServerHandler](i),
+			EndpointHandler:     do.MustInvoke[*serverhandler.EndpointHandler](i),
 			AuthHandler:         do.MustInvoke[*handler.AuthHandler](i),
-			ImportHandler:       do.MustInvoke[*handler.ImportHandler](i),
-			NotificationHandler: do.MustInvoke[*handler.NotificationHandler](i),
+			ImportHandler:       do.MustInvoke[*serverhandler.ImportHandler](i),
+			NotificationHandler: do.MustInvoke[*serverhandler.NotificationHandler](i),
 			logger:              do.MustInvoke[logger.Logger](i),
 		}, nil
 	})

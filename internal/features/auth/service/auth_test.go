@@ -1,4 +1,4 @@
-package auth
+package service
 
 import (
 	"context"
@@ -6,13 +6,38 @@ import (
 	"testing"
 	"time"
 
+	"github.com/samber/do/v2"
+
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/jwt"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/token"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	"github.com/minhnbnt/uptime-monitor/internal/server/dto"
-	jwtutil "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure/jwt"
 )
+
+func testConfig() *config.Config {
+	return &config.Config{
+		JWT: config.JWTConfig{Key: "test-signing-key"},
+		Token: config.TokenCfg{
+			AccessTTL:     "15m",
+			RefreshTTL:    "168h",
+			AccessIssuer:  "uptime-monitor",
+			RefreshIssuer: "uptime-monitor-refresh",
+		},
+	}
+}
+
+func setupProviderWithConfig(t *testing.T) (*jwt.Provider, *config.TokenConfig) {
+	t.Helper()
+	i := do.New()
+	config.RegisterConfig(testConfig())(i)
+	config.RegisterJwtConfig(i)
+	config.RegisterTokenConfig(i)
+	jwt.RegisterProvider(i)
+	return do.MustInvoke[*jwt.Provider](i), do.MustInvoke[*config.TokenConfig](i)
+}
 
 func TestAuthService_Register(t *testing.T) {
 	req := dto.RegisterRequest{
@@ -189,13 +214,10 @@ func TestAuthService_Logout(t *testing.T) {
 		tokenStr := generateRefreshToken(t, p, tc, "5")
 
 		svc := &AuthService{
-			logger: logger.NewMockLogger(),
-			tokenValidator: &TokenValidator{
-				provider:    p,
-				tokenConfig: tc,
-			},
+			logger:         logger.NewMockLogger(),
+			tokenValidator: token.NewTokenValidator(p, tc, nil, nil),
 			revokedTokenRepository: &mockRevokedTokenRepo{
-				revokeFn: func(_ context.Context, _ *jwtutil.Token) error {
+				revokeFn: func(_ context.Context, _ *jwt.Token) error {
 					return nil
 				},
 			},
@@ -211,11 +233,8 @@ func TestAuthService_Logout(t *testing.T) {
 		p, tc := setupProviderWithConfig(t)
 
 		svc := &AuthService{
-			logger: logger.NewMockLogger(),
-			tokenValidator: &TokenValidator{
-				provider:    p,
-				tokenConfig: tc,
-			},
+			logger:         logger.NewMockLogger(),
+			tokenValidator: token.NewTokenValidator(p, tc, nil, nil),
 		}
 
 		err := svc.Logout(t.Context(), "invalid-token")
@@ -229,13 +248,10 @@ func TestAuthService_Logout(t *testing.T) {
 		tokenStr := generateRefreshToken(t, p, tc, "5")
 
 		svc := &AuthService{
-			logger: logger.NewMockLogger(),
-			tokenValidator: &TokenValidator{
-				provider:    p,
-				tokenConfig: tc,
-			},
+			logger:         logger.NewMockLogger(),
+			tokenValidator: token.NewTokenValidator(p, tc, nil, nil),
 			revokedTokenRepository: &mockRevokedTokenRepo{
-				revokeFn: func(_ context.Context, _ *jwtutil.Token) error {
+				revokeFn: func(_ context.Context, _ *jwt.Token) error {
 					return errors.New("redis down")
 				},
 			},
@@ -256,13 +272,8 @@ func TestAuthService_Refresh(t *testing.T) {
 		tokenStr := generateRefreshToken(t, p, tc, "5")
 
 		svc := &AuthService{
-			logger: logger.NewMockLogger(),
-			tokenValidator: &TokenValidator{
-				provider:         p,
-				tokenConfig:      tc,
-				revokedTokenRepo: &mockRevokedTokenRepo{},
-				logger:           logger.NewMockLogger(),
-			},
+			logger:         logger.NewMockLogger(),
+			tokenValidator: token.NewTokenValidator(p, tc, &mockRevokedTokenRepo{}, logger.NewMockLogger()),
 			userRepository: &mockUserRepo{
 				findByIDFn: func(_ context.Context, _ uint) (*domain.User, error) {
 					return &validUser, nil
@@ -297,13 +308,8 @@ func TestAuthService_Refresh(t *testing.T) {
 		p, tc := setupProviderWithConfig(t)
 
 		svc := &AuthService{
-			logger: logger.NewMockLogger(),
-			tokenValidator: &TokenValidator{
-				provider:         p,
-				tokenConfig:      tc,
-				revokedTokenRepo: &mockRevokedTokenRepo{},
-				logger:           logger.NewMockLogger(),
-			},
+			logger:         logger.NewMockLogger(),
+			tokenValidator: token.NewTokenValidator(p, tc, &mockRevokedTokenRepo{}, logger.NewMockLogger()),
 		}
 
 		_, err := svc.Refresh(t.Context(), dto.RefreshRequest{RefreshToken: "invalid"})
@@ -317,13 +323,8 @@ func TestAuthService_Refresh(t *testing.T) {
 		tokenStr := generateRefreshToken(t, p, tc, "99")
 
 		svc := &AuthService{
-			logger: logger.NewMockLogger(),
-			tokenValidator: &TokenValidator{
-				provider:         p,
-				tokenConfig:      tc,
-				revokedTokenRepo: &mockRevokedTokenRepo{},
-				logger:           logger.NewMockLogger(),
-			},
+			logger:         logger.NewMockLogger(),
+			tokenValidator: token.NewTokenValidator(p, tc, &mockRevokedTokenRepo{}, logger.NewMockLogger()),
 			userRepository: &mockUserRepo{
 				findByIDFn: func(_ context.Context, _ uint) (*domain.User, error) {
 					return nil, nil
@@ -342,13 +343,8 @@ func TestAuthService_Refresh(t *testing.T) {
 		tokenStr := generateRefreshToken(t, p, tc, "5")
 
 		svc := &AuthService{
-			logger: logger.NewMockLogger(),
-			tokenValidator: &TokenValidator{
-				provider:         p,
-				tokenConfig:      tc,
-				revokedTokenRepo: &mockRevokedTokenRepo{},
-				logger:           logger.NewMockLogger(),
-			},
+			logger:         logger.NewMockLogger(),
+			tokenValidator: token.NewTokenValidator(p, tc, &mockRevokedTokenRepo{}, logger.NewMockLogger()),
 			userRepository: &mockUserRepo{
 				findByIDFn: func(_ context.Context, _ uint) (*domain.User, error) {
 					return nil, errors.New("db error")
@@ -367,13 +363,8 @@ func TestAuthService_Refresh(t *testing.T) {
 		tokenStr := generateRefreshToken(t, p, tc, "5")
 
 		svc := &AuthService{
-			logger: logger.NewMockLogger(),
-			tokenValidator: &TokenValidator{
-				provider:         p,
-				tokenConfig:      tc,
-				revokedTokenRepo: &mockRevokedTokenRepo{},
-				logger:           logger.NewMockLogger(),
-			},
+			logger:         logger.NewMockLogger(),
+			tokenValidator: token.NewTokenValidator(p, tc, &mockRevokedTokenRepo{}, logger.NewMockLogger()),
 			userRepository: &mockUserRepo{
 				findByIDFn: func(_ context.Context, _ uint) (*domain.User, error) {
 					return &validUser, nil
@@ -393,7 +384,7 @@ func TestAuthService_Refresh(t *testing.T) {
 	})
 }
 
-func generateRefreshToken(t *testing.T, p *jwtutil.Provider, tc *config.TokenConfig, sub string) string {
+func generateRefreshToken(t *testing.T, p *jwt.Provider, tc *config.TokenConfig, sub string) string {
 	t.Helper()
 	tokenStr, err := p.NewToken(tc.GetRefreshTokenIssuer(), map[string]any{
 		"sub": sub,
