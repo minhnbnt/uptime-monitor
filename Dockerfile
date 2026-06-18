@@ -2,25 +2,19 @@ FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
-ENV CGO_ENABLED 0
-ENV GOOS linux
-ENV GOARCH amd64
-
-COPY go.mod go.sum ./
-
-RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
-    --mount=type=cache,id=go-build,target=/root/.cache/go-build \
-    go mod download
+ENV CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64
 
 COPY . .
 
 RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
     --mount=type=cache,id=go-build,target=/root/.cache/go-build \
-    go generate ./cmd/main.go
+    go generate ./...
 
 RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
     --mount=type=cache,id=go-build,target=/root/.cache/go-build \
-    go build -ldflags="-s -w" -o app ./cmd/main.go
+    go build -trimpath -ldflags="-s -w" -o app ./cmd/main.go
 
 # -----------------------------------------------------
 
@@ -35,7 +29,7 @@ RUN upx --best --lzma /app/app
 
 # -----------------------------------------------------
 
-FROM gcr.io/distroless/static:latest
+FROM gcr.io/distroless/static-debian13:nonroot
 
 WORKDIR /app
 

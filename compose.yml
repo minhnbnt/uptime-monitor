@@ -4,20 +4,7 @@ services:
     ports:
       - 8080:8080
 
-    command: ["--worker=false", "--dev"]
-
-    env_file:
-      - ./.env
-
-    depends_on:
-      redis:
-        condition: service_started
-      pgbouncer:
-        condition: service_started
-
-  worker:
-    build: .
-    command: ["--server=false"]
+    command: ["--dev"]
 
     env_file:
       - ./.env
@@ -92,7 +79,25 @@ services:
 
     command: server start-dev --ip 0.0.0.0 --db-filename /home/temporal/temporal.db
 
+  pgadmin:
+    image: dpage/pgadmin4:9
+
+    environment:
+      PGADMIN_DEFAULT_EMAIL: minhnbnt@example.com
+      PGADMIN_DEFAULT_PASSWORD: 12345678
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+
+    ports:
+      - 8000:80
+
+    depends_on:
+      - postgres
+
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+
 volumes:
   postgres-data:
+  pgadmin-data:
   redis_data:
   temporal-data:
