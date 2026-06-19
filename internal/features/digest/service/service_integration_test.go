@@ -45,6 +45,7 @@ func TestMain(m *testing.M) {
 			&domain.Endpoint{},
 			&domain.ServerEvent{},
 		}
+
 		if err := db.AutoMigrate(schemas...); err != nil {
 			fmt.Fprintf(os.Stderr, "auto-migrate: %v\n", err)
 			os.Exit(1)

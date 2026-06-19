@@ -4,10 +4,10 @@ services:
     ports:
       - 8080:8080
 
-    command: ["--dev"]
+    command: ["--dev", "--config=/app/config.yml"]
 
-    env_file:
-      - ./.env
+    volumes:
+      - ./config.yml:/app/config.yml
 
     depends_on:
       redis:

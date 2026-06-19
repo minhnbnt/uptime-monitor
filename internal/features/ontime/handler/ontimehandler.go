@@ -11,7 +11,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/middleware"
 	ontimedto "github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/features/ontime/service"
-	featserverhandler "github.com/minhnbnt/uptime-monitor/internal/features/server/handler"
+	serverhandler "github.com/minhnbnt/uptime-monitor/internal/features/server/handler"
 )
 
 type OntimeHandler struct {
@@ -32,8 +32,8 @@ func (h *OntimeHandler) GetServer(ctx context.Context, params api.GetServerParam
 		return nil, apperrors.ToAPIError(err)
 	}
 
-	obj := featserverhandler.ToAPIServer(&result.Server)
-	obj.SetOntimeStats(featserverhandler.ToOntimeStats(result.OntimeStats))
+	obj := serverhandler.ToAPIServer(&result.Server)
+	obj.SetOntimeStats(serverhandler.ToOntimeStats(result.OntimeStats))
 
 	return &api.ServerResponse{Data: obj}, nil
 }
@@ -49,13 +49,13 @@ func (h *OntimeHandler) ListServersOntime(ctx context.Context, params api.ListSe
 
 	data := lo.Map(result, func(item ontimedto.ServerWithOntime, _ int) api.ServerWithOntime {
 		return api.ServerWithOntime{
-			Server:      featserverhandler.ToAPIServer(&item.Server),
-			OntimeStats: featserverhandler.ToOntimeStats(item.OntimeStats),
+			Server:      serverhandler.ToAPIServer(&item.Server),
+			OntimeStats: serverhandler.ToOntimeStats(item.OntimeStats),
 		}
 	})
 
 	return &api.ServerOntimeListResponse{
-		Meta: featserverhandler.ToPaginationMeta(page, perPage, total),
+		Meta: serverhandler.ToPaginationMeta(page, perPage, total),
 		Data: data,
 	}, nil
 }

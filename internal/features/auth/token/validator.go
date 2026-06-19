@@ -22,21 +22,26 @@ type TokenValidator struct {
 
 func RegisterTokenValidator(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*TokenValidator, error) {
-		return &TokenValidator{
-			provider:         do.MustInvoke[*jwt.Provider](i),
-			tokenConfig:      do.MustInvoke[*config.TokenConfig](i),
-			revokedTokenRepo: do.MustInvoke[RevokedTokenRepository](i),
-			logger:           do.MustInvoke[logger.Logger](i),
-		}, nil
+		return NewTokenValidator(
+			do.MustInvoke[*jwt.Provider](i),
+			do.MustInvoke[*config.TokenConfig](i),
+			do.MustInvoke[RevokedTokenRepository](i),
+			do.MustInvoke[logger.Logger](i),
+		), nil
 	})
 }
 
-func NewTokenValidator(provider *jwt.Provider, tokenConfig *config.TokenConfig, revokedTokenRepo RevokedTokenRepository, logger logger.Logger) *TokenValidator {
+func NewTokenValidator(
+	provider *jwt.Provider,
+	tokenConfig *config.TokenConfig,
+	revokedTokenRepo RevokedTokenRepository,
+	logger logger.Logger,
+) *TokenValidator {
 	return &TokenValidator{
+		logger:           logger,
 		provider:         provider,
 		tokenConfig:      tokenConfig,
 		revokedTokenRepo: revokedTokenRepo,
-		logger:           logger,
 	}
 }
 

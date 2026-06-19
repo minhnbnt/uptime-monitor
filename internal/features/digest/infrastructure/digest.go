@@ -77,8 +77,9 @@ func (ds *DigestStarter) UpsertSchedule(ctx context.Context, userID uint, fromDa
 		DoUpdate: func(input temporalclient.ScheduleUpdateInput) (*temporalclient.ScheduleUpdate, error) {
 			return &temporalclient.ScheduleUpdate{
 				Schedule: &temporalclient.Schedule{
-					Spec:   &spec,
-					Action: action,
+					Spec: &spec, Action: action,
+					Policy: &temporalclient.SchedulePolicies{},
+					State:  &temporalclient.ScheduleState{},
 				},
 			}, nil
 		},

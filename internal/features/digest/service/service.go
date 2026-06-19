@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/samber/do/v2"
+	"github.com/samber/lo"
 
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	authrepo "github.com/minhnbnt/uptime-monitor/internal/features/auth/repository"
@@ -39,6 +40,16 @@ func RegisterDigestService(i do.Injector) {
 }
 
 func (s *DigestService) SendUserDigest(ctx context.Context, userID uint) error {
+
+	user, err := s.userRepo.FindByID(ctx, userID)
+	if err != nil {
+		s.logger.Error("failed to find user", logger.Error(err))
+		return apperrors.ErrInternal
+	}
+	if user == nil {
+		s.logger.Warn("user not found, skipping digest", logger.Int("user_id", int(userID)))
+		return nil
+	}
 
 	cfg, err := s.configRepo.GetByUserID(ctx, userID)
 	if err != nil {
@@ -76,15 +87,14 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 		return apperrors.ErrInternal
 	}
 
-	rows := make([]digestinfra.ReportRow, len(events))
-	for i, e := range events {
-		rows[i] = digestinfra.ReportRow{
+	rows := lo.Map(events, func(e pingrepo.EnrichedEvent, _ int) digestinfra.ReportRow {
+		return digestinfra.ReportRow{
 			ServerName: e.ServerName,
-			URL:        e.URL,
 			Status:     e.Status,
 			Time:       e.Time,
+			URL:        e.URL,
 		}
-	}
+	})
 
 	excelBytes, err := digestinfra.GenerateStatusReport(rows)
 	if err != nil {

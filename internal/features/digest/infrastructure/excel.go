@@ -34,13 +34,16 @@ func GenerateStatusReport(rows []ReportRow) (io.Reader, error) {
 	}
 
 	for i, row := range rows {
+
 		r := i + 2
+
 		values := map[string]string{
 			fmt.Sprintf("A%d", r): row.ServerName,
 			fmt.Sprintf("B%d", r): row.URL,
 			fmt.Sprintf("C%d", r): string(row.Status),
 			fmt.Sprintf("D%d", r): row.Time.Format("2006-01-02 15:04:05"),
 		}
+
 		for cell, value := range values {
 			if err := xl.SetCellValue("Sheet1", cell, value); err != nil {
 				return nil, fmt.Errorf("failed to set cell value: %w", err)

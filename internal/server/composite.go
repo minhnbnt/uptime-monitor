@@ -11,13 +11,13 @@ import (
 	importerhandler "github.com/minhnbnt/uptime-monitor/internal/features/importer/handler"
 	notificationhandler "github.com/minhnbnt/uptime-monitor/internal/features/notification/handler"
 	ontimehandler "github.com/minhnbnt/uptime-monitor/internal/features/ontime/handler"
-	featserverhandler "github.com/minhnbnt/uptime-monitor/internal/features/server/handler"
+	serverhandler "github.com/minhnbnt/uptime-monitor/internal/features/server/handler"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
 type CompositeHandler struct {
-	*featserverhandler.ServerHandler
-	*featserverhandler.EndpointHandler
+	*serverhandler.ServerHandler
+	*serverhandler.EndpointHandler
 	*importerhandler.ImportHandler
 	*ontimehandler.OntimeHandler
 	*handler.AuthHandler
@@ -28,8 +28,8 @@ type CompositeHandler struct {
 func RegisterCompositeHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*CompositeHandler, error) {
 		return &CompositeHandler{
-			ServerHandler:       do.MustInvoke[*featserverhandler.ServerHandler](i),
-			EndpointHandler:     do.MustInvoke[*featserverhandler.EndpointHandler](i),
+			ServerHandler:       do.MustInvoke[*serverhandler.ServerHandler](i),
+			EndpointHandler:     do.MustInvoke[*serverhandler.EndpointHandler](i),
 			ImportHandler:       do.MustInvoke[*importerhandler.ImportHandler](i),
 			OntimeHandler:       do.MustInvoke[*ontimehandler.OntimeHandler](i),
 			AuthHandler:         do.MustInvoke[*handler.AuthHandler](i),

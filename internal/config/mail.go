@@ -32,6 +32,7 @@ func newMailClient(config *MailConfig) (*gomail.Client, error) {
 		gomail.WithUsername(config.SMTPUser),
 		gomail.WithPassword(config.SMTPPassword),
 		gomail.WithTLSPolicy(gomail.TLSMandatory),
+		gomail.WithSMTPAuth(gomail.SMTPAuthAutoDiscover),
 	)
 }
 
