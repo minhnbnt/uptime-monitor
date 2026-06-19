@@ -12,10 +12,9 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
+	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository/ontime"
 	featservice "github.com/minhnbnt/uptime-monitor/internal/features/server/service"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
-	service "github.com/minhnbnt/uptime-monitor/internal/server/service"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
@@ -32,7 +31,7 @@ func RegisterBatcher(i do.Injector) {
 
 type Batcher struct {
 	serverRepository      featservice.ServerRepository
-	ontimeCacheRepository service.OntimeCacheRepository
+	ontimeCacheRepository OntimeCacheRepository
 	logger                logger.Logger
 	calculator            OntimeCalculator
 }

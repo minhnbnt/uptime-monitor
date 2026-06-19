@@ -1,4 +1,4 @@
-package service
+package importer
 
 import (
 	"context"
@@ -13,16 +13,11 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/features/server/infrastructure"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 	featservice "github.com/minhnbnt/uptime-monitor/internal/features/server/service"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	"github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
 )
-
-type ExcelGenerator interface {
-	GenerateTemplate(w io.Writer) error
-	ParseImportFile(file io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error)
-}
 
 type ImportService struct {
 	serverRepository   featservice.ServerRepository

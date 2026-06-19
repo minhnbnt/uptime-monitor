@@ -9,8 +9,8 @@ import (
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/middleware"
-	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
-	"github.com/minhnbnt/uptime-monitor/internal/server/service"
+	"github.com/minhnbnt/uptime-monitor/internal/features/notification/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/features/notification/service"
 )
 
 type NotificationHandler struct {

@@ -9,7 +9,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/middleware"
-	"github.com/minhnbnt/uptime-monitor/internal/server/service"
+	"github.com/minhnbnt/uptime-monitor/internal/features/server/service/importer"
 )
 
 type ImportHandler struct {
@@ -19,7 +19,7 @@ type ImportHandler struct {
 func RegisterImportHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ImportHandler, error) {
 		return &ImportHandler{
-			importService: do.MustInvoke[*service.ImportService](i),
+			importService: do.MustInvoke[*importer.ImportService](i),
 		}, nil
 	})
 }
@@ -66,7 +66,7 @@ func (h *ImportHandler) ImportServers(ctx context.Context, req *api.ImportServer
 	}, nil
 }
 
-var _ ImportService = (*service.ImportService)(nil)
+var _ ImportService = (*importer.ImportService)(nil)
 
 func (h *ImportHandler) DownloadImportTemplate(ctx context.Context) (api.DownloadImportTemplateOK, error) {
 

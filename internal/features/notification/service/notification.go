@@ -8,9 +8,9 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+	"github.com/minhnbnt/uptime-monitor/internal/features/notification/dto"
 	temporal "github.com/minhnbnt/uptime-monitor/internal/features/ping/infrastructure"
 	notificationrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
-	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 

@@ -1,4 +1,4 @@
-package service
+package importer
 
 import (
 	"bytes"
@@ -18,9 +18,9 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/features/server/infrastructure"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	"github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
 )
 
 var testDB *gorm.DB

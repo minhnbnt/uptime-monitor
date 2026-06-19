@@ -27,21 +27,22 @@ import (
 	authrepo "github.com/minhnbnt/uptime-monitor/internal/features/auth/repository"
 	authservice "github.com/minhnbnt/uptime-monitor/internal/features/auth/service"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/token"
+	notificationhandler "github.com/minhnbnt/uptime-monitor/internal/features/notification/handler"
+	notifyservice "github.com/minhnbnt/uptime-monitor/internal/features/notification/service"
 	pinghandler "github.com/minhnbnt/uptime-monitor/internal/features/ping/handler"
 	pinginfra "github.com/minhnbnt/uptime-monitor/internal/features/ping/infrastructure"
 	pingrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
 	pingsched "github.com/minhnbnt/uptime-monitor/internal/features/ping/scheduler"
 	pingservice "github.com/minhnbnt/uptime-monitor/internal/features/ping/service"
 	featserverhandler "github.com/minhnbnt/uptime-monitor/internal/features/server/handler"
+	serverinfra "github.com/minhnbnt/uptime-monitor/internal/features/server/infrastructure"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
+	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository/ontime"
 	featservice "github.com/minhnbnt/uptime-monitor/internal/features/server/service"
+	importer "github.com/minhnbnt/uptime-monitor/internal/features/server/service/importer"
+	ontime "github.com/minhnbnt/uptime-monitor/internal/features/server/service/ontime"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/repository/ontime"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
-	"github.com/minhnbnt/uptime-monitor/internal/server/handler"
-	serverinfra "github.com/minhnbnt/uptime-monitor/internal/server/infrastructure"
-	"github.com/minhnbnt/uptime-monitor/internal/server/service"
-	ontime "github.com/minhnbnt/uptime-monitor/internal/server/service/ontime"
 )
 
 func main() {
@@ -98,7 +99,7 @@ func main() {
 
 		featservice.RegisterServerService,
 		featservice.RegisterEndpointService,
-		service.RegisterImportService,
+		importer.RegisterImportService,
 		ontime.RegisterBatcher,
 		ontime.RegisterOntimeService,
 		authservice.RegisterAuthService,
@@ -107,13 +108,13 @@ func main() {
 		pingservice.RegisterPingService,
 		pingservice.RegisterLoopService,
 		pingservice.RegisterDigestService,
-		service.RegisterNotificationService,
+		notifyservice.RegisterNotificationService,
 
 		featserverhandler.RegisterServerHandler,
 		featserverhandler.RegisterEndpointHandler,
 		authhandler.RegisterAuthHandler,
-		handler.RegisterImportHandler,
-		handler.RegisterNotificationHandler,
+		featserverhandler.RegisterImportHandler,
+		notificationhandler.RegisterNotificationHandler,
 
 		authmiddleware.RegisterAuthMiddleware,
 

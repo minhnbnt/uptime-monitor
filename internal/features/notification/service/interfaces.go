@@ -5,13 +5,7 @@ import (
 	"time"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 )
-
-type OntimeCacheRepository interface {
-	MGet(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error)
-	MSet(ctx context.Context, items map[dto.BatchGetOntimeItem]float64) error
-}
 
 type NotificationConfigRepository interface {
 	GetByUserID(ctx context.Context, userID uint) (*domain.NotificationConfig, error)
