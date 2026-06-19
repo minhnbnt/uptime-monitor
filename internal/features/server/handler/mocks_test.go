@@ -37,22 +37,6 @@ func (m *mockServerService) SearchServers(ctx context.Context, params dto.Search
 	return m.searchServersFn(ctx, params, createdByID)
 }
 
-type mockOntimeService struct {
-	listServersWithOntimeFn func(ctx context.Context, createdByID uint, page, perPage int) ([]dto.ServerWithOntime, int64, error)
-	getServerWithOntimeFn   func(ctx context.Context, serverID uint) (*dto.ServerWithOntime, error)
-}
-
-func (m *mockOntimeService) ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]dto.ServerWithOntime, int64, error) {
-	return m.listServersWithOntimeFn(ctx, createdByID, page, perPage)
-}
-
-func (m *mockOntimeService) GetServerWithOntime(ctx context.Context, serverID uint) (*dto.ServerWithOntime, error) {
-	if m.getServerWithOntimeFn == nil {
-		return nil, nil
-	}
-	return m.getServerWithOntimeFn(ctx, serverID)
-}
-
 type mockEndpointService struct {
 	setCheckMethodFn func(ctx context.Context, serverID uint, req dto.SetCheckMethodRequest) error
 	testEndpointFn   func(ctx context.Context, req dto.TestEndpointRequest) (*dto.TestEndpointResponse, error)

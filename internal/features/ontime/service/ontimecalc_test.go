@@ -4,11 +4,11 @@ import (
 	"testing"
 	"time"
 
-	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
+	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
 )
 
-func e(day, t time.Time, status string) serverrepo.RawEvent {
-	return serverrepo.RawEvent{Day: day, Time: t, Status: status}
+func e(day, t time.Time, status string) ontimerepo.RawEvent {
+	return ontimerepo.RawEvent{Day: day, Time: t, Status: status}
 }
 
 func day(y, m, d int) time.Time {
@@ -25,7 +25,7 @@ func TestCalculateDayOntime(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		events []serverrepo.RawEvent
+		events []ontimerepo.RawEvent
 		today  time.Time
 		now    time.Time
 		want   float64
@@ -37,21 +37,21 @@ func TestCalculateDayOntime(t *testing.T) {
 		},
 		{
 			name:   "single ON in past",
-			events: []serverrepo.RawEvent{e(d, tm(2026, 6, 4, 6, 0), "ON")},
+			events: []ontimerepo.RawEvent{e(d, tm(2026, 6, 4, 6, 0), "ON")},
 			today:  tomorrow,
 			now:    tomorrow.Add(1 * time.Hour),
 			want:   100,
 		},
 		{
 			name:   "single OFF in past",
-			events: []serverrepo.RawEvent{e(d, tm(2026, 6, 4, 6, 0), "OFF")},
+			events: []ontimerepo.RawEvent{e(d, tm(2026, 6, 4, 6, 0), "OFF")},
 			today:  tomorrow,
 			now:    tomorrow.Add(1 * time.Hour),
 			want:   0,
 		},
 		{
 			name: "alternating ON/OFF full day",
-			events: []serverrepo.RawEvent{
+			events: []ontimerepo.RawEvent{
 				e(d, tm(2026, 6, 4, 6, 0), "ON"),
 				e(d, tm(2026, 6, 4, 12, 0), "OFF"),
 				e(d, tm(2026, 6, 4, 18, 0), "ON"),
@@ -62,7 +62,7 @@ func TestCalculateDayOntime(t *testing.T) {
 		},
 		{
 			name: "today still ON from earlier event",
-			events: []serverrepo.RawEvent{
+			events: []ontimerepo.RawEvent{
 				e(d, tm(2026, 6, 4, 3, 0), "ON"),
 			},
 			today: d,
@@ -71,7 +71,7 @@ func TestCalculateDayOntime(t *testing.T) {
 		},
 		{
 			name: "today ON then OFF",
-			events: []serverrepo.RawEvent{
+			events: []ontimerepo.RawEvent{
 				e(d, tm(2026, 6, 4, 3, 0), "ON"),
 				e(d, tm(2026, 6, 4, 9, 0), "OFF"),
 			},
@@ -81,7 +81,7 @@ func TestCalculateDayOntime(t *testing.T) {
 		},
 		{
 			name: "all OFF",
-			events: []serverrepo.RawEvent{
+			events: []ontimerepo.RawEvent{
 				e(d, tm(2026, 6, 4, 6, 0), "OFF"),
 				e(d, tm(2026, 6, 4, 12, 0), "OFF"),
 				e(d, tm(2026, 6, 4, 18, 0), "OFF"),
@@ -92,7 +92,7 @@ func TestCalculateDayOntime(t *testing.T) {
 		},
 		{
 			name: "all ON",
-			events: []serverrepo.RawEvent{
+			events: []ontimerepo.RawEvent{
 				e(d, tm(2026, 6, 4, 6, 0), "ON"),
 				e(d, tm(2026, 6, 4, 12, 0), "ON"),
 				e(d, tm(2026, 6, 4, 18, 0), "ON"),
@@ -103,7 +103,7 @@ func TestCalculateDayOntime(t *testing.T) {
 		},
 		{
 			name: "with lowerbound ON, event OFF at 10",
-			events: []serverrepo.RawEvent{
+			events: []ontimerepo.RawEvent{
 				e(d, tm(2026, 6, 3, 23, 0), "ON"),
 				e(d, tm(2026, 6, 4, 10, 0), "OFF"),
 			},
@@ -113,7 +113,7 @@ func TestCalculateDayOntime(t *testing.T) {
 		},
 		{
 			name: "with lowerbound OFF, event ON at 8 OFF at 16",
-			events: []serverrepo.RawEvent{
+			events: []ontimerepo.RawEvent{
 				e(d, tm(2026, 6, 3, 23, 0), "OFF"),
 				e(d, tm(2026, 6, 4, 8, 0), "ON"),
 				e(d, tm(2026, 6, 4, 16, 0), "OFF"),
@@ -124,7 +124,7 @@ func TestCalculateDayOntime(t *testing.T) {
 		},
 		{
 			name: "today ON since lowerbound, then OFF",
-			events: []serverrepo.RawEvent{
+			events: []ontimerepo.RawEvent{
 				e(d, tm(2026, 6, 3, 23, 0), "ON"),
 				e(d, tm(2026, 6, 4, 10, 0), "OFF"),
 			},
@@ -134,7 +134,7 @@ func TestCalculateDayOntime(t *testing.T) {
 		},
 		{
 			name: "dedup adjacent same-time events",
-			events: []serverrepo.RawEvent{
+			events: []ontimerepo.RawEvent{
 				e(d, tm(2026, 6, 4, 6, 0), "ON"),
 				e(d, tm(2026, 6, 4, 6, 0), "ON"),
 				e(d, tm(2026, 6, 4, 12, 0), "OFF"),
@@ -191,7 +191,7 @@ func TestCalculateOnlineDuration(t *testing.T) {
 				StartTime:   d,
 				EndTime:     d.Add(24 * time.Hour),
 				StartStatus: "ON",
-				Events:      []serverrepo.RawEvent{{Time: tm(2026, 6, 4, 12, 0), Status: "OFF"}},
+				Events:      []ontimerepo.RawEvent{{Time: tm(2026, 6, 4, 12, 0), Status: "OFF"}},
 			},
 			want: 43200,
 		},
@@ -201,7 +201,7 @@ func TestCalculateOnlineDuration(t *testing.T) {
 				StartTime:   d,
 				EndTime:     d.Add(24 * time.Hour),
 				StartStatus: "ON",
-				Events: []serverrepo.RawEvent{
+				Events: []ontimerepo.RawEvent{
 					{Time: tm(2026, 6, 4, 8, 0), Status: "OFF"},
 					{Time: tm(2026, 6, 4, 16, 0), Status: "ON"},
 					{Time: tm(2026, 6, 4, 20, 0), Status: "OFF"},
@@ -215,7 +215,7 @@ func TestCalculateOnlineDuration(t *testing.T) {
 				StartTime:   d,
 				EndTime:     d.Add(24 * time.Hour),
 				StartStatus: "OFF",
-				Events: []serverrepo.RawEvent{
+				Events: []ontimerepo.RawEvent{
 					{Time: tm(2026, 6, 4, 10, 0), Status: "ON"},
 					{Time: tm(2026, 6, 4, 18, 0), Status: "OFF"},
 				},
@@ -236,7 +236,7 @@ func TestCalculateOnlineDuration(t *testing.T) {
 
 func TestBuildTimelinePastDay(t *testing.T) {
 	d := day(2026, 6, 4)
-	events := []serverrepo.RawEvent{
+	events := []ontimerepo.RawEvent{
 		e(d, tm(2026, 6, 4, 6, 0), "ON"),
 		e(d, tm(2026, 6, 4, 12, 0), "OFF"),
 	}
@@ -263,7 +263,7 @@ func TestBuildTimelinePastDay(t *testing.T) {
 func TestBuildTimelineToday(t *testing.T) {
 	d := day(2026, 6, 4)
 	now := tm(2026, 6, 4, 14, 0)
-	events := []serverrepo.RawEvent{
+	events := []ontimerepo.RawEvent{
 		e(d, tm(2026, 6, 4, 6, 0), "ON"),
 		e(d, tm(2026, 6, 4, 12, 0), "OFF"),
 	}
@@ -282,7 +282,7 @@ func TestBuildTimelineTodayWithPrevEvents(t *testing.T) {
 	prev := day(2026, 6, 3)
 	d := day(2026, 6, 4)
 	now := tm(2026, 6, 4, 14, 0)
-	events := []serverrepo.RawEvent{
+	events := []ontimerepo.RawEvent{
 		e(prev, tm(2026, 6, 3, 23, 0), "ON"),
 		e(d, tm(2026, 6, 4, 10, 0), "OFF"),
 	}
@@ -302,13 +302,13 @@ func TestSplitByDayBoundary(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		events     []serverrepo.RawEvent
+		events     []ontimerepo.RawEvent
 		wantPrev   int
 		wantInside int
 	}{
 		{
 			name: "all inside",
-			events: []serverrepo.RawEvent{
+			events: []ontimerepo.RawEvent{
 				e(d, tm(2026, 6, 4, 6, 0), "ON"),
 				e(d, tm(2026, 6, 4, 12, 0), "OFF"),
 			},
@@ -317,7 +317,7 @@ func TestSplitByDayBoundary(t *testing.T) {
 		},
 		{
 			name: "mixed",
-			events: []serverrepo.RawEvent{
+			events: []ontimerepo.RawEvent{
 				e(d.Add(-24*time.Hour), tm(2026, 6, 3, 23, 0), "ON"),
 				e(d, tm(2026, 6, 4, 6, 0), "ON"),
 				e(d, tm(2026, 6, 4, 12, 0), "OFF"),
@@ -327,7 +327,7 @@ func TestSplitByDayBoundary(t *testing.T) {
 		},
 		{
 			name: "all before",
-			events: []serverrepo.RawEvent{
+			events: []ontimerepo.RawEvent{
 				e(d.Add(-48*time.Hour), tm(2026, 6, 2, 12, 0), "ON"),
 				e(d.Add(-24*time.Hour), tm(2026, 6, 3, 6, 0), "OFF"),
 			},
@@ -356,7 +356,7 @@ func TestDedupEvents(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		input  []serverrepo.RawEvent
+		input  []ontimerepo.RawEvent
 		output int
 	}{
 		{
@@ -366,26 +366,26 @@ func TestDedupEvents(t *testing.T) {
 		},
 		{
 			name:   "single",
-			input:  []serverrepo.RawEvent{{Time: t06}},
+			input:  []ontimerepo.RawEvent{{Time: t06}},
 			output: 1,
 		},
 		{
 			name: "no duplicates",
-			input: []serverrepo.RawEvent{
+			input: []ontimerepo.RawEvent{
 				{Time: t06}, {Time: t12}, {Time: t18},
 			},
 			output: 3,
 		},
 		{
 			name: "adjacent duplicates",
-			input: []serverrepo.RawEvent{
+			input: []ontimerepo.RawEvent{
 				{Time: t06}, {Time: t06}, {Time: t12}, {Time: t12}, {Time: t18},
 			},
 			output: 3,
 		},
 		{
 			name: "non-adjacent duplicates",
-			input: []serverrepo.RawEvent{
+			input: []ontimerepo.RawEvent{
 				{Time: t06}, {Time: t12}, {Time: t06},
 			},
 			output: 3,
@@ -407,39 +407,39 @@ func TestApplyStartState(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		prevEvents []serverrepo.RawEvent
-		dayEvents  []serverrepo.RawEvent
-		allEvents  []serverrepo.RawEvent
+		prevEvents []ontimerepo.RawEvent
+		dayEvents  []ontimerepo.RawEvent
+		allEvents  []ontimerepo.RawEvent
 		isToday    bool
 		wantStatus string
 		wantTime   time.Time
 	}{
 		{
 			name:       "prev present, not today",
-			prevEvents: []serverrepo.RawEvent{{Time: tm(2026, 6, 3, 23, 0), Status: "OFF"}},
+			prevEvents: []ontimerepo.RawEvent{{Time: tm(2026, 6, 3, 23, 0), Status: "OFF"}},
 			isToday:    false,
 			wantStatus: "OFF",
 			wantTime:   d,
 		},
 		{
 			name:       "prev present, today",
-			prevEvents: []serverrepo.RawEvent{{Time: tm(2026, 6, 3, 23, 0), Status: "ON"}},
+			prevEvents: []ontimerepo.RawEvent{{Time: tm(2026, 6, 3, 23, 0), Status: "ON"}},
 			isToday:    true,
 			wantStatus: "ON",
 			wantTime:   tm(2026, 6, 3, 23, 0),
 		},
 		{
 			name:       "no prev, use first day event",
-			dayEvents:  []serverrepo.RawEvent{{Time: tm(2026, 6, 4, 8, 0), Status: "ON"}},
-			allEvents:  []serverrepo.RawEvent{{Time: tm(2026, 6, 4, 8, 0), Status: "ON"}},
+			dayEvents:  []ontimerepo.RawEvent{{Time: tm(2026, 6, 4, 8, 0), Status: "ON"}},
+			allEvents:  []ontimerepo.RawEvent{{Time: tm(2026, 6, 4, 8, 0), Status: "ON"}},
 			isToday:    false,
 			wantStatus: "ON",
 			wantTime:   d,
 		},
 		{
 			name:       "no prev, today, use first day event",
-			dayEvents:  []serverrepo.RawEvent{{Time: tm(2026, 6, 4, 8, 0), Status: "OFF"}},
-			allEvents:  []serverrepo.RawEvent{{Time: tm(2026, 6, 4, 8, 0), Status: "OFF"}},
+			dayEvents:  []ontimerepo.RawEvent{{Time: tm(2026, 6, 4, 8, 0), Status: "OFF"}},
+			allEvents:  []ontimerepo.RawEvent{{Time: tm(2026, 6, 4, 8, 0), Status: "OFF"}},
 			isToday:    true,
 			wantStatus: "OFF",
 			wantTime:   tm(2026, 6, 4, 8, 0),

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/features/importer/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 

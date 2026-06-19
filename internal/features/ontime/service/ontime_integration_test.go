@@ -15,7 +15,8 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
+	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
@@ -115,7 +116,7 @@ func newService(tb testing.TB) *OntimeService {
 	return &OntimeService{
 		serverRepository: serverrepo.NewServerRepository(testDB),
 		batcher: &Batcher{
-			serverRepository: serverrepo.NewServerRepository(testDB),
+			ontineRepository: ontimerepo.NewOntineRepository(testDB),
 			ontimeCacheRepository: &mockOntimeCacheRepo{
 				mGetFn: func(_ context.Context, _ []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error) {
 					return make(map[dto.BatchGetOntimeItem]float64), nil

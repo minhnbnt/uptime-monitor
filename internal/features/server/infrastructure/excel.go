@@ -12,7 +12,8 @@ import (
 	"github.com/samber/lo/it"
 	"github.com/xuri/excelize/v2"
 
-	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/features/importer/dto"
+	serverdto "github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
@@ -72,7 +73,7 @@ func setHeader(f *excelize.File, sheet string, headers []string) error {
 	return nil
 }
 
-func (g *ExcelGenerator) GenerateExportFile(w io.Writer, servers []dto.Server) error {
+func (g *ExcelGenerator) GenerateExportFile(w io.Writer, servers []serverdto.Server) error {
 
 	xl := excelize.NewFile()
 	defer xl.Close()

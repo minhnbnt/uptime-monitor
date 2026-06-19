@@ -61,7 +61,7 @@ func (h *EndpointHandler) SetCheckMethod(
 		return nil, apperrors.ToAPIError(err)
 	}
 
-	return &api.ServerResponse{Data: toAPIServer(server)}, nil
+	return &api.ServerResponse{Data: ToAPIServer(server)}, nil
 }
 
 var _ EndpointService = (*service.EndpointService)(nil)

@@ -10,10 +10,8 @@ import (
 	"github.com/samber/lo"
 	"github.com/samber/lo/it"
 
-	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
-	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
-	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository/ontime"
-	featservice "github.com/minhnbnt/uptime-monitor/internal/features/server/service"
+	"github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
+	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
@@ -21,7 +19,7 @@ import (
 func RegisterBatcher(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*Batcher, error) {
 		return &Batcher{
-			serverRepository:      do.MustInvoke[*serverrepo.ServerRepository](i),
+			ontineRepository:      do.MustInvoke[*ontimerepo.OntineRepository](i),
 			ontimeCacheRepository: do.MustInvoke[*ontimerepo.OntimeCacheRepository](i),
 			logger:                do.MustInvoke[logger.Logger](i),
 			calculator:            OntimeCalculator{},
@@ -29,8 +27,12 @@ func RegisterBatcher(i do.Injector) {
 	})
 }
 
+type OntineRepository interface {
+	BatchGetOntime(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error)
+}
+
 type Batcher struct {
-	serverRepository      featservice.ServerRepository
+	ontineRepository      OntineRepository
 	ontimeCacheRepository OntimeCacheRepository
 	logger                logger.Logger
 	calculator            OntimeCalculator
@@ -92,17 +94,17 @@ func (b *Batcher) resolveCache(ctx context.Context, keys []dto.BatchGetOntimeIte
 
 func (b *Batcher) fillMisses(ctx context.Context, missedKeys []dto.BatchGetOntimeItem, until time.Time) map[dto.BatchGetOntimeItem]float64 {
 
-	requests := lo.Map(missedKeys, func(key dto.BatchGetOntimeItem, _ int) serverrepo.BatchGetOntimeRequest {
-		return serverrepo.BatchGetOntimeRequest{ServerID: key.ServerID, Date: key.Date}
+	requests := lo.Map(missedKeys, func(key dto.BatchGetOntimeItem, _ int) ontimerepo.BatchGetOntimeRequest {
+		return ontimerepo.BatchGetOntimeRequest{ServerID: key.ServerID, Date: key.Date}
 	})
 
-	rows, err := b.serverRepository.BatchGetOntime(ctx, requests)
+	rows, err := b.ontineRepository.BatchGetOntime(ctx, requests)
 	if err != nil {
 		b.logger.Warn("failed to get missed ontime keys", logger.Error(err))
 		return make(map[dto.BatchGetOntimeItem]float64)
 	}
 
-	groups := lo.GroupBy(rows, func(row serverrepo.RawEvent) serverDayKey {
+	groups := lo.GroupBy(rows, func(row ontimerepo.RawEvent) serverDayKey {
 		return serverDayKey{ServerID: row.ServerID, Day: row.Day}
 	})
 

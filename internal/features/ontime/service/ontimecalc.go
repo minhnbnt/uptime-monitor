@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
+	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
 )
 
 type Timeline struct {
@@ -12,12 +12,12 @@ type Timeline struct {
 	StartTime   time.Time
 	EndTime     time.Time
 	StartStatus string
-	Events      []serverrepo.RawEvent
+	Events      []ontimerepo.RawEvent
 }
 
 type OntimeCalculator struct{}
 
-func (OntimeCalculator) CalculateDayOntime(events []serverrepo.RawEvent, today time.Time, now time.Time) float64 {
+func (OntimeCalculator) CalculateDayOntime(events []ontimerepo.RawEvent, today time.Time, now time.Time) float64 {
 
 	if len(events) == 0 {
 		return 0
@@ -37,7 +37,7 @@ func (OntimeCalculator) CalculateDayOntime(events []serverrepo.RawEvent, today t
 	return 0
 }
 
-func (o OntimeCalculator) BuildTimeline(events []serverrepo.RawEvent, today time.Time, now time.Time) Timeline {
+func (o OntimeCalculator) BuildTimeline(events []ontimerepo.RawEvent, today time.Time, now time.Time) Timeline {
 	day := events[0].Day
 
 	t := Timeline{
@@ -57,7 +57,7 @@ func (o OntimeCalculator) BuildTimeline(events []serverrepo.RawEvent, today time
 	return t
 }
 
-func (o OntimeCalculator) splitByDayBoundary(events []serverrepo.RawEvent, day time.Time) (prev, inside []serverrepo.RawEvent) {
+func (o OntimeCalculator) splitByDayBoundary(events []ontimerepo.RawEvent, day time.Time) (prev, inside []ontimerepo.RawEvent) {
 
 	dayEnd := day.Add(24 * time.Hour)
 
@@ -72,7 +72,7 @@ func (o OntimeCalculator) splitByDayBoundary(events []serverrepo.RawEvent, day t
 	return
 }
 
-func (o OntimeCalculator) applyStartState(t *Timeline, prevEvents, dayEvents, allEvents []serverrepo.RawEvent, isToday bool) {
+func (o OntimeCalculator) applyStartState(t *Timeline, prevEvents, dayEvents, allEvents []ontimerepo.RawEvent, isToday bool) {
 
 	if len(prevEvents) > 0 {
 
@@ -103,13 +103,13 @@ func (o OntimeCalculator) applyStartState(t *Timeline, prevEvents, dayEvents, al
 	}
 }
 
-func (o OntimeCalculator) dedupEvents(events []serverrepo.RawEvent) []serverrepo.RawEvent {
+func (o OntimeCalculator) dedupEvents(events []ontimerepo.RawEvent) []ontimerepo.RawEvent {
 
 	if len(events) <= 1 {
 		return events
 	}
 
-	unique := []serverrepo.RawEvent{events[0]}
+	unique := []ontimerepo.RawEvent{events[0]}
 	for i := 1; i < len(events); i++ {
 		if !events[i].Time.Equal(events[i-1].Time) {
 			unique = append(unique, events[i])

@@ -6,10 +6,11 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
+	ontimedto "github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 )
 
-func toAPIServer(s *dto.Server) api.ServerObject {
+func ToAPIServer(s *dto.Server) api.ServerObject {
 	if s == nil {
 		return api.ServerObject{}
 	}
@@ -40,8 +41,8 @@ func toAPIEndpoint(e *dto.Endpoint) api.OptEndpoint {
 	})
 }
 
-func toOntimeStats(stats []dto.OntimeStats) []api.OntimeStats {
-	return lo.Map(stats, func(os dto.OntimeStats, _ int) api.OntimeStats {
+func ToOntimeStats(stats []ontimedto.OntimeStats) []api.OntimeStats {
+	return lo.Map(stats, func(os ontimedto.OntimeStats, _ int) api.OntimeStats {
 		return api.OntimeStats{
 			Date:  os.Date,
 			Stats: os.Stats,
@@ -49,7 +50,7 @@ func toOntimeStats(stats []dto.OntimeStats) []api.OntimeStats {
 	})
 }
 
-func toPaginationMeta(page, perPage int, total int64) api.PaginationMeta {
+func ToPaginationMeta(page, perPage int, total int64) api.PaginationMeta {
 	t := int(total)
 	return api.PaginationMeta{
 		Page:    api.NewOptInt(page),

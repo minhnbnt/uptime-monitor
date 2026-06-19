@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
-	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
+	"github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
+	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
@@ -237,8 +237,8 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 		var mSetCalled bool
 
 		b := &Batcher{
-			serverRepository: &mockServerRepo{
-				batchGetOntimeFn: func(_ context.Context, _ []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
+			ontineRepository: &mockOntineRepo{
+				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
 					dbCalled = true
 					return nil, nil
 				},
@@ -279,9 +279,9 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 		var capturedItems map[dto.BatchGetOntimeItem]float64
 
 		b := &Batcher{
-			serverRepository: &mockServerRepo{
-				batchGetOntimeFn: func(_ context.Context, _ []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
-					return []serverrepo.RawEvent{
+			ontineRepository: &mockOntineRepo{
+				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
+					return []ontimerepo.RawEvent{
 						{ServerID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)},
 					}, nil
 				},
@@ -319,8 +319,8 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 		log := logger.NewMockLogger()
 
 		b := &Batcher{
-			serverRepository: &mockServerRepo{
-				batchGetOntimeFn: func(_ context.Context, _ []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
+			ontineRepository: &mockOntineRepo{
+				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
 					return nil, errors.New("db error")
 				},
 			},
@@ -342,9 +342,9 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 		log := logger.NewMockLogger()
 
 		b := &Batcher{
-			serverRepository: &mockServerRepo{
-				batchGetOntimeFn: func(_ context.Context, _ []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
-					return []serverrepo.RawEvent{
+			ontineRepository: &mockOntineRepo{
+				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
+					return []ontimerepo.RawEvent{
 						{ServerID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)},
 					}, nil
 				},
@@ -434,19 +434,19 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 		}
 
 		b := &Batcher{
-			serverRepository: &mockServerRepo{
-				batchGetOntimeFn: func(_ context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
+			ontineRepository: &mockOntineRepo{
+				batchGetOntimeFn: func(_ context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
 					// Only return events for the missing keys
-					events := []serverrepo.RawEvent{}
+					events := []ontimerepo.RawEvent{}
 					for _, r := range req {
 						if r.ServerID == 1 && r.Date.Equal(d2) {
-							events = append(events, serverrepo.RawEvent{
+							events = append(events, ontimerepo.RawEvent{
 								ServerID: 1, Day: d2, Status: "ON",
 								Time: d2.Add(6 * time.Hour),
 							})
 						}
 						if r.ServerID == 2 && r.Date.Equal(d3) {
-							events = append(events, serverrepo.RawEvent{
+							events = append(events, ontimerepo.RawEvent{
 								ServerID: 2, Day: d3, Status: "OFF",
 								Time: d3.Add(12 * time.Hour),
 							})
@@ -493,10 +493,10 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 		var dbCalled bool
 
 		b := &Batcher{
-			serverRepository: &mockServerRepo{
-				batchGetOntimeFn: func(_ context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
+			ontineRepository: &mockOntineRepo{
+				batchGetOntimeFn: func(_ context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
 					dbCalled = true
-					return []serverrepo.RawEvent{
+					return []ontimerepo.RawEvent{
 						{ServerID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)},
 						{ServerID: 1, Day: d2, Status: "ON", Time: d2.Add(8 * time.Hour)},
 						{ServerID: 1, Day: d2, Status: "OFF", Time: d2.Add(12 * time.Hour)},

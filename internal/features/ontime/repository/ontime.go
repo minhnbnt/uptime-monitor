@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/samber/do/v2"
 	"gorm.io/gorm"
+
+	"github.com/minhnbnt/uptime-monitor/internal/config"
 )
 
 type BatchGetOntimeRequest struct {
@@ -21,14 +24,28 @@ type RawEvent struct {
 	Src      string
 }
 
-func (sr *ServerRepository) BatchGetOntime(ctx context.Context, req []BatchGetOntimeRequest) ([]RawEvent, error) {
+type OntineRepository struct {
+	db *gorm.DB
+}
 
+func NewOntineRepository(db *gorm.DB) *OntineRepository {
+	return &OntineRepository{db: db}
+}
+
+func RegisterOntineRepository(i do.Injector) {
+	do.Provide(i, func(i do.Injector) (*OntineRepository, error) {
+		dbWrapper := do.MustInvoke[*config.GORMWrapper](i)
+		return &OntineRepository{db: dbWrapper.GetDB()}, nil
+	})
+}
+
+func (r *OntineRepository) BatchGetOntime(ctx context.Context, req []BatchGetOntimeRequest) ([]RawEvent, error) {
 	payload, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
 
-	return gorm.G[RawEvent](sr.db).Raw(rawEventSQL, string(payload)).Find(ctx)
+	return gorm.G[RawEvent](r.db).Raw(rawEventSQL, string(payload)).Find(ctx)
 }
 
 const rawEventSQL = `

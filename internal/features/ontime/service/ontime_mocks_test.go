@@ -7,8 +7,8 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
-	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
+	"github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
+	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
 	featservice "github.com/minhnbnt/uptime-monitor/internal/features/server/service"
 )
 
@@ -23,7 +23,6 @@ type mockServerRepo struct {
 	getByIDFn            func(ctx context.Context, id uint) (*domain.Server, error)
 	updateFn             func(ctx context.Context, s *domain.Server) error
 	deleteFn             func(ctx context.Context, id uint) error
-	batchGetOntimeFn     func(ctx context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error)
 	batchCreateServersFn func(ctx context.Context, servers []domain.Server) error
 }
 
@@ -51,15 +50,21 @@ func (m *mockServerRepo) Delete(ctx context.Context, id uint) error {
 	return m.deleteFn(ctx, id)
 }
 
-func (m *mockServerRepo) BatchGetOntime(ctx context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
-	return m.batchGetOntimeFn(ctx, req)
-}
-
 func (m *mockServerRepo) BatchCreateServers(ctx context.Context, servers []domain.Server) error {
 	return m.batchCreateServersFn(ctx, servers)
 }
 
 var _ featservice.ServerRepository = (*mockServerRepo)(nil)
+
+type mockOntineRepo struct {
+	batchGetOntimeFn func(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error)
+}
+
+func (m *mockOntineRepo) BatchGetOntime(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
+	return m.batchGetOntimeFn(ctx, req)
+}
+
+var _ OntineRepository = (*mockOntineRepo)(nil)
 
 type mockOntimeCacheRepo struct {
 	mGetFn func(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error)

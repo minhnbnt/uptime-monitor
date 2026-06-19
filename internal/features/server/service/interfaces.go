@@ -5,7 +5,6 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
-	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 )
 
 type ServerRepository interface {
@@ -15,7 +14,6 @@ type ServerRepository interface {
 	GetByID(ctx context.Context, id uint) (*domain.Server, error)
 	Update(ctx context.Context, s *domain.Server) error
 	Delete(ctx context.Context, id uint) error
-	BatchGetOntime(ctx context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error)
 	BatchCreateServers(ctx context.Context, servers []domain.Server) error
 }
 

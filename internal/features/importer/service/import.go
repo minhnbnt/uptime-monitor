@@ -12,7 +12,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
-	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/features/importer/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/infrastructure"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 	featservice "github.com/minhnbnt/uptime-monitor/internal/features/server/service"

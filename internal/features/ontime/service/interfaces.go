@@ -3,7 +3,7 @@ package ontime
 import (
 	"context"
 
-	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
 )
 
 type OntimeCacheRepository interface {

@@ -8,7 +8,6 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
-	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 )
 
 func gormModel(id uint, t time.Time) gorm.Model {
@@ -22,7 +21,6 @@ type mockServerRepo struct {
 	getByIDFn            func(ctx context.Context, id uint) (*domain.Server, error)
 	updateFn             func(ctx context.Context, s *domain.Server) error
 	deleteFn             func(ctx context.Context, id uint) error
-	batchGetOntimeFn     func(ctx context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error)
 	batchCreateServersFn func(ctx context.Context, servers []domain.Server) error
 }
 
@@ -44,10 +42,6 @@ func (m *mockServerRepo) Update(ctx context.Context, s *domain.Server) error {
 func (m *mockServerRepo) Delete(ctx context.Context, id uint) error {
 	return m.deleteFn(ctx, id)
 }
-func (m *mockServerRepo) BatchGetOntime(ctx context.Context, req []serverrepo.BatchGetOntimeRequest) ([]serverrepo.RawEvent, error) {
-	return m.batchGetOntimeFn(ctx, req)
-}
-
 func (m *mockServerRepo) BatchCreateServers(ctx context.Context, servers []domain.Server) error {
 	return m.batchCreateServersFn(ctx, servers)
 }

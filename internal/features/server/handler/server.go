@@ -14,12 +14,10 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/infrastructure"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/service"
-	ontime "github.com/minhnbnt/uptime-monitor/internal/features/server/service/ontime"
 )
 
 type ServerHandler struct {
 	serverService  ServerService
-	ontimeService  OntimeService
 	excelGenerator *infrastructure.ExcelGenerator
 }
 
@@ -27,7 +25,6 @@ func RegisterServerHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ServerHandler, error) {
 		return &ServerHandler{
 			serverService:  do.MustInvoke[*service.ServerService](i),
-			ontimeService:  do.MustInvoke[*ontime.OntimeService](i),
 			excelGenerator: do.MustInvoke[*infrastructure.ExcelGenerator](i),
 		}, nil
 	})
@@ -44,9 +41,9 @@ func (h *ServerHandler) ListServers(ctx context.Context, params api.ListServersP
 	}
 
 	return &api.ServerListResponse{
-		Meta: toPaginationMeta(page, perPage, int64(len(result))),
+		Meta: ToPaginationMeta(page, perPage, int64(len(result))),
 		Data: lo.Map(result, func(item dto.Server, _ int) api.ServerObject {
-			return toAPIServer(&item)
+			return ToAPIServer(&item)
 		}),
 	}, nil
 }
@@ -61,20 +58,7 @@ func (h *ServerHandler) CreateServer(ctx context.Context, req *api.CreateServerR
 		return nil, apperrors.ToAPIError(err)
 	}
 
-	return &api.ServerResponse{Data: toAPIServer(result)}, nil
-}
-
-func (h *ServerHandler) GetServer(ctx context.Context, params api.GetServerParams) (*api.ServerResponse, error) {
-
-	result, err := h.ontimeService.GetServerWithOntime(ctx, uint(params.ID))
-	if err != nil {
-		return nil, apperrors.ToAPIError(err)
-	}
-
-	obj := toAPIServer(&result.Server)
-	obj.SetOntimeStats(toOntimeStats(result.OntimeStats))
-
-	return &api.ServerResponse{Data: obj}, nil
+	return &api.ServerResponse{Data: ToAPIServer(result)}, nil
 }
 
 func (h *ServerHandler) UpdateServer(ctx context.Context, req *api.UpdateServerRequest, params api.UpdateServerParams) (*api.ServerResponse, error) {
@@ -89,7 +73,7 @@ func (h *ServerHandler) UpdateServer(ctx context.Context, req *api.UpdateServerR
 		return nil, apperrors.ToAPIError(err)
 	}
 
-	return &api.ServerResponse{Data: toAPIServer(result)}, nil
+	return &api.ServerResponse{Data: ToAPIServer(result)}, nil
 }
 
 func (h *ServerHandler) DeleteServer(ctx context.Context, params api.DeleteServerParams) error {
@@ -120,11 +104,11 @@ func (h *ServerHandler) SearchServers(ctx context.Context, params api.SearchServ
 	}
 
 	data := lo.Map(result, func(item dto.Server, _ int) api.ServerObject {
-		return toAPIServer(&item)
+		return ToAPIServer(&item)
 	})
 
 	return &api.ServerListResponse{
-		Meta: toPaginationMeta(page, perPage, total),
+		Meta: ToPaginationMeta(page, perPage, total),
 		Data: data,
 	}, nil
 }
@@ -165,28 +149,4 @@ func (h *ServerHandler) ExportServers(ctx context.Context, params api.ExportServ
 
 var (
 	_ ServerService = (*service.ServerService)(nil)
-	_ OntimeService = (*ontime.OntimeService)(nil)
 )
-
-func (h *ServerHandler) ListServersOntime(ctx context.Context, params api.ListServersOntimeParams) (*api.ServerOntimeListResponse, error) {
-
-	page, perPage := params.Page.Or(1), params.PerPage.Or(20)
-
-	userID := middleware.GetUserID(ctx)
-	result, total, err := h.ontimeService.ListServersWithOntime(ctx, userID, page, perPage)
-	if err != nil {
-		return nil, apperrors.ToAPIError(err)
-	}
-
-	data := lo.Map(result, func(item dto.ServerWithOntime, _ int) api.ServerWithOntime {
-		return api.ServerWithOntime{
-			Server:      toAPIServer(&item.Server),
-			OntimeStats: toOntimeStats(item.OntimeStats),
-		}
-	})
-
-	return &api.ServerOntimeListResponse{
-		Meta: toPaginationMeta(page, perPage, total),
-		Data: data,
-	}, nil
-}

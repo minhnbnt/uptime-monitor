@@ -12,7 +12,8 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
-	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
+	ontimedto "github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
+	serverdto "github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/service"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
@@ -40,7 +41,7 @@ type serverDayKey struct {
 	Day      time.Time
 }
 
-func (s *OntimeService) ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]dto.ServerWithOntime, int64, error) {
+func (s *OntimeService) ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]ontimedto.ServerWithOntime, int64, error) {
 
 	servers, err := s.serverRepository.List(ctx, createdByID, perPage, (page-1)*perPage)
 	if err != nil {
@@ -59,9 +60,9 @@ func (s *OntimeService) ListServersWithOntime(ctx context.Context, createdByID u
 		return nil, 0, err
 	}
 
-	out := lo.Map(servers, func(sv domain.Server, _ int) dto.ServerWithOntime {
-		return dto.ServerWithOntime{
-			Server:      dto.ServerFromDomain(sv),
+	out := lo.Map(servers, func(sv domain.Server, _ int) ontimedto.ServerWithOntime {
+		return ontimedto.ServerWithOntime{
+			Server:      serverdto.ServerFromDomain(sv),
 			OntimeStats: ontimeMap[sv.ID],
 		}
 	})
@@ -69,7 +70,7 @@ func (s *OntimeService) ListServersWithOntime(ctx context.Context, createdByID u
 	return out, total, nil
 }
 
-func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID uint) (*dto.ServerWithOntime, error) {
+func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID uint) (*ontimedto.ServerWithOntime, error) {
 
 	server, err := s.serverRepository.GetByID(ctx, serverID)
 	if errors.Is(err, apperrors.ErrNotFound) {
@@ -85,18 +86,18 @@ func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID uint) 
 		return nil, err
 	}
 
-	dtoSrv := dto.ServerFromDomain(*server)
-	return &dto.ServerWithOntime{
+	dtoSrv := serverdto.ServerFromDomain(*server)
+	return &ontimedto.ServerWithOntime{
 		Server:      dtoSrv,
 		OntimeStats: ontimeMap[server.ID],
 	}, nil
 }
 
-func (s *OntimeService) getServersOntime(ctx context.Context, servers []domain.Server) (map[uint][]dto.OntimeStats, error) {
+func (s *OntimeService) getServersOntime(ctx context.Context, servers []domain.Server) (map[uint][]ontimedto.OntimeStats, error) {
 
 	dates := utils.Last30Days()
 
-	items := make([]dto.BatchGetOntimeItem, 0, len(servers)*len(dates))
+	items := make([]ontimedto.BatchGetOntimeItem, 0, len(servers)*len(dates))
 	serverDates := make(map[uint][]time.Time, len(servers))
 
 	for _, sv := range servers {
@@ -108,8 +109,8 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []domain.S
 
 		datesIter := slices.Values(dates)
 
-		newItems := it.Map(datesIter, func(d time.Time) dto.BatchGetOntimeItem {
-			return dto.BatchGetOntimeItem{ServerID: sv.ID, Date: d}
+		newItems := it.Map(datesIter, func(d time.Time) ontimedto.BatchGetOntimeItem {
+			return ontimedto.BatchGetOntimeItem{ServerID: sv.ID, Date: d}
 		})
 
 		items = slices.AppendSeq(items, newItems)
@@ -117,7 +118,7 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []domain.S
 	}
 
 	if len(items) == 0 {
-		return make(map[uint][]dto.OntimeStats), nil
+		return make(map[uint][]ontimedto.OntimeStats), nil
 	}
 
 	results, err := s.batcher.BatchGetOntime(ctx, items)
@@ -128,7 +129,7 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []domain.S
 
 	lookup := buildOntimeLookup(results)
 
-	out := make(map[uint][]dto.OntimeStats, len(servers))
+	out := make(map[uint][]ontimedto.OntimeStats, len(servers))
 	for _, sv := range servers {
 
 		stats, ok := lookup[sv.ID]
@@ -136,21 +137,21 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []domain.S
 			stats = make(map[time.Time]float64)
 		}
 
-		out[sv.ID] = lo.Map(serverDates[sv.ID], func(d time.Time, _ int) dto.OntimeStats {
-			return dto.OntimeStats{Date: d, Stats: stats[d]}
+		out[sv.ID] = lo.Map(serverDates[sv.ID], func(d time.Time, _ int) ontimedto.OntimeStats {
+			return ontimedto.OntimeStats{Date: d, Stats: stats[d]}
 		})
 	}
 
 	return out, nil
 }
 
-func buildOntimeLookup(results []dto.BatchGetOntimeResponse) map[uint]map[time.Time]float64 {
+func buildOntimeLookup(results []ontimedto.BatchGetOntimeResponse) map[uint]map[time.Time]float64 {
 
 	lookup := make(map[uint]map[time.Time]float64, len(results))
 
 	for _, r := range results {
 
-		mp := lo.SliceToMap(r.Result, func(stat dto.OntimeStats) (time.Time, float64) {
+		mp := lo.SliceToMap(r.Result, func(stat ontimedto.OntimeStats) (time.Time, float64) {
 			return utils.TruncateDay(stat.Date), stat.Stats
 		})
 

@@ -27,8 +27,13 @@ import (
 	authrepo "github.com/minhnbnt/uptime-monitor/internal/features/auth/repository"
 	authservice "github.com/minhnbnt/uptime-monitor/internal/features/auth/service"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/token"
+	importerhandler "github.com/minhnbnt/uptime-monitor/internal/features/importer/handler"
+	importerservice "github.com/minhnbnt/uptime-monitor/internal/features/importer/service"
 	notificationhandler "github.com/minhnbnt/uptime-monitor/internal/features/notification/handler"
 	notifyservice "github.com/minhnbnt/uptime-monitor/internal/features/notification/service"
+	ontimehandler "github.com/minhnbnt/uptime-monitor/internal/features/ontime/handler"
+	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
+	ontimeservice "github.com/minhnbnt/uptime-monitor/internal/features/ontime/service"
 	pinghandler "github.com/minhnbnt/uptime-monitor/internal/features/ping/handler"
 	pinginfra "github.com/minhnbnt/uptime-monitor/internal/features/ping/infrastructure"
 	pingrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
@@ -37,10 +42,7 @@ import (
 	featserverhandler "github.com/minhnbnt/uptime-monitor/internal/features/server/handler"
 	serverinfra "github.com/minhnbnt/uptime-monitor/internal/features/server/infrastructure"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
-	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository/ontime"
 	featservice "github.com/minhnbnt/uptime-monitor/internal/features/server/service"
-	importer "github.com/minhnbnt/uptime-monitor/internal/features/server/service/importer"
-	ontime "github.com/minhnbnt/uptime-monitor/internal/features/server/service/ontime"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
 )
@@ -79,6 +81,7 @@ func main() {
 
 		pingrepo.RegisterNotificationConfigRepository,
 
+		ontimerepo.RegisterOntineRepository,
 		ontimerepo.RegisterOntimeCacheRepository,
 
 		pinginfra.RegisterPingWorker,
@@ -99,9 +102,9 @@ func main() {
 
 		featservice.RegisterServerService,
 		featservice.RegisterEndpointService,
-		importer.RegisterImportService,
-		ontime.RegisterBatcher,
-		ontime.RegisterOntimeService,
+		importerservice.RegisterImportService,
+		ontimeservice.RegisterBatcher,
+		ontimeservice.RegisterOntimeService,
 		authservice.RegisterAuthService,
 		token.RegisterTokenGenerator,
 		token.RegisterTokenValidator,
@@ -113,7 +116,8 @@ func main() {
 		featserverhandler.RegisterServerHandler,
 		featserverhandler.RegisterEndpointHandler,
 		authhandler.RegisterAuthHandler,
-		featserverhandler.RegisterImportHandler,
+		importerhandler.RegisterImportHandler,
+		ontimehandler.RegisterOntimeHandler,
 		notificationhandler.RegisterNotificationHandler,
 
 		authmiddleware.RegisterAuthMiddleware,
