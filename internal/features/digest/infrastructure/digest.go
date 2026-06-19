@@ -13,17 +13,24 @@ import (
 )
 
 type DigestStarter struct {
-	client    temporalclient.Client
-	taskQueue string
+	scheduleClient temporalclient.ScheduleClient
+	client         temporalclient.Client
+	taskQueue      string
 }
 
 func RegisterDigestStarter(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*DigestStarter, error) {
+
 		clientWrapper := do.MustInvoke[*temporalcfg.ClientWrapper](i)
 		temporalCfg := do.MustInvoke[*temporalcfg.Config](i)
+
+		client := clientWrapper.GetClient()
+		scheduleClient := client.ScheduleClient()
+
 		return &DigestStarter{
-			client:    clientWrapper.GetClient(),
-			taskQueue: temporalCfg.DigestTaskQueue,
+			client:         client,
+			scheduleClient: scheduleClient,
+			taskQueue:      temporalCfg.DigestTaskQueue,
 		}, nil
 	})
 }
@@ -48,8 +55,7 @@ func (ds *DigestStarter) UpsertSchedule(ctx context.Context, userID uint, fromDa
 	minute, _ := strconv.Atoi(digestTime[3:])
 
 	spec := temporalclient.ScheduleSpec{
-		StartAt: fromDate,
-		EndAt:   toDate,
+		StartAt: fromDate, EndAt: toDate,
 		Calendars: []temporalclient.ScheduleCalendarSpec{{
 			Hour:   []temporalclient.ScheduleRange{{Start: hour}},
 			Minute: []temporalclient.ScheduleRange{{Start: minute}},
@@ -62,10 +68,10 @@ func (ds *DigestStarter) UpsertSchedule(ctx context.Context, userID uint, fromDa
 		Args:      []any{userID},
 	}
 
-	handle := ds.client.ScheduleClient().GetHandle(ctx, scheduleID)
+	handle := ds.scheduleClient.GetHandle(ctx, scheduleID)
 	_, err := handle.Describe(ctx)
 	if err != nil {
-		_, err = ds.client.ScheduleClient().Create(ctx, temporalclient.ScheduleOptions{
+		_, err = ds.scheduleClient.Create(ctx, temporalclient.ScheduleOptions{
 			ID:     scheduleID,
 			Spec:   spec,
 			Action: action,
@@ -89,7 +95,7 @@ func (ds *DigestStarter) UpsertSchedule(ctx context.Context, userID uint, fromDa
 func (ds *DigestStarter) DeleteSchedule(ctx context.Context, userID uint) error {
 
 	scheduleID := fmt.Sprintf("digest-user-%d", userID)
-	handle := ds.client.ScheduleClient().GetHandle(ctx, scheduleID)
+	handle := ds.scheduleClient.GetHandle(ctx, scheduleID)
 
 	return handle.Delete(ctx)
 }
