@@ -8,23 +8,24 @@ servers:
   - url: http://localhost:8080
     description: Development server
 
+tags:
+  - name: auth
+    description: Authentication and user management
+  - name: servers
+    description: Create, list, update, and delete servers
+  - name: servers-search
+    description: Search servers by name
+  - name: servers-stats
+    description: Server uptime and statistics
+  - name: endpoints
+    description: Endpoint configuration and testing
+  - name: import
+    description: Import and export server data
+  - name: notifications
+    description: Notification and digest report configuration
+
 paths:
-  /api/v1/servers:
-    $ref: "./paths/servers.yaml#/servers"
-  /api/v1/servers/ontime:
-    $ref: "./paths/servers.yaml#/servers-ontime"
-  /api/v1/servers/search:
-    $ref: "./paths/servers.yaml#/servers-search"
-  /api/v1/servers/{id}:
-    $ref: "./paths/servers.yaml#/servers-id"
-  /api/v1/servers/{id}/check_method:
-    $ref: "./paths/servers.yaml#/check-method"
-  /api/v1/servers/export:
-    $ref: "./paths/servers.yaml#/servers-export"
-  /api/v1/servers/import:
-    $ref: "./paths/servers.yaml#/import-servers"
-  /api/v1/test-endpoint:
-    $ref: "./paths/servers.yaml#/test-endpoint"
+  # ── Auth ─────────────────────────────────
   /api/v1/auth/register:
     $ref: "./paths/auth.yaml#/register"
   /api/v1/auth/login:
@@ -34,6 +35,33 @@ paths:
   /api/v1/auth/logout:
     $ref: "./paths/auth.yaml#/logout"
 
+  # ── Servers (CRUD) ───────────────────────
+  /api/v1/servers:
+    $ref: "./paths/servers.yaml#/servers"
+  /api/v1/servers/{id}:
+    $ref: "./paths/servers.yaml#/servers-id"
+
+  # ── Search ───────────────────────────────
+  /api/v1/servers/search:
+    $ref: "./paths/servers.yaml#/servers-search"
+
+  # ── Stats ────────────────────────────────
+  /api/v1/servers/ontime:
+    $ref: "./paths/servers.yaml#/servers-ontime"
+
+  # ── Endpoints ────────────────────────────
+  /api/v1/test-endpoint:
+    $ref: "./paths/servers.yaml#/test-endpoint"
+  /api/v1/servers/{id}/check_method:
+    $ref: "./paths/servers.yaml#/check-method"
+
+  # ── Import / Export ──────────────────────
+  /api/v1/servers/export:
+    $ref: "./paths/servers.yaml#/servers-export"
+  /api/v1/servers/import:
+    $ref: "./paths/servers.yaml#/import-servers"
+
+  # ── Notifications ────────────────────────
   /api/v1/notifications/config:
     $ref: "./paths/notification.yaml#/notification-config"
   /api/v1/notifications/send-report:

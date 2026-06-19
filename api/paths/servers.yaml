@@ -72,7 +72,7 @@ servers-ontime:
     operationId: ListServersOntime
     x-ogen-operation-group: Servers
     tags:
-      - servers
+      - servers-stats
     security:
       - BearerAuth: []
     parameters:
@@ -194,7 +194,7 @@ test-endpoint:
     operationId: TestEndpoint
     x-ogen-operation-group: Endpoint
     tags:
-      - servers
+      - endpoints
     security:
       - BearerAuth: []
     requestBody:
@@ -223,7 +223,7 @@ check-method:
     operationId: SetCheckMethod
     x-ogen-operation-group: Endpoint
     tags:
-      - servers
+      - endpoints
     security:
       - BearerAuth: []
     parameters:
@@ -258,7 +258,7 @@ servers-search:
     operationId: SearchServers
     x-ogen-operation-group: Servers
     tags:
-      - servers
+      - servers-search
     security:
       - BearerAuth: []
     parameters:
@@ -313,7 +313,7 @@ servers-export:
     operationId: ExportServers
     x-ogen-operation-group: Servers
     tags:
-      - servers
+      - import
     security:
       - BearerAuth: []
     parameters:
@@ -371,7 +371,7 @@ import-servers:
     operationId: ImportServers
     x-ogen-operation-group: Import
     tags:
-      - servers
+      - import
     security:
       - BearerAuth: []
     requestBody:
@@ -404,7 +404,7 @@ import-servers:
     operationId: DownloadImportTemplate
     x-ogen-operation-group: Import
     tags:
-      - servers
+      - import
     security:
       - BearerAuth: []
     responses:

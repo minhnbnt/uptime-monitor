@@ -4,7 +4,7 @@ notification-config:
     operationId: GetNotificationConfig
     x-ogen-operation-group: Notification
     tags:
-      - notification
+      - notifications
     security:
       - BearerAuth: []
     responses:
@@ -25,7 +25,7 @@ notification-config:
     operationId: UpdateNotificationConfig
     x-ogen-operation-group: Notification
     tags:
-      - notification
+      - notifications
     security:
       - BearerAuth: []
     requestBody:
@@ -50,7 +50,7 @@ notification-send-report:
     operationId: SendReport
     x-ogen-operation-group: Notification
     tags:
-      - notification
+      - notifications
     security:
       - BearerAuth: []
     responses:
