@@ -7,9 +7,10 @@ import (
 )
 
 type Config struct {
-	Host         string
-	TaskQueue    string
-	WorkflowName string
+	Host            string
+	TaskQueue       string
+	WorkflowName    string
+	DigestTaskQueue string
 }
 
 func newConfig(cfg *config.Config) (*Config, error) {
@@ -17,9 +18,10 @@ func newConfig(cfg *config.Config) (*Config, error) {
 	temporalCfg := cfg.Temporal
 
 	return &Config{
-		Host:         temporalCfg.Host,
-		TaskQueue:    temporalCfg.TaskQueue,
-		WorkflowName: temporalCfg.WorkflowName,
+		Host:            temporalCfg.Host,
+		TaskQueue:       temporalCfg.TaskQueue,
+		WorkflowName:    temporalCfg.WorkflowName,
+		DigestTaskQueue: temporalCfg.DigestTaskQueue,
 	}, nil
 }
 

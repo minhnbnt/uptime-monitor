@@ -5,7 +5,11 @@ import (
 	"go.uber.org/zap"
 )
 
-func newZapLogger(cfg *Config) (*zap.Logger, error) {
+func newZapLogger(cfg *Config, isDev bool) (*zap.Logger, error) {
+
+	if isDev {
+		return zap.NewDevelopment()
+	}
 
 	level := cfg.Log.Level
 	if level == "" {
@@ -28,11 +32,13 @@ func newZapLogger(cfg *Config) (*zap.Logger, error) {
 	return zapCfg.Build()
 }
 
-func RegisterZapLogger(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (*zap.Logger, error) {
-		cfg := do.MustInvoke[*Config](i)
-		return newZapLogger(cfg)
-	})
+func RegisterZapLogger(isDev bool) func(do.Injector) {
+	return func(i do.Injector) {
+		do.Provide(i, func(i do.Injector) (*zap.Logger, error) {
+			cfg := do.MustInvoke[*Config](i)
+			return newZapLogger(cfg, isDev)
+		})
+	}
 }
 
 type LogConfig struct {

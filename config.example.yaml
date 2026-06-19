@@ -30,6 +30,7 @@ temporal:
   host: localhost:7233
   task_queue: ping-task-queue
   workflow_name: ping-workflow
+  digest_task_queue: digest-task-queue
 
 log:
   level: info

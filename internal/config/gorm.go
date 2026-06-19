@@ -79,6 +79,7 @@ func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 		&domain.Server{},
 		&domain.Endpoint{},
 		&domain.ServerEvent{},
+		&domain.NotificationConfig{},
 	}
 
 	if err := db.AutoMigrate(schemas...); err != nil {

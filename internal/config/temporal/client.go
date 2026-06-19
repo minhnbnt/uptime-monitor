@@ -17,7 +17,7 @@ func newClientOption(i do.Injector) (*temporalclient.Options, error) {
 	cfg := do.MustInvoke[*config.Config](i)
 
 	logger := do.MustInvoke[*zap.Logger](i)
-	logger = logger.WithOptions(zap.AddCallerSkip(1))
+	logger = logger.WithOptions(zap.AddCallerSkip(3))
 
 	return &temporalclient.Options{
 		HostPort: cfg.Temporal.Host,

@@ -17,7 +17,8 @@ type SchedulerCfg struct {
 }
 
 type TemporalConfig struct {
-	Host         string `mapstructure:"host"`
-	TaskQueue    string `mapstructure:"task_queue"`
-	WorkflowName string `mapstructure:"workflow_name"`
+	Host            string `mapstructure:"host"`
+	TaskQueue       string `mapstructure:"task_queue"`
+	WorkflowName    string `mapstructure:"workflow_name"`
+	DigestTaskQueue string `mapstructure:"digest_task_queue"`
 }

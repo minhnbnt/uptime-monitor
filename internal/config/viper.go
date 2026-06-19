@@ -60,6 +60,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("temporal.host", "localhost:7233")
 	v.SetDefault("temporal.task_queue", "ping-task-queue")
 	v.SetDefault("temporal.workflow_name", "ping-workflow")
+	v.SetDefault("temporal.digest_task_queue", "digest-task-queue")
 
 	v.SetDefault("scheduler.backend", "redis")
 	v.SetDefault("db.port", "5432")
@@ -75,19 +76,24 @@ func setDefaults(v *viper.Viper) {
 func bindEnvVars(v *viper.Viper) error {
 
 	envMap := map[string]string{
-		"db.host":                "DB_HOST",
-		"db.port":                "DB_PORT",
-		"db.user":                "DB_USER",
-		"db.password":            "DB_PASSWORD",
-		"db.dbname":              "DB_NAME",
-		"redis.addr":             "REDIS_ADDR",
-		"redis.password":         "REDIS_PASSWORD",
-		"redis.db":               "REDIS_DB",
-		"jwt.key":                "JWT_KEY",
-		"log.level":              "LOG_LEVEL",
-		"temporal.host":          "TEMPORAL_HOST",
-		"temporal.task_queue":    "TEMPORAL_TASK_QUEUE",
-		"temporal.workflow_name": "TEMPORAL_WORKFLOW_NAME",
+		"db.host":     "DB_HOST",
+		"db.port":     "DB_PORT",
+		"db.user":     "DB_USER",
+		"db.password": "DB_PASSWORD",
+		"db.dbname":   "DB_NAME",
+
+		"redis.addr":     "REDIS_ADDR",
+		"redis.password": "REDIS_PASSWORD",
+		"redis.db":       "REDIS_DB",
+
+		"jwt.key": "JWT_KEY",
+
+		"log.level": "LOG_LEVEL",
+
+		"temporal.host":              "TEMPORAL_HOST",
+		"temporal.task_queue":        "TEMPORAL_TASK_QUEUE",
+		"temporal.workflow_name":     "TEMPORAL_WORKFLOW_NAME",
+		"temporal.digest_task_queue": "TEMPORAL_DIGEST_TASK_QUEUE",
 
 		"mail.smtp_host":     "SMTP_HOST",
 		"mail.smtp_port":     "SMTP_PORT",
