@@ -1,12 +1,12 @@
 db:
-  host: localhost
-  port: 5432
+  host: pgbouncer
+  port: 6432
   user: postgres
   password: postgres
   dbname: uptime_monitor
 
 redis:
-  addr: localhost:6379
+  addr: redis:6379
   password: ""
   db: 0
 
@@ -27,7 +27,7 @@ argon2:
   key_length: 32
 
 temporal:
-  host: localhost:7233
+  host: temporal:7233
   task_queue: ping-task-queue
   workflow_name: ping-workflow
   digest_task_queue: digest-task-queue
