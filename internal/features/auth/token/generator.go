@@ -39,7 +39,7 @@ func (tg *tokenGenerator) GenerateAccessToken(user *domain.User) (string, error)
 
 func (tg *tokenGenerator) GenerateRefreshToken(user *domain.User) (string, error) {
 
-	jti, err := uuid.NewV7()
+	jti, err := uuid.NewRandom()
 	if err != nil {
 		return "", fmt.Errorf("failed to generate jti: %v", err)
 	}
