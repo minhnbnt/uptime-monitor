@@ -14,11 +14,10 @@ import (
 )
 
 type TemporalWorkerRunner struct {
-	worker        temporalworker.Worker
-	taskQueue     string
-	pingService   *pingservice.PingService
-	digestService *pingservice.DigestService
-	logger        logger.Logger
+	worker      temporalworker.Worker
+	taskQueue   string
+	pingService *pingservice.PingService
+	logger      logger.Logger
 }
 
 func RegisterTemporalWorkerRunner(i do.Injector) {
@@ -27,18 +26,16 @@ func RegisterTemporalWorkerRunner(i do.Injector) {
 		clientWrapper := do.MustInvoke[*temporalcfg.ClientWrapper](i)
 		temporalCfg := do.MustInvoke[*temporalcfg.Config](i)
 		pingService := do.MustInvoke[*pingservice.PingService](i)
-		digestService := do.MustInvoke[*pingservice.DigestService](i)
 		logger := do.MustInvoke[logger.Logger](i)
 
 		client := clientWrapper.GetClient()
 		worker := temporalworker.New(client, temporalCfg.TaskQueue, temporalworker.Options{})
 
 		return &TemporalWorkerRunner{
-			worker:        worker,
-			taskQueue:     temporalCfg.TaskQueue,
-			pingService:   pingService,
-			digestService: digestService,
-			logger:        logger,
+			worker:      worker,
+			taskQueue:   temporalCfg.TaskQueue,
+			pingService: pingService,
+			logger:      logger,
 		}, nil
 	})
 }
@@ -53,13 +50,6 @@ func (wr *TemporalWorkerRunner) RunTemporalWorker(ctx context.Context) error {
 	)
 	worker.RegisterActivity(wr.pingService.Ping)
 	worker.RegisterActivity(wr.pingService.Record)
-
-	worker.RegisterWorkflowWithOptions(
-		pingworkflow.SendReportWorkflow,
-		workflow.RegisterOptions{Name: "send-report"},
-	)
-
-	worker.RegisterActivity(wr.digestService.SendUserDigest)
 
 	shutdownChan := make(chan any)
 	go func() {

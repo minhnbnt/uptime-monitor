@@ -27,6 +27,10 @@ import (
 	authrepo "github.com/minhnbnt/uptime-monitor/internal/features/auth/repository"
 	authservice "github.com/minhnbnt/uptime-monitor/internal/features/auth/service"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/token"
+	digesthandler "github.com/minhnbnt/uptime-monitor/internal/features/digest/handler"
+	digestinfra "github.com/minhnbnt/uptime-monitor/internal/features/digest/infrastructure"
+	digestrepo "github.com/minhnbnt/uptime-monitor/internal/features/digest/repository"
+	digestservice "github.com/minhnbnt/uptime-monitor/internal/features/digest/service"
 	importerhandler "github.com/minhnbnt/uptime-monitor/internal/features/importer/handler"
 	importerservice "github.com/minhnbnt/uptime-monitor/internal/features/importer/service"
 	notificationhandler "github.com/minhnbnt/uptime-monitor/internal/features/notification/handler"
@@ -56,10 +60,12 @@ func main() {
 
 	dev := flag.Bool("dev", false, "enable dev features (API docs)")
 
+	flag.Parse()
+
 	injector := do.New(
 
 		config.RegisterConfigPath(*configPath),
-		config.RegisterZapLogger,
+		config.RegisterZapLogger(*dev),
 		config.RegisterGORMDB,
 		config.RegisterRedisClient,
 		config.RegisterJwtConfig,
@@ -79,7 +85,7 @@ func main() {
 		pingrepo.RegisterServerEventRepository,
 		pingrepo.RegisterRedisServerEventRepository,
 
-		pingrepo.RegisterNotificationConfigRepository,
+		digestrepo.RegisterNotificationConfigRepository,
 
 		ontimerepo.RegisterOntineRepository,
 		ontimerepo.RegisterOntimeCacheRepository,
@@ -87,7 +93,7 @@ func main() {
 		pinginfra.RegisterPingWorker,
 		pinginfra.RegisterRecordStatusWorker,
 		config.RegisterMailClient,
-		pinginfra.RegisterMailer,
+		digestinfra.RegisterMailer,
 
 		pingsched.RegisterZSetScheduleRepository,
 		pingsched.RegisterScoreUpdater,
@@ -98,7 +104,7 @@ func main() {
 		jwt.RegisterProvider,
 		argon2.RegisterArgon2PasswordEncoder,
 		serverinfra.RegisterExcelGenerator,
-		pinginfra.RegisterDigestStarter,
+		digestinfra.RegisterDigestStarter,
 
 		featservice.RegisterServerService,
 		featservice.RegisterEndpointService,
@@ -110,7 +116,7 @@ func main() {
 		token.RegisterTokenValidator,
 		pingservice.RegisterPingService,
 		pingservice.RegisterLoopService,
-		pingservice.RegisterDigestService,
+		digestservice.RegisterDigestService,
 		notifyservice.RegisterNotificationService,
 
 		featserverhandler.RegisterServerHandler,
@@ -125,6 +131,7 @@ func main() {
 		server.RegisterCompositeHandler,
 		pinghandler.RegisterTemporalWorkerRunner,
 		pinghandler.RegisterZSetWorkerRunner,
+		digesthandler.RegisterDigestWorkerRunner,
 	)
 
 	ctx, stop := signal.NotifyContext(
@@ -141,8 +148,8 @@ func main() {
 	waitgroup.Go(func() { _, _ = injector.ShutdownOnSignalsWithContext(ctx) })
 
 	if *enableWorker {
-		waitgroup.Go(func() { runWorker(ctx, injector) })
-		waitgroup.Go(func() { runTemporalWorker(ctx, injector) })
+		waitgroup.Go(func() { runPingWorker(ctx, injector) })
+		waitgroup.Go(func() { runDigestWorker(ctx, injector) })
 	}
 
 	if *enableServer {
@@ -161,7 +168,29 @@ func runTemporalWorker(ctx context.Context, i do.Injector) {
 	}
 }
 
-func runWorker(ctx context.Context, i do.Injector) {
+func runDigestWorker(ctx context.Context, i do.Injector) {
+
+	digest := do.MustInvoke[*digesthandler.DigestWorkerRunner](i)
+	log := do.MustInvoke[logger.Logger](i)
+
+	err := digest.RunDigestWorker(ctx)
+	if err != nil {
+		log.Error("Digest worker failed", logger.Error(err))
+	}
+}
+
+func runRedisPingWorker(ctx context.Context, i do.Injector) {
+
+	log := do.MustInvoke[logger.Logger](i)
+
+	runner := do.MustInvoke[*pinghandler.ZSetWorkerRunner](i)
+	err := runner.RunZSetWorker(ctx)
+	if err != nil {
+		log.Error("ZSet worker failed", logger.Error(err))
+	}
+}
+
+func runPingWorker(ctx context.Context, i do.Injector) {
 
 	cfg := do.MustInvoke[*config.Config](i)
 	log := do.MustInvoke[logger.Logger](i)
@@ -169,14 +198,10 @@ func runWorker(ctx context.Context, i do.Injector) {
 	switch cfg.Scheduler.Backend {
 
 	case "redis":
-		runner := do.MustInvoke[*pinghandler.ZSetWorkerRunner](i)
-		err := runner.RunZSetWorker(ctx)
-		if err != nil {
-			log.Error("ZSet worker failed", logger.Error(err))
-		}
+		runRedisPingWorker(ctx, i)
 
 	case "temporal":
-		return
+		runTemporalWorker(ctx, i)
 
 	default:
 		log.Panic(
@@ -191,6 +216,7 @@ func runWebServer(ctx context.Context, i do.Injector, dev bool) {
 	logger := do.MustInvoke[*zap.Logger](i)
 
 	errorHandler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
+
 		logger.Error("request validation failed", zap.Error(err))
 
 		w.Header().Set("Content-Type", "application/json")

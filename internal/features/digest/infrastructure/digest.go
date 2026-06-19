@@ -23,7 +23,7 @@ func RegisterDigestStarter(i do.Injector) {
 		temporalCfg := do.MustInvoke[*temporalcfg.Config](i)
 		return &DigestStarter{
 			client:    clientWrapper.GetClient(),
-			taskQueue: temporalCfg.TaskQueue,
+			taskQueue: temporalCfg.DigestTaskQueue,
 		}, nil
 	})
 }

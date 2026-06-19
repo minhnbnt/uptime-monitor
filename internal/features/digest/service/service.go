@@ -9,7 +9,8 @@ import (
 
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	authrepo "github.com/minhnbnt/uptime-monitor/internal/features/auth/repository"
-	infra "github.com/minhnbnt/uptime-monitor/internal/features/ping/infrastructure"
+	digestinfra "github.com/minhnbnt/uptime-monitor/internal/features/digest/infrastructure"
+	digestrepo "github.com/minhnbnt/uptime-monitor/internal/features/digest/repository"
 	pingrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
@@ -30,8 +31,8 @@ func RegisterDigestService(i do.Injector) {
 		return &DigestService{
 			eventRepo:  do.MustInvoke[*pingrepo.ServerEventRepository](i),
 			userRepo:   do.MustInvoke[*authrepo.UserRepository](i),
-			configRepo: do.MustInvoke[*pingrepo.NotificationConfigRepository](i),
-			mailer:     do.MustInvoke[*infra.Mailer](i),
+			configRepo: do.MustInvoke[*digestrepo.NotificationConfigRepository](i),
+			mailer:     do.MustInvoke[*digestinfra.Mailer](i),
 			logger:     do.MustInvoke[logger.Logger](i),
 		}, nil
 	})
@@ -75,9 +76,9 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 		return apperrors.ErrInternal
 	}
 
-	rows := make([]infra.ReportRow, len(events))
+	rows := make([]digestinfra.ReportRow, len(events))
 	for i, e := range events {
-		rows[i] = infra.ReportRow{
+		rows[i] = digestinfra.ReportRow{
 			ServerName: e.ServerName,
 			URL:        e.URL,
 			Status:     e.Status,
@@ -85,7 +86,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 		}
 	}
 
-	excelBytes, err := infra.GenerateStatusReport(rows)
+	excelBytes, err := digestinfra.GenerateStatusReport(rows)
 	if err != nil {
 		s.logger.Error("failed to generate excel report", logger.Error(err))
 		return apperrors.ErrInternal
@@ -103,6 +104,6 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 var (
 	_ EventRepository              = (*pingrepo.ServerEventRepository)(nil)
 	_ UserRepository               = (*authrepo.UserRepository)(nil)
-	_ MailSender                   = (*infra.Mailer)(nil)
-	_ NotificationConfigRepository = (*pingrepo.NotificationConfigRepository)(nil)
+	_ MailSender                   = (*digestinfra.Mailer)(nil)
+	_ NotificationConfigRepository = (*digestrepo.NotificationConfigRepository)(nil)
 )
