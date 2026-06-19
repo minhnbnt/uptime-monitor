@@ -20,9 +20,9 @@ const thirtyDays = 30 * 24 * time.Hour
 const maxDigestRange = thirtyDays
 
 type DigestService struct {
+	configRepo NotificationConfigRepository
 	eventRepo  EventRepository
 	userRepo   UserRepository
-	configRepo NotificationConfigRepository
 	mailer     MailSender
 	logger     logger.Logger
 }
@@ -30,9 +30,9 @@ type DigestService struct {
 func RegisterDigestService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*DigestService, error) {
 		return &DigestService{
+			configRepo: do.MustInvoke[*digestrepo.NotificationConfigRepository](i),
 			eventRepo:  do.MustInvoke[*pingrepo.ServerEventRepository](i),
 			userRepo:   do.MustInvoke[*authrepo.UserRepository](i),
-			configRepo: do.MustInvoke[*digestrepo.NotificationConfigRepository](i),
 			mailer:     do.MustInvoke[*digestinfra.Mailer](i),
 			logger:     do.MustInvoke[logger.Logger](i),
 		}, nil
