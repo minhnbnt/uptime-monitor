@@ -3,10 +3,13 @@ package service
 import (
 	"context"
 	"fmt"
+	"iter"
+	"maps"
 	"slices"
 	"time"
 
 	"github.com/samber/do/v2"
+	"github.com/samber/lo/it"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
@@ -19,7 +22,6 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
-
 
 func (s *DigestService) buildReport(servers []domain.Server, dates []time.Time, ontimeMap map[uint][]ontimedto.OntimeStats) []digestinfra.ServerRow {
 
@@ -68,8 +70,8 @@ func RegisterDigestService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*DigestService, error) {
 		return &DigestService{
 			configRepo: do.MustInvoke[*digestrepo.NotificationConfigRepository](i),
-			userRepo:   do.MustInvoke[*authrepo.UserRepository](i),
 			serverRepo: do.MustInvoke[*serverrepo.ServerRepository](i),
+			userRepo:   do.MustInvoke[*authrepo.UserRepository](i),
 			ontimeSvc:  do.MustInvoke[*ontimesvc.OntimeService](i),
 			mailer:     do.MustInvoke[*digestinfra.Mailer](i),
 			logger:     do.MustInvoke[logger.Logger](i),
@@ -133,9 +135,10 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 		return apperrors.ErrInternal
 	}
 
-	rows := s.buildReport(servers, dates, ontimeMap)
+	activeDates := getActiveDate(ontimeMap)
+	rows := s.buildReport(servers, activeDates, ontimeMap)
 
-	excelBytes, err := digestinfra.GenerateStatusReport(rows, dates)
+	excelBytes, err := digestinfra.GenerateStatusReport(rows, activeDates)
 	if err != nil {
 		s.logger.Error("failed to generate excel report", logger.Error(err))
 		return apperrors.ErrInternal
@@ -148,6 +151,25 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 	}
 
 	return nil
+}
+
+func getActiveDate(onTimeMap map[uint][]ontimedto.OntimeStats) []time.Time {
+
+	mapValues := maps.Values(onTimeMap)
+
+	stats := it.FlatMap(mapValues, func(stats []ontimedto.OntimeStats) iter.Seq[ontimedto.OntimeStats] {
+		return slices.Values(stats)
+	})
+
+	activeDates := it.Map(stats, func(stat ontimedto.OntimeStats) time.Time {
+		return utils.TruncateDay(stat.Date)
+	})
+
+	activeDates = it.Uniq(activeDates)
+
+	return slices.SortedFunc(activeDates, func(a, b time.Time) int {
+		return a.Compare(b)
+	})
 }
 
 var (
