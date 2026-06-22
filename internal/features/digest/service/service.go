@@ -3,26 +3,63 @@ package service
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/samber/do/v2"
-	"github.com/samber/lo"
 
+	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	authrepo "github.com/minhnbnt/uptime-monitor/internal/features/auth/repository"
 	digestinfra "github.com/minhnbnt/uptime-monitor/internal/features/digest/infrastructure"
 	digestrepo "github.com/minhnbnt/uptime-monitor/internal/features/digest/repository"
-	pingrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
+	ontimedto "github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
+	ontimesvc "github.com/minhnbnt/uptime-monitor/internal/features/ontime/service"
+	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
+	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
+
+
+func (s *DigestService) buildReport(servers []domain.Server, dates []time.Time, ontimeMap map[uint][]ontimedto.OntimeStats) []digestinfra.ServerRow {
+
+	slices.SortFunc(servers, func(a, b domain.Server) int {
+		if a.Name < b.Name {
+			return -1
+		}
+		if a.Name > b.Name {
+			return 1
+		}
+		return 0
+	})
+
+	rows := make([]digestinfra.ServerRow, 0, len(servers))
+	for _, sv := range servers {
+
+		stats := make(map[time.Time]float64, len(dates))
+		for _, stat := range ontimeMap[sv.ID] {
+			stats[utils.TruncateDay(stat.Date)] = stat.Stats
+		}
+
+		rows = append(rows, digestinfra.ServerRow{
+			ServerID:   sv.ID,
+			ServerName: sv.Name,
+			Stats:      stats,
+		})
+	}
+
+	return rows
+}
 
 const thirtyDays = 30 * 24 * time.Hour
 const maxDigestRange = thirtyDays
+const maxReportServers = 1000
 
 type DigestService struct {
 	configRepo NotificationConfigRepository
-	eventRepo  EventRepository
 	userRepo   UserRepository
+	serverRepo ServerLister
+	ontimeSvc  OntimeStatsService
 	mailer     MailSender
 	logger     logger.Logger
 }
@@ -31,8 +68,9 @@ func RegisterDigestService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*DigestService, error) {
 		return &DigestService{
 			configRepo: do.MustInvoke[*digestrepo.NotificationConfigRepository](i),
-			eventRepo:  do.MustInvoke[*pingrepo.ServerEventRepository](i),
 			userRepo:   do.MustInvoke[*authrepo.UserRepository](i),
+			serverRepo: do.MustInvoke[*serverrepo.ServerRepository](i),
+			ontimeSvc:  do.MustInvoke[*ontimesvc.OntimeService](i),
 			mailer:     do.MustInvoke[*digestinfra.Mailer](i),
 			logger:     do.MustInvoke[logger.Logger](i),
 		}, nil
@@ -81,22 +119,23 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 		from = now.Add(-maxDigestRange)
 	}
 
-	events, err := s.eventRepo.GetEnrichedEventsByUser(ctx, userID, from, now)
+	servers, err := s.serverRepo.List(ctx, userID, maxReportServers, 0)
 	if err != nil {
-		s.logger.Error("failed to get enriched events", logger.Error(err))
+		s.logger.Error("failed to list servers", logger.Error(err))
 		return apperrors.ErrInternal
 	}
 
-	rows := lo.Map(events, func(e pingrepo.EnrichedEvent, _ int) digestinfra.ReportRow {
-		return digestinfra.ReportRow{
-			ServerName: e.ServerName,
-			Status:     e.Status,
-			Time:       e.Time,
-			URL:        e.URL,
-		}
-	})
+	dates := utils.BuildDateRange(from, now)
 
-	excelBytes, err := digestinfra.GenerateStatusReport(rows)
+	ontimeMap, err := s.ontimeSvc.GetServersOntimeForDates(ctx, servers, dates)
+	if err != nil {
+		s.logger.Error("failed to get ontime stats", logger.Error(err))
+		return apperrors.ErrInternal
+	}
+
+	rows := s.buildReport(servers, dates, ontimeMap)
+
+	excelBytes, err := digestinfra.GenerateStatusReport(rows, dates)
 	if err != nil {
 		s.logger.Error("failed to generate excel report", logger.Error(err))
 		return apperrors.ErrInternal
@@ -112,7 +151,6 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 }
 
 var (
-	_ EventRepository              = (*pingrepo.ServerEventRepository)(nil)
 	_ UserRepository               = (*authrepo.UserRepository)(nil)
 	_ MailSender                   = (*digestinfra.Mailer)(nil)
 	_ NotificationConfigRepository = (*digestrepo.NotificationConfigRepository)(nil)

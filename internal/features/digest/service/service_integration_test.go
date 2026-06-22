@@ -19,7 +19,9 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	authrepo "github.com/minhnbnt/uptime-monitor/internal/features/auth/repository"
-	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
+	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
+	ontimesvc "github.com/minhnbnt/uptime-monitor/internal/features/ontime/service"
+	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
@@ -115,12 +117,23 @@ func newDigestIntegrationService(tb testing.TB, mailer MailSender) *DigestServic
 	if testing.Short() {
 		tb.Skip("skipping integration test")
 	}
+
+	log := logger.NewMockLogger()
+	serverRepo := serverrepo.NewServerRepository(testDB)
+	batcher := ontimesvc.NewBatcher(
+		ontimerepo.NewOntineRepository(testDB),
+		nil,
+		log,
+	)
+	ontimeSvc := ontimesvc.NewOntimeService(serverRepo, batcher, log)
+
 	return &DigestService{
 		userRepo:   authrepo.NewUserRepository(testDB),
-		eventRepo:  monitorrepo.NewServerEventRepository(testDB),
+		serverRepo: serverRepo,
+		ontimeSvc:  ontimeSvc,
 		configRepo: nil,
 		mailer:     mailer,
-		logger:     logger.NewMockLogger(),
+		logger:     log,
 	}
 }
 
@@ -183,17 +196,13 @@ func readExcelRows(tb testing.TB, r io.Reader) [][]string {
 	return rows
 }
 
-func TestIntegration_SendReport_FetchesEventsInRange(t *testing.T) {
+func TestIntegration_SendReport_WithServers(t *testing.T) {
 	truncateTables(t)
 
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 	seedServer(t, 1, "server-a", 1)
 	seedEndpoint(t, 1, 1, "https://example.com/a")
 	seedEvent(t, 1, domain.StatusOn, now.Add(-24*time.Hour))
-	seedEvent(t, 1, domain.StatusOff, now.Add(-5*24*time.Hour))
-
-	// This event is outside the from range (7 days ago)
-	seedEvent(t, 1, domain.StatusOn, now.Add(-10*24*time.Hour))
 
 	var capturedAttachment io.Reader
 	mailer := &mockMailer{
@@ -213,15 +222,15 @@ func TestIntegration_SendReport_FetchesEventsInRange(t *testing.T) {
 	}
 
 	rows := readExcelRows(t, capturedAttachment)
-	// Header row + 2 data rows (events within range)
-	if len(rows) != 3 {
-		t.Fatalf("got %d rows (incl header), want 3", len(rows))
+	// Header + 1 server row
+	if len(rows) != 2 {
+		t.Fatalf("got %d rows (incl header), want 2", len(rows))
+	}
+	if rows[0][0] != "Server Name" {
+		t.Errorf("header[0] = %q, want Server Name", rows[0][0])
 	}
 	if rows[1][0] != "server-a" {
 		t.Errorf("row[1] server = %q, want server-a", rows[1][0])
-	}
-	if rows[2][0] != "server-a" {
-		t.Errorf("row[2] server = %q, want server-a", rows[2][0])
 	}
 }
 
@@ -255,8 +264,12 @@ func TestIntegration_SendReport_RespectsUserScoping(t *testing.T) {
 	}
 
 	rows := readExcelRows(t, capturedAttachment)
+	// Only user1's server
 	if len(rows) != 2 {
-		t.Fatalf("got %d rows (incl header), want 2 (only user1 events)", len(rows))
+		t.Fatalf("got %d rows (incl header), want 2", len(rows))
+	}
+	if rows[1][0] != "user1-server" {
+		t.Errorf("row[1] server = %q, want user1-server", rows[1][0])
 	}
 }
 
@@ -287,12 +300,12 @@ func TestIntegration_SendReport_ClampsDateRange(t *testing.T) {
 	}
 
 	rows := readExcelRows(t, capturedAttachment)
-	// Only the event from 10 days ago should be present
+	// Header + 1 server (only events within 30 day clamp)
 	if len(rows) != 2 {
-		t.Fatalf("got %d rows (incl header), want 2 (only event within 30 days)", len(rows))
+		t.Fatalf("got %d rows (incl header), want 2", len(rows))
 	}
-	if rows[1][1] != "https://example.com/a" {
-		t.Errorf("row[1] url = %q", rows[1][1])
+	if rows[1][0] != "server-a" {
+		t.Errorf("row[1] server = %q, want server-a", rows[1][0])
 	}
 }
 
@@ -320,9 +333,9 @@ func TestIntegration_SendReport_NoEvents(t *testing.T) {
 	}
 
 	rows := readExcelRows(t, capturedAttachment)
-	// Only header row, no data
-	if len(rows) != 1 {
-		t.Fatalf("got %d rows, want 1 (header only)", len(rows))
+	// Header + 1 server row (server exists, stats show 0%)
+	if len(rows) != 2 {
+		t.Fatalf("got %d rows, want 2", len(rows))
 	}
 }
 

@@ -26,13 +26,21 @@ type OntimeService struct {
 	logger           logger.Logger
 }
 
+func NewOntimeService(sr service.ServerRepository, b *Batcher, l logger.Logger) *OntimeService {
+	return &OntimeService{
+		serverRepository: sr,
+		batcher:          b,
+		logger:           l,
+	}
+}
+
 func RegisterOntimeService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*OntimeService, error) {
-		return &OntimeService{
-			serverRepository: do.MustInvoke[*serverrepo.ServerRepository](i),
-			batcher:          do.MustInvoke[*Batcher](i),
-			logger:           do.MustInvoke[logger.Logger](i),
-		}, nil
+		return NewOntimeService(
+			do.MustInvoke[*serverrepo.ServerRepository](i),
+			do.MustInvoke[*Batcher](i),
+			do.MustInvoke[logger.Logger](i),
+		), nil
 	})
 }
 
@@ -94,8 +102,10 @@ func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID uint) 
 }
 
 func (s *OntimeService) getServersOntime(ctx context.Context, servers []domain.Server) (map[uint][]ontimedto.OntimeStats, error) {
+	return s.GetServersOntimeForDates(ctx, servers, utils.Last30Days())
+}
 
-	dates := utils.Last30Days()
+func (s *OntimeService) GetServersOntimeForDates(ctx context.Context, servers []domain.Server, dates []time.Time) (map[uint][]ontimedto.OntimeStats, error) {
 
 	items := make([]ontimedto.BatchGetOntimeItem, 0, len(servers)*len(dates))
 	serverDates := make(map[uint][]time.Time, len(servers))

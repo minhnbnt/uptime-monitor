@@ -16,14 +16,22 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
+func NewBatcher(repo OntineRepository, cache *ontimerepo.OntimeCacheRepository, l logger.Logger) *Batcher {
+	return &Batcher{
+		ontineRepository:      repo,
+		ontimeCacheRepository: cache,
+		logger:                l,
+		calculator:            OntimeCalculator{},
+	}
+}
+
 func RegisterBatcher(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*Batcher, error) {
-		return &Batcher{
-			ontineRepository:      do.MustInvoke[*ontimerepo.OntineRepository](i),
-			ontimeCacheRepository: do.MustInvoke[*ontimerepo.OntimeCacheRepository](i),
-			logger:                do.MustInvoke[logger.Logger](i),
-			calculator:            OntimeCalculator{},
-		}, nil
+		return NewBatcher(
+			do.MustInvoke[*ontimerepo.OntineRepository](i),
+			do.MustInvoke[*ontimerepo.OntimeCacheRepository](i),
+			do.MustInvoke[logger.Logger](i),
+		), nil
 	})
 }
 
@@ -55,8 +63,10 @@ func (b *Batcher) BatchGetOntimeUntil(ctx context.Context, req []dto.BatchGetOnt
 	toCache := b.fillMisses(ctx, missKeys, until)
 	maps.Copy(resultMap, toCache)
 
-	if err := b.ontimeCacheRepository.MSet(ctx, toCache); err != nil {
-		b.logger.Warn("failed to batch cache ontime results", logger.Error(err))
+	if b.ontimeCacheRepository != nil {
+		if err := b.ontimeCacheRepository.MSet(ctx, toCache); err != nil {
+			b.logger.Warn("failed to batch cache ontime results", logger.Error(err))
+		}
 	}
 
 	return b.buildResponse(req, resultMap), nil
@@ -81,6 +91,10 @@ func getCacheKey(req []dto.BatchGetOntimeItem) []dto.BatchGetOntimeItem {
 }
 
 func (b *Batcher) resolveCache(ctx context.Context, keys []dto.BatchGetOntimeItem) map[dto.BatchGetOntimeItem]float64 {
+
+	if b.ontimeCacheRepository == nil {
+		return make(map[dto.BatchGetOntimeItem]float64, len(keys))
+	}
 
 	cached, err := b.ontimeCacheRepository.MGet(ctx, keys)
 

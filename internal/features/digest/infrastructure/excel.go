@@ -6,23 +6,24 @@ import (
 	"time"
 
 	"github.com/xuri/excelize/v2"
-
-	"github.com/minhnbnt/uptime-monitor/internal/domain"
 )
 
-type ReportRow struct {
+type ServerRow struct {
+	ServerID   uint
 	ServerName string
-	URL        string
-	Status     domain.ServerStatus
-	Time       time.Time
+	Stats      map[time.Time]float64
 }
 
-func GenerateStatusReport(rows []ReportRow) (io.Reader, error) {
+func GenerateStatusReport(rows []ServerRow, dates []time.Time) (io.Reader, error) {
 
 	xl := excelize.NewFile()
 	defer xl.Close()
 
-	headers := []string{"Server Name", "URL", "Status", "Time"}
+	headers := []string{"Server Name"}
+	for _, d := range dates {
+		headers = append(headers, d.Format("2006-01-02"))
+	}
+
 	for i, h := range headers {
 		cell, err := excelize.CoordinatesToCellName(i+1, 1)
 		if err != nil {
@@ -33,20 +34,28 @@ func GenerateStatusReport(rows []ReportRow) (io.Reader, error) {
 		}
 	}
 
-	for i, row := range rows {
+	for rowIdx, row := range rows {
 
-		r := i + 2
+		r := rowIdx + 2
 
-		values := map[string]string{
-			fmt.Sprintf("A%d", r): row.ServerName,
-			fmt.Sprintf("B%d", r): row.URL,
-			fmt.Sprintf("C%d", r): string(row.Status),
-			fmt.Sprintf("D%d", r): row.Time.Format("2006-01-02 15:04:05"),
+		serverCell, _ := excelize.CoordinatesToCellName(1, r)
+		if err := xl.SetCellValue("Sheet1", serverCell, row.ServerName); err != nil {
+			return nil, fmt.Errorf("failed to set server name: %w", err)
 		}
 
-		for cell, value := range values {
+		for colIdx, date := range dates {
+
+			cell, _ := excelize.CoordinatesToCellName(colIdx+2, r)
+
+			pct, ok := row.Stats[date]
+			if !ok {
+				_ = xl.SetCellValue("Sheet1", cell, "-")
+				continue
+			}
+
+			value := fmt.Sprintf("%.2f%%", pct)
 			if err := xl.SetCellValue("Sheet1", cell, value); err != nil {
-				return nil, fmt.Errorf("failed to set cell value: %w", err)
+				return nil, fmt.Errorf("failed to set ontime value: %w", err)
 			}
 		}
 	}
