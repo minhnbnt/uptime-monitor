@@ -43,7 +43,6 @@ func buildServers(chunk []dto.ImportRow, userID uint) []domain.Server {
 	return lo.Map(chunk, func(r dto.ImportRow, _ int) domain.Server {
 		return domain.Server{
 			Name:        r.Name,
-			Status:      domain.StatusActive,
 			CreatedByID: userID,
 		}
 	})
@@ -72,7 +71,6 @@ func buildEndpoints(chunk []dto.ImportRow, servers []domain.Server) []domain.End
 		endpoints = append(endpoints, domain.Endpoint{
 			ServerID:     sv.ID,
 			URL:          url,
-			Status:       domain.StatusActive,
 			Interval:     time.Duration(chunk[i].Interval) * time.Second,
 			Timeout:      time.Duration(chunk[i].Timeout) * time.Second,
 			Method:       chunk[i].Method,

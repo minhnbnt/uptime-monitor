@@ -17,13 +17,11 @@ func TestServerService_ListServers(t *testing.T) {
 		{
 			Model:    gormModel(1, now),
 			Name:     "server-a",
-			Status:   domain.StatusActive,
 			Endpoint: nil,
 		},
 		{
 			Model:    gormModel(2, now),
 			Name:     "server-b",
-			Status:   domain.StatusPaused,
 			Endpoint: nil,
 		},
 	}
@@ -69,13 +67,11 @@ func TestServerService_ListServers(t *testing.T) {
 
 func TestServerService_CreateServer(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		var saved *domain.Server
 		svc := &ServerService{logger: logger.NewMockLogger(), serverRepository: &mockServerRepo{
 			createFn: func(_ context.Context, s *domain.Server) error {
 				s.ID = 42
 				s.CreatedAt = time.Now()
 				s.UpdatedAt = time.Now()
-				saved = s
 				return nil
 			},
 		}}
@@ -90,12 +86,6 @@ func TestServerService_CreateServer(t *testing.T) {
 		}
 		if got.Name != "my-server" {
 			t.Errorf("Name = %q, want my-server", got.Name)
-		}
-		if got.Status != domain.StatusActive {
-			t.Errorf("Status = %q, want active", got.Status)
-		}
-		if saved.Status != domain.StatusActive {
-			t.Errorf("saved.Status = %q, want active", saved.Status)
 		}
 	})
 
@@ -120,9 +110,8 @@ func TestServerService_GetServer(t *testing.T) {
 		svc := &ServerService{logger: logger.NewMockLogger(), serverRepository: &mockServerRepo{
 			getByIDFn: func(_ context.Context, id uint) (*domain.Server, error) {
 				return &domain.Server{
-					Model:  gormModel(id, now),
-					Name:   "found-server",
-					Status: domain.StatusActive,
+					Model: gormModel(id, now),
+					Name:  "found-server",
 				}, nil
 			},
 		}}
@@ -156,39 +145,29 @@ func TestServerService_GetServer(t *testing.T) {
 func TestServerService_UpdateServer(t *testing.T) {
 	now := time.Now()
 	existing := &domain.Server{
-		Model:  gormModel(1, now),
-		Name:   "original",
-		Status: domain.StatusActive,
+		Model: gormModel(1, now),
+		Name:  "original",
 	}
 
-	t.Run("update name and status", func(t *testing.T) {
-		var updated *domain.Server
+	t.Run("update name", func(t *testing.T) {
 		svc := &ServerService{logger: logger.NewMockLogger(), serverRepository: &mockServerRepo{
 			getByIDFn: func(_ context.Context, _ uint) (*domain.Server, error) {
 				cp := *existing
 				return &cp, nil
 			},
-			updateFn: func(_ context.Context, s *domain.Server) error {
-				updated = s
+			updateFn: func(_ context.Context, _ *domain.Server) error {
 				return nil
 			},
 		}}
 
 		name := "renamed"
-		status := domain.StatusPaused
-		req := dto.UpdateServerRequest{Name: &name, Status: &status}
+		req := dto.UpdateServerRequest{Name: &name}
 		got, err := svc.UpdateServer(t.Context(), 1, req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if got.Name != "renamed" {
 			t.Errorf("Name = %q, want renamed", got.Name)
-		}
-		if got.Status != domain.StatusPaused {
-			t.Errorf("Status = %q, want paused", got.Status)
-		}
-		if updated.Name != "renamed" || updated.Status != domain.StatusPaused {
-			t.Errorf("updated = %+v", updated)
 		}
 	})
 
@@ -213,7 +192,7 @@ func TestServerService_UpdateServer(t *testing.T) {
 		if got.Name != "original" {
 			t.Errorf("Name changed to %q", got.Name)
 		}
-		if updated.Name != "original" || updated.Status != domain.StatusActive {
+		if updated.Name != "original" {
 			t.Errorf("updated should be unchanged: %+v", updated)
 		}
 	})
@@ -252,8 +231,8 @@ func TestServerService_UpdateServer(t *testing.T) {
 func TestServerService_SearchServers(t *testing.T) {
 	now := time.Now()
 	domainServers := []domain.Server{
-		{Model: gormModel(1, now), Name: "server-a", Status: domain.StatusActive},
-		{Model: gormModel(2, now), Name: "server-b", Status: domain.StatusPaused},
+		{Model: gormModel(1, now), Name: "server-a"},
+		{Model: gormModel(2, now), Name: "server-b"},
 	}
 
 	t.Run("success", func(t *testing.T) {

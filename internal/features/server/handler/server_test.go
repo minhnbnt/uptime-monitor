@@ -13,7 +13,7 @@ import (
 )
 
 func dtoServer(id uint, name string, t time.Time) dto.Server {
-	return dto.Server{ID: id, Name: name, Status: "active", CreatedAt: t, UpdatedAt: t}
+	return dto.Server{ID: id, Name: name, CreatedAt: t, UpdatedAt: t}
 }
 
 func TestServerHandler_ListServers(t *testing.T) {

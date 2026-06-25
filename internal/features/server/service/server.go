@@ -51,7 +51,6 @@ func (ss *ServerService) CreateServer(ctx context.Context, req dto.CreateServerR
 
 	server := domain.Server{
 		Name:        req.Name,
-		Status:      domain.StatusActive,
 		CreatedByID: createdByID,
 	}
 
@@ -92,10 +91,6 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uint, req dto.Upda
 
 	if req.Name != nil {
 		server.Name = *req.Name
-	}
-
-	if req.Status != nil {
-		server.Status = *req.Status
 	}
 
 	updateErr := ss.serverRepository.Update(ctx, server)

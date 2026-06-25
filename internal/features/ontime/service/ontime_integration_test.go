@@ -145,7 +145,6 @@ func seedServer(tb testing.TB, id uint, name string, createdAt time.Time) {
 	testDB.Create(&domain.Server{
 		Model:       gorm.Model{ID: id, CreatedAt: createdAt, UpdatedAt: createdAt},
 		Name:        name,
-		Status:      domain.StatusActive,
 		CreatedByID: 1,
 	})
 }

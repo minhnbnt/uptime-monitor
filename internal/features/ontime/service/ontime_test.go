@@ -561,9 +561,8 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		server := domain.Server{
-			Model:  gormModel(1, oldTime),
-			Name:   "server-a",
-			Status: domain.StatusActive,
+			Model: gormModel(1, oldTime),
+			Name:  "server-a",
 		}
 
 		cacheResult := make(map[dto.BatchGetOntimeItem]float64)
@@ -655,8 +654,8 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 
 	t.Run("success with cached data", func(t *testing.T) {
 		servers := []domain.Server{
-			{Model: gormModel(1, oldTime), Name: "server-a", Status: domain.StatusActive},
-			{Model: gormModel(2, oldTime), Name: "server-b", Status: domain.StatusPaused},
+			{Model: gormModel(1, oldTime), Name: "server-a"},
+			{Model: gormModel(2, oldTime), Name: "server-b"},
 		}
 
 		// Build cache: return 100% for all server-date combinations
@@ -789,7 +788,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 			serverRepository: &mockServerRepo{
 				listFn: func(_ context.Context, _ uint, limit, offset int) ([]domain.Server, error) {
 					return []domain.Server{
-						{Model: gormModel(1, oldTime), Name: "s1", Status: domain.StatusActive},
+						{Model: gormModel(1, oldTime), Name: "s1"},
 					}, nil
 				},
 				countFn: func(_ context.Context, _ uint) (int64, error) {
@@ -810,7 +809,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 		// A server created 5 days ago should only have 5 dates
 		fiveDaysAgo := dates[len(dates)-1].AddDate(0, 0, -4)
 		servers := []domain.Server{
-			{Model: gormModel(3, fiveDaysAgo), Name: "new-server", Status: domain.StatusActive},
+			{Model: gormModel(3, fiveDaysAgo), Name: "new-server"},
 		}
 
 		svc := &OntimeService{

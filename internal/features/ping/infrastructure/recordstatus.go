@@ -8,21 +8,24 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
+	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
 type RecordStatusWorker struct {
-	statusStore StatusStore
-	eventSaver  EventSaver
-	logger      logger.Logger
+	statusStore           StatusStore
+	eventSaver            EventSaver
+	endpointStatusUpdater EndpointStatusUpdater
+	logger                logger.Logger
 }
 
 func RegisterRecordStatusWorker(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*RecordStatusWorker, error) {
 		return &RecordStatusWorker{
-			statusStore: do.MustInvoke[*monitorrepo.RedisServerEventRepository](i),
-			eventSaver:  do.MustInvoke[*monitorrepo.ServerEventRepository](i),
-			logger:      do.MustInvoke[logger.Logger](i),
+			statusStore:           do.MustInvoke[*monitorrepo.RedisServerEventRepository](i),
+			eventSaver:            do.MustInvoke[*monitorrepo.ServerEventRepository](i),
+			endpointStatusUpdater: do.MustInvoke[*serverrepo.EndpointRepository](i),
+			logger:                do.MustInvoke[logger.Logger](i),
 		}, nil
 	})
 }
@@ -50,6 +53,10 @@ func (w *RecordStatusWorker) Record(ctx context.Context, event *domain.ServerEve
 	}
 
 	if err := w.statusStore.SetStatus(ctx, event.EndpointID, event.Status); err != nil {
+		return err
+	}
+
+	if err := w.endpointStatusUpdater.UpdateMonitorStatus(ctx, event.EndpointID, event.Status); err != nil {
 		return err
 	}
 

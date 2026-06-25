@@ -6,6 +6,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
+	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	ontimedto "github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 )
@@ -14,13 +15,20 @@ func ToAPIServer(s *dto.Server) api.ServerObject {
 	if s == nil {
 		return api.ServerObject{}
 	}
+	monitorStatus := api.MonitorStatus("")
+	switch s.MonitorStatus {
+	case domain.StatusOn:
+		monitorStatus = api.MonitorStatusOnline
+	case domain.StatusOff:
+		monitorStatus = api.MonitorStatusOffline
+	}
 	return api.ServerObject{
-		ID:        int(s.ID),
-		Name:      s.Name,
-		Status:    api.ServerStatus(s.Status),
-		Endpoint:  toAPIEndpoint(s.Endpoint),
-		CreatedAt: s.CreatedAt,
-		UpdatedAt: s.UpdatedAt,
+		ID:            int(s.ID),
+		Name:          s.Name,
+		MonitorStatus: monitorStatus,
+		Endpoint:      toAPIEndpoint(s.Endpoint),
+		CreatedAt:     s.CreatedAt,
+		UpdatedAt:     s.UpdatedAt,
 	}
 }
 
@@ -32,12 +40,20 @@ func toAPIEndpoint(e *dto.Endpoint) api.OptEndpoint {
 	if parsed, err := url.Parse(e.URL); err == nil {
 		u = *parsed
 	}
+	monitorStatus := api.OptMonitorStatus{}
+	switch e.MonitorStatus {
+	case domain.StatusOn:
+		monitorStatus = api.NewOptMonitorStatus(api.MonitorStatusOnline)
+	case domain.StatusOff:
+		monitorStatus = api.NewOptMonitorStatus(api.MonitorStatusOffline)
+	}
 	return api.NewOptEndpoint(api.Endpoint{
-		URL:          u,
-		Interval:     int(e.Interval.Seconds()),
-		Timeout:      int(e.Timeout.Seconds()),
-		Method:       api.EndpointMethod(e.Method),
-		ExpectedCode: e.ExpectedCode,
+		URL:           u,
+		MonitorStatus: monitorStatus,
+		Interval:      int(e.Interval.Seconds()),
+		Timeout:       int(e.Timeout.Seconds()),
+		Method:        api.EndpointMethod(e.Method),
+		ExpectedCode:  e.ExpectedCode,
 	})
 }
 

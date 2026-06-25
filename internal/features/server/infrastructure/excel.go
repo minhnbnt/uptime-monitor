@@ -12,6 +12,7 @@ import (
 	"github.com/samber/lo/it"
 	"github.com/xuri/excelize/v2"
 
+	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/features/importer/dto"
 	serverdto "github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
@@ -98,9 +99,13 @@ func (g *ExcelGenerator) GenerateExportFile(w io.Writer, servers []serverdto.Ser
 		}
 
 		row := i + 2
+		monitorStatus := "offline"
+		if sv.MonitorStatus == domain.StatusOn {
+			monitorStatus = "online"
+		}
 		values := map[string]string{
 			fmt.Sprintf("A%d", row): sv.Name,
-			fmt.Sprintf("B%d", row): string(sv.Status),
+			fmt.Sprintf("B%d", row): monitorStatus,
 			fmt.Sprintf("C%d", row): url,
 			fmt.Sprintf("D%d", row): sv.CreatedAt.Format(time.RFC3339),
 			fmt.Sprintf("E%d", row): sv.UpdatedAt.Format(time.RFC3339),

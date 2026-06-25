@@ -113,7 +113,6 @@ func (er *EndpointRepository) UpsertEndpoint(ctx context.Context, endpoint domai
 				"expected_code",
 				"interval",
 				"timeout",
-				"status",
 			}),
 		})
 
@@ -123,6 +122,23 @@ func (er *EndpointRepository) UpsertEndpoint(ctx context.Context, endpoint domai
 
 		return er.scheduler.Register(ctx, &endpoint)
 	})
+}
+
+func (er *EndpointRepository) UpdateMonitorStatus(ctx context.Context, endpointID uint, status domain.ServerStatus) error {
+
+	affected, err := gorm.G[domain.Endpoint](er.db).
+		Where("id = ?", endpointID).
+		Update(ctx, "monitor_status", status)
+
+	if err != nil {
+		return err
+	}
+
+	if affected == 0 {
+		return errors.New("endpoint with provided id does not found")
+	}
+
+	return nil
 }
 
 func (er *EndpointRepository) BatchCreateEndpoints(ctx context.Context, endpoints []domain.Endpoint) error {

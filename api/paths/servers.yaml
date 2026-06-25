@@ -48,10 +48,6 @@ servers:
           default: 20
           minimum: 1
           maximum: 100
-      - name: status
-        in: query
-        schema:
-          $ref: "../schemas/common.yaml#/ServerStatus"
     responses:
       "200":
         description: List of servers
@@ -285,7 +281,7 @@ servers-search:
         in: query
         schema:
           type: string
-          enum: [name, created_at, status, score]
+          enum: [name, created_at, score]
           default: score
       - name: sort_order
         in: query
@@ -321,10 +317,6 @@ servers-export:
         in: query
         schema:
           type: string
-      - name: status
-        in: query
-        schema:
-          $ref: "../schemas/common.yaml#/ServerStatus"
       - name: from
         in: query
         schema:
@@ -342,7 +334,7 @@ servers-export:
         in: query
         schema:
           type: string
-          enum: [name, created_at, status]
+          enum: [name, created_at]
           default: name
       - name: sort_order
         in: query

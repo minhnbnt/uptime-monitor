@@ -138,8 +138,8 @@ func TestEndpointService_SetCheckMethod(t *testing.T) {
 		if captured.ServerID != 7 {
 			t.Errorf("ServerID = %d, want 7", captured.ServerID)
 		}
-		if captured.Status != domain.StatusActive {
-			t.Errorf("Status = %q, want active", captured.Status)
+		if captured.MonitorStatus != domain.StatusOff {
+			t.Errorf("MonitorStatus = %q, want OFF", captured.MonitorStatus)
 		}
 		if captured.URL != req.URL {
 			t.Errorf("URL = %q", captured.URL)

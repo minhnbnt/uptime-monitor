@@ -43,10 +43,6 @@ func (s *ParadeDBSearcher) Search(
 		query = query.Where("name @@@ ?", params.Q)
 	}
 
-	if params.Status != nil {
-		query = query.Where("status = ?", *params.Status)
-	}
-
 	total, err := query.Count(ctx, "*")
 	if err != nil {
 		return nil, 0, fmt.Errorf("search count: %w", err)

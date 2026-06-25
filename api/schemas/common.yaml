@@ -1,8 +1,8 @@
-ServerStatus:
+MonitorStatus:
   type: string
   enum:
-    - active
-    - paused
+    - online
+    - offline
 
 PaginationMeta:
   type: object

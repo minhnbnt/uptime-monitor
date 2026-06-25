@@ -3,7 +3,7 @@ ServerObject:
   required:
     - id
     - name
-    - status
+    - monitor_status
     - created_at
     - updated_at
   properties:
@@ -13,8 +13,8 @@ ServerObject:
       type: string
       minLength: 1
       maxLength: 255
-    status:
-      $ref: "./common.yaml#/ServerStatus"
+    monitor_status:
+      $ref: "./common.yaml#/MonitorStatus"
     endpoint:
       $ref: "./endpoint.yaml#/Endpoint"
     ontime_stats:
@@ -45,8 +45,6 @@ UpdateServerRequest:
       type: string
       minLength: 1
       maxLength: 255
-    status:
-      $ref: "./common.yaml#/ServerStatus"
 
 ServerResponse:
   type: object

@@ -16,8 +16,8 @@ Endpoint:
     url:
       type: string
       format: uri
-    status:
-      $ref: "./common.yaml#/ServerStatus"
+    monitor_status:
+      $ref: "./common.yaml#/MonitorStatus"
     interval:
       type: integer
       minimum: 1

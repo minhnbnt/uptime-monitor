@@ -35,13 +35,13 @@ func RegisterEndpointService(i do.Injector) {
 
 func toDomainEndpoint(serverID uint, req dto.SetCheckMethodRequest) domain.Endpoint {
 	return domain.Endpoint{
-		ServerID:     serverID,
-		Status:       domain.StatusActive,
-		URL:          req.URL,
-		Interval:     req.Interval,
-		Timeout:      req.Timeout,
-		Method:       req.HTTPMethod,
-		ExpectedCode: req.ExpectedCode,
+		ServerID:      serverID,
+		URL:           req.URL,
+		MonitorStatus: domain.StatusOff,
+		Interval:      req.Interval,
+		Timeout:       req.Timeout,
+		Method:        req.HTTPMethod,
+		ExpectedCode:  req.ExpectedCode,
 	}
 }
 

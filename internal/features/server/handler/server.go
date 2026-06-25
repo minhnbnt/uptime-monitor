@@ -8,7 +8,6 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
-	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/middleware"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
@@ -121,11 +120,6 @@ func (h *ServerHandler) ExportServers(ctx context.Context, params api.ExportServ
 		To:        params.To.Or(100),
 		SortBy:    string(params.SortBy.Or(api.ExportServersSortByName)),
 		SortOrder: string(params.SortOrder.Or(api.ExportServersSortOrderAsc)),
-	}
-
-	if v, ok := params.Status.Get(); ok {
-		s := domain.Status(v)
-		searchParams.Status = &s
 	}
 
 	userID := middleware.GetUserID(ctx)
