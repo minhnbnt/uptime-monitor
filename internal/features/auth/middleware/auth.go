@@ -28,7 +28,7 @@ type AccessTokenValidator interface {
 }
 
 type AuthMiddleware struct {
-	tokenValidator *token.TokenValidator
+	tokenValidator AccessTokenValidator
 	logger         logger.Logger
 }
 
