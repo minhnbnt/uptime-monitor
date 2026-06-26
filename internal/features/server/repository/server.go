@@ -38,6 +38,7 @@ func (sr *ServerRepository) List(ctx context.Context, createdByID uint, limit, o
 
 	servers, err := gorm.G[domain.Server](sr.db).
 		Where("created_by_id = ?", createdByID).
+		Preload("Endpoint", nil).
 		Limit(limit).
 		Offset(offset).
 		Find(ctx)
@@ -55,7 +56,7 @@ func (sr *ServerRepository) Create(ctx context.Context, s *domain.Server) error 
 
 func (sr *ServerRepository) GetByID(ctx context.Context, id uint) (*domain.Server, error) {
 
-	server, err := gorm.G[domain.Server](sr.db).Where("id = ?", id).First(ctx)
+	server, err := gorm.G[domain.Server](sr.db).Preload("Endpoint", nil).Where("id = ?", id).First(ctx)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, fmt.Errorf("server %d: %w", id, apperrors.ErrNotFound)
 	}
