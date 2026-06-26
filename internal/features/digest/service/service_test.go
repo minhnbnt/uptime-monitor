@@ -9,6 +9,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	ontimedto "github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
+	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
 type mockUserRepo struct {
@@ -185,6 +186,188 @@ func TestSendReport_ServerError(t *testing.T) {
 	err := svc.SendReport(t.Context(), 1, time.Now())
 	if err == nil {
 		t.Fatal("expected error")
+	}
+}
+
+type mockNotificationConfigRepo struct {
+	getByUserIDFn func(ctx context.Context, userID uint) (*domain.NotificationConfig, error)
+}
+
+func (m *mockNotificationConfigRepo) GetByUserID(ctx context.Context, userID uint) (*domain.NotificationConfig, error) {
+	return m.getByUserIDFn(ctx, userID)
+}
+
+func TestBuildReport_Empty(t *testing.T) {
+	svc := emptyDigestService()
+	rows := svc.buildReport(nil, nil, nil)
+	if len(rows) != 0 {
+		t.Errorf("got %d rows, want 0", len(rows))
+	}
+}
+
+func TestBuildReport_SingleServer(t *testing.T) {
+	svc := emptyDigestService()
+	date := utils.TruncateDay(time.Now())
+	s := domain.Server{Name: "Server A"}
+	s.ID = 1
+	rows := svc.buildReport([]domain.Server{s}, []time.Time{date}, map[uint][]ontimedto.OntimeStats{
+		1: {{Date: date, Stats: 99.5}},
+	})
+	if len(rows) != 1 {
+		t.Fatalf("got %d rows, want 1", len(rows))
+	}
+	if rows[0].ServerID != 1 || rows[0].ServerName != "Server A" {
+		t.Errorf("row = %+v", rows[0])
+	}
+	if rows[0].Stats[date] != 99.5 {
+		t.Errorf("stats[date] = %f, want 99.5", rows[0].Stats[date])
+	}
+}
+
+func TestBuildReport_MultipleServersSorted(t *testing.T) {
+	svc := emptyDigestService()
+	date := utils.TruncateDay(time.Now())
+	s1 := domain.Server{Name: "Zeta"}
+	s1.ID = 1
+	s2 := domain.Server{Name: "Alpha"}
+	s2.ID = 2
+	rows := svc.buildReport([]domain.Server{s1, s2}, []time.Time{date}, nil)
+	if len(rows) != 2 {
+		t.Fatalf("got %d rows, want 2", len(rows))
+	}
+	if rows[0].ServerName != "Alpha" || rows[1].ServerName != "Zeta" {
+		t.Errorf("order: %q, %q", rows[0].ServerName, rows[1].ServerName)
+	}
+}
+
+func TestGetActiveDate_Empty(t *testing.T) {
+	got := getActiveDate(nil)
+	if len(got) != 0 {
+		t.Errorf("got %d dates, want 0", len(got))
+	}
+}
+
+func TestGetActiveDate_UniqueSorted(t *testing.T) {
+	d1 := utils.TruncateDay(time.Date(2025, 1, 3, 0, 0, 0, 0, time.UTC))
+	d2 := utils.TruncateDay(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
+	d3 := utils.TruncateDay(time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC))
+	input := map[uint][]ontimedto.OntimeStats{
+		1: {{Date: d1}, {Date: d2}},
+		2: {{Date: d3}, {Date: d1}},
+	}
+	got := getActiveDate(input)
+	if len(got) != 3 {
+		t.Fatalf("got %d dates, want 3", len(got))
+	}
+	if !got[0].Equal(d2) || !got[1].Equal(d3) || !got[2].Equal(d1) {
+		t.Errorf("got %v, want [d2 d3 d1]", got)
+	}
+}
+
+func TestSendUserDigest_UserNotFound(t *testing.T) {
+	svc := emptyDigestService()
+	svc.userRepo = &mockUserRepo{
+		findFn: func(_ context.Context, _ uint) (*domain.User, error) {
+			return nil, nil
+		},
+	}
+	err := svc.SendUserDigest(t.Context(), 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestSendUserDigest_UserError(t *testing.T) {
+	svc := emptyDigestService()
+	svc.userRepo = &mockUserRepo{
+		findFn: func(_ context.Context, _ uint) (*domain.User, error) {
+			return nil, io.ErrUnexpectedEOF
+		},
+	}
+	err := svc.SendUserDigest(t.Context(), 1)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestSendUserDigest_ConfigNotFound(t *testing.T) {
+	svc := emptyDigestService()
+	svc.userRepo = &mockUserRepo{
+		findFn: func(_ context.Context, _ uint) (*domain.User, error) {
+			return &domain.User{}, nil
+		},
+	}
+	svc.configRepo = &mockNotificationConfigRepo{
+		getByUserIDFn: func(_ context.Context, _ uint) (*domain.NotificationConfig, error) {
+			return nil, nil
+		},
+	}
+	err := svc.SendUserDigest(t.Context(), 1)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestSendUserDigest_ConfigInactive(t *testing.T) {
+	svc := emptyDigestService()
+	svc.userRepo = &mockUserRepo{
+		findFn: func(_ context.Context, _ uint) (*domain.User, error) {
+			return &domain.User{}, nil
+		},
+	}
+	svc.configRepo = &mockNotificationConfigRepo{
+		getByUserIDFn: func(_ context.Context, _ uint) (*domain.NotificationConfig, error) {
+			return &domain.NotificationConfig{Active: false}, nil
+		},
+	}
+	err := svc.SendUserDigest(t.Context(), 1)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestSendUserDigest_ConfigError(t *testing.T) {
+	svc := emptyDigestService()
+	svc.userRepo = &mockUserRepo{
+		findFn: func(_ context.Context, _ uint) (*domain.User, error) {
+			return &domain.User{}, nil
+		},
+	}
+	svc.configRepo = &mockNotificationConfigRepo{
+		getByUserIDFn: func(_ context.Context, _ uint) (*domain.NotificationConfig, error) {
+			return nil, io.ErrClosedPipe
+		},
+	}
+	err := svc.SendUserDigest(t.Context(), 1)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestSendUserDigest_Success(t *testing.T) {
+	var capturedUserID uint
+	svc := emptyDigestService()
+	svc.userRepo = &mockUserRepo{
+		findFn: func(_ context.Context, _ uint) (*domain.User, error) {
+			return &domain.User{Email: "test@test.com"}, nil
+		},
+	}
+	svc.configRepo = &mockNotificationConfigRepo{
+		getByUserIDFn: func(_ context.Context, _ uint) (*domain.NotificationConfig, error) {
+			return &domain.NotificationConfig{Active: true, FromDate: time.Now().Add(-7 * 24 * time.Hour)}, nil
+		},
+	}
+	svc.ontimeSvc = &mockOntimeSvc{
+		statsByServer: make(map[uint][]ontimedto.OntimeStats),
+	}
+	svc.mailer = &mockMailer{
+		sendFn: func(_, _ string, _ io.Reader) error {
+			return nil
+		},
+	}
+	err := svc.SendUserDigest(t.Context(), capturedUserID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

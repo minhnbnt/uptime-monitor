@@ -21,11 +21,19 @@ const (
 
 type DueHandler func(ctx context.Context, tasks iter.Seq[*domain.Endpoint])
 
+type endpointProvider interface {
+	GetBatch(ctx context.Context, ids []uint) (map[uint]*domain.Endpoint, error)
+}
+
+type scoreUpdater interface {
+	UpdateBatch(ctx context.Context, items map[uint]int64) error
+}
+
 type LoopService struct {
 	logger           logger.Logger
 	schedulerStorage *scheduler.ZSetScheduleRepository
-	scoreUpdater     *scheduler.ScoreUpdater
-	endpointProvider *scheduler.EndpointProvider
+	scoreUpdater     scoreUpdater
+	endpointProvider endpointProvider
 }
 
 func RegisterLoopService(i do.Injector) {

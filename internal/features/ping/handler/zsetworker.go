@@ -13,9 +13,14 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
+type PingService interface {
+	Ping(ctx context.Context, method, url string) (int, error)
+	Record(ctx context.Context, event *domain.ServerEvent) error
+}
+
 type ZSetWorkerRunner struct {
 	loopService *service.LoopService
-	pingService *service.PingService
+	pingService PingService
 	logger      logger.Logger
 }
 

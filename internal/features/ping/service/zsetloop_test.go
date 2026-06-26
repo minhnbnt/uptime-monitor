@@ -2,9 +2,12 @@ package service
 
 import (
 	"context"
+	"io"
+	"iter"
 	"testing"
 	"time"
 
+	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/features/ping/scheduler"
 )
 
@@ -70,4 +73,159 @@ func TestSleepCtx(t *testing.T) {
 			t.Error("sleepCtx should block for at least the duration")
 		}
 	})
+}
+
+func TestRunIteration_EmptyDue(t *testing.T) {
+	var handlerCalled bool
+	var updatesReceived map[uint]int64
+	svc := &LoopService{
+		endpointProvider: &mockEndpointProvider{
+			getBatchFn: func(_ context.Context, ids []uint) (map[uint]*domain.Endpoint, error) {
+				if len(ids) != 0 {
+					t.Errorf("expected empty ids, got %v", ids)
+				}
+				return map[uint]*domain.Endpoint{}, nil
+			},
+		},
+		scoreUpdater: &mockScoreUpdater{
+			updateBatchFn: func(_ context.Context, items map[uint]int64) error {
+				updatesReceived = items
+				return nil
+			},
+		},
+	}
+
+	err := svc.runIteration(t.Context(), []scheduler.ScheduledTask{}, func(_ context.Context, tasks iter.Seq[*domain.Endpoint]) {
+		handlerCalled = true
+		for range tasks {
+		}
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !handlerCalled {
+		t.Error("handler was not called")
+	}
+	if updatesReceived != nil {
+		t.Errorf("expected no updates, got %v", updatesReceived)
+	}
+}
+
+func TestRunIteration_SingleItem(t *testing.T) {
+	now := time.Now()
+	due := []scheduler.ScheduledTask{
+		{EndpointID: 1, Score: now.UnixMilli()},
+	}
+	var handlerEndpoints []*domain.Endpoint
+	var updatesReceived map[uint]int64
+	svc := &LoopService{
+		endpointProvider: &mockEndpointProvider{
+			getBatchFn: func(_ context.Context, ids []uint) (map[uint]*domain.Endpoint, error) {
+				return map[uint]*domain.Endpoint{
+					1: {Interval: 10 * time.Second},
+				}, nil
+			},
+		},
+		scoreUpdater: &mockScoreUpdater{
+			updateBatchFn: func(_ context.Context, items map[uint]int64) error {
+				updatesReceived = items
+				return nil
+			},
+		},
+	}
+
+	err := svc.runIteration(t.Context(), due, func(_ context.Context, tasks iter.Seq[*domain.Endpoint]) {
+		for t := range tasks {
+			handlerEndpoints = append(handlerEndpoints, t)
+		}
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(handlerEndpoints) != 1 {
+		t.Fatalf("handler got %d endpoints, want 1", len(handlerEndpoints))
+	}
+	if updatesReceived[1] != due[0].Score+10000 {
+		t.Errorf("update score = %d, want %d", updatesReceived[1], due[0].Score+10000)
+	}
+}
+
+func TestRunIteration_MultipleItems(t *testing.T) {
+	now := time.Now()
+	due := []scheduler.ScheduledTask{
+		{EndpointID: 1, Score: now.UnixMilli()},
+		{EndpointID: 2, Score: now.UnixMilli() + 5000},
+	}
+	var handlerEndpoints []*domain.Endpoint
+	var updatesReceived map[uint]int64
+	svc := &LoopService{
+		endpointProvider: &mockEndpointProvider{
+			getBatchFn: func(_ context.Context, ids []uint) (map[uint]*domain.Endpoint, error) {
+				return map[uint]*domain.Endpoint{
+					1: {Interval: 10 * time.Second},
+					2: {Interval: 30 * time.Second},
+				}, nil
+			},
+		},
+		scoreUpdater: &mockScoreUpdater{
+			updateBatchFn: func(_ context.Context, items map[uint]int64) error {
+				updatesReceived = items
+				return nil
+			},
+		},
+	}
+
+	err := svc.runIteration(t.Context(), due, func(_ context.Context, tasks iter.Seq[*domain.Endpoint]) {
+		for t := range tasks {
+			handlerEndpoints = append(handlerEndpoints, t)
+		}
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(handlerEndpoints) != 2 {
+		t.Fatalf("handler got %d endpoints, want 2", len(handlerEndpoints))
+	}
+	if updatesReceived[1] != due[0].Score+10000 {
+		t.Errorf("update[1] score = %d, want %d", updatesReceived[1], due[0].Score+10000)
+	}
+	if updatesReceived[2] != due[1].Score+30000 {
+		t.Errorf("update[2] score = %d, want %d", updatesReceived[2], due[1].Score+30000)
+	}
+}
+
+func TestRunIteration_ProviderError(t *testing.T) {
+	svc := &LoopService{
+		endpointProvider: &mockEndpointProvider{
+			getBatchFn: func(_ context.Context, _ []uint) (map[uint]*domain.Endpoint, error) {
+				return nil, io.ErrUnexpectedEOF
+			},
+		},
+	}
+	err := svc.runIteration(t.Context(), []scheduler.ScheduledTask{{EndpointID: 1}}, func(_ context.Context, _ iter.Seq[*domain.Endpoint]) {})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestRunIteration_UpdaterError(t *testing.T) {
+	now := time.Now()
+	svc := &LoopService{
+		endpointProvider: &mockEndpointProvider{
+			getBatchFn: func(_ context.Context, _ []uint) (map[uint]*domain.Endpoint, error) {
+				return map[uint]*domain.Endpoint{
+					1: {Interval: 10 * time.Second},
+				}, nil
+			},
+		},
+		scoreUpdater: &mockScoreUpdater{
+			updateBatchFn: func(_ context.Context, _ map[uint]int64) error {
+				return io.ErrClosedPipe
+			},
+		},
+	}
+	err := svc.runIteration(t.Context(), []scheduler.ScheduledTask{{EndpointID: 1, Score: now.UnixMilli()}}, func(_ context.Context, _ iter.Seq[*domain.Endpoint]) {})
+	if err == nil {
+		t.Fatal("expected error")
+	}
 }

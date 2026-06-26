@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/xuri/excelize/v2"
 
+	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	serverdto "github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
@@ -332,6 +335,122 @@ func TestParseImportFile(t *testing.T) {
 			t.Fatal("expected error for invalid file")
 		}
 	})
+}
+
+func TestGenerateExportFile_Empty(t *testing.T) {
+	var buf bytes.Buffer
+	err := (&ExcelGenerator{}).GenerateExportFile(&buf, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	xl, err := excelize.OpenReader(&buf)
+	if err != nil {
+		t.Fatalf("not a valid xlsx: %v", err)
+	}
+	defer xl.Close()
+	rows, err := xl.GetRows("Sheet1")
+	if err != nil {
+		t.Fatalf("get rows: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 row (header only), got %d", len(rows))
+	}
+}
+
+func TestGenerateExportFile_SingleServerOnline(t *testing.T) {
+	now := time.Date(2025, 6, 15, 10, 0, 0, 0, time.UTC)
+	var buf bytes.Buffer
+	servers := []serverdto.Server{
+		{
+			Name:          "Test Server",
+			MonitorStatus: domain.StatusOn,
+			Endpoint:      &serverdto.Endpoint{URL: "https://example.com/health"},
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		},
+	}
+	err := (&ExcelGenerator{}).GenerateExportFile(&buf, servers)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	xl, err := excelize.OpenReader(&buf)
+	if err != nil {
+		t.Fatalf("not a valid xlsx: %v", err)
+	}
+	defer xl.Close()
+	rows, err := xl.GetRows("Sheet1")
+	if err != nil {
+		t.Fatalf("get rows: %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 rows, got %d", len(rows))
+	}
+	if rows[1][1] != "online" {
+		t.Errorf("status = %q, want online", rows[1][1])
+	}
+	if rows[1][2] != "https://example.com/health" {
+		t.Errorf("url = %q", rows[1][2])
+	}
+}
+
+func TestGenerateExportFile_SingleServerOfflineNoEndpoint(t *testing.T) {
+	var buf bytes.Buffer
+	servers := []serverdto.Server{
+		{
+			Name:          "Offline Server",
+			MonitorStatus: domain.StatusOff,
+			Endpoint:      nil,
+		},
+	}
+	err := (&ExcelGenerator{}).GenerateExportFile(&buf, servers)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	xl, err := excelize.OpenReader(&buf)
+	if err != nil {
+		t.Fatalf("not a valid xlsx: %v", err)
+	}
+	defer xl.Close()
+	rows, err := xl.GetRows("Sheet1")
+	if err != nil {
+		t.Fatalf("get rows: %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 rows, got %d", len(rows))
+	}
+	if rows[1][1] != "offline" {
+		t.Errorf("status = %q, want offline", rows[1][1])
+	}
+	if rows[1][2] != "" {
+		t.Errorf("url = %q, want empty", rows[1][2])
+	}
+}
+
+func TestGenerateExportFile_MultipleServers(t *testing.T) {
+	var buf bytes.Buffer
+	servers := []serverdto.Server{
+		{Name: "Alpha", MonitorStatus: domain.StatusOn, Endpoint: &serverdto.Endpoint{URL: "https://a.com"}},
+		{Name: "Beta", MonitorStatus: domain.StatusOff, Endpoint: nil},
+	}
+	err := (&ExcelGenerator{}).GenerateExportFile(&buf, servers)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	xl, err := excelize.OpenReader(&buf)
+	if err != nil {
+		t.Fatalf("not a valid xlsx: %v", err)
+	}
+	defer xl.Close()
+	rows, err := xl.GetRows("Sheet1")
+	if err != nil {
+		t.Fatalf("get rows: %v", err)
+	}
+	if len(rows) != 3 {
+		t.Fatalf("expected 3 rows, got %d", len(rows))
+	}
+	if rows[1][0] != "Alpha" || rows[2][0] != "Beta" {
+		t.Errorf("names: %q, %q", rows[1][0], rows[2][0])
+	}
 }
 
 func TestGenerateTemplate(t *testing.T) {
