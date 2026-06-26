@@ -17,9 +17,13 @@ import (
 )
 
 func NewBatcher(repo OntineRepository, cache *ontimerepo.OntimeCacheRepository, l logger.Logger) *Batcher {
+	var cacheInterface OntimeCacheRepository
+	if cache != nil {
+		cacheInterface = cache
+	}
 	return &Batcher{
 		ontineRepository:      repo,
-		ontimeCacheRepository: cache,
+		ontimeCacheRepository: cacheInterface,
 		logger:                l,
 		calculator:            OntimeCalculator{},
 	}

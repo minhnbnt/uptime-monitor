@@ -89,7 +89,7 @@ func TestSearchIntegration_Search(t *testing.T) {
 	})
 
 	t.Run("pagination", func(t *testing.T) {
-		results, total, err := s.Search(t.Context(), dto.SearchParams{From: 0, To: 2}, 1)
+		results, total, err := s.Search(t.Context(), dto.SearchParams{SortBy: "name", From: 0, To: 2}, 1)
 		if err != nil {
 			t.Fatalf("Search error: %v", err)
 		}
