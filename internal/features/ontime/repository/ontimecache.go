@@ -34,6 +34,10 @@ type OntimeCacheRepository struct {
 	client *redis.Client
 }
 
+func NewOntimeCacheRepository(client *redis.Client) *OntimeCacheRepository {
+	return &OntimeCacheRepository{client: client}
+}
+
 func RegisterOntimeCacheRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*OntimeCacheRepository, error) {
 		wrapper := do.MustInvoke[*config.RedisClientWrapper](i)

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"gorm.io/driver/postgres"
@@ -24,11 +25,16 @@ import (
 // ---------- container lifecycle ----------
 
 var testDB *gorm.DB
+var testRedis *redis.Client
 
 func TestMain(m *testing.M) {
 	flag.Parse()
 	if !testing.Short() {
 		ctx := context.Background()
+
+		redisContainer, redisClient := startRedis(ctx)
+		defer func() { _ = redisContainer.Terminate(ctx) }()
+		testRedis = redisClient
 
 		container, dsn := startPostgres(ctx)
 		defer func() { _ = container.Terminate(ctx) }()
@@ -104,6 +110,67 @@ func startPostgres(ctx context.Context) (testcontainers.Container, string) {
 }
 
 // ---------- helpers ----------
+
+func startRedis(ctx context.Context) (testcontainers.Container, *redis.Client) {
+	req := testcontainers.ContainerRequest{
+		Image:        "redis:8-alpine",
+		ExposedPorts: []string{"6379/tcp"},
+		WaitingFor:   wait.ForLog("Ready to accept connections tcp").WithStartupTimeout(60 * time.Second),
+	}
+	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "start redis container: %v\n", err)
+		os.Exit(1)
+	}
+
+	host, err := container.Host(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "container host: %v\n", err)
+		os.Exit(1)
+	}
+	port, err := container.MappedPort(ctx, "6379")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "container port: %v\n", err)
+		os.Exit(1)
+	}
+
+	client := redis.NewClient(&redis.Options{
+		Addr: fmt.Sprintf("%s:%s", host, port.Port()),
+	})
+
+	return container, client
+}
+
+func cleanRedis(tb testing.TB) {
+	tb.Helper()
+	if testing.Short() {
+		tb.Skip("skipping integration test")
+	}
+	if err := testRedis.FlushDB(context.Background()).Err(); err != nil {
+		tb.Fatalf("flush db: %v", err)
+	}
+}
+
+func newServiceWithRedis(tb testing.TB) *OntimeService {
+	tb.Helper()
+
+	if testing.Short() {
+		tb.Skip("skipping integration test")
+		return nil
+	}
+
+	return &OntimeService{
+		serverRepository: serverrepo.NewServerRepository(testDB),
+		batcher: NewBatcher(
+			ontimerepo.NewOntineRepository(testDB),
+			ontimerepo.NewOntimeCacheRepository(testRedis),
+			logger.NewMockLogger(),
+		),
+	}
+}
 
 func newService(tb testing.TB) *OntimeService {
 	tb.Helper()
@@ -270,6 +337,122 @@ func TestIntegration_BatchGetOntime_EmptyRequest(t *testing.T) {
 	}
 	if len(results) != 0 {
 		t.Errorf("len(results) = %d, want 0", len(results))
+	}
+}
+
+// ---------- BatchGetOntime with real Redis cache ----------
+
+func TestIntegration_BatchGetOntime_CacheHit(t *testing.T) {
+	truncateTables(t)
+	cleanRedis(t)
+
+	now := oDay(2026, 6, 1)
+	svc := newServiceWithRedis(t)
+
+	key := fmt.Sprintf("ontime:%d:%s:stats", 1, now.Format("2006-01-02"))
+	if err := testRedis.Set(t.Context(), key, "99.50", 0).Err(); err != nil {
+		t.Fatalf("seed redis: %v", err)
+	}
+
+	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: now}}
+	results, err := svc.batcher.BatchGetOntime(t.Context(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 1 || len(results[0].Result) != 1 {
+		t.Fatalf("unexpected result shape: %+v", results)
+	}
+	if results[0].Result[0].Stats != 99.50 {
+		t.Errorf("Stats = %f, want 99.50", results[0].Result[0].Stats)
+	}
+}
+
+func TestIntegration_BatchGetOntime_CacheMissThenWarm(t *testing.T) {
+	truncateTables(t)
+	cleanRedis(t)
+
+	now := oDay(2026, 6, 1)
+	seedServer(t, 1, "s1", now.Add(-48*time.Hour))
+	seedEndpoint(t, 1, 1)
+	seedEvent(t, 1, domain.StatusOn, oTm(2026, 6, 1, 6, 0))
+
+	svc := newServiceWithRedis(t)
+	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: now}}
+
+	results, err := svc.batcher.BatchGetOntime(t.Context(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 1 || len(results[0].Result) != 1 {
+		t.Fatalf("unexpected result shape: %+v", results)
+	}
+	if results[0].Result[0].Stats <= 0 {
+		t.Errorf("Stats = %f, want > 0", results[0].Result[0].Stats)
+	}
+
+	key := fmt.Sprintf("ontime:%d:%s:stats", 1, now.Format("2006-01-02"))
+	val, err := testRedis.Get(t.Context(), key).Result()
+	if err != nil {
+		t.Fatalf("Get cached key: %v", err)
+	}
+	if val == "" {
+		t.Error("expected non-empty cached value")
+	}
+}
+
+func TestIntegration_BatchGetOntime_PartialCacheHit(t *testing.T) {
+	truncateTables(t)
+	cleanRedis(t)
+
+	now := oDay(2026, 6, 1)
+	seedServer(t, 1, "s1", now.Add(-48*time.Hour))
+	seedEndpoint(t, 1, 1)
+	seedEvent(t, 1, domain.StatusOn, oTm(2026, 6, 1, 6, 0))
+	seedServer(t, 2, "s2", now.Add(-48*time.Hour))
+	seedEndpoint(t, 2, 2)
+	seedEvent(t, 2, domain.StatusOn, oTm(2026, 6, 1, 0, 0))
+
+	key := fmt.Sprintf("ontime:%d:%s:stats", 1, now.Format("2006-01-02"))
+	if err := testRedis.Set(t.Context(), key, "88.00", 0).Err(); err != nil {
+		t.Fatalf("seed redis: %v", err)
+	}
+
+	svc := newServiceWithRedis(t)
+	req := []dto.BatchGetOntimeItem{
+		{ServerID: 1, Date: now},
+		{ServerID: 2, Date: now},
+	}
+
+	results, err := svc.batcher.BatchGetOntime(t.Context(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("len(results) = %d, want 2", len(results))
+	}
+
+	for _, r := range results {
+		if len(r.Result) != 1 {
+			t.Fatalf("server %d: got %d results, want 1", r.ServerID, len(r.Result))
+		}
+	}
+
+	for _, r := range results {
+		if r.ServerID == 1 && r.Result[0].Stats != 88.00 {
+			t.Errorf("server 1: Stats = %f, want 88.00", r.Result[0].Stats)
+		}
+		if r.ServerID == 2 && r.Result[0].Stats <= 0 {
+			t.Errorf("server 2: Stats = %f, want > 0", r.Result[0].Stats)
+		}
+	}
+
+	key2 := fmt.Sprintf("ontime:%d:%s:stats", 2, now.Format("2006-01-02"))
+	val, err := testRedis.Get(t.Context(), key2).Result()
+	if err != nil {
+		t.Fatalf("Get cached key for server 2: %v", err)
+	}
+	if val == "" {
+		t.Error("expected server 2 to be cached after miss")
 	}
 }
 
