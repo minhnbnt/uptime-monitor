@@ -37,6 +37,18 @@ func (a2 *Argon2Config) GetKeyLength() uint32 {
 	return a2.config.KeyLength
 }
 
+func NewArgon2Config(memory, iterations uint32, parallelism uint8, saltLength, keyLength uint32) *Argon2Config {
+	return &Argon2Config{
+		config: Argon2Cfg{
+			Memory:      memory,
+			Iterations:  iterations,
+			Parallelism: parallelism,
+			SaltLength:  saltLength,
+			KeyLength:   keyLength,
+		},
+	}
+}
+
 type Argon2Cfg struct {
 	Memory      uint32 `mapstructure:"memory"`
 	Iterations  uint32 `mapstructure:"iterations"`

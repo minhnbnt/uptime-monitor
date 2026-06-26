@@ -4,7 +4,17 @@ import (
 	"context"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/features/ping/service"
 )
+
+type captureHandlerLoopRunner struct {
+	capturedHandler service.DueHandler
+}
+
+func (c *captureHandlerLoopRunner) Run(_ context.Context, dueHandler service.DueHandler) error {
+	c.capturedHandler = dueHandler
+	return nil
+}
 
 type mockPingService struct {
 	pingFn   func(ctx context.Context, method, url string) (int, error)

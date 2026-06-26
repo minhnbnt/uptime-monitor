@@ -18,8 +18,12 @@ type PingService interface {
 	Record(ctx context.Context, event *domain.ServerEvent) error
 }
 
+type LoopRunner interface {
+	Run(ctx context.Context, dueHandler service.DueHandler) error
+}
+
 type ZSetWorkerRunner struct {
-	loopService *service.LoopService
+	loopService LoopRunner
 	pingService PingService
 	logger      logger.Logger
 }

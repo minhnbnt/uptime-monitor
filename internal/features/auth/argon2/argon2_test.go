@@ -3,7 +3,72 @@ package argon2
 import (
 	"encoding/base64"
 	"testing"
+
+	"github.com/minhnbnt/uptime-monitor/internal/config"
 )
+
+func testEncoder() *Argon2PasswordEncoder {
+	return &Argon2PasswordEncoder{
+		config: config.NewArgon2Config(64*1024, 2, 1, 16, 32),
+	}
+}
+
+func TestVerify_ValidPassword(t *testing.T) {
+	encoder := testEncoder()
+	hashed, err := encoder.Encode("correct-password")
+	if err != nil {
+		t.Fatalf("Encode failed: %v", err)
+	}
+	match, err := encoder.Verify("correct-password", hashed)
+	if err != nil {
+		t.Fatalf("Verify failed: %v", err)
+	}
+	if !match {
+		t.Error("expected match for correct password")
+	}
+}
+
+func TestVerify_WrongPassword(t *testing.T) {
+	encoder := testEncoder()
+	hashed, err := encoder.Encode("real-password")
+	if err != nil {
+		t.Fatalf("Encode failed: %v", err)
+	}
+	match, err := encoder.Verify("wrong-password", hashed)
+	if err != nil {
+		t.Fatalf("Verify failed: %v", err)
+	}
+	if match {
+		t.Error("expected no match for wrong password")
+	}
+}
+
+func TestVerify_InvalidHash(t *testing.T) {
+	encoder := testEncoder()
+	_, err := encoder.Verify("password", "not-a-valid-argon2-hash")
+	if err == nil {
+		t.Fatal("expected error for invalid hash")
+	}
+}
+
+func TestVerify_IncompatibleVersion(t *testing.T) {
+	encoder := testEncoder()
+	salt := base64.RawStdEncoding.EncodeToString([]byte("test-salt-12345678"))
+	hash := base64.RawStdEncoding.EncodeToString([]byte("test-hash-value-123456789012"))
+	badHash := "$argon2id$v=99$m=65536,t=2,p=1$" + salt + "$" + hash
+	_, err := encoder.Verify("password", badHash)
+	if err != ErrIncompatibleVersion {
+		t.Errorf("got %v, want ErrIncompatibleVersion", err)
+	}
+}
+
+func TestVerify_EmptyHash(t *testing.T) {
+	encoder := testEncoder()
+	_, err := encoder.Verify("password", "")
+	if err == nil {
+		t.Fatal("expected error for empty hash")
+	}
+}
 
 func TestDecodeArgon2Hash(t *testing.T) {
 	salt := base64.RawStdEncoding.EncodeToString([]byte("test-salt-123456"))
