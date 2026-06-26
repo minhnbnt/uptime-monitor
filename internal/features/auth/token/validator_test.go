@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/samber/do/v2"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/jwt"
@@ -193,6 +194,108 @@ func TestValidateRefreshToken_Malformed(t *testing.T) {
 	_, _, err := tv.ValidateRefreshToken(t.Context(), "not-a-valid-token")
 	if err == nil {
 		t.Fatal("expected error for malformed token")
+	}
+}
+
+func TestValidateAccessToken_InvalidSubject(t *testing.T) {
+	p, tc := setupProviderWithConfig(t)
+	tv := &TokenValidator{provider: p, tokenConfig: tc, logger: logger.NewMockLogger()}
+
+	token, err := p.NewToken(tc.GetAccessTokenIssuer(), map[string]any{
+		"sub": 12345,
+		"exp": time.Now().Add(15 * time.Minute).Unix(),
+	})
+	if err != nil {
+		t.Fatalf("NewToken error: %v", err)
+	}
+
+	_, err = tv.ValidateAccessToken(token)
+	if err == nil {
+		t.Fatal("expected error for invalid subject")
+	}
+}
+
+func TestValidateAccessToken_NonNumericSubject(t *testing.T) {
+	p, tc := setupProviderWithConfig(t)
+	tv := &TokenValidator{provider: p, tokenConfig: tc, logger: logger.NewMockLogger()}
+
+	token, err := p.NewToken(tc.GetAccessTokenIssuer(), map[string]any{
+		"sub": "not-a-number",
+		"exp": time.Now().Add(15 * time.Minute).Unix(),
+	})
+	if err != nil {
+		t.Fatalf("NewToken error: %v", err)
+	}
+
+	_, err = tv.ValidateAccessToken(token)
+	if err == nil {
+		t.Fatal("expected error for non-numeric subject")
+	}
+}
+
+func TestValidateRefreshToken_InvalidSubject(t *testing.T) {
+	p, tc := setupProviderWithConfig(t)
+	tv := &TokenValidator{provider: p, tokenConfig: tc, revokedTokenRepo: &mockRevokedTokenRepo{}, logger: logger.NewMockLogger()}
+
+	token, err := p.NewToken(tc.GetRefreshTokenIssuer(), map[string]any{
+		"sub": 12345,
+		"jti": "0195f0b0-0000-7000-8000-000000000000",
+		"exp": time.Now().Add(7 * 24 * time.Hour).Unix(),
+	})
+	if err != nil {
+		t.Fatalf("NewToken error: %v", err)
+	}
+
+	_, _, err = tv.ValidateRefreshToken(t.Context(), token)
+	if err == nil {
+		t.Fatal("expected error for invalid subject")
+	}
+}
+
+func TestValidateRefreshToken_NonNumericSubject(t *testing.T) {
+	p, tc := setupProviderWithConfig(t)
+	tv := &TokenValidator{provider: p, tokenConfig: tc, revokedTokenRepo: &mockRevokedTokenRepo{}, logger: logger.NewMockLogger()}
+
+	token, err := p.NewToken(tc.GetRefreshTokenIssuer(), map[string]any{
+		"sub": "not-a-number",
+		"jti": "0195f0b0-0000-7000-8000-000000000000",
+		"exp": time.Now().Add(7 * 24 * time.Hour).Unix(),
+	})
+	if err != nil {
+		t.Fatalf("NewToken error: %v", err)
+	}
+
+	_, _, err = tv.ValidateRefreshToken(t.Context(), token)
+	if err == nil {
+		t.Fatal("expected error for non-numeric subject")
+	}
+}
+
+func TestValidateRefreshToken_IsRevokedError(t *testing.T) {
+	p, tc := setupProviderWithConfig(t)
+	tv := &TokenValidator{
+		provider:    p,
+		tokenConfig: tc,
+		revokedTokenRepo: &mockRevokedTokenRepo{
+			isRevokedFn: func(_ context.Context, _ string) (bool, error) {
+				return false, assert.AnError
+			},
+		},
+		logger: logger.NewMockLogger(),
+	}
+
+	token, err := p.NewToken(tc.GetRefreshTokenIssuer(), map[string]any{
+		"sub": "42",
+		"jti": "0195f0b0-0000-7000-8000-000000000000",
+		"exp": time.Now().Add(7 * 24 * time.Hour).Unix(),
+	})
+	if err != nil {
+		t.Fatalf("NewToken error: %v", err)
+	}
+
+	_, _, err = tv.ValidateRefreshToken(t.Context(), token)
+	if err == nil {
+		t.Fatal("expected error when IsRevoked fails")
 	}
 }
 
