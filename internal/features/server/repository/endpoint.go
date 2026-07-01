@@ -16,10 +16,16 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
+type endpointMetaCache interface {
+	SetMulti(ctx context.Context, endpoints []domain.Endpoint) error
+	Delete(ctx context.Context, id uint) error
+}
+
 type EndpointRepository struct {
 	db          *gorm.DB
 	scheduler   scheduler.SchedulerRepository
 	statusStore *monitorrepo.RedisServerEventRepository
+	metaCache   endpointMetaCache
 }
 
 func NewEndpointRepository(db *gorm.DB) *EndpointRepository {
@@ -59,6 +65,7 @@ func RegisterEndpointRepository(i do.Injector) {
 			db:          dbWrapper.GetDB(),
 			scheduler:   getSchedulerRepository(i),
 			statusStore: do.MustInvoke[*monitorrepo.RedisServerEventRepository](i),
+			metaCache:   do.MustInvoke[*scheduler.EndpointMetaCache](i),
 		}, nil
 	})
 }
@@ -98,6 +105,10 @@ func (er *EndpointRepository) DeleteByServerID(ctx context.Context, serverID uin
 			return fmt.Errorf("failed to delete status for endpoint %d: %w", ep.ID, err)
 		}
 
+		if err := er.metaCache.Delete(ctx, ep.ID); err != nil {
+			return fmt.Errorf("failed to delete meta cache for endpoint %d: %w", ep.ID, err)
+		}
+
 		return nil
 	})
 }
@@ -120,7 +131,11 @@ func (er *EndpointRepository) UpsertEndpoint(ctx context.Context, endpoint domai
 			return err
 		}
 
-		return er.scheduler.Register(ctx, &endpoint)
+		if err := er.scheduler.Register(ctx, &endpoint); err != nil {
+			return err
+		}
+
+		return er.metaCache.Delete(ctx, endpoint.ID)
 	})
 }
 
@@ -147,6 +162,14 @@ func (er *EndpointRepository) BatchCreateEndpoints(ctx context.Context, endpoint
 
 	if err := result.Error; err != nil {
 		return fmt.Errorf("failed to batch create endpoints: %w", err)
+	}
+
+	if err := er.scheduler.RegisterBatch(ctx, endpoints); err != nil {
+		return fmt.Errorf("failed to batch register endpoints: %w", err)
+	}
+
+	if err := er.metaCache.SetMulti(ctx, endpoints); err != nil {
+		return fmt.Errorf("failed to set meta cache: %w", err)
 	}
 
 	return nil

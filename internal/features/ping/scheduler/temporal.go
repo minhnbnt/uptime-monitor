@@ -6,6 +6,7 @@ import (
 
 	"github.com/samber/do/v2"
 	temporalclient "go.temporal.io/sdk/client"
+	"golang.org/x/sync/errgroup"
 
 	temporalcfg "github.com/minhnbnt/uptime-monitor/internal/config/temporal"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
@@ -14,6 +15,7 @@ import (
 
 type SchedulerRepository interface {
 	Register(ctx context.Context, endpoint *domain.Endpoint) error
+	RegisterBatch(ctx context.Context, endpoints []domain.Endpoint) error
 	Unregister(ctx context.Context, endpointID uint) error
 }
 
@@ -72,6 +74,19 @@ func (tsr *TemporalSchedulerRepository) Register(ctx context.Context, endpoint *
 
 	_, err := tsr.client.Create(ctx, scheduleOptions)
 	return err
+}
+
+func (tsr *TemporalSchedulerRepository) RegisterBatch(ctx context.Context, endpoints []domain.Endpoint) error {
+
+	group, ctx := errgroup.WithContext(ctx)
+
+	for i := range endpoints {
+		group.Go(func() error {
+			return tsr.Register(ctx, &endpoints[i])
+		})
+	}
+
+	return group.Wait()
 }
 
 func (tsr *TemporalSchedulerRepository) Unregister(ctx context.Context, endpointID uint) error {

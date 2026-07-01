@@ -113,7 +113,9 @@ func (s *LoopService) Run(ctx context.Context, dueHandler DueHandler) error {
 			continue
 		}
 
-		sleepCtx(ctx, getSleepDuration(next, hasNext))
+		if len(due) != defaultClaimLimit {
+			sleepCtx(ctx, getSleepDuration(next, hasNext))
+		}
 	}
 
 	return ctx.Err()

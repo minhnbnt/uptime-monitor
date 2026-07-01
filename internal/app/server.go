@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/rs/cors"
@@ -81,7 +82,13 @@ func RunWebServer(ctx context.Context, i do.Injector, dev bool) {
 		}
 	}()
 
-	if err := httpServer.ListenAndServe(); err != nil {
+	err = httpServer.ListenAndServe()
+	if errors.Is(err, http.ErrServerClosed) {
+		logger.Info("server closed")
+		return
+	}
+
+	if err != nil {
 		logger.Panic("failed to run server", zap.Error(err))
 	}
 }

@@ -14,7 +14,10 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 )
 
-const metaCachePrefix = "scheduler:meta:"
+const (
+	metaCachePrefix = "scheduler:meta:"
+	metaCacheTTL    = 1 * time.Hour
+)
 
 func metaCacheKey(id uint) string {
 	return fmt.Sprintf("%s%d", metaCachePrefix, id)
@@ -99,12 +102,38 @@ func (c *EndpointMetaCache) SetMulti(ctx context.Context, endpoints []domain.End
 	pipe := c.client.Pipeline()
 
 	for _, endpoint := range endpoints {
+
+		key := metaCacheKey(endpoint.ID)
+
 		pipe.HSet(
-			ctx, metaCacheKey(endpoint.ID),
+			ctx, key,
 			"url", endpoint.URL, "method", endpoint.Method,
 			"expected_code", fmt.Sprint(endpoint.ExpectedCode),
 			"interval_ns", fmt.Sprint(endpoint.Interval.Nanoseconds()),
 		)
+
+		pipe.Expire(ctx, key, metaCacheTTL)
+	}
+
+	_, err := pipe.Exec(ctx)
+
+	return err
+}
+
+func (c *EndpointMetaCache) Delete(ctx context.Context, id uint) error {
+	return c.DeleteMulti(ctx, []uint{id})
+}
+
+func (c *EndpointMetaCache) DeleteMulti(ctx context.Context, ids []uint) error {
+
+	if len(ids) == 0 {
+		return nil
+	}
+
+	pipe := c.client.Pipeline()
+
+	for _, id := range ids {
+		pipe.Del(ctx, metaCacheKey(id))
 	}
 
 	_, err := pipe.Exec(ctx)
