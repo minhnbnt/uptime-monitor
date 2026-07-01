@@ -114,9 +114,12 @@ var claimScript = redis.NewScript(`
 
 	local lockScore = tonumber(ARGV[1]) + tonumber(ARGV[3])
 
+	local zaddArgs = {KEYS[1]}
 	for i = 1, #due, 2 do
-		redis.call("ZADD", KEYS[1], lockScore, due[i])
+		table.insert(zaddArgs, lockScore)
+		table.insert(zaddArgs, due[i])
 	end
+	redis.call("ZADD", unpack(zaddArgs))
 
 	return {due, next}
 `)
