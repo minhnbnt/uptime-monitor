@@ -8,6 +8,7 @@ import (
 
 type EventSaver interface {
 	Save(ctx context.Context, event *domain.ServerEvent) error
+	GetLatestStatus(ctx context.Context, endpointID uint) (domain.ServerStatus, error)
 }
 
 type StatusStore interface {

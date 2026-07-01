@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -30,6 +32,23 @@ func RegisterServerEventRepository(i do.Injector) {
 
 func (r *ServerEventRepository) Save(ctx context.Context, event *domain.ServerEvent) error {
 	return gorm.G[domain.ServerEvent](r.db).Create(ctx, event)
+}
+
+func (r *ServerEventRepository) GetLatestStatus(ctx context.Context, endpointID uint) (domain.ServerStatus, error) {
+
+	event, err := gorm.G[domain.ServerEvent](r.db).
+		Where("endpoint_id = ?", endpointID).
+		Order("time DESC").
+		First(ctx)
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("failed to get latest status: %w", err)
+	}
+
+	return event.Status, nil
 }
 
 type EnrichedEvent struct {

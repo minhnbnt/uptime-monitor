@@ -30,6 +30,29 @@ func RegisterRecordStatusWorker(i do.Injector) {
 	})
 }
 
+func (w *RecordStatusWorker) handleOnCacheMiss(ctx context.Context, event *domain.ServerEvent) (bool, error) {
+
+	dbStatus, err := w.eventSaver.GetLatestStatus(ctx, event.EndpointID)
+	if err != nil {
+
+		w.logger.Warn(
+			"failed to get latest status from db",
+			logger.Int64("endpointID", int64(event.EndpointID)),
+			logger.Error(err),
+		)
+
+		// Unsure — proceed to save; ontime calculator handles duplicates
+		return true, nil
+	}
+
+	if dbStatus == event.Status {
+		return false, w.statusStore.SetStatus(ctx, event.EndpointID, event.Status)
+	}
+
+	// Different status or no events yet — real transition
+	return true, nil
+}
+
 func (w *RecordStatusWorker) Record(ctx context.Context, event *domain.ServerEvent) error {
 
 	event.Time = time.Now()
@@ -46,6 +69,19 @@ func (w *RecordStatusWorker) Record(ctx context.Context, event *domain.ServerEve
 
 	if lastStatus == event.Status {
 		return nil
+	}
+
+	isCacheMiss := lastStatus == ""
+	if isCacheMiss {
+
+		proceed, err := w.handleOnCacheMiss(ctx, event)
+		if err != nil {
+			return err
+		}
+
+		if !proceed {
+			return nil
+		}
 	}
 
 	if err := w.eventSaver.Save(ctx, event); err != nil {

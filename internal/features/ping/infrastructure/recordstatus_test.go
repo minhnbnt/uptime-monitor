@@ -24,11 +24,19 @@ func (m *mockStatusStore) SetStatus(ctx context.Context, endpointID uint, status
 }
 
 type mockEventSaver struct {
-	saveFn func(ctx context.Context, event *domain.ServerEvent) error
+	saveFn            func(ctx context.Context, event *domain.ServerEvent) error
+	getLatestStatusFn func(ctx context.Context, endpointID uint) (domain.ServerStatus, error)
 }
 
 func (m *mockEventSaver) Save(ctx context.Context, event *domain.ServerEvent) error {
 	return m.saveFn(ctx, event)
+}
+
+func (m *mockEventSaver) GetLatestStatus(ctx context.Context, endpointID uint) (domain.ServerStatus, error) {
+	if m.getLatestStatusFn != nil {
+		return m.getLatestStatusFn(ctx, endpointID)
+	}
+	return "", nil
 }
 
 type mockEndpointStatusUpdater struct {
@@ -168,6 +176,152 @@ func TestRecordStatusWorker_Record(t *testing.T) {
 		err := w.Record(t.Context(), event(1, domain.StatusOff))
 		if err == nil {
 			t.Fatal("expected error")
+		}
+	})
+
+	t.Run("cache miss -> same status in db -> refresh cache only", func(t *testing.T) {
+		var saveCalled bool
+		var setCalled bool
+		w := &RecordStatusWorker{
+			endpointStatusUpdater: &mockEndpointStatusUpdater{},
+			statusStore: &mockStatusStore{
+				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
+					return "", nil // cache expired
+				},
+				setStatusFn: func(_ context.Context, _ uint, _ domain.ServerStatus) error {
+					setCalled = true
+					return nil
+				},
+			},
+			eventSaver: &mockEventSaver{
+				saveFn: func(_ context.Context, _ *domain.ServerEvent) error {
+					saveCalled = true
+					return nil
+				},
+				getLatestStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
+					return domain.StatusOn, nil // same as current
+				},
+			},
+			logger: logger.NewMockLogger(),
+		}
+
+		err := w.Record(t.Context(), event(1, domain.StatusOn))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if saveCalled {
+			t.Error("Save should not be called when DB has same status")
+		}
+		if !setCalled {
+			t.Error("SetStatus should be called to refresh cache")
+		}
+	})
+
+	t.Run("cache miss -> different status in db -> save", func(t *testing.T) {
+		var saveCalled bool
+		var setCalled bool
+		w := &RecordStatusWorker{
+			endpointStatusUpdater: &mockEndpointStatusUpdater{},
+			statusStore: &mockStatusStore{
+				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
+					return "", nil
+				},
+				setStatusFn: func(_ context.Context, _ uint, _ domain.ServerStatus) error {
+					setCalled = true
+					return nil
+				},
+			},
+			eventSaver: &mockEventSaver{
+				saveFn: func(_ context.Context, _ *domain.ServerEvent) error {
+					saveCalled = true
+					return nil
+				},
+				getLatestStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
+					return domain.StatusOff, nil // different from current
+				},
+			},
+			logger: logger.NewMockLogger(),
+		}
+
+		err := w.Record(t.Context(), event(1, domain.StatusOn))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !saveCalled {
+			t.Error("Save should be called for different status")
+		}
+		if !setCalled {
+			t.Error("SetStatus should be called")
+		}
+	})
+
+	t.Run("cache miss -> no events in db -> save", func(t *testing.T) {
+		var saveCalled bool
+		w := &RecordStatusWorker{
+			endpointStatusUpdater: &mockEndpointStatusUpdater{},
+			statusStore: &mockStatusStore{
+				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
+					return "", nil
+				},
+				setStatusFn: func(_ context.Context, _ uint, _ domain.ServerStatus) error {
+					return nil
+				},
+			},
+			eventSaver: &mockEventSaver{
+				saveFn: func(_ context.Context, _ *domain.ServerEvent) error {
+					saveCalled = true
+					return nil
+				},
+				getLatestStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
+					return "", nil // no events
+				},
+			},
+			logger: logger.NewMockLogger(),
+		}
+
+		err := w.Record(t.Context(), event(1, domain.StatusOn))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !saveCalled {
+			t.Error("Save should be called for first event")
+		}
+	})
+
+	t.Run("cache miss -> db error -> log warning, proceed save", func(t *testing.T) {
+		var saveCalled bool
+		log := logger.NewMockLogger()
+		w := &RecordStatusWorker{
+			endpointStatusUpdater: &mockEndpointStatusUpdater{},
+			statusStore: &mockStatusStore{
+				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
+					return "", nil
+				},
+				setStatusFn: func(_ context.Context, _ uint, _ domain.ServerStatus) error {
+					return nil
+				},
+			},
+			eventSaver: &mockEventSaver{
+				saveFn: func(_ context.Context, _ *domain.ServerEvent) error {
+					saveCalled = true
+					return nil
+				},
+				getLatestStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
+					return "", errors.New("db error")
+				},
+			},
+			logger: log,
+		}
+
+		err := w.Record(t.Context(), event(1, domain.StatusOn))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !saveCalled {
+			t.Error("Save should be called — DB error is uncertain, better safe")
+		}
+		if !log.WarnCalled {
+			t.Error("expected Warn to be called on DB error")
 		}
 	})
 
