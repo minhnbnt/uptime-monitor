@@ -44,38 +44,46 @@ func initConfig(configPath string) (*Config, error) {
 
 func setDefaults(v *viper.Viper) {
 
-	v.SetDefault("log.level", "info")
+	defaults := map[string]any{
 
-	v.SetDefault("token.access_ttl", "15m")
-	v.SetDefault("token.refresh_ttl", "168h")
-	v.SetDefault("token.access_issuer", "uptime-monitor")
-	v.SetDefault("token.refresh_issuer", "uptime-monitor-refresh")
+		"log.level": "info",
 
-	v.SetDefault("argon2.memory", 16384)
-	v.SetDefault("argon2.iterations", 2)
-	v.SetDefault("argon2.parallelism", 1)
-	v.SetDefault("argon2.salt_length", 16)
-	v.SetDefault("argon2.key_length", 32)
+		"token.access_ttl":     "15m",
+		"token.refresh_ttl":    "168h",
+		"token.access_issuer":  "uptime-monitor",
+		"token.refresh_issuer": "uptime-monitor-refresh",
 
-	v.SetDefault("temporal.host", "localhost:7233")
-	v.SetDefault("temporal.task_queue", "ping-task-queue")
-	v.SetDefault("temporal.workflow_name", "ping-workflow")
-	v.SetDefault("temporal.digest_task_queue", "digest-task-queue")
+		"argon2.memory":      16384,
+		"argon2.iterations":  2,
+		"argon2.parallelism": 1,
+		"argon2.salt_length": 16,
+		"argon2.key_length":  32,
 
-	v.SetDefault("scheduler.backend", "redis")
-	v.SetDefault("db.port", "5432")
-	v.SetDefault("redis.db", 0)
+		"temporal.host":              "localhost:7233",
+		"temporal.task_queue":        "ping-task-queue",
+		"temporal.workflow_name":     "ping-workflow",
+		"temporal.digest_task_queue": "digest-task-queue",
 
-	v.SetDefault("mail.smtp_host", "localhost")
-	v.SetDefault("mail.smtp_port", 587)
-	v.SetDefault("mail.smtp_user", "")
-	v.SetDefault("mail.smtp_password", "")
-	v.SetDefault("mail.from_address", "noreply@uptime.local")
+		"scheduler.backend": "redis",
+		"db.port":           "5432",
+		"redis.db":          0,
+
+		"mail.smtp_host":     "localhost",
+		"mail.smtp_port":     587,
+		"mail.smtp_user":     "",
+		"mail.smtp_password": "",
+		"mail.from_address":  "noreply@uptime.local",
+	}
+
+	for key, value := range defaults {
+		v.SetDefault(key, value)
+	}
 }
 
 func bindEnvVars(v *viper.Viper) error {
 
 	envMap := map[string]string{
+
 		"db.host":     "DB_HOST",
 		"db.port":     "DB_PORT",
 		"db.user":     "DB_USER",
