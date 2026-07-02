@@ -345,6 +345,11 @@ servers-export:
     responses:
       "200":
         description: Excel file with exported servers
+        headers:
+          Content-Disposition:
+            schema:
+              type: string
+              default: 'attachment; filename="servers.xlsx"'
         content:
           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
             schema:

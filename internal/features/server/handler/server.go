@@ -112,7 +112,7 @@ func (h *ServerHandler) SearchServers(ctx context.Context, params api.SearchServ
 	}, nil
 }
 
-func (h *ServerHandler) ExportServers(ctx context.Context, params api.ExportServersParams) (api.ExportServersOK, error) {
+func (h *ServerHandler) ExportServers(ctx context.Context, params api.ExportServersParams) (*api.ExportServersOKHeaders, error) {
 
 	searchParams := dto.SearchParams{
 		Q:         params.Q.Or(""),
@@ -125,7 +125,7 @@ func (h *ServerHandler) ExportServers(ctx context.Context, params api.ExportServ
 	userID := middleware.GetUserID(ctx)
 	result, _, err := h.serverService.SearchServers(ctx, searchParams, userID)
 	if err != nil {
-		return api.ExportServersOK{}, apperrors.ToAPIError(err)
+		return nil, apperrors.ToAPIError(err)
 	}
 
 	pr, pw := io.Pipe()
@@ -138,7 +138,10 @@ func (h *ServerHandler) ExportServers(ctx context.Context, params api.ExportServ
 		}
 	}()
 
-	return api.ExportServersOK{Data: pr}, nil
+	return &api.ExportServersOKHeaders{
+		ContentDisposition: api.NewOptString(`attachment; filename="servers.xlsx"`),
+		Response:           api.ExportServersOK{Data: pr},
+	}, nil
 }
 
 var (
