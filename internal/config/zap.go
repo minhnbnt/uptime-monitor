@@ -1,8 +1,12 @@
 package config
 
 import (
+	"fmt"
+
 	"github.com/samber/do/v2"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 func newZapLogger(cfg *Config, isDev bool) (*zap.Logger, error) {
@@ -16,20 +20,27 @@ func newZapLogger(cfg *Config, isDev bool) (*zap.Logger, error) {
 		level = "info"
 	}
 
-	zapLevel, err := zap.ParseAtomicLevel(level)
-	if err != nil {
-		zapLevel = zap.NewAtomicLevelAt(zap.InfoLevel)
+	zapCfg := zap.NewProductionConfig()
+	if zapLevel, err := zap.ParseAtomicLevel(level); err != nil {
+		zapCfg.Level = zapLevel
 	}
 
-	zapCfg := zap.Config{
-		Level:            zapLevel,
-		Encoding:         "json",
-		EncoderConfig:    zap.NewProductionEncoderConfig(),
-		OutputPaths:      []string{"stdout"},
-		ErrorOutputPaths: []string{"stderr"},
+	lumberjackLogger := &lumberjack.Logger{
+		Filename:   "uptime-monitor.log",
+		MaxSize:    100,
+		MaxBackups: 3,
+		MaxAge:     28,
+		Compress:   true,
 	}
 
-	return zapCfg.Build()
+	options := []zap.Option{
+		zap.Hooks(func(e zapcore.Entry) error {
+			_, err := fmt.Fprintf(lumberjackLogger, "%+v", e)
+			return err
+		}),
+	}
+
+	return zapCfg.Build(options...)
 }
 
 func RegisterZapLogger(isDev bool) func(do.Injector) {
