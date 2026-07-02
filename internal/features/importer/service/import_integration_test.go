@@ -112,7 +112,8 @@ func newImportIntegrationService(tb testing.TB) *ImportService {
 	return &ImportService{
 		serverRepository:   serverrepo.NewServerRepository(testDB),
 		endpointRepository: serverrepo.NewEndpointRepository(testDB),
-		excelGenerator:     &infrastructure.ExcelGenerator{},
+		excelExporter:      &infrastructure.ExcelExporter{},
+		excelParser:        &infrastructure.ExcelParser{},
 		logger:             logger.NewMockLogger(),
 	}
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/features/importer/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/features/server/infrastructure"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
@@ -39,7 +40,7 @@ func TestImportService_ImportServers(t *testing.T) {
 					return nil
 				},
 			},
-			excelGenerator: &mockExcelGenerator{
+			excelParser: &mockExcelParser{
 				parseImportFileFn: func(_ io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error) {
 					return rows, nil, nil
 				},
@@ -101,7 +102,7 @@ func TestImportService_ImportServers(t *testing.T) {
 					return nil
 				},
 			},
-			excelGenerator: &mockExcelGenerator{
+			excelParser: &mockExcelParser{
 				parseImportFileFn: func(_ io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error) {
 					return rows, nil, nil
 				},
@@ -126,7 +127,7 @@ func TestImportService_ImportServers(t *testing.T) {
 
 	t.Run("parse error", func(t *testing.T) {
 		svc := &ImportService{
-			excelGenerator: &mockExcelGenerator{
+			excelParser: &mockExcelParser{
 				parseImportFileFn: func(_ io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error) {
 					return nil, nil, errors.New("invalid excel file")
 				},
@@ -142,7 +143,7 @@ func TestImportService_ImportServers(t *testing.T) {
 
 	t.Run("empty rows", func(t *testing.T) {
 		svc := &ImportService{
-			excelGenerator: &mockExcelGenerator{
+			excelParser: &mockExcelParser{
 				parseImportFileFn: func(_ io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error) {
 					return nil, nil, nil
 				},
@@ -166,7 +167,7 @@ func TestImportService_ImportServers(t *testing.T) {
 		}
 
 		svc := &ImportService{
-			excelGenerator: &mockExcelGenerator{
+			excelParser: &mockExcelParser{
 				parseImportFileFn: func(_ io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error) {
 					return nil, rowErrs, nil
 				},
@@ -206,7 +207,7 @@ func TestImportService_ImportServers(t *testing.T) {
 					return nil
 				},
 			},
-			excelGenerator: &mockExcelGenerator{
+			excelParser: &mockExcelParser{
 				parseImportFileFn: func(_ io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error) {
 					return rows, rowErrs, nil
 				},
@@ -237,7 +238,7 @@ func TestImportService_ImportServers(t *testing.T) {
 					return errors.New("connection refused")
 				},
 			},
-			excelGenerator: &mockExcelGenerator{
+			excelParser: &mockExcelParser{
 				parseImportFileFn: func(_ io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error) {
 					return rows, nil, nil
 				},
@@ -282,7 +283,7 @@ func TestImportService_ImportServers(t *testing.T) {
 					return errors.New("timeout")
 				},
 			},
-			excelGenerator: &mockExcelGenerator{
+			excelParser: &mockExcelParser{
 				parseImportFileFn: func(_ io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error) {
 					return rows, nil, nil
 				},
@@ -310,37 +311,16 @@ func TestImportService_GenerateTemplate(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		var buf bytes.Buffer
 		svc := &ImportService{
-			excelGenerator: &mockExcelGenerator{
-				generateTemplateFn: func(w io.Writer) error {
-					_, err := w.Write([]byte("template data"))
-					return err
-				},
-			},
-			logger: logger.NewMockLogger(),
+			excelExporter: &infrastructure.ExcelExporter{},
+			logger:        logger.NewMockLogger(),
 		}
 
 		err := svc.GenerateTemplate(&buf)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if buf.String() != "template data" {
-			t.Errorf("got %q, want %q", buf.String(), "template data")
-		}
-	})
-
-	t.Run("generator error", func(t *testing.T) {
-		svc := &ImportService{
-			excelGenerator: &mockExcelGenerator{
-				generateTemplateFn: func(_ io.Writer) error {
-					return errors.New("template error")
-				},
-			},
-			logger: logger.NewMockLogger(),
-		}
-
-		err := svc.GenerateTemplate(bytes.NewBuffer(nil))
-		if err == nil {
-			t.Fatal("expected error")
+		if buf.Len() == 0 {
+			t.Error("expected non-empty template output")
 		}
 	})
 }

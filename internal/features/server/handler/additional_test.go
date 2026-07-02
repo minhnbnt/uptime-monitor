@@ -105,7 +105,7 @@ func TestServerHandler_ExportServers(t *testing.T) {
 					return []dto.Server{dtoServer(1, "s1", now)}, 1, nil
 				},
 			},
-			excelGenerator: nil,
+			excelExporter: nil,
 		}
 
 		_, err := h.ExportServers(context.Background(), api.ExportServersParams{})

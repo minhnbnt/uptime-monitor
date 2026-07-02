@@ -22,7 +22,8 @@ import (
 type ImportService struct {
 	serverRepository   featservice.ServerRepository
 	endpointRepository featservice.EndpointRepository
-	excelGenerator     ExcelGenerator
+	excelExporter      *infrastructure.ExcelExporter
+	excelParser        ExcelParser
 	logger             logger.Logger
 }
 
@@ -31,7 +32,8 @@ func RegisterImportService(i do.Injector) {
 		return &ImportService{
 			serverRepository:   do.MustInvoke[*serverrepo.ServerRepository](i),
 			endpointRepository: do.MustInvoke[*serverrepo.EndpointRepository](i),
-			excelGenerator:     do.MustInvoke[*infrastructure.ExcelGenerator](i),
+			excelExporter:      do.MustInvoke[*infrastructure.ExcelExporter](i),
+			excelParser:        do.MustInvoke[*infrastructure.ExcelParser](i),
 			logger:             do.MustInvoke[logger.Logger](i),
 		}, nil
 	})
@@ -82,7 +84,7 @@ func buildEndpoints(chunk []dto.ImportRow, servers []domain.Server) []domain.End
 
 func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.Reader) (*dto.ImportResult, error) {
 
-	rows, rowErrors, err := s.excelGenerator.ParseImportFile(file)
+	rows, rowErrors, err := s.excelParser.ParseImportFile(file)
 	if err != nil {
 		s.logger.Error("failed to parse import file", logger.Error(err))
 		return nil, apperrors.ErrBadRequest
@@ -123,10 +125,10 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 	return &dto.ImportResult{Successes: successes, RowErrors: rowErrors, BatchErrors: batchErrors}, nil
 }
 
-var _ ExcelGenerator = (*infrastructure.ExcelGenerator)(nil)
+var _ ExcelParser = (*infrastructure.ExcelParser)(nil)
 
 func (s *ImportService) GenerateTemplate(w io.Writer) error {
-	if err := s.excelGenerator.GenerateTemplate(w); err != nil {
+	if err := s.excelExporter.GenerateTemplate(w); err != nil {
 		s.logger.Error("failed to generate template", logger.Error(err))
 		return apperrors.ErrInternal
 	}

@@ -6,7 +6,6 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/features/importer/dto"
 )
 
-type ExcelGenerator interface {
-	GenerateTemplate(w io.Writer) error
+type ExcelParser interface {
 	ParseImportFile(file io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error)
 }

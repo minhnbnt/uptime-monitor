@@ -75,15 +75,10 @@ func (m *mockEndpointRepo) UpdateMonitorStatus(ctx context.Context, endpointID u
 
 var _ featservice.EndpointRepository = (*mockEndpointRepo)(nil)
 
-type mockExcelGenerator struct {
-	generateTemplateFn func(w io.Writer) error
-	parseImportFileFn  func(file io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error)
+type mockExcelParser struct {
+	parseImportFileFn func(file io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error)
 }
 
-func (m *mockExcelGenerator) GenerateTemplate(w io.Writer) error {
-	return m.generateTemplateFn(w)
-}
-
-func (m *mockExcelGenerator) ParseImportFile(file io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error) {
+func (m *mockExcelParser) ParseImportFile(file io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error) {
 	return m.parseImportFileFn(file)
 }

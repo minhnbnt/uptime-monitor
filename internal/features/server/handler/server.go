@@ -16,15 +16,15 @@ import (
 )
 
 type ServerHandler struct {
-	serverService  ServerService
-	excelGenerator *infrastructure.ExcelGenerator
+	serverService ServerService
+	excelExporter *infrastructure.ExcelExporter
 }
 
 func RegisterServerHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ServerHandler, error) {
 		return &ServerHandler{
-			serverService:  do.MustInvoke[*service.ServerService](i),
-			excelGenerator: do.MustInvoke[*infrastructure.ExcelGenerator](i),
+			serverService: do.MustInvoke[*service.ServerService](i),
+			excelExporter: do.MustInvoke[*infrastructure.ExcelExporter](i),
 		}, nil
 	})
 }
@@ -130,11 +130,10 @@ func (h *ServerHandler) ExportServers(ctx context.Context, params api.ExportServ
 
 	pr, pw := io.Pipe()
 	go func() {
-
-		defer pw.Close()
-
-		if err := h.excelGenerator.GenerateExportFile(pw, result); err != nil {
+		if err := h.excelExporter.GenerateExportFile(pw, result); err != nil {
 			_ = pw.CloseWithError(err)
+		} else {
+			pw.Close()
 		}
 	}()
 

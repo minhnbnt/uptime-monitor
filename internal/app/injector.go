@@ -79,7 +79,8 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 
 		jwt.RegisterProvider,
 		argon2.RegisterArgon2PasswordEncoder,
-		serverinfra.RegisterExcelGenerator,
+		serverinfra.RegisterExcelExporter,
+		serverinfra.RegisterExcelParser,
 		digestinfra.RegisterDigestStarter,
 
 		featservice.RegisterServerService,
