@@ -84,9 +84,22 @@ func (s *LoopService) runIteration(ctx context.Context, due []scheduler.Schedule
 	endpoints := maps.Values(endpointMap)
 	dueHandler(ctx, endpoints)
 
-	updates := lo.SliceToMap(due, func(task scheduler.ScheduledTask) (uint, int64) {
-		return task.EndpointID, task.Score + endpointMap[task.EndpointID].Interval.Milliseconds()
-	})
+	nowUnixmilli := time.Now().UnixMilli()
+	updates := make(map[uint]int64, len(due))
+	for _, task := range due {
+
+		ep, ok := endpointMap[task.EndpointID]
+
+		if !ok {
+			s.logger.Warn(
+				"endpoint not found in batch, skipping reschedule",
+				logger.Int("endpoint_id", int(task.EndpointID)),
+			)
+			continue
+		}
+
+		updates[task.EndpointID] = nowUnixmilli + ep.Interval.Milliseconds()
+	}
 
 	if len(updates) > 0 {
 		return s.scoreUpdater.UpdateBatch(ctx, updates)

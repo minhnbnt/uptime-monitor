@@ -186,11 +186,15 @@ func TestRunIteration_MultipleItems(t *testing.T) {
 	if len(handlerEndpoints) != 2 {
 		t.Fatalf("handler got %d endpoints, want 2", len(handlerEndpoints))
 	}
-	if updatesReceived[1] != due[0].Score+10000 {
-		t.Errorf("update[1] score = %d, want %d", updatesReceived[1], due[0].Score+10000)
+	expected1 := time.Now().UnixMilli() + 10000
+	expected2 := time.Now().UnixMilli() + 30000
+	got1 := updatesReceived[1]
+	got2 := updatesReceived[2]
+	if abs(got1-expected1) > 100 {
+		t.Errorf("update[1] score = %d, expected around %d (diff %d)", got1, expected1, abs(got1-expected1))
 	}
-	if updatesReceived[2] != due[1].Score+30000 {
-		t.Errorf("update[2] score = %d, want %d", updatesReceived[2], due[1].Score+30000)
+	if abs(got2-expected2) > 100 {
+		t.Errorf("update[2] score = %d, expected around %d (diff %d)", got2, expected2, abs(got2-expected2))
 	}
 }
 
@@ -206,6 +210,10 @@ func TestRunIteration_ProviderError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
+}
+
+func abs(n int64) int64 {
+	return max(n, -n)
 }
 
 func TestRunIteration_UpdaterError(t *testing.T) {
