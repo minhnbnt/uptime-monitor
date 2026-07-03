@@ -3,14 +3,12 @@ package repository
 import (
 	"context"
 	"flag"
-	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/samber/do/v2"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
@@ -22,7 +20,9 @@ var testRedis *redis.Client
 var testDB *gorm.DB
 
 func TestMain(m *testing.M) {
+
 	flag.Parse()
+
 	if !testing.Short() {
 		ctx := context.Background()
 
@@ -33,21 +33,11 @@ func TestMain(m *testing.M) {
 		pgContainer, dsn := testcontainers.StartPostgres(ctx)
 		defer func() { _ = pgContainer.Terminate(ctx) }()
 
-		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-			TranslateError: true,
-		})
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "gorm open: %v\n", err)
-			os.Exit(1)
-		}
+		testDB = testcontainers.OpenGORM(dsn, &gorm.Config{TranslateError: true})
 
-		if err := config.RunMigration(db); err != nil {
-			fmt.Fprintf(os.Stderr, "run migration: %v\n", err)
-			os.Exit(1)
-		}
-
-		testDB = db
+		testcontainers.RunMigrations(testDB)
 	}
+
 	os.Exit(m.Run())
 }
 

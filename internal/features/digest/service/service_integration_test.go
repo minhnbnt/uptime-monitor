@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"flag"
-	"fmt"
 	"io"
 	"os"
 	"testing"
@@ -12,10 +11,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/xuri/excelize/v2"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	authrepo "github.com/minhnbnt/uptime-monitor/internal/features/auth/repository"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
@@ -35,18 +32,9 @@ func TestMain(m *testing.M) {
 		container, dsn := testcontainers.StartPostgres(ctx)
 		defer func() { _ = container.Terminate(ctx) }()
 
-		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "gorm open: %v\n", err)
-			os.Exit(1)
-		}
+		testDB = testcontainers.OpenGORM(dsn)
 
-		if err := config.RunMigration(db); err != nil {
-			fmt.Fprintf(os.Stderr, "run migration: %v\n", err)
-			os.Exit(1)
-		}
-
-		testDB = db
+		testcontainers.RunMigrations(testDB)
 		testDB.Create(&domain.User{
 			Model:    gorm.Model{ID: 1},
 			Email:    "test@test.com",
@@ -91,13 +79,15 @@ func newDigestIntegrationService(tb testing.TB, mailer MailSender) *DigestServic
 }
 
 func truncateTables(tb testing.TB) {
+
 	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
-	for _, tbl := range []string{"server_events", "endpoints", "servers"} {
-		testDB.Exec(fmt.Sprintf("TRUNCATE TABLE %s CASCADE", tbl))
-	}
+
+	testcontainers.TruncateTables(
+		tb, testDB,
+		&domain.Server{},
+		&domain.Endpoint{},
+		&domain.ServerEvent{},
+	)
 }
 
 func seedServer(tb testing.TB, id uint, name string, createdByID uint) {

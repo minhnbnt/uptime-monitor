@@ -11,10 +11,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
@@ -30,7 +28,9 @@ var testDB *gorm.DB
 var testRedis *redis.Client
 
 func TestMain(m *testing.M) {
+
 	flag.Parse()
+
 	if !testing.Short() {
 		ctx := context.Background()
 
@@ -41,18 +41,9 @@ func TestMain(m *testing.M) {
 		container, dsn := testcontainers.StartPostgres(ctx)
 		defer func() { _ = container.Terminate(ctx) }()
 
-		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "gorm open: %v\n", err)
-			os.Exit(1)
-		}
+		testDB = testcontainers.OpenGORM(dsn)
 
-		if err := config.RunMigration(db); err != nil {
-			fmt.Fprintf(os.Stderr, "run migration: %v\n", err)
-			os.Exit(1)
-		}
-
-		testDB = db
+		testcontainers.RunMigrations(testDB)
 		// Seed a default user so servers can reference it via CreatedByID.
 		testDB.Create(&domain.User{
 			Model:    gorm.Model{ID: 1},
@@ -62,6 +53,7 @@ func TestMain(m *testing.M) {
 			Name:     "Test",
 		})
 	}
+
 	os.Exit(m.Run())
 }
 
@@ -110,12 +102,7 @@ func newService(tb testing.TB) *OntimeService {
 
 func truncateTables(tb testing.TB) {
 	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
-	for _, tbl := range []string{"server_events", "endpoints", "servers"} {
-		testDB.Exec(fmt.Sprintf("TRUNCATE TABLE %s CASCADE", tbl))
-	}
+	testcontainers.TruncateTables(tb, testDB, &domain.Server{}, &domain.Endpoint{}, &domain.ServerEvent{})
 }
 
 func seedServer(tb testing.TB, id uint, name string, createdAt time.Time) {

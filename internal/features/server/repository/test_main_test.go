@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/redis/go-redis/v9"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
@@ -31,18 +30,9 @@ func TestMain(m *testing.M) {
 		pgContainer, dsn := testcontainers.StartPostgres(ctx, testcontainers.ParadedbConfig())
 		defer func() { _ = pgContainer.Terminate(ctx) }()
 
-		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "gorm open: %v\n", err)
-			os.Exit(1)
-		}
+		testDB = testcontainers.OpenGORM(dsn)
 
-		testDB = db
-
-		if err := config.RunMigration(testDB); err != nil {
-			fmt.Fprintf(os.Stderr, "run migration: %v\n", err)
-			os.Exit(1)
-		}
+		testcontainers.RunMigrations(testDB)
 
 		if err := config.EnablePGSearch(testDB); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: pg_search not available: %v\n", err)
@@ -61,11 +51,13 @@ func TestMain(m *testing.M) {
 }
 
 func truncateTables(tb testing.TB) {
+
 	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
-	for _, tbl := range []string{"endpoints", "servers"} {
-		testDB.Exec(fmt.Sprintf("TRUNCATE TABLE %s CASCADE", tbl))
-	}
+
+	testcontainers.TruncateTables(
+		tb, testDB,
+		&domain.Server{},
+		&domain.Endpoint{},
+		&domain.ServerEvent{},
+	)
 }
