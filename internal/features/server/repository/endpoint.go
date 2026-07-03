@@ -11,6 +11,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/features/ping/scheduler"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
@@ -164,7 +165,7 @@ func (er *EndpointRepository) UpdateMonitorStatus(ctx context.Context, endpointI
 	}
 
 	if affected == 0 {
-		return errors.New("endpoint with provided id does not found")
+		return fmt.Errorf("endpoint %d: %w", endpointID, apperrors.ErrNotFound)
 	}
 
 	return nil
