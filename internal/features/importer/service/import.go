@@ -2,6 +2,7 @@ package importer
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"slices"
 	"time"
@@ -87,7 +88,7 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 	rows, rowErrors, err := s.excelParser.ParseImportFile(file)
 	if err != nil {
 		s.logger.Error("failed to parse import file", logger.Error(err))
-		return nil, apperrors.ErrBadRequest
+		return nil, fmt.Errorf("%w: %s", apperrors.ErrBadRequest, err.Error())
 	}
 
 	if len(rows) == 0 {
