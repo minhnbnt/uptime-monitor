@@ -38,11 +38,20 @@ func TestServerService_ListServers(t *testing.T) {
 				}
 				return domainServers, nil
 			},
+			countFn: func(_ context.Context, createdByID uint) (int64, error) {
+				if createdByID != 1 {
+					t.Errorf("Count createdByID = %d, want 1", createdByID)
+				}
+				return 5, nil
+			},
 		}}
 
-		got, err := svc.ListServers(t.Context(), 1, 1, 10)
+		got, total, err := svc.ListServers(t.Context(), 1, 1, 10)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
+		}
+		if total != 5 {
+			t.Errorf("total = %d, want 5", total)
 		}
 		if len(got) != 2 {
 			t.Fatalf("got %d, want 2", len(got))
@@ -52,14 +61,30 @@ func TestServerService_ListServers(t *testing.T) {
 		}
 	})
 
-	t.Run("repo error", func(t *testing.T) {
+	t.Run("repo list error", func(t *testing.T) {
 		svc := &ServerService{logger: logger.NewMockLogger(), serverRepository: &mockServerRepo{
 			listFn: func(_ context.Context, _ uint, _, _ int) ([]domain.Server, error) {
 				return nil, errors.New("db error")
 			},
 		}}
 
-		_, err := svc.ListServers(t.Context(), 1, 1, 10)
+		_, _, err := svc.ListServers(t.Context(), 1, 1, 10)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	t.Run("repo count error", func(t *testing.T) {
+		svc := &ServerService{logger: logger.NewMockLogger(), serverRepository: &mockServerRepo{
+			listFn: func(_ context.Context, createdByID uint, limit, offset int) ([]domain.Server, error) {
+				return domainServers, nil
+			},
+			countFn: func(_ context.Context, _ uint) (int64, error) {
+				return 0, errors.New("count error")
+			},
+		}}
+
+		_, _, err := svc.ListServers(t.Context(), 1, 1, 10)
 		if err == nil {
 			t.Fatal("expected error")
 		}

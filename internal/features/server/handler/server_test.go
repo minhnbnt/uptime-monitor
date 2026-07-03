@@ -23,11 +23,11 @@ func TestServerHandler_ListServers(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		h := &ServerHandler{
 			serverService: &mockServerService{
-				listServersFn: func(_ context.Context, createdByID uint, page, perPage int) ([]dto.Server, error) {
+				listServersFn: func(_ context.Context, createdByID uint, page, perPage int) ([]dto.Server, int64, error) {
 					if page != 2 || perPage != 10 {
 						t.Errorf("ListServers(%d, %d)", page, perPage)
 					}
-					return []dto.Server{dtoServer(1, "s1", now)}, nil
+					return []dto.Server{dtoServer(1, "s1", now)}, 5, nil
 				},
 			},
 		}
@@ -39,6 +39,9 @@ func TestServerHandler_ListServers(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
+		if resp.Meta.Total.Or(0) != 5 {
+			t.Errorf("total = %d, want 5", resp.Meta.Total.Or(0))
+		}
 		if len(resp.Data) != 1 || resp.Data[0].Name != "s1" {
 			t.Errorf("unexpected data: %+v", resp.Data)
 		}
@@ -47,8 +50,8 @@ func TestServerHandler_ListServers(t *testing.T) {
 	t.Run("internal error", func(t *testing.T) {
 		h := &ServerHandler{
 			serverService: &mockServerService{
-				listServersFn: func(_ context.Context, _ uint, _, _ int) ([]dto.Server, error) {
-					return nil, errors.New("db error")
+				listServersFn: func(_ context.Context, _ uint, _, _ int) ([]dto.Server, int64, error) {
+					return nil, 0, errors.New("db error")
 				},
 			},
 		}

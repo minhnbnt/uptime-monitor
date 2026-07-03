@@ -7,7 +7,7 @@ import (
 )
 
 type mockServerService struct {
-	listServersFn   func(ctx context.Context, createdByID uint, page, perPage int) ([]dto.Server, error)
+	listServersFn   func(ctx context.Context, createdByID uint, page, perPage int) ([]dto.Server, int64, error)
 	createServerFn  func(ctx context.Context, req dto.CreateServerRequest, createdByID uint) (*dto.Server, error)
 	getServerFn     func(ctx context.Context, id uint) (*dto.Server, error)
 	updateServerFn  func(ctx context.Context, id uint, userID uint, req dto.UpdateServerRequest) (*dto.Server, error)
@@ -15,7 +15,7 @@ type mockServerService struct {
 	searchServersFn func(ctx context.Context, params dto.SearchParams, createdByID uint) ([]dto.Server, int64, error)
 }
 
-func (m *mockServerService) ListServers(ctx context.Context, createdByID uint, page, perPage int) ([]dto.Server, error) {
+func (m *mockServerService) ListServers(ctx context.Context, createdByID uint, page, perPage int) ([]dto.Server, int64, error) {
 	return m.listServersFn(ctx, createdByID, page, perPage)
 }
 func (m *mockServerService) CreateServer(ctx context.Context, req dto.CreateServerRequest, createdByID uint) (*dto.Server, error) {

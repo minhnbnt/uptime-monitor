@@ -7,7 +7,7 @@ import (
 )
 
 type ServerService interface {
-	ListServers(ctx context.Context, createdByID uint, page, perPage int) ([]dto.Server, error)
+	ListServers(ctx context.Context, createdByID uint, page, perPage int) ([]dto.Server, int64, error)
 	CreateServer(ctx context.Context, req dto.CreateServerRequest, createdByID uint) (*dto.Server, error)
 	GetServer(ctx context.Context, id uint) (*dto.Server, error)
 	UpdateServer(ctx context.Context, id uint, userID uint, req dto.UpdateServerRequest) (*dto.Server, error)

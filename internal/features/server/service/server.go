@@ -33,18 +33,24 @@ func RegisterServerService(i do.Injector) {
 	})
 }
 
-func (ss *ServerService) ListServers(ctx context.Context, createdByID uint, page, perPage int) ([]dto.Server, error) {
+func (ss *ServerService) ListServers(ctx context.Context, createdByID uint, page, perPage int) ([]dto.Server, int64, error) {
 
 	limit, offset := perPage, (page-1)*perPage
 	result, err := ss.serverRepository.List(ctx, createdByID, limit, offset)
 	if err != nil {
 		ss.logger.Error("failed to get servers", logger.Error(err))
-		return nil, apperrors.ErrInternal
+		return nil, 0, apperrors.ErrInternal
+	}
+
+	total, err := ss.serverRepository.Count(ctx, createdByID)
+	if err != nil {
+		ss.logger.Error("failed to count servers", logger.Error(err))
+		return nil, 0, apperrors.ErrInternal
 	}
 
 	return lo.Map(result, func(item domain.Server, index int) dto.Server {
 		return dto.ServerFromDomain(item)
-	}), nil
+	}), total, nil
 }
 
 func (ss *ServerService) CreateServer(ctx context.Context, req dto.CreateServerRequest, createdByID uint) (*dto.Server, error) {

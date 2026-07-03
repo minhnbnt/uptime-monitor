@@ -34,13 +34,13 @@ func (h *ServerHandler) ListServers(ctx context.Context, params api.ListServersP
 	page, perPage := params.Page.Or(1), params.PerPage.Or(20)
 
 	userID := middleware.GetUserID(ctx)
-	result, err := h.serverService.ListServers(ctx, userID, page, perPage)
+	result, total, err := h.serverService.ListServers(ctx, userID, page, perPage)
 	if err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}
 
 	return &api.ServerListResponse{
-		Meta: ToPaginationMeta(page, perPage, int64(len(result))),
+		Meta: ToPaginationMeta(page, perPage, total),
 		Data: lo.Map(result, func(item dto.Server, _ int) api.ServerObject {
 			return ToAPIServer(&item)
 		}),
