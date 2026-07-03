@@ -10,6 +10,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 )
 
 type UserRepository struct {
@@ -43,7 +44,11 @@ func (r *UserRepository) FindByID(ctx context.Context, id uint) (*domain.User, e
 }
 
 func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
-	return gorm.G[domain.User](r.db).Create(ctx, user)
+	err := gorm.G[domain.User](r.db).Create(ctx, user)
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		return apperrors.ErrEmailOrUsernameTaken
+	}
+	return err
 }
 
 func (r *UserRepository) FindByEmailOrUsername(ctx context.Context, login string) (*domain.User, error) {

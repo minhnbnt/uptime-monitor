@@ -47,7 +47,10 @@ func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 
 	for attempt := range 30 {
 
-		db, err = gorm.Open(dialector, &gorm.Config{Logger: gormLogger})
+		db, err = gorm.Open(dialector, &gorm.Config{
+			Logger:         gormLogger,
+			TranslateError: true,
+		})
 		if err == nil {
 			break
 		}

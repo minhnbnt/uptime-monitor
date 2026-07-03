@@ -96,11 +96,11 @@ func TestAuthHandler_LoginRefresh(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid credentials", func(t *testing.T) {
+	t.Run("invalid refresh token", func(t *testing.T) {
 		h := &AuthHandler{
 			authService: &mockAuthService{
 				refreshFn: func(_ context.Context, _ dto.RefreshRequest) (*dto.AuthResponse, error) {
-					return nil, apperrors.ErrInvalidCredentials
+					return nil, apperrors.ErrInvalidRefreshToken
 				},
 			},
 		}
@@ -155,11 +155,11 @@ func TestAuthHandler_Logout(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid credentials", func(t *testing.T) {
+	t.Run("invalid refresh token", func(t *testing.T) {
 		h := &AuthHandler{
 			authService: &mockAuthService{
 				logoutFn: func(_ context.Context, _ string) error {
-					return apperrors.ErrInvalidCredentials
+					return apperrors.ErrInvalidRefreshToken
 				},
 			},
 		}

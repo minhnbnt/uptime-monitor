@@ -32,6 +32,18 @@ func TestToAPIError(t *testing.T) {
 			wantCode:   "UNAUTHORIZED",
 		},
 		{
+			name:       "invalid access token",
+			err:        ErrInvalidAccessToken,
+			wantStatus: http.StatusUnauthorized,
+			wantCode:   "INVALID_ACCESS_TOKEN",
+		},
+		{
+			name:       "invalid refresh token",
+			err:        ErrInvalidRefreshToken,
+			wantStatus: http.StatusUnauthorized,
+			wantCode:   "INVALID_REFRESH_TOKEN",
+		},
+		{
 			name:       "bad request",
 			err:        ErrBadRequest,
 			wantStatus: http.StatusBadRequest,

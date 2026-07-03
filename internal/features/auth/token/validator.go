@@ -2,7 +2,6 @@ package token
 
 import (
 	"context"
-	"errors"
 	"strconv"
 
 	"github.com/samber/do/v2"
@@ -51,19 +50,19 @@ func (tv *TokenValidator) ValidateAccessToken(tokenStr string) (uint, error) {
 	token, err := tv.provider.ParseWithIssuer(tokenStr, expectedIssuer)
 	if err != nil {
 		tv.logger.Debug("invalid access token", logger.Error(err))
-		return 0, errors.New("invalid access token")
+		return 0, apperrors.ErrInvalidAccessToken
 	}
 
 	sub, err := token.Subject()
 	if err != nil {
 		tv.logger.Debug("invalid access token subject", logger.Error(err))
-		return 0, errors.New("invalid access token")
+		return 0, apperrors.ErrInvalidAccessToken
 	}
 
 	userID, err := strconv.ParseUint(sub, 10, 64)
 	if err != nil {
 		tv.logger.Debug("invalid access token subject format", logger.Error(err))
-		return 0, errors.New("invalid access token")
+		return 0, apperrors.ErrInvalidAccessToken
 	}
 
 	return uint(userID), nil
@@ -75,34 +74,34 @@ func (tv *TokenValidator) ValidateRefreshToken(ctx context.Context, tokenStr str
 	token, err := tv.provider.ParseWithIssuer(tokenStr, expectedIssuer)
 	if err != nil {
 		tv.logger.Debug("invalid refresh token", logger.Error(err))
-		return 0, "", errors.New("invalid refresh token")
+		return 0, "", apperrors.ErrInvalidRefreshToken
 	}
 
 	jti, err := token.JTI()
 	if err != nil {
 		tv.logger.Debug("invalid refresh token jti", logger.Error(err))
-		return 0, "", errors.New("invalid refresh token")
+		return 0, "", apperrors.ErrInvalidRefreshToken
 	}
 
 	revoked, err := tv.revokedTokenRepo.IsRevoked(ctx, jti)
 	if err != nil {
 		tv.logger.Debug("failed to check revoked token", logger.Error(err))
-		return 0, "", errors.New("invalid refresh token")
+		return 0, "", apperrors.ErrInvalidRefreshToken
 	}
 	if revoked {
-		return 0, "", apperrors.ErrInvalidCredentials
+		return 0, "", apperrors.ErrInvalidRefreshToken
 	}
 
 	sub, err := token.Subject()
 	if err != nil {
 		tv.logger.Debug("invalid refresh token subject", logger.Error(err))
-		return 0, "", errors.New("invalid refresh token")
+		return 0, "", apperrors.ErrInvalidRefreshToken
 	}
 
 	userID, err := strconv.ParseUint(sub, 10, 64)
 	if err != nil {
 		tv.logger.Debug("invalid refresh token subject format", logger.Error(err))
-		return 0, "", errors.New("invalid refresh token")
+		return 0, "", apperrors.ErrInvalidRefreshToken
 	}
 
 	return uint(userID), jti, nil

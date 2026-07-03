@@ -30,6 +30,20 @@ func ToAPIError(err error) *api.ErrorResponseStatusCode {
 		}
 	}
 
+	if errors.Is(err, ErrInvalidAccessToken) {
+		return &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusUnauthorized,
+			Response:   errResponse("INVALID_ACCESS_TOKEN", err.Error()),
+		}
+	}
+
+	if errors.Is(err, ErrInvalidRefreshToken) {
+		return &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusUnauthorized,
+			Response:   errResponse("INVALID_REFRESH_TOKEN", err.Error()),
+		}
+	}
+
 	if errors.Is(err, ErrBadRequest) {
 		return &api.ErrorResponseStatusCode{
 			StatusCode: http.StatusBadRequest,

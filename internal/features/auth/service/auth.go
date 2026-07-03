@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"github.com/samber/do/v2"
 
@@ -58,16 +59,6 @@ func toUserProfile(u domain.User) dto.UserProfile {
 
 func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*dto.AuthResponse, error) {
 
-	existing, err := s.userRepository.FindByEmailOrUsername(ctx, req.Email)
-	if err != nil {
-		s.logger.Error("failed to find user", logger.Error(err))
-		return nil, apperrors.ErrInternal
-	}
-
-	if existing != nil {
-		return nil, apperrors.ErrEmailOrUsernameTaken
-	}
-
 	hash, err := s.passwordEncoder.Encode(req.Password)
 	if err != nil {
 		s.logger.Error("failed to hash password", logger.Error(err))
@@ -81,7 +72,12 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 		Name:     req.Name,
 	}
 
-	if err := s.userRepository.Create(ctx, &user); err != nil {
+	err = s.userRepository.Create(ctx, &user)
+	if errors.Is(err, apperrors.ErrEmailOrUsernameTaken) {
+		return nil, err
+	}
+
+	if err != nil {
 		s.logger.Error("failed to create user", logger.Error(err))
 		return nil, apperrors.ErrInternal
 	}
@@ -109,7 +105,7 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 
 	token, err := s.tokenValidator.ParseRefreshToken(refreshToken)
 	if err != nil {
-		return apperrors.ErrInvalidCredentials
+		return apperrors.ErrInvalidRefreshToken
 	}
 
 	if err := s.revokedTokenRepository.Revoke(ctx, token); err != nil {
@@ -164,7 +160,7 @@ func (s *AuthService) Refresh(ctx context.Context, req dto.RefreshRequest) (*dto
 
 	userID, _, err := s.tokenValidator.ValidateRefreshToken(ctx, req.RefreshToken)
 	if err != nil {
-		return nil, apperrors.ErrInvalidCredentials
+		return nil, apperrors.ErrInvalidRefreshToken
 	}
 
 	user, err := s.userRepository.FindByID(ctx, userID)

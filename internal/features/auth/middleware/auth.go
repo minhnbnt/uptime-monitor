@@ -46,7 +46,7 @@ func (m *AuthMiddleware) HandleBearerAuth(ctx context.Context, _ api.OperationNa
 	userID, err := m.tokenValidator.ValidateAccessToken(t.Token)
 	if err != nil {
 		m.logger.Debug("bearer auth failed", logger.Error(err))
-		return ctx, apperrors.ErrInvalidCredentials
+		return ctx, apperrors.ErrInvalidAccessToken
 	}
 
 	return context.WithValue(ctx, userIDKey{}, userID), nil

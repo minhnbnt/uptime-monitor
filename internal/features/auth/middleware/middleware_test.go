@@ -53,19 +53,19 @@ func TestAuthMiddleware_HandleBearerAuth(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid token returns ErrInvalidCredentials", func(t *testing.T) {
+	t.Run("invalid token returns ErrInvalidAccessToken", func(t *testing.T) {
 		m := &AuthMiddleware{
 			tokenValidator: &mockTokenValidator{
 				validateAccessTokenFn: func(_ string) (uint, error) {
-					return 0, errors.New("invalid token")
+					return 0, apperrors.ErrInvalidAccessToken
 				},
 			},
 			logger: logger.NewMockLogger(),
 		}
 
 		_, err := m.HandleBearerAuth(context.Background(), "", api.BearerAuth{Token: "bad-token"})
-		if !errors.Is(err, apperrors.ErrInvalidCredentials) {
-			t.Errorf("got %v, want %v", err, apperrors.ErrInvalidCredentials)
+		if !errors.Is(err, apperrors.ErrInvalidAccessToken) {
+			t.Errorf("got %v, want %v", err, apperrors.ErrInvalidAccessToken)
 		}
 	})
 }

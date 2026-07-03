@@ -95,13 +95,17 @@ func TestAuthService_Register(t *testing.T) {
 		}
 	})
 
-	t.Run("email taken", func(t *testing.T) {
+	t.Run("email or username taken", func(t *testing.T) {
 		svc := &AuthService{
 			logger: logger.NewMockLogger(),
 			userRepository: &mockUserRepo{
-				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
-					u := domainUser(1, "a@b.com", "other")
-					return &u, nil
+				createFn: func(_ context.Context, _ *domain.User) error {
+					return apperrors.ErrEmailOrUsernameTaken
+				},
+			},
+			passwordEncoder: &mockPasswordEncoder{
+				encodeFn: func(_ string) (string, error) {
+					return "hashed-pass", nil
 				},
 			},
 		}
@@ -109,22 +113,6 @@ func TestAuthService_Register(t *testing.T) {
 		_, err := svc.Register(t.Context(), req)
 		if !errors.Is(err, apperrors.ErrEmailOrUsernameTaken) {
 			t.Errorf("got %v, want apperrors.ErrEmailOrUsernameTaken", err)
-		}
-	})
-
-	t.Run("find error", func(t *testing.T) {
-		svc := &AuthService{
-			logger: logger.NewMockLogger(),
-			userRepository: &mockUserRepo{
-				findByEmailOrUsernameFn: func(_ context.Context, _ string) (*domain.User, error) {
-					return nil, errors.New("db error")
-				},
-			},
-		}
-
-		_, err := svc.Register(t.Context(), req)
-		if err == nil {
-			t.Fatal("expected error")
 		}
 	})
 
@@ -238,8 +226,8 @@ func TestAuthService_Logout(t *testing.T) {
 		}
 
 		err := svc.Logout(t.Context(), "invalid-token")
-		if !errors.Is(err, apperrors.ErrInvalidCredentials) {
-			t.Errorf("got %v, want apperrors.ErrInvalidCredentials", err)
+		if !errors.Is(err, apperrors.ErrInvalidRefreshToken) {
+			t.Errorf("got %v, want apperrors.ErrInvalidRefreshToken", err)
 		}
 	})
 
@@ -313,8 +301,8 @@ func TestAuthService_Refresh(t *testing.T) {
 		}
 
 		_, err := svc.Refresh(t.Context(), dto.RefreshRequest{RefreshToken: "invalid"})
-		if !errors.Is(err, apperrors.ErrInvalidCredentials) {
-			t.Errorf("got %v, want apperrors.ErrInvalidCredentials", err)
+		if !errors.Is(err, apperrors.ErrInvalidRefreshToken) {
+			t.Errorf("got %v, want apperrors.ErrInvalidRefreshToken", err)
 		}
 	})
 
