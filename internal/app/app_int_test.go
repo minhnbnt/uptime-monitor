@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"runtime/debug"
@@ -13,8 +12,6 @@ import (
 	"time"
 
 	"github.com/samber/do/v2"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/handler"
 	digestHandler "github.com/minhnbnt/uptime-monitor/internal/features/digest/handler"
@@ -24,6 +21,7 @@ import (
 	pingHandler "github.com/minhnbnt/uptime-monitor/internal/features/ping/handler"
 	serverHandler "github.com/minhnbnt/uptime-monitor/internal/features/server/handler"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
+	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
 )
 
 var (
@@ -37,13 +35,18 @@ func TestMain(m *testing.M) {
 	if !testing.Short() {
 		ctx := context.Background()
 
-		pgContainer = startPostgres(ctx)
-		redisContainer, _ = startRedis(ctx)
-		temporalCont = startTemporal(ctx)
+		pgContainer, _ = testcontainers.StartPostgres(ctx, testcontainers.PostgresConfig{
+			Image:    testcontainers.DefaultParadedbImage,
+			User:     "postgres",
+			Password: "postgres",
+			DBName:   "uptime_monitor",
+		})
+		redisContainer, _ = testcontainers.StartRedis(ctx)
+		temporalCont, _ = testcontainers.StartTemporal(ctx)
 
-		pgHost, pgPort := getHostPort(ctx, pgContainer, "5432")
-		redisHost, redisPort := getHostPort(ctx, redisContainer, "6379")
-		temporalHost, temporalPort := getHostPort(ctx, temporalCont, "7233")
+		pgHost, pgPort := testcontainers.ContainerHostPort(ctx, pgContainer, "5432")
+		redisHost, redisPort := testcontainers.ContainerHostPort(ctx, redisContainer, "6379")
+		temporalHost, temporalPort := testcontainers.ContainerHostPort(ctx, temporalCont, "7233")
 
 		os.Setenv("DB_HOST", pgHost)
 		os.Setenv("DB_PORT", pgPort)
@@ -83,70 +86,6 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(code)
-}
-
-func startPostgres(ctx context.Context) testcontainers.Container {
-	req := testcontainers.ContainerRequest{
-		Image:        "paradedb/paradedb:pg17",
-		ExposedPorts: []string{"5432/tcp"},
-		Env: map[string]string{
-			"POSTGRES_USER":     "postgres",
-			"POSTGRES_PASSWORD": "postgres",
-			"POSTGRES_DB":       "uptime_monitor",
-		},
-		WaitingFor: wait.ForLog("database system is ready to accept connections").
-			WithOccurrence(2).WithStartupTimeout(120 * time.Second),
-	}
-	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req, Started: true,
-	})
-	if err != nil {
-		log.Fatalf("start postgres: %v", err)
-	}
-	return c
-}
-
-func startRedis(_ context.Context) (testcontainers.Container, any) {
-	req := testcontainers.ContainerRequest{
-		Image:        "redis:8-alpine",
-		ExposedPorts: []string{"6379/tcp"},
-		WaitingFor:   wait.ForLog("Ready to accept connections tcp").WithStartupTimeout(60 * time.Second),
-	}
-	c, err := testcontainers.GenericContainer(context.Background(), testcontainers.GenericContainerRequest{
-		ContainerRequest: req, Started: true,
-	})
-	if err != nil {
-		log.Fatalf("start redis: %v", err)
-	}
-	return c, nil
-}
-
-func startTemporal(ctx context.Context) testcontainers.Container {
-	req := testcontainers.ContainerRequest{
-		Image:        "temporalio/temporal:1.7.2",
-		ExposedPorts: []string{"7233/tcp"},
-		Cmd:          []string{"server", "start-dev", "--ip", "0.0.0.0"},
-		WaitingFor:   wait.ForListeningPort("7233/tcp").WithStartupTimeout(120 * time.Second),
-	}
-	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req, Started: true,
-	})
-	if err != nil {
-		log.Fatalf("start temporal: %v", err)
-	}
-	return c
-}
-
-func getHostPort(ctx context.Context, c testcontainers.Container, port string) (string, string) {
-	host, err := c.Host(ctx)
-	if err != nil {
-		log.Fatalf("container host: %v", err)
-	}
-	mapped, err := c.MappedPort(ctx, port)
-	if err != nil {
-		log.Fatalf("container port: %v", err)
-	}
-	return host, mapped.Port()
 }
 
 func TestApp_Wiring_CompositeHandler(t *testing.T) {

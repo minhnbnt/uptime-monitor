@@ -11,10 +11,11 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/features/ping/scheduler"
+	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
 )
 
 func TestIntegration_DeleteByServerID_FullCleanup(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 	truncateTables(t)
 
 	serverRepo := &ServerRepository{db: testDB}
@@ -106,7 +107,7 @@ func TestIntegration_DeleteByServerID_FullCleanup(t *testing.T) {
 }
 
 func TestIntegration_DeleteByServerID_NoRedisArtifacts(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 	truncateTables(t)
 
 	serverRepo := &ServerRepository{db: testDB}
@@ -138,7 +139,7 @@ func TestIntegration_DeleteByServerID_NoRedisArtifacts(t *testing.T) {
 }
 
 func TestIntegration_UpsertEndpoint_UpdatePath(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 	truncateTables(t)
 
 	serverRepo := &ServerRepository{db: testDB}
@@ -233,7 +234,7 @@ func TestIntegration_UpsertEndpoint_UpdatePath(t *testing.T) {
 }
 
 func TestIntegration_UpsertEndpoint_ClearsPreExistingCache(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 	truncateTables(t)
 
 	serverRepo := &ServerRepository{db: testDB}
@@ -288,7 +289,7 @@ func TestIntegration_UpsertEndpoint_ClearsPreExistingCache(t *testing.T) {
 }
 
 func TestIntegration_DeleteByServerID_NotFound(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 	truncateTables(t)
 
 	endpointRepo := NewEndpointRepositoryWithDeps(

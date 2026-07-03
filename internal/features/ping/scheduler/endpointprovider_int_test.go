@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
 )
 
 func seedCacheEndpoint(tb testing.TB, ep domain.Endpoint) {
@@ -70,7 +71,7 @@ func TestIntegration_GetBatch_AllCached(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	seedCacheEndpoint(t, domain.Endpoint{
 		Model:        gorm.Model{ID: 1},
@@ -102,7 +103,7 @@ func TestIntegration_GetBatch_AllMissed(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 	truncateTables(t)
 
 	seedServer(t, 1)
@@ -138,7 +139,7 @@ func TestIntegration_GetBatch_PartialMiss(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 	truncateTables(t)
 
 	seedCacheEndpoint(t, domain.Endpoint{
@@ -191,7 +192,7 @@ func TestIntegration_GetBatch_EmptyIDs(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	p := newEndpointProvider(t)
 	results, err := p.GetBatch(t.Context(), nil)
@@ -208,7 +209,7 @@ func TestIntegration_GetBatch_AllMissedMultiple(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 	truncateTables(t)
 
 	seedServer(t, 1)

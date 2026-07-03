@@ -11,8 +11,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
@@ -23,6 +21,7 @@ import (
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
+	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
 )
 
 // ---------- container lifecycle ----------
@@ -35,11 +34,11 @@ func TestMain(m *testing.M) {
 	if !testing.Short() {
 		ctx := context.Background()
 
-		redisContainer, redisClient := startRedis(ctx)
+		redisContainer, redisClient := testcontainers.StartRedis(ctx)
 		defer func() { _ = redisContainer.Terminate(ctx) }()
 		testRedis = redisClient
 
-		container, dsn := startPostgres(ctx)
+		container, dsn := testcontainers.StartPostgres(ctx)
 		defer func() { _ = container.Terminate(ctx) }()
 
 		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
@@ -64,91 +63,6 @@ func TestMain(m *testing.M) {
 		})
 	}
 	os.Exit(m.Run())
-}
-
-func startPostgres(ctx context.Context) (testcontainers.Container, string) {
-	req := testcontainers.ContainerRequest{
-		Image:        "postgres:17-alpine",
-		ExposedPorts: []string{"5432/tcp"},
-		Env: map[string]string{
-			"POSTGRES_USER":     "test",
-			"POSTGRES_PASSWORD": "test",
-			"POSTGRES_DB":       "uptime_test",
-		},
-		WaitingFor: wait.ForLog("database system is ready to accept connections").
-			WithOccurrence(2).WithStartupTimeout(60 * time.Second),
-	}
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "start container: %v\n", err)
-		os.Exit(1)
-	}
-
-	host, err := container.Host(ctx)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "container host: %v\n", err)
-		os.Exit(1)
-	}
-	port, err := container.MappedPort(ctx, "5432")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "container port: %v\n", err)
-		os.Exit(1)
-	}
-
-	dsn := fmt.Sprintf(
-		"postgres://test:test@%s:%s/uptime_test?sslmode=disable",
-		host, port.Port(),
-	)
-
-	return container, dsn
-}
-
-// ---------- helpers ----------
-
-func startRedis(ctx context.Context) (testcontainers.Container, *redis.Client) {
-	req := testcontainers.ContainerRequest{
-		Image:        "redis:8-alpine",
-		ExposedPorts: []string{"6379/tcp"},
-		WaitingFor:   wait.ForLog("Ready to accept connections tcp").WithStartupTimeout(60 * time.Second),
-	}
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "start redis container: %v\n", err)
-		os.Exit(1)
-	}
-
-	host, err := container.Host(ctx)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "container host: %v\n", err)
-		os.Exit(1)
-	}
-	port, err := container.MappedPort(ctx, "6379")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "container port: %v\n", err)
-		os.Exit(1)
-	}
-
-	client := redis.NewClient(&redis.Options{
-		Addr: fmt.Sprintf("%s:%s", host, port.Port()),
-	})
-
-	return container, client
-}
-
-func cleanRedis(tb testing.TB) {
-	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
-	if err := testRedis.FlushDB(context.Background()).Err(); err != nil {
-		tb.Fatalf("flush db: %v", err)
-	}
 }
 
 func newServiceWithRedis(tb testing.TB) *OntimeService {
@@ -341,7 +255,7 @@ func TestIntegration_BatchGetOntime_EmptyRequest(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_CacheHit(t *testing.T) {
 	truncateTables(t)
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	now := oDay(2026, 6, 1)
 	svc := newServiceWithRedis(t)
@@ -366,7 +280,7 @@ func TestIntegration_BatchGetOntime_CacheHit(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_CacheMissThenWarm(t *testing.T) {
 	truncateTables(t)
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	now := oDay(2026, 6, 1)
 	seedServer(t, 1, "s1", now.Add(-48*time.Hour))
@@ -399,7 +313,7 @@ func TestIntegration_BatchGetOntime_CacheMissThenWarm(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_PartialCacheHit(t *testing.T) {
 	truncateTables(t)
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	now := oDay(2026, 6, 1)
 	seedServer(t, 1, "s1", now.Add(-48*time.Hour))

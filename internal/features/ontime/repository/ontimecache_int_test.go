@@ -3,16 +3,14 @@ package repository
 import (
 	"context"
 	"flag"
-	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
 )
 
 var testRedis *redis.Client
@@ -21,45 +19,11 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 	if !testing.Short() {
 		ctx := context.Background()
-		container, client := startRedis(ctx)
+		container, client := testcontainers.StartRedis(ctx)
 		defer func() { _ = container.Terminate(ctx) }()
 		testRedis = client
 	}
 	os.Exit(m.Run())
-}
-
-func startRedis(ctx context.Context) (testcontainers.Container, *redis.Client) {
-	req := testcontainers.ContainerRequest{
-		Image:        "redis:8-alpine",
-		ExposedPorts: []string{"6379/tcp"},
-		WaitingFor: wait.ForLog("Ready to accept connections tcp").
-			WithStartupTimeout(60 * time.Second),
-	}
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "start redis container: %v\n", err)
-		os.Exit(1)
-	}
-
-	host, err := container.Host(ctx)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "container host: %v\n", err)
-		os.Exit(1)
-	}
-	port, err := container.MappedPort(ctx, "6379")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "container port: %v\n", err)
-		os.Exit(1)
-	}
-
-	client := redis.NewClient(&redis.Options{
-		Addr: fmt.Sprintf("%s:%s", host, port.Port()),
-	})
-
-	return container, client
 }
 
 func newCacheRepository(tb testing.TB) *OntimeCacheRepository {
@@ -68,16 +32,6 @@ func newCacheRepository(tb testing.TB) *OntimeCacheRepository {
 		tb.Skip("skipping integration test")
 	}
 	return &OntimeCacheRepository{client: testRedis}
-}
-
-func cleanRedis(tb testing.TB) {
-	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
-	if err := testRedis.FlushDB(context.Background()).Err(); err != nil {
-		tb.Fatalf("flush db: %v", err)
-	}
 }
 
 func TestIntegration_RedisKey(t *testing.T) {
@@ -100,7 +54,7 @@ func TestIntegration_RedisKey(t *testing.T) {
 }
 
 func TestIntegration_MGet_Empty(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 	repo := newCacheRepository(t)
 
 	result, err := repo.MGet(t.Context(), nil)
@@ -113,7 +67,7 @@ func TestIntegration_MGet_Empty(t *testing.T) {
 }
 
 func TestIntegration_MGet_AllHit(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	yesterday := time.Now().AddDate(0, 0, -1)
 	key1 := redisKey(1, yesterday)
@@ -148,7 +102,7 @@ func TestIntegration_MGet_AllHit(t *testing.T) {
 }
 
 func TestIntegration_MGet_PartialHit(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	yesterday := time.Now().AddDate(0, 0, -1)
 	key1 := redisKey(1, yesterday)
@@ -180,7 +134,7 @@ func TestIntegration_MGet_PartialHit(t *testing.T) {
 }
 
 func TestIntegration_MGet_AllMiss(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	repo := newCacheRepository(t)
 	items := []dto.BatchGetOntimeItem{
@@ -198,7 +152,7 @@ func TestIntegration_MGet_AllMiss(t *testing.T) {
 }
 
 func TestIntegration_MGet_TypeError(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	yesterday := time.Now().AddDate(0, 0, -1)
 	key := redisKey(1, yesterday)
@@ -222,7 +176,7 @@ func TestIntegration_MGet_TypeError(t *testing.T) {
 }
 
 func TestIntegration_MSet_Empty(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	repo := newCacheRepository(t)
 	err := repo.MSet(t.Context(), nil)
@@ -232,7 +186,7 @@ func TestIntegration_MSet_Empty(t *testing.T) {
 }
 
 func TestIntegration_MSet_PastDate(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	repo := newCacheRepository(t)
 	yesterday := time.Now().AddDate(0, 0, -1)
@@ -263,7 +217,7 @@ func TestIntegration_MSet_PastDate(t *testing.T) {
 }
 
 func TestIntegration_MSet_MultipleItems(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	repo := newCacheRepository(t)
 	yesterday := time.Now().AddDate(0, 0, -1)

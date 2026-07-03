@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -24,6 +22,7 @@ import (
 	ontimesvc "github.com/minhnbnt/uptime-monitor/internal/features/ontime/service"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
+	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
 )
 
 var testDB *gorm.DB
@@ -33,7 +32,7 @@ func TestMain(m *testing.M) {
 	if !testing.Short() {
 		ctx := context.Background()
 
-		container, dsn := startPostgres(ctx)
+		container, dsn := testcontainers.StartPostgres(ctx)
 		defer func() { _ = container.Terminate(ctx) }()
 
 		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
@@ -64,46 +63,6 @@ func TestMain(m *testing.M) {
 		})
 	}
 	os.Exit(m.Run())
-}
-
-func startPostgres(ctx context.Context) (testcontainers.Container, string) {
-	req := testcontainers.ContainerRequest{
-		Image:        "postgres:17-alpine",
-		ExposedPorts: []string{"5432/tcp"},
-		Env: map[string]string{
-			"POSTGRES_USER":     "test",
-			"POSTGRES_PASSWORD": "test",
-			"POSTGRES_DB":       "uptime_test",
-		},
-		WaitingFor: wait.ForLog("database system is ready to accept connections").
-			WithOccurrence(2).WithStartupTimeout(60 * time.Second),
-	}
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "start container: %v\n", err)
-		os.Exit(1)
-	}
-
-	host, err := container.Host(ctx)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "container host: %v\n", err)
-		os.Exit(1)
-	}
-	port, err := container.MappedPort(ctx, "5432")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "container port: %v\n", err)
-		os.Exit(1)
-	}
-
-	dsn := fmt.Sprintf(
-		"postgres://test:test@%s:%s/uptime_test?sslmode=disable",
-		host, port.Port(),
-	)
-
-	return container, dsn
 }
 
 func newDigestIntegrationService(tb testing.TB, mailer MailSender) *DigestService {

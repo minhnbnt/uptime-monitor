@@ -10,13 +10,12 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/samber/do/v2"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/jwt"
+	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
 )
 
 var testRedis *redis.Client
@@ -27,11 +26,11 @@ func TestMain(m *testing.M) {
 	if !testing.Short() {
 		ctx := context.Background()
 
-		redisContainer, client := startRedis(ctx)
+		redisContainer, client := testcontainers.StartRedis(ctx)
 		defer func() { _ = redisContainer.Terminate(ctx) }()
 		testRedis = client
 
-		pgContainer, dsn := startPostgres(ctx)
+		pgContainer, dsn := testcontainers.StartPostgres(ctx)
 		defer func() { _ = pgContainer.Terminate(ctx) }()
 
 		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
@@ -52,95 +51,12 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func startPostgres(ctx context.Context) (testcontainers.Container, string) {
-	req := testcontainers.ContainerRequest{
-		Image:        "postgres:17-alpine",
-		ExposedPorts: []string{"5432/tcp"},
-		Env: map[string]string{
-			"POSTGRES_USER":     "test",
-			"POSTGRES_PASSWORD": "test",
-			"POSTGRES_DB":       "uptime_test",
-		},
-		WaitingFor: wait.ForLog("database system is ready to accept connections").
-			WithOccurrence(2).WithStartupTimeout(60 * time.Second),
-	}
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "start container: %v\n", err)
-		os.Exit(1)
-	}
-
-	host, err := container.Host(ctx)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "container host: %v\n", err)
-		os.Exit(1)
-	}
-	port, err := container.MappedPort(ctx, "5432")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "container port: %v\n", err)
-		os.Exit(1)
-	}
-
-	dsn := fmt.Sprintf(
-		"postgres://test:test@%s:%s/uptime_test?sslmode=disable",
-		host, port.Port(),
-	)
-
-	return container, dsn
-}
-
-func startRedis(ctx context.Context) (testcontainers.Container, *redis.Client) {
-	req := testcontainers.ContainerRequest{
-		Image:        "redis:8-alpine",
-		ExposedPorts: []string{"6379/tcp"},
-		WaitingFor:   wait.ForLog("Ready to accept connections tcp").WithStartupTimeout(60 * time.Second),
-	}
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "start redis container: %v\n", err)
-		os.Exit(1)
-	}
-
-	host, err := container.Host(ctx)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "container host: %v\n", err)
-		os.Exit(1)
-	}
-	port, err := container.MappedPort(ctx, "6379")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "container port: %v\n", err)
-		os.Exit(1)
-	}
-
-	client := redis.NewClient(&redis.Options{
-		Addr: fmt.Sprintf("%s:%s", host, port.Port()),
-	})
-
-	return container, client
-}
-
 func newRevokedRepo(tb testing.TB) *RedisRevokedTokenRepository {
 	tb.Helper()
 	if testing.Short() {
 		tb.Skip("skipping integration test")
 	}
 	return &RedisRevokedTokenRepository{client: testRedis}
-}
-
-func cleanRedis(tb testing.TB) {
-	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
-	if err := testRedis.FlushDB(context.Background()).Err(); err != nil {
-		tb.Fatalf("flush db: %v", err)
-	}
 }
 
 func makeToken(tb testing.TB, jti string, exp time.Time) *jwt.Token {
@@ -171,7 +87,7 @@ func makeToken(tb testing.TB, jti string, exp time.Time) *jwt.Token {
 }
 
 func TestIntegration_RevokeAndIsRevoked(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	repo := newRevokedRepo(t)
 	jti := "0195f0b0-0000-7000-8000-000000000001"
@@ -192,7 +108,7 @@ func TestIntegration_RevokeAndIsRevoked(t *testing.T) {
 }
 
 func TestIntegration_IsRevoked_NotFound(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	repo := newRevokedRepo(t)
 	revoked, err := repo.IsRevoked(t.Context(), "nonexistent-jti")
@@ -205,7 +121,7 @@ func TestIntegration_IsRevoked_NotFound(t *testing.T) {
 }
 
 func TestIntegration_Revoke_TTL(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	repo := newRevokedRepo(t)
 	jti := "0195f0b0-0000-7000-8000-000000000002"
@@ -227,7 +143,7 @@ func TestIntegration_Revoke_TTL(t *testing.T) {
 }
 
 func TestIntegration_Revoke_MultipleTokens(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	repo := newRevokedRepo(t)
 

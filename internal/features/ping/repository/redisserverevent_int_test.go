@@ -3,16 +3,14 @@ package repository
 import (
 	"context"
 	"flag"
-	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
 )
 
 var testRedis *redis.Client
@@ -21,45 +19,11 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 	if !testing.Short() {
 		ctx := context.Background()
-		container, client := startRedis(ctx)
+		container, client := testcontainers.StartRedis(ctx)
 		defer func() { _ = container.Terminate(ctx) }()
 		testRedis = client
 	}
 	os.Exit(m.Run())
-}
-
-func startRedis(ctx context.Context) (testcontainers.Container, *redis.Client) {
-	req := testcontainers.ContainerRequest{
-		Image:        "redis:8-alpine",
-		ExposedPorts: []string{"6379/tcp"},
-		WaitingFor: wait.ForLog("Ready to accept connections tcp").
-			WithStartupTimeout(60 * time.Second),
-	}
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "start redis container: %v\n", err)
-		os.Exit(1)
-	}
-
-	host, err := container.Host(ctx)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "container host: %v\n", err)
-		os.Exit(1)
-	}
-	port, err := container.MappedPort(ctx, "6379")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "container port: %v\n", err)
-		os.Exit(1)
-	}
-
-	client := redis.NewClient(&redis.Options{
-		Addr: fmt.Sprintf("%s:%s", host, port.Port()),
-	})
-
-	return container, client
 }
 
 func newRepository(tb testing.TB) *RedisServerEventRepository {
@@ -70,18 +34,8 @@ func newRepository(tb testing.TB) *RedisServerEventRepository {
 	return &RedisServerEventRepository{client: testRedis}
 }
 
-func cleanRedis(tb testing.TB) {
-	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
-	if err := testRedis.FlushDB(context.Background()).Err(); err != nil {
-		tb.Fatalf("flush db: %v", err)
-	}
-}
-
 func TestIntegration_GetStatus_NotFound(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	repo := newRepository(t)
 	got, err := repo.GetStatus(t.Context(), 999)
@@ -94,7 +48,7 @@ func TestIntegration_GetStatus_NotFound(t *testing.T) {
 }
 
 func TestIntegration_SetGetStatus(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	repo := newRepository(t)
 	endpointID := uint(42)
@@ -114,7 +68,7 @@ func TestIntegration_SetGetStatus(t *testing.T) {
 }
 
 func TestIntegration_SetStatus_Overwrite(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	repo := newRepository(t)
 	endpointID := uint(1)
@@ -136,7 +90,7 @@ func TestIntegration_SetStatus_Overwrite(t *testing.T) {
 }
 
 func TestIntegration_DeleteStatus(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	repo := newRepository(t)
 	endpointID := uint(7)
@@ -158,7 +112,7 @@ func TestIntegration_DeleteStatus(t *testing.T) {
 }
 
 func TestIntegration_SetStatus_TTL(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	repo := newRepository(t)
 	endpointID := uint(10)

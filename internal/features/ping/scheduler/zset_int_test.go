@@ -8,6 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
 )
 
 func newSchedulerRepo(tb testing.TB) *ZSetScheduleRepository {
@@ -38,7 +39,7 @@ func addMetaCache(tb testing.TB, id uint) {
 }
 
 func TestIntegration_Register(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	repo := newSchedulerRepo(t)
 	ep := &domain.Endpoint{
@@ -63,7 +64,7 @@ func TestIntegration_Register(t *testing.T) {
 }
 
 func TestIntegration_Unregister(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	repo := newSchedulerRepo(t)
 	endpointID := uint(7)
@@ -91,7 +92,7 @@ func TestIntegration_Unregister(t *testing.T) {
 }
 
 func TestIntegration_ClaimDueTasks_NoDue(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	repo := newSchedulerRepo(t)
 	futureScore := time.Now().Add(time.Hour).UnixMilli()
@@ -116,7 +117,7 @@ func TestIntegration_ClaimDueTasks_NoDue(t *testing.T) {
 }
 
 func TestIntegration_ClaimDueTasks_Due(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	repo := newSchedulerRepo(t)
 	pastScore := time.Now().Add(-time.Minute).UnixMilli()
@@ -148,7 +149,7 @@ func TestIntegration_ClaimDueTasks_Due(t *testing.T) {
 }
 
 func TestIntegration_ClaimDueTasks_WithLimit(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	repo := newSchedulerRepo(t)
 	pastScore := time.Now().Add(-time.Minute).UnixMilli()
@@ -166,7 +167,7 @@ func TestIntegration_ClaimDueTasks_WithLimit(t *testing.T) {
 }
 
 func TestIntegration_ClaimDueTasks_ZeroLimit(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	repo := newSchedulerRepo(t)
 

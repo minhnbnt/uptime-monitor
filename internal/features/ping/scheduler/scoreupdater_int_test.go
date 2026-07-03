@@ -3,6 +3,8 @@ package scheduler
 import (
 	"strconv"
 	"testing"
+
+	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
 )
 
 func newScoreUpdater(tb testing.TB) *ScoreUpdater {
@@ -14,7 +16,7 @@ func newScoreUpdater(tb testing.TB) *ScoreUpdater {
 }
 
 func TestIntegration_UpdateBatch_Empty(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	u := newScoreUpdater(t)
 	err := u.UpdateBatch(t.Context(), nil)
@@ -29,7 +31,7 @@ func TestIntegration_UpdateBatch_Empty(t *testing.T) {
 }
 
 func TestIntegration_UpdateBatch_SingleItem(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	u := newScoreUpdater(t)
 	err := u.UpdateBatch(t.Context(), map[uint]int64{42: 1000})
@@ -47,7 +49,7 @@ func TestIntegration_UpdateBatch_SingleItem(t *testing.T) {
 }
 
 func TestIntegration_UpdateBatch_MultipleItems(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	u := newScoreUpdater(t)
 	items := map[uint]int64{
@@ -84,7 +86,7 @@ func TestIntegration_UpdateBatch_MultipleItems(t *testing.T) {
 }
 
 func TestIntegration_UpdateBatch_UpdatesExisting(t *testing.T) {
-	cleanRedis(t)
+	testcontainers.CleanRedis(t, testRedis)
 
 	u := newScoreUpdater(t)
 	if err := u.UpdateBatch(t.Context(), map[uint]int64{1: 500}); err != nil {

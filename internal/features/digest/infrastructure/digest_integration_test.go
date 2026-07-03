@@ -3,15 +3,14 @@ package infrastructure
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 	temporalclient "go.temporal.io/sdk/client"
+
+	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
 )
 
 var (
@@ -25,19 +24,8 @@ func TestMain(m *testing.M) {
 	if !testing.Short() {
 		ctx := context.Background()
 
-		container := startTemporal(ctx)
+		container, address := testcontainers.StartTemporal(ctx)
 		temporalContainer = container
-
-		host, err := container.Host(ctx)
-		if err != nil {
-			log.Fatalf("container host: %v", err)
-		}
-		port, err := container.MappedPort(ctx, "7233")
-		if err != nil {
-			log.Fatalf("container port: %v", err)
-		}
-
-		address := fmt.Sprintf("%s:%s", host, port.Port())
 
 		client, err := temporalclient.Dial(temporalclient.Options{
 			HostPort: address,
@@ -60,24 +48,6 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(m.Run())
-}
-
-func startTemporal(ctx context.Context) testcontainers.Container {
-	req := testcontainers.ContainerRequest{
-		Image:        "temporalio/temporal:1.7.2",
-		ExposedPorts: []string{"7233/tcp"},
-		Cmd:          []string{"server", "start-dev", "--ip", "0.0.0.0"},
-		WaitingFor: wait.ForListeningPort("7233/tcp").
-			WithStartupTimeout(90 * time.Second),
-	}
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		log.Fatalf("start temporal container: %v", err)
-	}
-	return container
 }
 
 func skipIfShort(tb testing.TB) {
