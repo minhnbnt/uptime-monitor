@@ -32,6 +32,20 @@ func NewEndpointRepository(db *gorm.DB) *EndpointRepository {
 	return &EndpointRepository{db: db}
 }
 
+func NewEndpointRepositoryWithDeps(
+	db *gorm.DB,
+	scheduler scheduler.SchedulerRepository,
+	statusStore *monitorrepo.RedisServerEventRepository,
+	metaCache *scheduler.EndpointMetaCache,
+) *EndpointRepository {
+	return &EndpointRepository{
+		db:          db,
+		scheduler:   scheduler,
+		statusStore: statusStore,
+		metaCache:   metaCache,
+	}
+}
+
 func getSchedulerRepository(i do.Injector) scheduler.SchedulerRepository {
 
 	cfg := do.MustInvoke[*config.Config](i)
@@ -61,12 +75,12 @@ func RegisterEndpointRepository(i do.Injector) {
 
 		dbWrapper := do.MustInvoke[*config.GORMWrapper](i)
 
-		return &EndpointRepository{
-			db:          dbWrapper.GetDB(),
-			scheduler:   getSchedulerRepository(i),
-			statusStore: do.MustInvoke[*monitorrepo.RedisServerEventRepository](i),
-			metaCache:   do.MustInvoke[*scheduler.EndpointMetaCache](i),
-		}, nil
+		return NewEndpointRepositoryWithDeps(
+			dbWrapper.GetDB(),
+			getSchedulerRepository(i),
+			do.MustInvoke[*monitorrepo.RedisServerEventRepository](i),
+			do.MustInvoke[*scheduler.EndpointMetaCache](i),
+		), nil
 	})
 }
 

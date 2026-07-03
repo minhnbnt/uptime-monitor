@@ -22,9 +22,13 @@ type RedisServerEventRepository struct {
 	client *redis.Client
 }
 
+func NewRedisServerEventRepository(client *redis.Client) *RedisServerEventRepository {
+	return &RedisServerEventRepository{client: client}
+}
+
 func newRedisServerEventRepository(i do.Injector) (*RedisServerEventRepository, error) {
 	wrapper := do.MustInvoke[*config.RedisClientWrapper](i)
-	return &RedisServerEventRepository{client: wrapper.GetClient()}, nil
+	return NewRedisServerEventRepository(wrapper.GetClient()), nil
 }
 
 func RegisterRedisServerEventRepository(i do.Injector) {

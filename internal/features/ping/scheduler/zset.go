@@ -28,10 +28,14 @@ type ZSetScheduleRepository struct {
 	client *redis.Client
 }
 
+func NewZSetScheduleRepository(client *redis.Client) *ZSetScheduleRepository {
+	return &ZSetScheduleRepository{client: client}
+}
+
 func RegisterZSetScheduleRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ZSetScheduleRepository, error) {
 		wrapper := do.MustInvoke[*config.RedisClientWrapper](i)
-		return &ZSetScheduleRepository{client: wrapper.GetClient()}, nil
+		return NewZSetScheduleRepository(wrapper.GetClient()), nil
 	})
 }
 

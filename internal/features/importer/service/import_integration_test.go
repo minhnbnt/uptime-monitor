@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/xuri/excelize/v2"
@@ -18,17 +19,24 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/features/importer/dto"
+	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
+	"github.com/minhnbnt/uptime-monitor/internal/features/ping/scheduler"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/infrastructure"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
 var testDB *gorm.DB
+var testRedis *redis.Client
 
 func TestMain(m *testing.M) {
 	flag.Parse()
 	if !testing.Short() {
 		ctx := context.Background()
+
+		redisContainer, client := startRedis(ctx)
+		defer func() { _ = redisContainer.Terminate(ctx) }()
+		testRedis = client
 
 		container, dsn := startPostgres(ctx)
 		defer func() { _ = container.Terminate(ctx) }()
@@ -102,6 +110,52 @@ func startPostgres(ctx context.Context) (testcontainers.Container, string) {
 	return container, dsn
 }
 
+func startRedis(ctx context.Context) (testcontainers.Container, *redis.Client) {
+	req := testcontainers.ContainerRequest{
+		Image:        "redis:8-alpine",
+		ExposedPorts: []string{"6379/tcp"},
+		WaitingFor: wait.ForLog("Ready to accept connections tcp").
+			WithStartupTimeout(60 * time.Second),
+	}
+	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "start redis container: %v\n", err)
+		os.Exit(1)
+	}
+
+	host, err := container.Host(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "container host: %v\n", err)
+		os.Exit(1)
+	}
+	port, err := container.MappedPort(ctx, "6379")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "container port: %v\n", err)
+		os.Exit(1)
+	}
+
+	client := redis.NewClient(&redis.Options{
+		Addr: fmt.Sprintf("%s:%s", host, port.Port()),
+	})
+
+	return container, client
+}
+
+func cleanRedis(tb testing.TB) {
+	tb.Helper()
+
+	if testing.Short() {
+		tb.Skip("skipping integration test")
+	}
+
+	if err := testRedis.FlushDB(context.Background()).Err(); err != nil {
+		tb.Fatalf("flush redis: %v", err)
+	}
+}
+
 func newImportIntegrationService(tb testing.TB) *ImportService {
 	tb.Helper()
 
@@ -109,12 +163,18 @@ func newImportIntegrationService(tb testing.TB) *ImportService {
 		tb.Skip("skipping integration test")
 	}
 
+	zsetScheduler := scheduler.NewZSetScheduleRepository(testRedis)
+	metaCache := scheduler.NewEndpointMetaCache(testRedis)
+	statusStore := monitorrepo.NewRedisServerEventRepository(testRedis)
+
 	return &ImportService{
-		serverRepository:   serverrepo.NewServerRepository(testDB),
-		endpointRepository: serverrepo.NewEndpointRepository(testDB),
-		excelExporter:      &infrastructure.ExcelExporter{},
-		excelParser:        &infrastructure.ExcelParser{},
-		logger:             logger.NewMockLogger(),
+		serverRepository: serverrepo.NewServerRepository(testDB),
+		endpointRepository: serverrepo.NewEndpointRepositoryWithDeps(
+			testDB, zsetScheduler, statusStore, metaCache,
+		),
+		excelExporter: &infrastructure.ExcelExporter{},
+		excelParser:   &infrastructure.ExcelParser{},
+		logger:        logger.NewMockLogger(),
 	}
 }
 
@@ -128,6 +188,8 @@ func truncateTables(tb testing.TB) {
 	for _, tbl := range []string{"server_events", "endpoints", "servers"} {
 		testDB.Exec(fmt.Sprintf("TRUNCATE TABLE %s CASCADE", tbl))
 	}
+
+	cleanRedis(tb)
 }
 
 func buildExcel(tb testing.TB, rows []dto.ImportRow) io.Reader {
@@ -377,5 +439,199 @@ func TestIntegration_ImportServers_DefaultValues(t *testing.T) {
 	}
 	if endpoint.ExpectedCode != 200 {
 		t.Errorf("ExpectedCode = %d, want 200", endpoint.ExpectedCode)
+	}
+}
+
+func TestIntegration_ImportServers_SchedulerAndCache(t *testing.T) {
+	truncateTables(t)
+
+	rows := []dto.ImportRow{
+		{Name: "server-a", URL: "https://a.com", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},
+		{Name: "server-b", URL: "https://b.org/ping", Method: "POST", Interval: 60, Timeout: 15, ExpectedCode: 201},
+		{Name: "server-c", URL: "https://c.io", Method: "GET", Interval: 120, Timeout: 30, ExpectedCode: 200},
+	}
+
+	svc := newImportIntegrationService(t)
+	file := buildExcel(t, rows)
+
+	result, err := svc.ImportServers(t.Context(), 1, file)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Successes) != 3 {
+		t.Fatalf("len(Successes) = %d, want 3", len(result.Successes))
+	}
+	if len(result.RowErrors)+len(result.BatchErrors) != 0 {
+		t.Fatalf("unexpected errors: row=%v batch=%v", result.RowErrors, result.BatchErrors)
+	}
+
+	var endpoints []domain.Endpoint
+	if err := testDB.Find(&endpoints).Error; err != nil {
+		t.Fatalf("query endpoints: %v", err)
+	}
+	if len(endpoints) != 3 {
+		t.Fatalf("got %d endpoints in DB, want 3", len(endpoints))
+	}
+
+	now := time.Now().UnixMilli()
+	zset := testRedis.ZRangeWithScores(t.Context(), "scheduler:queue", 0, -1)
+	zsetResult, err := zset.Result()
+	if err != nil {
+		t.Fatalf("ZRANGE scheduler:queue: %v", err)
+	}
+	if len(zsetResult) != 3 {
+		t.Fatalf("got %d entries in scheduler:queue, want 3", len(zsetResult))
+	}
+
+	epIDs := make(map[uint]bool)
+	for _, ep := range endpoints {
+		epIDs[ep.ID] = true
+	}
+
+	for _, z := range zsetResult {
+		member, ok := z.Member.(string)
+		if !ok {
+			t.Errorf("expected string member, got %T", z.Member)
+			continue
+		}
+		var id uint
+		if _, err := fmt.Sscanf(member, "%d", &id); err != nil {
+			t.Errorf("parse member %q: %v", member, err)
+			continue
+		}
+		if !epIDs[id] {
+			t.Errorf("unexpected endpoint %d in scheduler:queue", id)
+		}
+		if z.Score <= float64(now) {
+			t.Errorf("endpoint %d score %f is not in the future", id, z.Score)
+		}
+	}
+
+	for _, ep := range endpoints {
+		metaKey := fmt.Sprintf("scheduler:meta:%d", ep.ID)
+		data, err := testRedis.HGetAll(t.Context(), metaKey).Result()
+		if err != nil {
+			t.Fatalf("HGetAll %s: %v", metaKey, err)
+		}
+		if len(data) == 0 {
+			t.Errorf("meta cache key %s is empty", metaKey)
+			continue
+		}
+		if data["url"] != ep.URL {
+			t.Errorf("meta cache url = %q, want %q", data["url"], ep.URL)
+		}
+		if data["method"] != ep.Method {
+			t.Errorf("meta cache method = %q, want %q", data["method"], ep.Method)
+		}
+		if data["expected_code"] != fmt.Sprint(ep.ExpectedCode) {
+			t.Errorf("meta cache expected_code = %q, want %d", data["expected_code"], ep.ExpectedCode)
+		}
+		if data["interval_ns"] != fmt.Sprint(ep.Interval.Nanoseconds()) {
+			t.Errorf("meta cache interval_ns = %q, want %d", data["interval_ns"], ep.Interval.Nanoseconds())
+		}
+	}
+}
+
+func TestIntegration_ImportServers_EmptyURL_NoScheduler(t *testing.T) {
+	truncateTables(t)
+
+	rows := []dto.ImportRow{
+		{Name: "server-a", URL: "https://a.com", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},
+		{Name: "server-b", URL: "", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},
+		{Name: "server-c", URL: "https://c.com", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},
+	}
+
+	svc := newImportIntegrationService(t)
+	file := buildExcel(t, rows)
+
+	result, err := svc.ImportServers(t.Context(), 1, file)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Successes) != 3 {
+		t.Errorf("len(Successes) = %d, want 3", len(result.Successes))
+	}
+
+	var servers []domain.Server
+	testDB.Find(&servers)
+	if len(servers) != 3 {
+		t.Fatalf("got %d servers, want 3", len(servers))
+	}
+
+	var endpoints []domain.Endpoint
+	testDB.Find(&endpoints)
+	if len(endpoints) != 2 {
+		t.Fatalf("got %d endpoints, want 2", len(endpoints))
+	}
+
+	zset := testRedis.ZCard(t.Context(), "scheduler:queue")
+	if zset.Val() != 2 {
+		t.Errorf("got %d entries in scheduler:queue, want 2", zset.Val())
+	}
+
+	var metaCount int
+	for _, ep := range endpoints {
+		metaKey := fmt.Sprintf("scheduler:meta:%d", ep.ID)
+		exists, err := testRedis.Exists(t.Context(), metaKey).Result()
+		if err != nil {
+			t.Fatalf("Exists %s: %v", metaKey, err)
+		}
+		if exists == 1 {
+			metaCount++
+		}
+	}
+	if metaCount != 2 {
+		t.Errorf("got %d meta cache entries, want 2", metaCount)
+	}
+}
+
+func TestIntegration_ImportServers_MetaCacheLookup(t *testing.T) {
+	truncateTables(t)
+
+	rows := []dto.ImportRow{
+		{Name: "server-a", URL: "https://a.com", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},
+	}
+
+	svc := newImportIntegrationService(t)
+	file := buildExcel(t, rows)
+
+	result, err := svc.ImportServers(t.Context(), 1, file)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Successes) != 1 {
+		t.Fatalf("len(Successes) = %d, want 1", len(result.Successes))
+	}
+
+	var endpoint domain.Endpoint
+	if err := testDB.First(&endpoint).Error; err != nil {
+		t.Fatalf("get endpoint: %v", err)
+	}
+
+	metaCache := scheduler.NewEndpointMetaCache(testRedis)
+
+	cached, err := metaCache.Get(t.Context(), endpoint.ID)
+	if err != nil {
+		t.Fatalf("metaCache.Get: %v", err)
+	}
+	if cached.URL != endpoint.URL {
+		t.Errorf("cached URL = %q, want %q", cached.URL, endpoint.URL)
+	}
+	if cached.Method != endpoint.Method {
+		t.Errorf("cached Method = %q, want %q", cached.Method, endpoint.Method)
+	}
+	if cached.ExpectedCode != endpoint.ExpectedCode {
+		t.Errorf("cached ExpectedCode = %d, want %d", cached.ExpectedCode, endpoint.ExpectedCode)
+	}
+	if cached.Interval != endpoint.Interval {
+		t.Errorf("cached Interval = %v, want %v", cached.Interval, endpoint.Interval)
+	}
+
+	lookupEndpoint, err := metaCache.Get(t.Context(), endpoint.ID)
+	if err != nil {
+		t.Fatalf("second metaCache.Get: %v", err)
+	}
+	if lookupEndpoint == nil {
+		t.Fatal("lookup endpoint is nil")
 	}
 }

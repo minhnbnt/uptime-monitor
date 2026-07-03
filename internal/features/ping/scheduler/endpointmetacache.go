@@ -27,10 +27,14 @@ type EndpointMetaCache struct {
 	client *redis.Client
 }
 
+func NewEndpointMetaCache(client *redis.Client) *EndpointMetaCache {
+	return &EndpointMetaCache{client: client}
+}
+
 func RegisterEndpointMetaCache(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointMetaCache, error) {
 		wrapper := do.MustInvoke[*config.RedisClientWrapper](i)
-		return &EndpointMetaCache{client: wrapper.GetClient()}, nil
+		return NewEndpointMetaCache(wrapper.GetClient()), nil
 	})
 }
 
