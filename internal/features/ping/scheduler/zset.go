@@ -123,7 +123,10 @@ var claimScript = redis.NewScript(`
 		table.insert(zaddArgs, lockScore)
 		table.insert(zaddArgs, due[i])
 	end
-	redis.call("ZADD", unpack(zaddArgs))
+
+	if #zaddArgs > 1 then
+		redis.call("ZADD", unpack(zaddArgs))
+	end
 
 	return {due, next}
 `)

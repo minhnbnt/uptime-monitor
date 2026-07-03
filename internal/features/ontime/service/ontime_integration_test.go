@@ -15,6 +15,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
+	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
@@ -45,14 +46,8 @@ func TestMain(m *testing.M) {
 			os.Exit(1)
 		}
 
-		schemas := []any{
-			&domain.User{},
-			&domain.Server{},
-			&domain.Endpoint{},
-			&domain.ServerEvent{},
-		}
-		if err := db.AutoMigrate(schemas...); err != nil {
-			fmt.Fprintf(os.Stderr, "auto-migrate: %v\n", err)
+		if err := config.RunMigration(db); err != nil {
+			fmt.Fprintf(os.Stderr, "run migration: %v\n", err)
 			os.Exit(1)
 		}
 

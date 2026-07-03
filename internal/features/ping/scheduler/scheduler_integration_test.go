@@ -14,6 +14,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
+	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 )
 
@@ -33,14 +34,13 @@ func TestMain(m *testing.M) {
 		defer func() { _ = pgContainer.Terminate(ctx) }()
 		testDB = openDB(dsn)
 
-		schemas := []any{
-			&domain.User{},
-			&domain.Server{},
-			&domain.Endpoint{},
-		}
-		if err := testDB.AutoMigrate(schemas...); err != nil {
-			fmt.Fprintf(os.Stderr, "auto-migrate: %v\n", err)
+		if err := config.RunMigration(testDB); err != nil {
+			fmt.Fprintf(os.Stderr, "run migration: %v\n", err)
 			os.Exit(1)
+		}
+
+		if err := config.EnablePGSearch(testDB); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: pg_search not available: %v\n", err)
 		}
 
 		testDB.Create(&domain.User{

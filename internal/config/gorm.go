@@ -74,6 +74,36 @@ func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 	sqlDB.SetMaxIdleConns(5)
 	sqlDB.SetConnMaxLifetime(30 * time.Minute)
 
+	if err := RunMigration(db); err != nil {
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	searchEnabled := true
+	if err := EnablePGSearch(db); err != nil {
+		logger.Warn("failed to enable pg_search, ParadeDB search disabled", zap.Error(err))
+		searchEnabled = false
+	}
+
+	return &GORMWrapper{db: db, SearchEnabled: searchEnabled}, nil
+}
+
+func EnablePGSearch(db *gorm.DB) error {
+
+	result := db.Exec("CREATE EXTENSION IF NOT EXISTS pg_search")
+	if result.Error != nil {
+		return fmt.Errorf("failed to enable pg_search: %w", result.Error)
+	}
+
+	result = db.Exec(`CREATE INDEX IF NOT EXISTS servers_search_idx ON servers USING bm25 (id, name) WITH (key_field='id')`)
+	if result.Error != nil {
+		return fmt.Errorf("failed to create BM25 index: %w", result.Error)
+	}
+
+	return nil
+}
+
+func RunMigration(db *gorm.DB) error {
+
 	schemas := []any{
 		&domain.User{},
 		&domain.Server{},
@@ -83,19 +113,10 @@ func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 	}
 
 	if err := db.AutoMigrate(schemas...); err != nil {
-		logger.Warn("failed to run migrations", zap.Error(err))
+		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
-	searchEnabled := false
-	if err := db.Exec("CREATE EXTENSION IF NOT EXISTS pg_search").Error; err != nil {
-		logger.Warn("pg_search extension not available, ParadeDB search disabled", zap.Error(err))
-	} else if err := db.Exec(`CREATE INDEX IF NOT EXISTS servers_search_idx ON servers USING bm25 (id, name) WITH (key_field='id')`).Error; err != nil {
-		logger.Warn("failed to create BM25 index, ParadeDB search disabled", zap.Error(err))
-	} else {
-		searchEnabled = true
-	}
-
-	return &GORMWrapper{db: db, SearchEnabled: searchEnabled}, nil
+	return nil
 }
 
 func RegisterGORMDB(i do.Injector) {
@@ -118,6 +139,7 @@ func (gw *GORMWrapper) GetDB() *gorm.DB {
 }
 
 func (gw *GORMWrapper) Shutdown() error {
+
 	sqlDB, err := gw.db.DB()
 	if err != nil {
 		return err

@@ -13,6 +13,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
+	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 )
 
@@ -32,22 +33,15 @@ func TestMain(m *testing.M) {
 			os.Exit(1)
 		}
 
-		schemas := []any{
-			&domain.User{},
-			&domain.Server{},
-			&domain.Endpoint{},
-		}
-		if err := db.AutoMigrate(schemas...); err != nil {
-			fmt.Fprintf(os.Stderr, "auto-migrate: %v\n", err)
+		testDB = db
+
+		if err := config.RunMigration(testDB); err != nil {
+			fmt.Fprintf(os.Stderr, "run migration: %v\n", err)
 			os.Exit(1)
 		}
 
-		testDB = db
-
-		if err := testDB.Exec("CREATE EXTENSION IF NOT EXISTS pg_search").Error; err != nil {
-			fmt.Fprintf(os.Stderr, "warning: pg_search extension not available: %v\n", err)
-		} else {
-			_ = testDB.Exec(`CREATE INDEX IF NOT EXISTS servers_search_idx ON servers USING bm25 (id, name) WITH (key_field='id')`)
+		if err := config.EnablePGSearch(testDB); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: pg_search not available: %v\n", err)
 		}
 
 		testDB.Create(&domain.User{
