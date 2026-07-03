@@ -4,6 +4,7 @@ import (
 	"context"
 	"iter"
 	"maps"
+	"math/rand"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -73,6 +74,26 @@ func getSleepDuration(next scheduler.ScheduledTask, hasNext bool) time.Duration 
 	return time.Until(nextTime)
 }
 
+func calculateNextScore(score int64, interval time.Duration) int64 {
+
+	nowUnixMilli := time.Now().UnixMilli()
+	intervalMilliseconds := interval.Milliseconds()
+
+	next := score
+	if next <= nowUnixMilli {
+		missed := (nowUnixMilli-next)/intervalMilliseconds + 1
+		next += missed * intervalMilliseconds
+	}
+
+	jitterRange := intervalMilliseconds / 20
+	if jitterRange > 0 {
+		jitter := rand.Int63n(jitterRange*2+1) - jitterRange
+		next += jitter
+	}
+
+	return next
+}
+
 func (s *LoopService) runIteration(ctx context.Context, due []scheduler.ScheduledTask, dueHandler DueHandler) error {
 
 	ids := lo.Map(due, func(task scheduler.ScheduledTask, _ int) uint { return task.EndpointID })
@@ -84,7 +105,6 @@ func (s *LoopService) runIteration(ctx context.Context, due []scheduler.Schedule
 	endpoints := maps.Values(endpointMap)
 	dueHandler(ctx, endpoints)
 
-	nowUnixmilli := time.Now().UnixMilli()
 	updates := make(map[uint]int64, len(due))
 	for _, task := range due {
 
@@ -98,7 +118,7 @@ func (s *LoopService) runIteration(ctx context.Context, due []scheduler.Schedule
 			continue
 		}
 
-		updates[task.EndpointID] = nowUnixmilli + ep.Interval.Milliseconds()
+		updates[task.EndpointID] = calculateNextScore(task.Score, ep.Interval)
 	}
 
 	if len(updates) > 0 {
