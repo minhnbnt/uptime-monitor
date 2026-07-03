@@ -212,8 +212,9 @@ func TestIntegration_GetBatch_AllMissedMultiple(t *testing.T) {
 	truncateTables(t)
 
 	seedServer(t, 1)
+	seedServer(t, 2)
 	seedEndpoint(t, 100, 1)
-	seedEndpoint(t, 101, 1)
+	seedEndpoint(t, 101, 2)
 
 	p := newEndpointProvider(t)
 	results, err := p.GetBatch(t.Context(), []uint{100, 101})

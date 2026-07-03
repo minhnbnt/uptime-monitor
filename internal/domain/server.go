@@ -20,7 +20,7 @@ func (Server) TableName() string {
 
 type Endpoint struct {
 	gorm.Model
-	ServerID      uint          `gorm:"not null;index"`
+	ServerID      uint          `gorm:"not null;uniqueIndex"`
 	URL           string        `gorm:"type:text;not null"`
 	MonitorStatus ServerStatus  `gorm:"type:varchar(10);not null;default:OFF"`
 	Interval      time.Duration `gorm:"type:bigint;not null;default:30000000000"`

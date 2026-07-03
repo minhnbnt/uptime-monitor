@@ -61,9 +61,11 @@ func TestIntegration_Fetch_MultipleIDs(t *testing.T) {
 
 	truncateTables(t)
 	seedServer(t, 1)
+	seedServer(t, 2)
+	seedServer(t, 3)
 	seedEndpoint(t, 1, 1)
-	seedEndpoint(t, 2, 1)
-	seedEndpoint(t, 3, 1)
+	seedEndpoint(t, 2, 2)
+	seedEndpoint(t, 3, 3)
 
 	f := newFetcher(t)
 	results, err := f.Fetch(t.Context(), 1, 2, 3)
@@ -101,8 +103,9 @@ func TestIntegration_Fetch_MixedExistingAndMissing(t *testing.T) {
 
 	truncateTables(t)
 	seedServer(t, 1)
+	seedServer(t, 2)
 	seedEndpoint(t, 1, 1)
-	seedEndpoint(t, 2, 1)
+	seedEndpoint(t, 2, 2)
 
 	f := newFetcher(t)
 	results, err := f.Fetch(t.Context(), 1, 999, 2)

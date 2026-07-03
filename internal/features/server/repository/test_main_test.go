@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"gorm.io/driver/postgres"
@@ -18,14 +19,19 @@ import (
 )
 
 var testDB *gorm.DB
+var testRedis *redis.Client
 
 func TestMain(m *testing.M) {
 	flag.Parse()
 	if !testing.Short() {
 		ctx := context.Background()
 
-		container, dsn := startPostgres(ctx)
-		defer func() { _ = container.Terminate(ctx) }()
+		redisContainer, client := startRedis(ctx)
+		defer func() { _ = redisContainer.Terminate(ctx) }()
+		testRedis = client
+
+		pgContainer, dsn := startPostgres(ctx)
+		defer func() { _ = pgContainer.Terminate(ctx) }()
 
 		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 		if err != nil {
@@ -54,6 +60,40 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(m.Run())
+}
+
+func startRedis(ctx context.Context) (testcontainers.Container, *redis.Client) {
+	req := testcontainers.ContainerRequest{
+		Image:        "redis:8-alpine",
+		ExposedPorts: []string{"6379/tcp"},
+		WaitingFor: wait.ForLog("Ready to accept connections tcp").
+			WithStartupTimeout(60 * time.Second),
+	}
+	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "start redis container: %v\n", err)
+		os.Exit(1)
+	}
+
+	host, err := container.Host(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "container host: %v\n", err)
+		os.Exit(1)
+	}
+	port, err := container.MappedPort(ctx, "6379")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "container port: %v\n", err)
+		os.Exit(1)
+	}
+
+	client := redis.NewClient(&redis.Options{
+		Addr: fmt.Sprintf("%s:%s", host, port.Port()),
+	})
+
+	return container, client
 }
 
 func startPostgres(ctx context.Context) (testcontainers.Container, string) {
@@ -103,5 +143,15 @@ func truncateTables(tb testing.TB) {
 	}
 	for _, tbl := range []string{"endpoints", "servers"} {
 		testDB.Exec(fmt.Sprintf("TRUNCATE TABLE %s CASCADE", tbl))
+	}
+}
+
+func cleanRedis(tb testing.TB) {
+	tb.Helper()
+	if testing.Short() {
+		tb.Skip("skipping integration test")
+	}
+	if err := testRedis.FlushDB(context.Background()).Err(); err != nil {
+		tb.Fatalf("flush db: %v", err)
 	}
 }
