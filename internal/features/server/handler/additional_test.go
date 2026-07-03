@@ -196,7 +196,7 @@ func TestEndpointHandler_SetCheckMethod_GetServerError(t *testing.T) {
 	t.Run("endpoint service error", func(t *testing.T) {
 		h := &EndpointHandler{
 			endpointService: &mockEndpointService{
-				setCheckMethodFn: func(_ context.Context, _ uint, _ dto.SetCheckMethodRequest) error {
+				setCheckMethodFn: func(_ context.Context, _ uint, _ uint, _ dto.SetCheckMethodRequest) error {
 					return errors.New("endpoint error")
 				},
 			},
@@ -225,7 +225,7 @@ func TestEndpointHandler_SetCheckMethod_GetServerError(t *testing.T) {
 	t.Run("get server not found", func(t *testing.T) {
 		h := &EndpointHandler{
 			endpointService: &mockEndpointService{
-				setCheckMethodFn: func(_ context.Context, _ uint, _ dto.SetCheckMethodRequest) error {
+				setCheckMethodFn: func(_ context.Context, _ uint, _ uint, _ dto.SetCheckMethodRequest) error {
 					return nil
 				},
 			},

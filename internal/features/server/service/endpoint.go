@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"github.com/samber/do/v2"
 
@@ -18,6 +19,7 @@ type Pinger interface {
 }
 
 type EndpointService struct {
+	serverRepository   ServerRepository
 	endpointRepository EndpointRepository
 	pingWorker         Pinger
 	logger             logger.Logger
@@ -26,6 +28,7 @@ type EndpointService struct {
 func RegisterEndpointService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointService, error) {
 		return &EndpointService{
+			serverRepository:   do.MustInvoke[*serverrepo.ServerRepository](i),
 			endpointRepository: do.MustInvoke[*serverrepo.EndpointRepository](i),
 			pingWorker:         do.MustInvoke[*infra.PingWorker](i),
 			logger:             do.MustInvoke[logger.Logger](i),
@@ -45,7 +48,20 @@ func toDomainEndpoint(serverID uint, req dto.SetCheckMethodRequest) domain.Endpo
 	}
 }
 
-func (es *EndpointService) SetCheckMethod(ctx context.Context, serverID uint, req dto.SetCheckMethodRequest) error {
+func (es *EndpointService) SetCheckMethod(ctx context.Context, serverID uint, userID uint, req dto.SetCheckMethodRequest) error {
+
+	server, err := es.serverRepository.GetByID(ctx, serverID)
+	if errors.Is(err, apperrors.ErrNotFound) {
+		return apperrors.ErrNotFound
+	}
+	if err != nil {
+		es.logger.Error("failed to get server for set check method", logger.Error(err))
+		return apperrors.ErrInternal
+	}
+
+	if server.CreatedByID != userID {
+		return apperrors.ErrForbidden
+	}
 
 	endpoint := toDomainEndpoint(serverID, req)
 

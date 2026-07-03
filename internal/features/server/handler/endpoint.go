@@ -9,6 +9,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/middleware"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/service"
 )
@@ -52,7 +53,8 @@ func (h *EndpointHandler) SetCheckMethod(
 		ExpectedCode: req.Endpoint.ExpectedCode,
 	}
 
-	if err := h.endpointService.SetCheckMethod(ctx, uint(params.ID), dtoReq); err != nil {
+	userID := middleware.GetUserID(ctx)
+	if err := h.endpointService.SetCheckMethod(ctx, uint(params.ID), userID, dtoReq); err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}
 

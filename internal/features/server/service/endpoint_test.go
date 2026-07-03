@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
@@ -120,6 +121,15 @@ func TestEndpointService_SetCheckMethod(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		var captured *domain.Endpoint
 		svc := &EndpointService{logger: logger.NewMockLogger(),
+			serverRepository: &mockServerRepo{
+				getByIDFn: func(_ context.Context, _ uint) (*domain.Server, error) {
+					return &domain.Server{
+						Model:       gormModel(7, time.Now()),
+						Name:        "my-server",
+						CreatedByID: 1,
+					}, nil
+				},
+			},
 			endpointRepository: &mockEndpointRepo{
 				upsertEndpointFn: func(_ context.Context, e domain.Endpoint) error {
 					captured = &e
@@ -128,7 +138,7 @@ func TestEndpointService_SetCheckMethod(t *testing.T) {
 			},
 		}
 
-		err := svc.SetCheckMethod(t.Context(), 7, req)
+		err := svc.SetCheckMethod(t.Context(), 7, 1, req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -160,6 +170,15 @@ func TestEndpointService_SetCheckMethod(t *testing.T) {
 
 	t.Run("repo error", func(t *testing.T) {
 		svc := &EndpointService{logger: logger.NewMockLogger(),
+			serverRepository: &mockServerRepo{
+				getByIDFn: func(_ context.Context, _ uint) (*domain.Server, error) {
+					return &domain.Server{
+						Model:       gormModel(1, time.Now()),
+						Name:        "my-server",
+						CreatedByID: 1,
+					}, nil
+				},
+			},
 			endpointRepository: &mockEndpointRepo{
 				upsertEndpointFn: func(_ context.Context, _ domain.Endpoint) error {
 					return errors.New("upsert failed")
@@ -167,7 +186,44 @@ func TestEndpointService_SetCheckMethod(t *testing.T) {
 			},
 		}
 
-		err := svc.SetCheckMethod(t.Context(), 1, req)
+		err := svc.SetCheckMethod(t.Context(), 1, 1, req)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	t.Run("forbidden", func(t *testing.T) {
+		svc := &EndpointService{logger: logger.NewMockLogger(),
+			serverRepository: &mockServerRepo{
+				getByIDFn: func(_ context.Context, _ uint) (*domain.Server, error) {
+					return &domain.Server{
+						Model:       gormModel(1, time.Now()),
+						Name:        "my-server",
+						CreatedByID: 1,
+					}, nil
+				},
+			},
+		}
+
+		err := svc.SetCheckMethod(t.Context(), 1, 99, req)
+		if err == nil {
+			t.Fatal("expected forbidden error")
+		}
+		if !errors.Is(err, apperrors.ErrForbidden) {
+			t.Errorf("got %v, want ErrForbidden", err)
+		}
+	})
+
+	t.Run("server not found", func(t *testing.T) {
+		svc := &EndpointService{logger: logger.NewMockLogger(),
+			serverRepository: &mockServerRepo{
+				getByIDFn: func(_ context.Context, _ uint) (*domain.Server, error) {
+					return nil, errors.New("not found")
+				},
+			},
+		}
+
+		err := svc.SetCheckMethod(t.Context(), 999, 1, req)
 		if err == nil {
 			t.Fatal("expected error")
 		}

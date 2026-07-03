@@ -38,12 +38,12 @@ func (m *mockServerService) SearchServers(ctx context.Context, params dto.Search
 }
 
 type mockEndpointService struct {
-	setCheckMethodFn func(ctx context.Context, serverID uint, req dto.SetCheckMethodRequest) error
+	setCheckMethodFn func(ctx context.Context, serverID uint, userID uint, req dto.SetCheckMethodRequest) error
 	testEndpointFn   func(ctx context.Context, req dto.TestEndpointRequest) (*dto.TestEndpointResponse, error)
 }
 
-func (m *mockEndpointService) SetCheckMethod(ctx context.Context, serverID uint, req dto.SetCheckMethodRequest) error {
-	return m.setCheckMethodFn(ctx, serverID, req)
+func (m *mockEndpointService) SetCheckMethod(ctx context.Context, serverID uint, userID uint, req dto.SetCheckMethodRequest) error {
+	return m.setCheckMethodFn(ctx, serverID, userID, req)
 }
 
 func (m *mockEndpointService) TestEndpoint(ctx context.Context, req dto.TestEndpointRequest) (*dto.TestEndpointResponse, error) {

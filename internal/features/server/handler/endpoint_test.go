@@ -15,7 +15,7 @@ func TestEndpointHandler_SetCheckMethod(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		h := &EndpointHandler{
 			endpointService: &mockEndpointService{
-				setCheckMethodFn: func(_ context.Context, id uint, req dto.SetCheckMethodRequest) error {
+				setCheckMethodFn: func(_ context.Context, id uint, _ uint, req dto.SetCheckMethodRequest) error {
 					return nil
 				},
 			},
@@ -49,7 +49,7 @@ func TestEndpointHandler_SetCheckMethod(t *testing.T) {
 	t.Run("internal error", func(t *testing.T) {
 		h := &EndpointHandler{
 			endpointService: &mockEndpointService{
-				setCheckMethodFn: func(_ context.Context, _ uint, _ dto.SetCheckMethodRequest) error {
+				setCheckMethodFn: func(_ context.Context, _ uint, _ uint, _ dto.SetCheckMethodRequest) error {
 					return errors.New("upsert failed")
 				},
 			},
