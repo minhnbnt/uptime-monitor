@@ -4,7 +4,6 @@ import (
 	"context"
 	"iter"
 	"maps"
-	"math/rand"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -83,12 +82,6 @@ func calculateNextScore(score int64, interval time.Duration) int64 {
 	if next <= nowUnixMilli {
 		missed := (nowUnixMilli-next)/intervalMilliseconds + 1
 		next += missed * intervalMilliseconds
-	}
-
-	jitterRange := intervalMilliseconds / 20
-	if jitterRange > 0 {
-		jitter := rand.Int63n(jitterRange*2+1) - jitterRange
-		next += jitter
 	}
 
 	return next
