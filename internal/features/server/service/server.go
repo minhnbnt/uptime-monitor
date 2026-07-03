@@ -78,7 +78,7 @@ func (ss *ServerService) GetServer(ctx context.Context, id uint) (*dto.Server, e
 	return &result, nil
 }
 
-func (ss *ServerService) UpdateServer(ctx context.Context, id uint, req dto.UpdateServerRequest) (*dto.Server, error) {
+func (ss *ServerService) UpdateServer(ctx context.Context, id uint, userID uint, req dto.UpdateServerRequest) (*dto.Server, error) {
 
 	server, err := ss.serverRepository.GetByID(ctx, id)
 	if errors.Is(err, apperrors.ErrNotFound) {
@@ -87,6 +87,10 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uint, req dto.Upda
 	if err != nil {
 		ss.logger.Error("failed to get server for update", logger.Error(err))
 		return nil, apperrors.ErrInternal
+	}
+
+	if server.CreatedByID != userID {
+		return nil, apperrors.ErrForbidden
 	}
 
 	if req.Name != nil {
@@ -106,9 +110,22 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uint, req dto.Upda
 	return &result, nil
 }
 
-func (ss *ServerService) DeleteServer(ctx context.Context, id uint) error {
+func (ss *ServerService) DeleteServer(ctx context.Context, id uint, userID uint) error {
 
-	err := ss.serverRepository.Delete(ctx, id)
+	server, err := ss.serverRepository.GetByID(ctx, id)
+	if errors.Is(err, apperrors.ErrNotFound) {
+		return apperrors.ErrNotFound
+	}
+	if err != nil {
+		ss.logger.Error("failed to get server", logger.Error(err))
+		return apperrors.ErrInternal
+	}
+
+	if server.CreatedByID != userID {
+		return apperrors.ErrForbidden
+	}
+
+	err = ss.serverRepository.Delete(ctx, id)
 	if errors.Is(err, apperrors.ErrNotFound) {
 		return apperrors.ErrNotFound
 	}

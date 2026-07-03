@@ -31,7 +31,7 @@ func TestOntimeHandler_GetServer(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		h := &OntimeHandler{
 			ontimeService: &mockOntimeService{
-				getServerWithOntimeFn: func(_ context.Context, id uint) (*ontimedto.ServerWithOntime, error) {
+				getServerWithOntimeFn: func(_ context.Context, id uint, _ uint) (*ontimedto.ServerWithOntime, error) {
 					return &ontimedto.ServerWithOntime{
 						Server:      dtoServer(id, "server-a", now),
 						OntimeStats: stats,
@@ -54,7 +54,7 @@ func TestOntimeHandler_GetServer(t *testing.T) {
 	t.Run("not found", func(t *testing.T) {
 		h := &OntimeHandler{
 			ontimeService: &mockOntimeService{
-				getServerWithOntimeFn: func(_ context.Context, _ uint) (*ontimedto.ServerWithOntime, error) {
+				getServerWithOntimeFn: func(_ context.Context, _ uint, _ uint) (*ontimedto.ServerWithOntime, error) {
 					return nil, apperrors.ErrNotFound
 				},
 			},
@@ -72,7 +72,7 @@ func TestOntimeHandler_GetServer(t *testing.T) {
 	t.Run("internal error", func(t *testing.T) {
 		h := &OntimeHandler{
 			ontimeService: &mockOntimeService{
-				getServerWithOntimeFn: func(_ context.Context, _ uint) (*ontimedto.ServerWithOntime, error) {
+				getServerWithOntimeFn: func(_ context.Context, _ uint, _ uint) (*ontimedto.ServerWithOntime, error) {
 					return nil, errors.New("db error")
 				},
 			},
@@ -84,6 +84,24 @@ func TestOntimeHandler_GetServer(t *testing.T) {
 		}
 		if statusErr.StatusCode != http.StatusInternalServerError {
 			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusInternalServerError)
+		}
+	})
+
+	t.Run("forbidden", func(t *testing.T) {
+		h := &OntimeHandler{
+			ontimeService: &mockOntimeService{
+				getServerWithOntimeFn: func(_ context.Context, _ uint, _ uint) (*ontimedto.ServerWithOntime, error) {
+					return nil, apperrors.ErrForbidden
+				},
+			},
+		}
+		_, err := h.GetServer(context.Background(), api.GetServerParams{ID: 1})
+		var statusErr *api.ErrorResponseStatusCode
+		if !errors.As(err, &statusErr) {
+			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
+		}
+		if statusErr.StatusCode != http.StatusForbidden {
+			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusForbidden)
 		}
 	})
 }

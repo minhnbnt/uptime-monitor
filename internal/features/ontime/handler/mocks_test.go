@@ -8,7 +8,7 @@ import (
 
 type mockOntimeService struct {
 	listServersWithOntimeFn func(ctx context.Context, createdByID uint, page, perPage int) ([]ontimedto.ServerWithOntime, int64, error)
-	getServerWithOntimeFn   func(ctx context.Context, serverID uint) (*ontimedto.ServerWithOntime, error)
+	getServerWithOntimeFn   func(ctx context.Context, serverID uint, userID uint) (*ontimedto.ServerWithOntime, error)
 }
 
 func (m *mockOntimeService) ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]ontimedto.ServerWithOntime, int64, error) {
@@ -18,6 +18,6 @@ func (m *mockOntimeService) ListServersWithOntime(ctx context.Context, createdBy
 	return m.listServersWithOntimeFn(ctx, createdByID, page, perPage)
 }
 
-func (m *mockOntimeService) GetServerWithOntime(ctx context.Context, serverID uint) (*ontimedto.ServerWithOntime, error) {
-	return m.getServerWithOntimeFn(ctx, serverID)
+func (m *mockOntimeService) GetServerWithOntime(ctx context.Context, serverID uint, userID uint) (*ontimedto.ServerWithOntime, error) {
+	return m.getServerWithOntimeFn(ctx, serverID, userID)
 }

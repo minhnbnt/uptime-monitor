@@ -111,7 +111,7 @@ func TestServerHandler_UpdateServer(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		h := &ServerHandler{
 			serverService: &mockServerService{
-				updateServerFn: func(_ context.Context, id uint, req dto.UpdateServerRequest) (*dto.Server, error) {
+				updateServerFn: func(_ context.Context, id uint, _ uint, req dto.UpdateServerRequest) (*dto.Server, error) {
 					s := dtoServer(id, *req.Name, now)
 					return &s, nil
 				},
@@ -130,7 +130,7 @@ func TestServerHandler_UpdateServer(t *testing.T) {
 	t.Run("not found", func(t *testing.T) {
 		h := &ServerHandler{
 			serverService: &mockServerService{
-				updateServerFn: func(_ context.Context, _ uint, _ dto.UpdateServerRequest) (*dto.Server, error) {
+				updateServerFn: func(_ context.Context, _ uint, _ uint, _ dto.UpdateServerRequest) (*dto.Server, error) {
 					return nil, apperrors.ErrNotFound
 				},
 			},
@@ -145,13 +145,32 @@ func TestServerHandler_UpdateServer(t *testing.T) {
 			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusNotFound)
 		}
 	})
+
+	t.Run("forbidden", func(t *testing.T) {
+		h := &ServerHandler{
+			serverService: &mockServerService{
+				updateServerFn: func(_ context.Context, _ uint, _ uint, _ dto.UpdateServerRequest) (*dto.Server, error) {
+					return nil, apperrors.ErrForbidden
+				},
+			},
+		}
+		req := &api.UpdateServerRequest{Name: api.NewOptString("x")}
+		_, err := h.UpdateServer(context.Background(), req, api.UpdateServerParams{ID: 1})
+		var statusErr *api.ErrorResponseStatusCode
+		if !errors.As(err, &statusErr) {
+			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
+		}
+		if statusErr.StatusCode != http.StatusForbidden {
+			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusForbidden)
+		}
+	})
 }
 
 func TestServerHandler_DeleteServer(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		h := &ServerHandler{
 			serverService: &mockServerService{
-				deleteServerFn: func(_ context.Context, id uint) error {
+				deleteServerFn: func(_ context.Context, id uint, _ uint) error {
 					return nil
 				},
 			},
@@ -165,7 +184,7 @@ func TestServerHandler_DeleteServer(t *testing.T) {
 	t.Run("not found", func(t *testing.T) {
 		h := &ServerHandler{
 			serverService: &mockServerService{
-				deleteServerFn: func(_ context.Context, _ uint) error {
+				deleteServerFn: func(_ context.Context, _ uint, _ uint) error {
 					return apperrors.ErrNotFound
 				},
 			},
@@ -177,6 +196,24 @@ func TestServerHandler_DeleteServer(t *testing.T) {
 		}
 		if statusErr.StatusCode != http.StatusNotFound {
 			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusNotFound)
+		}
+	})
+
+	t.Run("forbidden", func(t *testing.T) {
+		h := &ServerHandler{
+			serverService: &mockServerService{
+				deleteServerFn: func(_ context.Context, _ uint, _ uint) error {
+					return apperrors.ErrForbidden
+				},
+			},
+		}
+		err := h.DeleteServer(context.Background(), api.DeleteServerParams{ID: 1})
+		var statusErr *api.ErrorResponseStatusCode
+		if !errors.As(err, &statusErr) {
+			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
+		}
+		if statusErr.StatusCode != http.StatusForbidden {
+			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusForbidden)
 		}
 	})
 }

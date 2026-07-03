@@ -67,7 +67,8 @@ func (h *ServerHandler) UpdateServer(ctx context.Context, req *api.UpdateServerR
 		dtoReq.Name = &name
 	}
 
-	result, err := h.serverService.UpdateServer(ctx, uint(params.ID), dtoReq)
+	userID := middleware.GetUserID(ctx)
+	result, err := h.serverService.UpdateServer(ctx, uint(params.ID), userID, dtoReq)
 	if err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}
@@ -77,7 +78,8 @@ func (h *ServerHandler) UpdateServer(ctx context.Context, req *api.UpdateServerR
 
 func (h *ServerHandler) DeleteServer(ctx context.Context, params api.DeleteServerParams) error {
 
-	if err := h.serverService.DeleteServer(ctx, uint(params.ID)); err != nil {
+	userID := middleware.GetUserID(ctx)
+	if err := h.serverService.DeleteServer(ctx, uint(params.ID), userID); err != nil {
 		return apperrors.ToAPIError(err)
 	}
 

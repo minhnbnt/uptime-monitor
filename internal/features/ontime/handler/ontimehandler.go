@@ -27,7 +27,9 @@ func RegisterOntimeHandler(i do.Injector) {
 }
 
 func (h *OntimeHandler) GetServer(ctx context.Context, params api.GetServerParams) (*api.ServerResponse, error) {
-	result, err := h.ontimeService.GetServerWithOntime(ctx, uint(params.ID))
+
+	userID := middleware.GetUserID(ctx)
+	result, err := h.ontimeService.GetServerWithOntime(ctx, uint(params.ID), userID)
 	if err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}

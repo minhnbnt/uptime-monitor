@@ -10,4 +10,5 @@ var (
 	ErrInvalidAccessToken   = errors.New("invalid or expired access token")
 	ErrInvalidRefreshToken  = errors.New("invalid or expired refresh token")
 	ErrBadRequest           = errors.New("invalid request")
+	ErrForbidden            = errors.New("forbidden")
 )

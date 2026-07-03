@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
@@ -145,8 +146,9 @@ func TestServerService_GetServer(t *testing.T) {
 func TestServerService_UpdateServer(t *testing.T) {
 	now := time.Now()
 	existing := &domain.Server{
-		Model: gormModel(1, now),
-		Name:  "original",
+		Model:       gormModel(1, now),
+		Name:        "original",
+		CreatedByID: 1,
 	}
 
 	t.Run("update name", func(t *testing.T) {
@@ -162,7 +164,7 @@ func TestServerService_UpdateServer(t *testing.T) {
 
 		name := "renamed"
 		req := dto.UpdateServerRequest{Name: &name}
-		got, err := svc.UpdateServer(t.Context(), 1, req)
+		got, err := svc.UpdateServer(t.Context(), 1, 1, req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -185,7 +187,7 @@ func TestServerService_UpdateServer(t *testing.T) {
 		}}
 
 		req := dto.UpdateServerRequest{}
-		got, err := svc.UpdateServer(t.Context(), 1, req)
+		got, err := svc.UpdateServer(t.Context(), 1, 1, req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -204,7 +206,7 @@ func TestServerService_UpdateServer(t *testing.T) {
 			},
 		}}
 
-		_, err := svc.UpdateServer(t.Context(), 99, dto.UpdateServerRequest{})
+		_, err := svc.UpdateServer(t.Context(), 99, 1, dto.UpdateServerRequest{})
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -221,9 +223,26 @@ func TestServerService_UpdateServer(t *testing.T) {
 			},
 		}}
 
-		_, err := svc.UpdateServer(t.Context(), 1, dto.UpdateServerRequest{})
+		_, err := svc.UpdateServer(t.Context(), 1, 1, dto.UpdateServerRequest{})
 		if err == nil {
 			t.Fatal("expected error")
+		}
+	})
+
+	t.Run("forbidden", func(t *testing.T) {
+		svc := &ServerService{logger: logger.NewMockLogger(), serverRepository: &mockServerRepo{
+			getByIDFn: func(_ context.Context, _ uint) (*domain.Server, error) {
+				cp := *existing
+				return &cp, nil
+			},
+		}}
+
+		_, err := svc.UpdateServer(t.Context(), 1, 99, dto.UpdateServerRequest{})
+		if err == nil {
+			t.Fatal("expected forbidden error")
+		}
+		if !errors.Is(err, apperrors.ErrForbidden) {
+			t.Errorf("got %v, want ErrForbidden", err)
 		}
 	})
 }
@@ -282,10 +301,21 @@ func TestServerService_SearchServers(t *testing.T) {
 }
 
 func TestServerService_DeleteServer(t *testing.T) {
+	now := time.Now()
+	existing := &domain.Server{
+		Model:       gormModel(7, now),
+		Name:        "my-server",
+		CreatedByID: 1,
+	}
+
 	t.Run("success", func(t *testing.T) {
 		var deleted uint
 		svc := &ServerService{logger: logger.NewMockLogger(),
 			serverRepository: &mockServerRepo{
+				getByIDFn: func(_ context.Context, id uint) (*domain.Server, error) {
+					cp := *existing
+					return &cp, nil
+				},
 				deleteFn: func(_ context.Context, id uint) error {
 					deleted = id
 					return nil
@@ -294,7 +324,7 @@ func TestServerService_DeleteServer(t *testing.T) {
 			endpointRepository: &mockEndpointRepo{},
 		}
 
-		err := svc.DeleteServer(t.Context(), 7)
+		err := svc.DeleteServer(t.Context(), 7, 1)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -306,16 +336,36 @@ func TestServerService_DeleteServer(t *testing.T) {
 	t.Run("not found", func(t *testing.T) {
 		svc := &ServerService{logger: logger.NewMockLogger(),
 			serverRepository: &mockServerRepo{
-				deleteFn: func(_ context.Context, _ uint) error {
-					return errors.New("not found")
+				getByIDFn: func(_ context.Context, _ uint) (*domain.Server, error) {
+					return nil, errors.New("not found")
 				},
 			},
 			endpointRepository: &mockEndpointRepo{},
 		}
 
-		err := svc.DeleteServer(t.Context(), 99)
+		err := svc.DeleteServer(t.Context(), 99, 1)
 		if err == nil {
 			t.Fatal("expected error")
+		}
+	})
+
+	t.Run("forbidden", func(t *testing.T) {
+		svc := &ServerService{logger: logger.NewMockLogger(),
+			serverRepository: &mockServerRepo{
+				getByIDFn: func(_ context.Context, _ uint) (*domain.Server, error) {
+					cp := *existing
+					return &cp, nil
+				},
+			},
+			endpointRepository: &mockEndpointRepo{},
+		}
+
+		err := svc.DeleteServer(t.Context(), 7, 99)
+		if err == nil {
+			t.Fatal("expected forbidden error")
+		}
+		if !errors.Is(err, apperrors.ErrForbidden) {
+			t.Errorf("got %v, want ErrForbidden", err)
 		}
 	})
 }

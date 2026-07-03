@@ -2,6 +2,7 @@ package ontime
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
@@ -501,7 +503,7 @@ func TestIntegration_GetServerWithOntime(t *testing.T) {
 	seedEvent(t, 1, domain.StatusOn, oTm(2026, 6, 1, 6, 0))
 
 	svc := newService(t)
-	result, err := svc.GetServerWithOntime(t.Context(), 1)
+	result, err := svc.GetServerWithOntime(t.Context(), 1, 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -520,9 +522,25 @@ func TestIntegration_GetServerWithOntime_NotFound(t *testing.T) {
 	truncateTables(t)
 
 	svc := newService(t)
-	_, err := svc.GetServerWithOntime(t.Context(), 999)
+	_, err := svc.GetServerWithOntime(t.Context(), 999, 1)
 	if err == nil {
 		t.Fatal("expected error for non-existent server")
+	}
+}
+
+func TestIntegration_GetServerWithOntime_Forbidden(t *testing.T) {
+	truncateTables(t)
+
+	createdAt := oDay(2026, 6, 1).Add(-48 * time.Hour)
+	seedServer(t, 1, "s1", createdAt)
+
+	svc := newService(t)
+	_, err := svc.GetServerWithOntime(t.Context(), 1, 99)
+	if err == nil {
+		t.Fatal("expected error for non-matching user")
+	}
+	if !errors.Is(err, apperrors.ErrForbidden) {
+		t.Errorf("got %v, want ErrForbidden", err)
 	}
 }
 

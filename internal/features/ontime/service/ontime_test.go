@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
@@ -561,8 +562,9 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		server := domain.Server{
-			Model: gormModel(1, oldTime),
-			Name:  "server-a",
+			Model:       gormModel(1, oldTime),
+			Name:        "server-a",
+			CreatedByID: 1,
 		}
 
 		cacheResult := make(map[dto.BatchGetOntimeItem]float64)
@@ -596,7 +598,7 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		got, err := svc.GetServerWithOntime(t.Context(), 1)
+		got, err := svc.GetServerWithOntime(t.Context(), 1, 1)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -622,7 +624,7 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 			logger:  logger.NewMockLogger(),
 		}
 
-		_, err := svc.GetServerWithOntime(t.Context(), 99)
+		_, err := svc.GetServerWithOntime(t.Context(), 99, 1)
 		if err == nil {
 			t.Fatal("expected error for non-existent server")
 		}
@@ -639,9 +641,35 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 			logger:  logger.NewMockLogger(),
 		}
 
-		_, err := svc.GetServerWithOntime(t.Context(), 1)
+		_, err := svc.GetServerWithOntime(t.Context(), 1, 1)
 		if err == nil {
 			t.Fatal("expected error")
+		}
+	})
+
+	t.Run("forbidden", func(t *testing.T) {
+		server := domain.Server{
+			Model:       gormModel(1, oldTime),
+			Name:        "server-a",
+			CreatedByID: 1,
+		}
+
+		svc := &OntimeService{
+			serverRepository: &mockServerRepo{
+				getByIDFn: func(_ context.Context, _ uint) (*domain.Server, error) {
+					return &server, nil
+				},
+			},
+			batcher: &Batcher{},
+			logger:  logger.NewMockLogger(),
+		}
+
+		_, err := svc.GetServerWithOntime(t.Context(), 1, 99)
+		if err == nil {
+			t.Fatal("expected forbidden error")
+		}
+		if !errors.Is(err, apperrors.ErrForbidden) {
+			t.Errorf("got %v, want ErrForbidden", err)
 		}
 	})
 }

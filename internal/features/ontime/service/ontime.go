@@ -78,7 +78,7 @@ func (s *OntimeService) ListServersWithOntime(ctx context.Context, createdByID u
 	return out, total, nil
 }
 
-func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID uint) (*ontimedto.ServerWithOntime, error) {
+func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID uint, userID uint) (*ontimedto.ServerWithOntime, error) {
 
 	server, err := s.serverRepository.GetByID(ctx, serverID)
 	if errors.Is(err, apperrors.ErrNotFound) {
@@ -87,6 +87,10 @@ func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID uint) 
 	if err != nil {
 		s.logger.Error("failed to get server", logger.Error(err))
 		return nil, apperrors.ErrInternal
+	}
+
+	if server.CreatedByID != userID {
+		return nil, apperrors.ErrForbidden
 	}
 
 	ontimeMap, err := s.getServersOntime(ctx, []domain.Server{*server})

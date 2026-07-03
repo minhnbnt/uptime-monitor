@@ -44,6 +44,13 @@ func ToAPIError(err error) *api.ErrorResponseStatusCode {
 		}
 	}
 
+	if errors.Is(err, ErrForbidden) {
+		return &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusForbidden,
+			Response:   errResponse("FORBIDDEN", err.Error()),
+		}
+	}
+
 	if errors.Is(err, ErrBadRequest) {
 		return &api.ErrorResponseStatusCode{
 			StatusCode: http.StatusBadRequest,
