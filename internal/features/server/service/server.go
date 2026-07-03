@@ -108,17 +108,17 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uint, req dto.Upda
 
 func (ss *ServerService) DeleteServer(ctx context.Context, id uint) error {
 
-	if err := ss.endpointRepository.DeleteByServerID(ctx, id); err != nil {
-		ss.logger.Error("failed to delete endpoint", logger.Error(err))
-		return apperrors.ErrInternal
-	}
-
 	err := ss.serverRepository.Delete(ctx, id)
 	if errors.Is(err, apperrors.ErrNotFound) {
 		return apperrors.ErrNotFound
 	}
 	if err != nil {
 		ss.logger.Error("failed to delete server", logger.Error(err))
+		return apperrors.ErrInternal
+	}
+
+	if err := ss.endpointRepository.DeleteByServerID(ctx, id); err != nil {
+		ss.logger.Error("failed to clean up endpoint resources", logger.Error(err))
 		return apperrors.ErrInternal
 	}
 
