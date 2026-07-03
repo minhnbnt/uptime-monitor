@@ -54,12 +54,6 @@ func runTemporalWorker(ctx context.Context, i do.Injector) {
 }
 
 func runRedisPingWorker(ctx context.Context, i do.Injector) {
-
-	log := do.MustInvoke[logger.Logger](i)
-
 	runner := do.MustInvoke[*pinghandler.ZSetWorkerRunner](i)
-	err := runner.RunZSetWorker(ctx)
-	if err != nil {
-		log.Panic("ZSet worker failed", logger.Error(err))
-	}
+	runner.RunZSetWorker(ctx)
 }

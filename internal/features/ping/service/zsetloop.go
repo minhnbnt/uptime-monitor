@@ -95,7 +95,7 @@ func (s *LoopService) runIteration(ctx context.Context, due []scheduler.Schedule
 	return nil
 }
 
-func (s *LoopService) Run(ctx context.Context, dueHandler DueHandler) error {
+func (s *LoopService) Run(ctx context.Context, dueHandler DueHandler) {
 
 	for ctx.Err() == nil {
 
@@ -117,6 +117,4 @@ func (s *LoopService) Run(ctx context.Context, dueHandler DueHandler) error {
 			sleepCtx(ctx, getSleepDuration(next, hasNext))
 		}
 	}
-
-	return ctx.Err()
 }

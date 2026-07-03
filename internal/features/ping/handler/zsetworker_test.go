@@ -135,10 +135,7 @@ func TestRunZSetWorker_DelegatesToLoopService(t *testing.T) {
 		logger: logger.NewMockLogger(),
 	}
 
-	err := r.RunZSetWorker(t.Context())
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	r.RunZSetWorker(t.Context())
 	if capturer.capturedHandler == nil {
 		t.Fatal("expected handler to be passed to loopService.Run")
 	}
@@ -168,7 +165,7 @@ func TestRunZSetWorker_HandlerCallsPingAndRecord(t *testing.T) {
 		logger: logger.NewMockLogger(),
 	}
 
-	_ = r.RunZSetWorker(t.Context())
+	r.RunZSetWorker(t.Context())
 
 	ep := &domain.Endpoint{Method: "GET", URL: "https://example.com", ExpectedCode: 200}
 	ep.ID = 99

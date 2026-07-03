@@ -11,9 +11,8 @@ type captureHandlerLoopRunner struct {
 	capturedHandler service.DueHandler
 }
 
-func (c *captureHandlerLoopRunner) Run(_ context.Context, dueHandler service.DueHandler) error {
+func (c *captureHandlerLoopRunner) Run(_ context.Context, dueHandler service.DueHandler) {
 	c.capturedHandler = dueHandler
-	return nil
 }
 
 type mockPingService struct {

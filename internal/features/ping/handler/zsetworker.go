@@ -19,7 +19,7 @@ type PingService interface {
 }
 
 type LoopRunner interface {
-	Run(ctx context.Context, dueHandler service.DueHandler) error
+	Run(ctx context.Context, dueHandler service.DueHandler)
 }
 
 type ZSetWorkerRunner struct {
@@ -38,7 +38,7 @@ func RegisterZSetWorkerRunner(i do.Injector) {
 	})
 }
 
-func (r *ZSetWorkerRunner) RunZSetWorker(ctx context.Context) error {
+func (r *ZSetWorkerRunner) RunZSetWorker(ctx context.Context) {
 
 	handler := func(ctx context.Context, endpoints iter.Seq[*domain.Endpoint]) {
 
@@ -50,7 +50,7 @@ func (r *ZSetWorkerRunner) RunZSetWorker(ctx context.Context) error {
 		}
 	}
 
-	return r.loopService.Run(ctx, handler)
+	r.loopService.Run(ctx, handler)
 }
 
 func (r *ZSetWorkerRunner) pingAndRecordEndpoint(ctx context.Context, ep *domain.Endpoint) {
