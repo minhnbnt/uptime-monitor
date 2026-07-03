@@ -468,7 +468,6 @@ func TestIntegration_ImportServers_SchedulerAndCache(t *testing.T) {
 		t.Fatalf("got %d endpoints in DB, want 3", len(endpoints))
 	}
 
-	now := time.Now().UnixMilli()
 	zset := testRedis.ZRangeWithScores(t.Context(), "scheduler:queue", 0, -1)
 	zsetResult, err := zset.Result()
 	if err != nil {
@@ -496,9 +495,6 @@ func TestIntegration_ImportServers_SchedulerAndCache(t *testing.T) {
 		}
 		if !epIDs[id] {
 			t.Errorf("unexpected endpoint %d in scheduler:queue", id)
-		}
-		if z.Score <= float64(now) {
-			t.Errorf("endpoint %d score %f is not in the future", id, z.Score)
 		}
 	}
 

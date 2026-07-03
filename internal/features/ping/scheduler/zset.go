@@ -40,17 +40,7 @@ func RegisterZSetScheduleRepository(i do.Injector) {
 }
 
 func (r *ZSetScheduleRepository) Register(ctx context.Context, endpoint *domain.Endpoint) error {
-
-	idStr := fmt.Sprint(endpoint.ID)
-	offset := utils.GenerateOffset(idStr, endpoint.Interval)
-	score := time.Now().UnixMilli() + offset.Milliseconds()
-
-	cmd := r.client.ZAdd(ctx, schedulerQueueKey, redis.Z{
-		Score:  float64(score),
-		Member: idStr,
-	})
-
-	return cmd.Err()
+	return r.RegisterBatch(ctx, []domain.Endpoint{*endpoint})
 }
 
 func (r *ZSetScheduleRepository) RegisterBatch(ctx context.Context, endpoints []domain.Endpoint) error {
@@ -58,12 +48,13 @@ func (r *ZSetScheduleRepository) RegisterBatch(ctx context.Context, endpoints []
 	pipe := r.client.Pipeline()
 
 	for _, ep := range endpoints {
+
 		idStr := fmt.Sprint(ep.ID)
 		offset := utils.GenerateOffset(idStr, ep.Interval)
-		score := time.Now().UnixMilli() + offset.Milliseconds()
+		score := offset.Milliseconds()
+
 		pipe.ZAdd(ctx, schedulerQueueKey, redis.Z{
-			Score:  float64(score),
-			Member: idStr,
+			Member: idStr, Score: float64(score),
 		})
 	}
 
