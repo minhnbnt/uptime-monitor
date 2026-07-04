@@ -26,6 +26,7 @@ import (
 
 var testDB *gorm.DB
 var testRedis *redis.Client
+var testDSN string
 
 func TestMain(m *testing.M) {
 
@@ -40,21 +41,25 @@ func TestMain(m *testing.M) {
 
 		container, dsn := testcontainers.StartPostgres(ctx)
 		defer func() { _ = container.Terminate(ctx) }()
+		testDSN = dsn
+	}
 
-		testDB = testcontainers.OpenGORM(dsn)
+	os.Exit(m.Run())
+}
 
-		testcontainers.RunMigrations(testDB)
-		// Seed a default user so servers can reference it via CreatedByID.
-		testDB.Create(&domain.User{
+func initTestDB(tb testing.TB) *gorm.DB {
+	tb.Helper()
+	return testcontainers.CreateTestDB(tb, testDSN, func(db *gorm.DB) {
+		if err := db.Create(&domain.User{
 			Model:    gorm.Model{ID: 1},
 			Email:    "test@test.com",
 			Username: "test",
 			Password: "x",
 			Name:     "Test",
-		})
-	}
-
-	os.Exit(m.Run())
+		}).Error; err != nil {
+			tb.Fatalf("seed test user: %v", err)
+		}
+	})
 }
 
 func newServiceWithRedis(tb testing.TB) *OntimeService {
@@ -92,11 +97,6 @@ func newService(tb testing.TB) *OntimeService {
 	}
 }
 
-func truncateTables(tb testing.TB) {
-	tb.Helper()
-	testcontainers.TruncateTables(tb, testDB, &domain.Server{}, &domain.Endpoint{}, &domain.ServerEvent{})
-}
-
 func seedServer(tb testing.TB, id uint, name string, createdAt time.Time) {
 	tb.Helper()
 	testDB.Create(&domain.Server{
@@ -130,7 +130,7 @@ func seedEvent(tb testing.TB, endpointID uint, status domain.ServerStatus, tm ti
 
 func TestIntegration_BatchGetOntime_CacheMiss(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	now := oDay(2026, 6, 1)
 	seedServer(t, 1, "s1", now.Add(-48*time.Hour))
@@ -158,7 +158,7 @@ func TestIntegration_BatchGetOntime_CacheMiss(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_AllOn(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	now := oDay(2026, 6, 1)
 	seedServer(t, 1, "s1", now.Add(-48*time.Hour))
@@ -179,7 +179,7 @@ func TestIntegration_BatchGetOntime_AllOn(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_AllOff(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	now := oDay(2026, 6, 1)
 	seedServer(t, 1, "s1", now.Add(-48*time.Hour))
@@ -200,7 +200,7 @@ func TestIntegration_BatchGetOntime_AllOff(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_NoEvents(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	now := oDay(2026, 6, 1)
 	seedServer(t, 1, "s1", now.Add(-48*time.Hour))
@@ -223,7 +223,7 @@ func TestIntegration_BatchGetOntime_NoEvents(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_EmptyRequest(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	svc := newService(t)
 	results, err := svc.batcher.BatchGetOntime(t.Context(), nil)
@@ -239,7 +239,7 @@ func TestIntegration_BatchGetOntime_EmptyRequest(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_CacheHit(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	testcontainers.CleanRedis(t, testRedis)
 
 	now := oDay(2026, 6, 1)
@@ -265,7 +265,7 @@ func TestIntegration_BatchGetOntime_CacheHit(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_CacheMissThenWarm(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	testcontainers.CleanRedis(t, testRedis)
 
 	now := oDay(2026, 6, 1)
@@ -299,7 +299,7 @@ func TestIntegration_BatchGetOntime_CacheMissThenWarm(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_PartialCacheHit(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	testcontainers.CleanRedis(t, testRedis)
 
 	now := oDay(2026, 6, 1)
@@ -358,7 +358,7 @@ func TestIntegration_BatchGetOntime_PartialCacheHit(t *testing.T) {
 
 func TestIntegration_ListServersWithOntime(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	createdAt := oDay(2026, 6, 1).Add(-48 * time.Hour)
 	seedServer(t, 1, "s1", createdAt)
@@ -398,7 +398,7 @@ func TestIntegration_ListServersWithOntime(t *testing.T) {
 
 func TestIntegration_GetServerWithOntime(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	createdAt := oDay(2026, 6, 1).Add(-48 * time.Hour)
 	seedServer(t, 1, "s1", createdAt)
@@ -423,7 +423,7 @@ func TestIntegration_GetServerWithOntime(t *testing.T) {
 
 func TestIntegration_GetServerWithOntime_NotFound(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	svc := newService(t)
 	_, err := svc.GetServerWithOntime(t.Context(), 999, 1)
@@ -434,7 +434,7 @@ func TestIntegration_GetServerWithOntime_NotFound(t *testing.T) {
 
 func TestIntegration_GetServerWithOntime_Forbidden(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	createdAt := oDay(2026, 6, 1).Add(-48 * time.Hour)
 	seedServer(t, 1, "s1", createdAt)
@@ -453,7 +453,7 @@ func TestIntegration_GetServerWithOntime_Forbidden(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_URLSpecialChars(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	now := oDay(2026, 6, 1)
 	seedServer(t, 1, "s1", now.Add(-48*time.Hour))
@@ -489,7 +489,7 @@ func TestIntegration_BatchGetOntime_URLSpecialChars(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_Today(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	today := oDay(time.Now().Year(), int(time.Now().Month()), time.Now().Day())
 	onTime := today.Add(6 * time.Hour)

@@ -26,6 +26,7 @@ import (
 
 var testDB *gorm.DB
 var testRedis *redis.Client
+var testDSN string
 
 func TestMain(m *testing.M) {
 
@@ -40,20 +41,25 @@ func TestMain(m *testing.M) {
 
 		container, dsn := testcontainers.StartPostgres(ctx)
 		defer func() { _ = container.Terminate(ctx) }()
+		testDSN = dsn
+	}
 
-		testDB = testcontainers.OpenGORM(dsn)
+	os.Exit(m.Run())
+}
 
-		testcontainers.RunMigrations(testDB)
-		testDB.Create(&domain.User{
+func initTestDB(tb testing.TB) *gorm.DB {
+	tb.Helper()
+	return testcontainers.CreateTestDB(tb, testDSN, func(db *gorm.DB) {
+		if err := db.Create(&domain.User{
 			Model:    gorm.Model{ID: 1},
 			Email:    "test@test.com",
 			Username: "test",
 			Password: "x",
 			Name:     "Test",
-		})
-	}
-
-	os.Exit(m.Run())
+		}).Error; err != nil {
+			tb.Fatalf("seed test user: %v", err)
+		}
+	})
 }
 
 func newImportIntegrationService(tb testing.TB) *ImportService {
@@ -115,23 +121,9 @@ func buildExcel(tb testing.TB, rows []dto.ImportRow) io.Reader {
 	return buf
 }
 
-func truncateTables(tb testing.TB) {
-
-	tb.Helper()
-
-	testcontainers.TruncateTables(
-		tb, testDB,
-		&domain.Server{},
-		&domain.Endpoint{},
-		&domain.ServerEvent{},
-	)
-
-	testcontainers.CleanRedis(tb, testRedis)
-}
-
 func TestIntegration_ImportServers_Success(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	rows := []dto.ImportRow{
 		{Name: "server-a", URL: "https://a.com", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},
@@ -179,7 +171,7 @@ func TestIntegration_ImportServers_Success(t *testing.T) {
 
 func TestIntegration_ImportServers_SkipEmptyURL(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	rows := []dto.ImportRow{
 		{Name: "server-a", URL: "https://a.com", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},
@@ -213,7 +205,7 @@ func TestIntegration_ImportServers_SkipEmptyURL(t *testing.T) {
 
 func TestIntegration_ImportServers_ParseErrors(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	rows := []dto.ImportRow{
 		{Name: "", URL: "", Method: "", Interval: 0, Timeout: 0, ExpectedCode: 0},
@@ -242,7 +234,7 @@ func TestIntegration_ImportServers_ParseErrors(t *testing.T) {
 
 func TestIntegration_ImportServers_PartialErrors(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	rows := []dto.ImportRow{
 		{Name: "valid-server", URL: "https://valid.com", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},
@@ -272,7 +264,7 @@ func TestIntegration_ImportServers_PartialErrors(t *testing.T) {
 
 func TestIntegration_ImportServers_EmptyFile(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	svc := newImportIntegrationService(t)
 
@@ -290,7 +282,7 @@ func TestIntegration_ImportServers_EmptyFile(t *testing.T) {
 
 func TestIntegration_ImportServers_DefaultValues(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	svc := newImportIntegrationService(t)
 
@@ -348,7 +340,7 @@ func TestIntegration_ImportServers_DefaultValues(t *testing.T) {
 
 func TestIntegration_ImportServers_SchedulerAndCache(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	rows := []dto.ImportRow{
 		{Name: "server-a", URL: "https://a.com", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},
@@ -435,7 +427,7 @@ func TestIntegration_ImportServers_SchedulerAndCache(t *testing.T) {
 
 func TestIntegration_ImportServers_EmptyURL_NoScheduler(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	rows := []dto.ImportRow{
 		{Name: "server-a", URL: "https://a.com", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},
@@ -489,7 +481,7 @@ func TestIntegration_ImportServers_EmptyURL_NoScheduler(t *testing.T) {
 
 func TestIntegration_ImportServers_MetaCacheLookup(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	rows := []dto.ImportRow{
 		{Name: "server-a", URL: "https://a.com", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},

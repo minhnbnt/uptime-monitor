@@ -17,6 +17,7 @@ import (
 
 var testRedis *redis.Client
 var testDB *gorm.DB
+var testDSN string
 
 func TestMain(m *testing.M) {
 	flag.Parse()
@@ -34,23 +35,27 @@ func TestMain(m *testing.M) {
 			DBName:   "uptime_monitor",
 		})
 		defer func() { _ = pgContainer.Terminate(ctx) }()
+		testDSN = dsn
+	}
+	os.Exit(m.Run())
+}
 
-		testDB = testcontainers.OpenGORM(dsn)
-		testcontainers.RunMigrations(testDB)
-
-		if err := config.EnablePGSearch(testDB); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: pg_search not available: %v\n", err)
+func initTestDB(tb testing.TB) *gorm.DB {
+	tb.Helper()
+	return testcontainers.CreateTestDB(tb, testDSN, func(db *gorm.DB) {
+		if err := config.EnablePGSearch(db); err != nil {
+			tb.Fatalf("enable pg_search: %v", err)
 		}
-
-		testDB.Create(&domain.User{
+		if err := db.Create(&domain.User{
 			Model:    gorm.Model{ID: 1},
 			Email:    "test@test.com",
 			Username: "test",
 			Password: "x",
 			Name:     "Test",
-		})
-	}
-	os.Exit(m.Run())
+		}).Error; err != nil {
+			tb.Fatalf("seed test user: %v", err)
+		}
+	})
 }
 
 func seedServer(tb testing.TB, id uint) {
@@ -70,16 +75,4 @@ func seedEndpoint(tb testing.TB, id, serverID uint) {
 		URL:      fmt.Sprintf("https://example-%d.com", id),
 		Method:   "GET",
 	})
-}
-
-func truncateTables(tb testing.TB) {
-
-	tb.Helper()
-
-	testcontainers.TruncateTables(
-		tb, testDB,
-		&domain.Server{},
-		&domain.Endpoint{},
-		&domain.ServerEvent{},
-	)
 }

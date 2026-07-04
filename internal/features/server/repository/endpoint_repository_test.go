@@ -53,7 +53,7 @@ func (m *mockMetaCache) Delete(ctx context.Context, id uint) error {
 
 func TestEndpointRepository_GetByServerID(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	serverRepo := &ServerRepository{db: testDB}
 	endpointRepo := &EndpointRepository{db: testDB}
 
@@ -85,7 +85,7 @@ func TestEndpointRepository_GetByServerID(t *testing.T) {
 
 func TestEndpointRepository_GetByServerID_NotFound(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	repo := &EndpointRepository{db: testDB}
 
 	_, err := repo.GetByServerID(t.Context(), 999)
@@ -96,7 +96,7 @@ func TestEndpointRepository_GetByServerID_NotFound(t *testing.T) {
 
 func TestEndpointRepository_BatchCreateEndpoints(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	serverRepo := &ServerRepository{db: testDB}
 	endpointRepo := &EndpointRepository{
 		db: testDB,
@@ -136,7 +136,7 @@ func TestEndpointRepository_BatchCreateEndpoints(t *testing.T) {
 
 func TestEndpointRepository_DeleteByServerID_NotFound(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	repo := &EndpointRepository{db: testDB}
 
 	err := repo.DeleteByServerID(t.Context(), 999)
@@ -147,7 +147,7 @@ func TestEndpointRepository_DeleteByServerID_NotFound(t *testing.T) {
 
 func TestEndpointRepository_UpsertEndpoint_Create(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	serverRepo := &ServerRepository{db: testDB}
 	var registeredEndpoint *domain.Endpoint
 
@@ -198,7 +198,7 @@ func TestEndpointRepository_UpsertEndpoint_Update(t *testing.T) {
 
 func TestEndpointRepository_UpsertEndpoint_CallsMetaCacheDelete(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	serverRepo := &ServerRepository{db: testDB}
 
 	s := &domain.Server{Name: "upsert-cache-test", CreatedByID: 1}
@@ -239,7 +239,7 @@ func TestEndpointRepository_UpsertEndpoint_CallsMetaCacheDelete(t *testing.T) {
 
 func TestEndpointRepository_BatchCreateEndpoints_CallsRegisterBatch(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	serverRepo := &ServerRepository{db: testDB}
 
 	servers := []domain.Server{
@@ -285,7 +285,7 @@ func TestEndpointRepository_BatchCreateEndpoints_CallsRegisterBatch(t *testing.T
 
 func TestEndpointRepository_BatchCreateEndpoints_CallsSetMulti(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	serverRepo := &ServerRepository{db: testDB}
 
 	servers := []domain.Server{
@@ -331,7 +331,7 @@ func TestEndpointRepository_BatchCreateEndpoints_CallsSetMulti(t *testing.T) {
 
 func TestEndpointRepository_BatchCreateEndpoints_RegisterBatchError(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	serverRepo := &ServerRepository{db: testDB}
 
 	servers := []domain.Server{
@@ -364,7 +364,7 @@ func TestEndpointRepository_BatchCreateEndpoints_RegisterBatchError(t *testing.T
 
 func TestEndpointRepository_BatchCreateEndpoints_SetMultiError(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	serverRepo := &ServerRepository{db: testDB}
 
 	servers := []domain.Server{

@@ -15,7 +15,7 @@ import (
 
 func TestIntegration_BatchGetOntime_LowerboundON_NoDayEvents(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	queryDate := oDay(2026, 6, 2)
 	createdAt := queryDate.Add(-72 * time.Hour)
@@ -43,7 +43,7 @@ func TestIntegration_BatchGetOntime_LowerboundON_NoDayEvents(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_LowerboundOFF_NoDayEvents(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	queryDate := oDay(2026, 6, 2)
 	createdAt := queryDate.Add(-72 * time.Hour)
@@ -73,7 +73,7 @@ func TestIntegration_BatchGetOntime_LowerboundOFF_NoDayEvents(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_TodaySingleON_PrevDayOFF(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	today := oDay(time.Now().Year(), int(time.Now().Month()), time.Now().Day())
 	yesterday := today.Add(-24 * time.Hour)
@@ -119,7 +119,7 @@ func TestIntegration_BatchGetOntime_TodaySingleON_PrevDayOFF(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_Today_ON_to_OFF(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	today := oDay(time.Now().Year(), int(time.Now().Month()), time.Now().Day())
 	offTime := today.Add(10 * time.Hour) // OFF at 10:00 UTC
@@ -165,7 +165,7 @@ func TestIntegration_BatchGetOntime_Today_ON_to_OFF(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_NoEndpoint(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	now := oDay(2026, 6, 1)
 	createdAt := now.Add(-48 * time.Hour)
@@ -192,7 +192,7 @@ func TestIntegration_BatchGetOntime_NoEndpoint(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_SoftDeletedEndpoint(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	now := oDay(2026, 6, 1)
 	createdAt := now.Add(-48 * time.Hour)
@@ -228,7 +228,7 @@ func TestIntegration_BatchGetOntime_SoftDeletedEndpoint(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_ServerCreatedToday(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	today := oDay(time.Now().Year(), int(time.Now().Month()), time.Now().Day())
 	eventTime := today.Add(14 * time.Hour) // ON at 14:00 UTC
@@ -261,7 +261,7 @@ func TestIntegration_BatchGetOntime_ServerCreatedToday(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_MultipleServers(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	now := oDay(2026, 6, 1)
 	createdAt := now.Add(-48 * time.Hour)
@@ -317,7 +317,7 @@ func TestIntegration_BatchGetOntime_MultipleServers(t *testing.T) {
 
 func TestIntegration_BatchGetOntime_MultipleEndpointsOneActive(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	now := oDay(2026, 6, 1)
 	createdAt := now.Add(-48 * time.Hour)

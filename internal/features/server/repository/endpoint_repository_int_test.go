@@ -17,7 +17,7 @@ import (
 func TestIntegration_DeleteByServerID_FullCleanup(t *testing.T) {
 	testcontainers.CleanRedis(t, testRedis)
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	serverRepo := &ServerRepository{db: testDB}
 	s := &domain.Server{Name: "delete-full-cleanup", CreatedByID: 1}
@@ -110,7 +110,7 @@ func TestIntegration_DeleteByServerID_FullCleanup(t *testing.T) {
 func TestIntegration_DeleteByServerID_NoRedisArtifacts(t *testing.T) {
 	testcontainers.CleanRedis(t, testRedis)
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	serverRepo := &ServerRepository{db: testDB}
 	s := &domain.Server{Name: "delete-no-redis", CreatedByID: 1}
@@ -143,7 +143,7 @@ func TestIntegration_DeleteByServerID_NoRedisArtifacts(t *testing.T) {
 func TestIntegration_UpsertEndpoint_UpdatePath(t *testing.T) {
 	testcontainers.CleanRedis(t, testRedis)
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	serverRepo := &ServerRepository{db: testDB}
 	zsetScheduler := scheduler.NewZSetScheduleRepository(testRedis)
@@ -239,7 +239,7 @@ func TestIntegration_UpsertEndpoint_UpdatePath(t *testing.T) {
 func TestIntegration_UpsertEndpoint_ClearsPreExistingCache(t *testing.T) {
 	testcontainers.CleanRedis(t, testRedis)
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	serverRepo := &ServerRepository{db: testDB}
 	zsetScheduler := scheduler.NewZSetScheduleRepository(testRedis)
@@ -295,7 +295,7 @@ func TestIntegration_UpsertEndpoint_ClearsPreExistingCache(t *testing.T) {
 func TestIntegration_DeleteByServerID_NotFound(t *testing.T) {
 	testcontainers.CleanRedis(t, testRedis)
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	endpointRepo := NewEndpointRepositoryWithDeps(
 		testDB,

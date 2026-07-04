@@ -18,6 +18,7 @@ import (
 
 var testRedis *redis.Client
 var testDB *gorm.DB
+var testDSN string
 
 func TestMain(m *testing.M) {
 
@@ -32,10 +33,7 @@ func TestMain(m *testing.M) {
 
 		pgContainer, dsn := testcontainers.StartPostgres(ctx)
 		defer func() { _ = pgContainer.Terminate(ctx) }()
-
-		testDB = testcontainers.OpenGORM(dsn, &gorm.Config{TranslateError: true})
-
-		testcontainers.RunMigrations(testDB)
+		testDSN = dsn
 	}
 
 	os.Exit(m.Run())

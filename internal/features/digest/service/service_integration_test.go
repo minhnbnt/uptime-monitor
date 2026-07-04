@@ -23,6 +23,7 @@ import (
 )
 
 var testDB *gorm.DB
+var testDSN string
 
 func TestMain(m *testing.M) {
 	flag.Parse()
@@ -31,26 +32,33 @@ func TestMain(m *testing.M) {
 
 		container, dsn := testcontainers.StartPostgres(ctx)
 		defer func() { _ = container.Terminate(ctx) }()
+		testDSN = dsn
+	}
+	os.Exit(m.Run())
+}
 
-		testDB = testcontainers.OpenGORM(dsn)
-
-		testcontainers.RunMigrations(testDB)
-		testDB.Create(&domain.User{
+func initTestDB(tb testing.TB) *gorm.DB {
+	tb.Helper()
+	return testcontainers.CreateTestDB(tb, testDSN, func(db *gorm.DB) {
+		if err := db.Create(&domain.User{
 			Model:    gorm.Model{ID: 1},
 			Email:    "test@test.com",
 			Username: "test",
 			Password: "x",
 			Name:     "Test",
-		})
-		testDB.Create(&domain.User{
+		}).Error; err != nil {
+			tb.Fatalf("seed user 1: %v", err)
+		}
+		if err := db.Create(&domain.User{
 			Model:    gorm.Model{ID: 2},
 			Email:    "other@test.com",
 			Username: "other",
 			Password: "x",
 			Name:     "Other",
-		})
-	}
-	os.Exit(m.Run())
+		}).Error; err != nil {
+			tb.Fatalf("seed user 2: %v", err)
+		}
+	})
 }
 
 func newDigestIntegrationService(tb testing.TB, mailer MailSender) *DigestService {
@@ -74,18 +82,6 @@ func newDigestIntegrationService(tb testing.TB, mailer MailSender) *DigestServic
 		mailer:     mailer,
 		logger:     log,
 	}
-}
-
-func truncateTables(tb testing.TB) {
-
-	tb.Helper()
-
-	testcontainers.TruncateTables(
-		tb, testDB,
-		&domain.Server{},
-		&domain.Endpoint{},
-		&domain.ServerEvent{},
-	)
 }
 
 func seedServer(tb testing.TB, id uint, name string, createdByID uint) {
@@ -138,7 +134,7 @@ func readExcelRows(tb testing.TB, r io.Reader) [][]string {
 
 func TestIntegration_SendReport_WithServers(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 	seedServer(t, 1, "server-a", 1)
@@ -177,7 +173,7 @@ func TestIntegration_SendReport_WithServers(t *testing.T) {
 
 func TestIntegration_SendReport_RespectsUserScoping(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 
@@ -217,7 +213,7 @@ func TestIntegration_SendReport_RespectsUserScoping(t *testing.T) {
 
 func TestIntegration_SendReport_ClampsDateRange(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 
@@ -254,7 +250,7 @@ func TestIntegration_SendReport_ClampsDateRange(t *testing.T) {
 
 func TestIntegration_SendReport_NoEvents(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 	seedServer(t, 1, "server-a", 1)
@@ -285,7 +281,7 @@ func TestIntegration_SendReport_NoEvents(t *testing.T) {
 
 func TestIntegration_SendReport_MailerNotCalledWhenUserNotFound(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	mailer := &mockMailer{
 		sendFn: func(_ string, _ string, _ io.Reader) error {

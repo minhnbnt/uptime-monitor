@@ -9,8 +9,7 @@ import (
 
 func TestServerRepository_CountByStatus(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	repo := &ServerRepository{db: testDB}
 
 	s1 := &domain.Server{Name: "s1", CreatedByID: 1}
@@ -79,7 +78,7 @@ func TestServerRepository_CountByStatus(t *testing.T) {
 
 func TestServerRepository_CreateAndGetByID(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	repo := &ServerRepository{db: testDB}
 
 	s := &domain.Server{Name: "test-server", CreatedByID: 1}
@@ -105,7 +104,7 @@ func TestServerRepository_CreateAndGetByID(t *testing.T) {
 
 func TestServerRepository_GetByID_NotFound(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	repo := &ServerRepository{db: testDB}
 
 	_, err := repo.GetByID(t.Context(), 999)
@@ -116,7 +115,7 @@ func TestServerRepository_GetByID_NotFound(t *testing.T) {
 
 func TestServerRepository_Update(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	repo := &ServerRepository{db: testDB}
 
 	s := &domain.Server{Name: "original", CreatedByID: 1}
@@ -138,7 +137,7 @@ func TestServerRepository_Update(t *testing.T) {
 
 func TestServerRepository_Update_NotFound(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	repo := &ServerRepository{db: testDB}
 
 	s := &domain.Server{Name: "nope", CreatedByID: 1}
@@ -151,7 +150,7 @@ func TestServerRepository_Update_NotFound(t *testing.T) {
 
 func TestServerRepository_Delete(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	repo := &ServerRepository{db: testDB}
 
 	s := &domain.Server{Name: "delete-me", CreatedByID: 1}
@@ -172,7 +171,7 @@ func TestServerRepository_Delete(t *testing.T) {
 
 func TestServerRepository_Delete_NotFound(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	repo := &ServerRepository{db: testDB}
 
 	err := repo.Delete(t.Context(), 999)
@@ -183,7 +182,7 @@ func TestServerRepository_Delete_NotFound(t *testing.T) {
 
 func TestServerRepository_List(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	repo := &ServerRepository{db: testDB}
 
 	for i := range 3 {
@@ -236,7 +235,7 @@ func TestServerRepository_List(t *testing.T) {
 
 func TestServerRepository_Count(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	repo := &ServerRepository{db: testDB}
 
 	for i := range 3 {
@@ -257,7 +256,7 @@ func TestServerRepository_Count(t *testing.T) {
 
 func TestServerRepository_BatchCreateServers(t *testing.T) {
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	repo := &ServerRepository{db: testDB}
 
 	servers := []domain.Server{

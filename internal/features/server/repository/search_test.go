@@ -24,16 +24,10 @@ func seedServers(tb testing.TB, servers []domain.Server) {
 	}
 }
 
-func truncateServers(tb testing.TB) {
-	tb.Helper()
-	testcontainers.SkipIfShort(tb)
-	testDB.Exec("TRUNCATE TABLE servers CASCADE")
-}
-
 func TestSearchIntegration_Search(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 
-	truncateServers(t)
+	testDB = initTestDB(t)
 	seedServers(t, []domain.Server{
 		{Model: gorm.Model{ID: 1}, Name: "nginx web server", CreatedByID: 1},
 		{Model: gorm.Model{ID: 2}, Name: "postgres database", CreatedByID: 1},

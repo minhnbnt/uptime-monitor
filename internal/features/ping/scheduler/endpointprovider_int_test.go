@@ -95,7 +95,7 @@ func TestIntegration_GetBatch_AllMissed(t *testing.T) {
 
 	testcontainers.CleanRedis(t, testRedis)
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	seedServer(t, 1)
 	seedEndpoint(t, 10, 1)
@@ -130,7 +130,7 @@ func TestIntegration_GetBatch_PartialMiss(t *testing.T) {
 
 	testcontainers.CleanRedis(t, testRedis)
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	seedCacheEndpoint(t, domain.Endpoint{
 		Model:        gorm.Model{ID: 1},
@@ -197,7 +197,7 @@ func TestIntegration_GetBatch_AllMissedMultiple(t *testing.T) {
 
 	testcontainers.CleanRedis(t, testRedis)
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	seedServer(t, 1)
 	seedServer(t, 2)

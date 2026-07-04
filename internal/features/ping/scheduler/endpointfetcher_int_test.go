@@ -16,7 +16,7 @@ func TestIntegration_Fetch_EmptyIDs(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 
 	f := newFetcher(t)
 	results, err := f.Fetch(t.Context())
@@ -32,7 +32,7 @@ func TestIntegration_Fetch_SingleID(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	seedServer(t, 1)
 	seedEndpoint(t, 100, 1)
 
@@ -56,7 +56,7 @@ func TestIntegration_Fetch_MultipleIDs(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	seedServer(t, 1)
 	seedServer(t, 2)
 	seedServer(t, 3)
@@ -78,7 +78,7 @@ func TestIntegration_Fetch_NonExistentID(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	seedServer(t, 1)
 	seedEndpoint(t, 1, 1)
 
@@ -96,7 +96,7 @@ func TestIntegration_Fetch_MixedExistingAndMissing(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 
 	testcontainers.SkipIfShort(t)
-	truncateTables(t)
+	testDB = initTestDB(t)
 	seedServer(t, 1)
 	seedServer(t, 2)
 	seedEndpoint(t, 1, 1)
