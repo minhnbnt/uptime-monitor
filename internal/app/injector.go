@@ -36,11 +36,9 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/server"
 )
 
-func RegisterPackages(injector do.Injector, configPath string, dev bool) {
+func providersAfterConfig(dev bool) []func(do.Injector) {
+	return []func(do.Injector){
 
-	providers := []func(do.Injector){
-
-		config.RegisterConfigPath(configPath),
 		config.RegisterZapLogger(dev),
 		config.RegisterGORMDB,
 		config.RegisterRedisClient,
@@ -110,8 +108,18 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 		pinghandler.RegisterZSetWorkerRunner,
 		digesthandler.RegisterDigestWorkerRunner,
 	}
+}
 
-	for _, provider := range providers {
-		provider(injector)
+func RegisterPackages(injector do.Injector, configPath string, dev bool) {
+	config.RegisterConfigPath(configPath)(injector)
+	for _, p := range providersAfterConfig(dev) {
+		p(injector)
+	}
+}
+
+func RegisterPackagesFromConfig(injector do.Injector, cfg *config.Config, dev bool) {
+	config.RegisterConfig(cfg)(injector)
+	for _, p := range providersAfterConfig(dev) {
+		p(injector)
 	}
 }

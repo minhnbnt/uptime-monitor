@@ -13,6 +13,7 @@ import (
 
 	"github.com/samber/do/v2"
 
+	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/handler"
 	digestHandler "github.com/minhnbnt/uptime-monitor/internal/features/digest/handler"
 	importerHandler "github.com/minhnbnt/uptime-monitor/internal/features/importer/handler"
@@ -28,6 +29,8 @@ var (
 	pgContainer    testcontainers.Container
 	redisContainer testcontainers.Container
 	temporalCont   testcontainers.Container
+
+	testCfg *config.Config
 )
 
 func TestMain(m *testing.M) {
@@ -51,30 +54,48 @@ func TestMain(m *testing.M) {
 		redisHost, redisPort := testcontainers.ContainerHostPort(ctx, redisContainer, "6379")
 		temporalHost, temporalPort := testcontainers.ContainerHostPort(ctx, temporalCont, "7233")
 
-		os.Setenv("DB_HOST", pgHost)
-		os.Setenv("DB_PORT", pgPort)
-		os.Setenv("DB_USER", "postgres")
-		os.Setenv("DB_PASSWORD", "postgres")
-		os.Setenv("DB_NAME", "uptime_monitor")
-
-		os.Setenv("REDIS_ADDR", redisHost+":"+redisPort)
-
-		os.Setenv("TEMPORAL_HOST", temporalHost+":"+temporalPort)
-
-		os.Setenv("JWT_KEY", "test-key-for-wiring")
+		testCfg = &config.Config{
+			DB: config.DBConfig{
+				Host:     pgHost,
+				Port:     pgPort,
+				User:     "postgres",
+				Password: "postgres",
+				DBName:   "uptime_monitor",
+			},
+			Redis: config.RedisConfig{
+				Addr: redisHost + ":" + redisPort,
+			},
+			JWT: config.JWTConfig{
+				Key: "test-key-for-wiring",
+			},
+			Temporal: config.TemporalConfig{
+				Host: temporalHost + ":" + temporalPort,
+			},
+			Scheduler: config.SchedulerCfg{Backend: "redis"},
+			Token: config.TokenCfg{
+				AccessTTL:     "15m",
+				RefreshTTL:    "168h",
+				AccessIssuer:  "uptime-monitor",
+				RefreshIssuer: "uptime-monitor-refresh",
+			},
+			Argon2: config.Argon2Cfg{
+				Memory:      16384,
+				Iterations:  2,
+				Parallelism: 1,
+				SaltLength:  16,
+				KeyLength:   32,
+			},
+			Log: config.LogConfig{Level: "info"},
+			Mail: config.MailConfig{
+				SMTPHost: "localhost",
+				SMTPPort: 587,
+			},
+		}
 	}
 
 	code := m.Run()
 
 	if !testing.Short() {
-		os.Unsetenv("DB_HOST")
-		os.Unsetenv("DB_PORT")
-		os.Unsetenv("DB_USER")
-		os.Unsetenv("DB_PASSWORD")
-		os.Unsetenv("DB_NAME")
-		os.Unsetenv("REDIS_ADDR")
-		os.Unsetenv("TEMPORAL_HOST")
-		os.Unsetenv("JWT_KEY")
 
 		ctx := context.Background()
 		if pgContainer != nil {
@@ -91,13 +112,33 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+func newTestConfig() *config.Config {
+	return &config.Config{
+		DB: config.DBConfig{
+			Host:     testCfg.DB.Host,
+			Port:     testCfg.DB.Port,
+			User:     testCfg.DB.User,
+			Password: testCfg.DB.Password,
+			DBName:   testCfg.DB.DBName,
+		},
+		Redis:     testCfg.Redis,
+		JWT:       testCfg.JWT,
+		Temporal:  testCfg.Temporal,
+		Scheduler: testCfg.Scheduler,
+		Token:     testCfg.Token,
+		Argon2:    testCfg.Argon2,
+		Log:       testCfg.Log,
+		Mail:      testCfg.Mail,
+	}
+}
+
 func TestApp_Wiring_CompositeHandler(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
 
 	injector := do.New()
-	RegisterPackages(injector, "", true)
+	RegisterPackagesFromConfig(injector, newTestConfig(), true)
 
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
@@ -126,7 +167,7 @@ func TestApp_RunAllGoroutines_ContextCancel(t *testing.T) {
 	}
 
 	injector := do.New()
-	RegisterPackages(injector, "", true)
+	RegisterPackagesFromConfig(injector, newTestConfig(), true)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
