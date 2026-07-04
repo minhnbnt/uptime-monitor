@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 	"testing"
-
-	"gorm.io/gorm"
 )
 
 func SkipIfShort(tb testing.TB) {
@@ -28,14 +26,4 @@ func ContainerHostPort(ctx context.Context, c Container, port string) (string, s
 		os.Exit(1)
 	}
 	return host, mapped.Port()
-}
-
-func TruncateTables(tb testing.TB, db *gorm.DB, models ...interface{ TableName() string }) {
-
-	SkipIfShort(tb)
-
-	for _, m := range models {
-		query := fmt.Sprintf("TRUNCATE TABLE %s CASCADE", m.TableName())
-		db.WithContext(tb.Context()).Exec(query)
-	}
 }
