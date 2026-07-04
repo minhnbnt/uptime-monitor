@@ -50,15 +50,8 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func skipIfShort(tb testing.TB) {
-	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
-}
-
 func TestIntegration_Digest_StartDigest(t *testing.T) {
-	skipIfShort(t)
+	testcontainers.SkipIfShort(t)
 
 	ctx := t.Context()
 	err := digestStarter.StartDigest(ctx, 42)
@@ -68,7 +61,7 @@ func TestIntegration_Digest_StartDigest(t *testing.T) {
 }
 
 func TestIntegration_Digest_UpsertSchedule_Create(t *testing.T) {
-	skipIfShort(t)
+	testcontainers.SkipIfShort(t)
 
 	ctx := t.Context()
 	now := time.Now()
@@ -89,7 +82,7 @@ func TestIntegration_Digest_UpsertSchedule_Create(t *testing.T) {
 }
 
 func TestIntegration_Digest_UpsertSchedule_Update(t *testing.T) {
-	skipIfShort(t)
+	testcontainers.SkipIfShort(t)
 
 	ctx := t.Context()
 	now := time.Now()
@@ -115,7 +108,7 @@ func TestIntegration_Digest_UpsertSchedule_Update(t *testing.T) {
 }
 
 func TestIntegration_Digest_DeleteSchedule(t *testing.T) {
-	skipIfShort(t)
+	testcontainers.SkipIfShort(t)
 
 	ctx := t.Context()
 	now := time.Now()

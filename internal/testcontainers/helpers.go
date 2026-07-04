@@ -9,6 +9,13 @@ import (
 	"gorm.io/gorm"
 )
 
+func SkipIfShort(tb testing.TB) {
+	tb.Helper()
+	if testing.Short() {
+		tb.Skip("skipping integration test")
+	}
+}
+
 func ContainerHostPort(ctx context.Context, c Container, port string) (string, string) {
 	host, err := c.Host(ctx)
 	if err != nil {
@@ -23,14 +30,9 @@ func ContainerHostPort(ctx context.Context, c Container, port string) (string, s
 	return host, mapped.Port()
 }
 
-type tableNamer interface{ TableName() string }
+func TruncateTables(tb testing.TB, db *gorm.DB, models ...interface{ TableName() string }) {
 
-func TruncateTables(tb testing.TB, db *gorm.DB, models ...tableNamer) {
-
-	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
+	SkipIfShort(tb)
 
 	for _, m := range models {
 		query := fmt.Sprintf("TRUNCATE TABLE %s CASCADE", m.TableName())

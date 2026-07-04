@@ -13,9 +13,7 @@ import (
 
 func newSchedulerRepo(tb testing.TB) *ZSetScheduleRepository {
 	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(tb)
 	return &ZSetScheduleRepository{client: testRedis}
 }
 

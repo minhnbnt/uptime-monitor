@@ -35,15 +35,8 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func skipIfShort(tb testing.TB) {
-	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
-}
-
 func TestSendReportWorkflow_Success(t *testing.T) {
-	skipIfShort(t)
+	testcontainers.SkipIfShort(t)
 
 	w := worker.New(temporalClient, "digest-test", worker.Options{})
 	w.RegisterWorkflow(SendReportWorkflow)
@@ -79,7 +72,7 @@ func TestSendReportWorkflow_Success(t *testing.T) {
 }
 
 func TestSendReportWorkflow_ActivityError(t *testing.T) {
-	skipIfShort(t)
+	testcontainers.SkipIfShort(t)
 
 	w := worker.New(temporalClient, "digest-test", worker.Options{})
 	w.RegisterWorkflow(SendReportWorkflow)

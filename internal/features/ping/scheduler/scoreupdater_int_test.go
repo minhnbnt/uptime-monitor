@@ -9,9 +9,7 @@ import (
 
 func newScoreUpdater(tb testing.TB) *ScoreUpdater {
 	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(tb)
 	return &ScoreUpdater{client: testRedis}
 }
 

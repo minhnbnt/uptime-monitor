@@ -2,21 +2,20 @@ package scheduler
 
 import (
 	"testing"
+
+	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
 )
 
 func newFetcher(tb testing.TB) *EndpointFetcher {
 	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(tb)
 	return &EndpointFetcher{db: testDB}
 }
 
 func TestIntegration_Fetch_EmptyIDs(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(t)
 
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	f := newFetcher(t)
@@ -30,10 +29,9 @@ func TestIntegration_Fetch_EmptyIDs(t *testing.T) {
 }
 
 func TestIntegration_Fetch_SingleID(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(t)
 
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 	seedServer(t, 1)
 	seedEndpoint(t, 100, 1)
@@ -55,10 +53,9 @@ func TestIntegration_Fetch_SingleID(t *testing.T) {
 }
 
 func TestIntegration_Fetch_MultipleIDs(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(t)
 
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 	seedServer(t, 1)
 	seedServer(t, 2)
@@ -78,10 +75,9 @@ func TestIntegration_Fetch_MultipleIDs(t *testing.T) {
 }
 
 func TestIntegration_Fetch_NonExistentID(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(t)
 
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 	seedServer(t, 1)
 	seedEndpoint(t, 1, 1)
@@ -97,10 +93,9 @@ func TestIntegration_Fetch_NonExistentID(t *testing.T) {
 }
 
 func TestIntegration_Fetch_MixedExistingAndMissing(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(t)
 
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 	seedServer(t, 1)
 	seedServer(t, 2)

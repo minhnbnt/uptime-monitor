@@ -36,15 +36,8 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func skipIfShort(tb testing.TB) {
-	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
-}
-
 func TestPingWorkflow_Success(t *testing.T) {
-	skipIfShort(t)
+	testcontainers.SkipIfShort(t)
 
 	w := worker.New(temporalClient, "ping-test", worker.Options{})
 	w.RegisterWorkflow(PingWorkflow)
@@ -96,7 +89,7 @@ func TestPingWorkflow_Success(t *testing.T) {
 }
 
 func TestPingWorkflow_StatusOffOnPingError(t *testing.T) {
-	skipIfShort(t)
+	testcontainers.SkipIfShort(t)
 
 	w := worker.New(temporalClient, "ping-test", worker.Options{})
 	w.RegisterWorkflow(PingWorkflow)
@@ -143,7 +136,7 @@ func TestPingWorkflow_StatusOffOnPingError(t *testing.T) {
 }
 
 func TestPingWorkflow_StatusOffOnCodeMismatch(t *testing.T) {
-	skipIfShort(t)
+	testcontainers.SkipIfShort(t)
 
 	w := worker.New(temporalClient, "ping-test", worker.Options{})
 	w.RegisterWorkflow(PingWorkflow)
@@ -190,7 +183,7 @@ func TestPingWorkflow_StatusOffOnCodeMismatch(t *testing.T) {
 }
 
 func TestPingWorkflow_RecordActivityError(t *testing.T) {
-	skipIfShort(t)
+	testcontainers.SkipIfShort(t)
 
 	w := worker.New(temporalClient, "ping-test", worker.Options{})
 	w.RegisterWorkflow(PingWorkflow)

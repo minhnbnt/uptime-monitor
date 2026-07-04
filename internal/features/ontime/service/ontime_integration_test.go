@@ -59,11 +59,7 @@ func TestMain(m *testing.M) {
 
 func newServiceWithRedis(tb testing.TB) *OntimeService {
 	tb.Helper()
-
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-		return nil
-	}
+	testcontainers.SkipIfShort(tb)
 
 	return &OntimeService{
 		serverRepository: serverrepo.NewServerRepository(testDB),
@@ -77,11 +73,7 @@ func newServiceWithRedis(tb testing.TB) *OntimeService {
 
 func newService(tb testing.TB) *OntimeService {
 	tb.Helper()
-
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-		return nil
-	}
+	testcontainers.SkipIfShort(tb)
 
 	return &OntimeService{
 		serverRepository: serverrepo.NewServerRepository(testDB),
@@ -137,6 +129,7 @@ func seedEvent(tb testing.TB, endpointID uint, status domain.ServerStatus, tm ti
 // ---------- BatchGetOntime ----------
 
 func TestIntegration_BatchGetOntime_CacheMiss(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	now := oDay(2026, 6, 1)
@@ -164,6 +157,7 @@ func TestIntegration_BatchGetOntime_CacheMiss(t *testing.T) {
 }
 
 func TestIntegration_BatchGetOntime_AllOn(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	now := oDay(2026, 6, 1)
@@ -184,6 +178,7 @@ func TestIntegration_BatchGetOntime_AllOn(t *testing.T) {
 }
 
 func TestIntegration_BatchGetOntime_AllOff(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	now := oDay(2026, 6, 1)
@@ -204,6 +199,7 @@ func TestIntegration_BatchGetOntime_AllOff(t *testing.T) {
 }
 
 func TestIntegration_BatchGetOntime_NoEvents(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	now := oDay(2026, 6, 1)
@@ -226,6 +222,7 @@ func TestIntegration_BatchGetOntime_NoEvents(t *testing.T) {
 }
 
 func TestIntegration_BatchGetOntime_EmptyRequest(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	svc := newService(t)
@@ -241,6 +238,7 @@ func TestIntegration_BatchGetOntime_EmptyRequest(t *testing.T) {
 // ---------- BatchGetOntime with real Redis cache ----------
 
 func TestIntegration_BatchGetOntime_CacheHit(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 	testcontainers.CleanRedis(t, testRedis)
 
@@ -266,6 +264,7 @@ func TestIntegration_BatchGetOntime_CacheHit(t *testing.T) {
 }
 
 func TestIntegration_BatchGetOntime_CacheMissThenWarm(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 	testcontainers.CleanRedis(t, testRedis)
 
@@ -299,6 +298,7 @@ func TestIntegration_BatchGetOntime_CacheMissThenWarm(t *testing.T) {
 }
 
 func TestIntegration_BatchGetOntime_PartialCacheHit(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 	testcontainers.CleanRedis(t, testRedis)
 
@@ -357,6 +357,7 @@ func TestIntegration_BatchGetOntime_PartialCacheHit(t *testing.T) {
 // ---------- ListServersWithOntime ----------
 
 func TestIntegration_ListServersWithOntime(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	createdAt := oDay(2026, 6, 1).Add(-48 * time.Hour)
@@ -396,6 +397,7 @@ func TestIntegration_ListServersWithOntime(t *testing.T) {
 // ---------- GetServerWithOntime ----------
 
 func TestIntegration_GetServerWithOntime(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	createdAt := oDay(2026, 6, 1).Add(-48 * time.Hour)
@@ -420,6 +422,7 @@ func TestIntegration_GetServerWithOntime(t *testing.T) {
 }
 
 func TestIntegration_GetServerWithOntime_NotFound(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	svc := newService(t)
@@ -430,6 +433,7 @@ func TestIntegration_GetServerWithOntime_NotFound(t *testing.T) {
 }
 
 func TestIntegration_GetServerWithOntime_Forbidden(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	createdAt := oDay(2026, 6, 1).Add(-48 * time.Hour)
@@ -448,6 +452,7 @@ func TestIntegration_GetServerWithOntime_Forbidden(t *testing.T) {
 // ---------- URL encoding regression ----------
 
 func TestIntegration_BatchGetOntime_URLSpecialChars(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	now := oDay(2026, 6, 1)
@@ -483,6 +488,7 @@ func TestIntegration_BatchGetOntime_URLSpecialChars(t *testing.T) {
 // ---------- today vs past day ----------
 
 func TestIntegration_BatchGetOntime_Today(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	today := oDay(time.Now().Year(), int(time.Now().Month()), time.Now().Day())

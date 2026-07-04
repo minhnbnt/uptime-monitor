@@ -7,6 +7,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
 )
 
 func searcher() *ParadeDBSearcher {
@@ -15,9 +16,7 @@ func searcher() *ParadeDBSearcher {
 
 func seedServers(tb testing.TB, servers []domain.Server) {
 	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(tb)
 	for _, s := range servers {
 		if err := testDB.Create(&s).Error; err != nil {
 			tb.Fatalf("seed server: %v", err)
@@ -27,16 +26,12 @@ func seedServers(tb testing.TB, servers []domain.Server) {
 
 func truncateServers(tb testing.TB) {
 	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(tb)
 	testDB.Exec("TRUNCATE TABLE servers CASCADE")
 }
 
 func TestSearchIntegration_Search(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(t)
 
 	truncateServers(t)
 	seedServers(t, []domain.Server{

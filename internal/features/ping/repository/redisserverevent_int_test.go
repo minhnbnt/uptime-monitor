@@ -28,9 +28,7 @@ func TestMain(m *testing.M) {
 
 func newRepository(tb testing.TB) *RedisServerEventRepository {
 	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(tb)
 	return &RedisServerEventRepository{client: testRedis}
 }
 

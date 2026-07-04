@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
+	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
 )
 
 type mockScheduler struct {
@@ -51,6 +52,7 @@ func (m *mockMetaCache) Delete(ctx context.Context, id uint) error {
 }
 
 func TestEndpointRepository_GetByServerID(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 	serverRepo := &ServerRepository{db: testDB}
 	endpointRepo := &EndpointRepository{db: testDB}
@@ -82,6 +84,7 @@ func TestEndpointRepository_GetByServerID(t *testing.T) {
 }
 
 func TestEndpointRepository_GetByServerID_NotFound(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 	repo := &EndpointRepository{db: testDB}
 
@@ -92,6 +95,7 @@ func TestEndpointRepository_GetByServerID_NotFound(t *testing.T) {
 }
 
 func TestEndpointRepository_BatchCreateEndpoints(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 	serverRepo := &ServerRepository{db: testDB}
 	endpointRepo := &EndpointRepository{
@@ -131,6 +135,7 @@ func TestEndpointRepository_BatchCreateEndpoints(t *testing.T) {
 }
 
 func TestEndpointRepository_DeleteByServerID_NotFound(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 	repo := &EndpointRepository{db: testDB}
 
@@ -141,6 +146,7 @@ func TestEndpointRepository_DeleteByServerID_NotFound(t *testing.T) {
 }
 
 func TestEndpointRepository_UpsertEndpoint_Create(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 	serverRepo := &ServerRepository{db: testDB}
 	var registeredEndpoint *domain.Endpoint
@@ -191,6 +197,7 @@ func TestEndpointRepository_UpsertEndpoint_Update(t *testing.T) {
 }
 
 func TestEndpointRepository_UpsertEndpoint_CallsMetaCacheDelete(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 	serverRepo := &ServerRepository{db: testDB}
 
@@ -231,6 +238,7 @@ func TestEndpointRepository_UpsertEndpoint_CallsMetaCacheDelete(t *testing.T) {
 }
 
 func TestEndpointRepository_BatchCreateEndpoints_CallsRegisterBatch(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 	serverRepo := &ServerRepository{db: testDB}
 
@@ -276,6 +284,7 @@ func TestEndpointRepository_BatchCreateEndpoints_CallsRegisterBatch(t *testing.T
 }
 
 func TestEndpointRepository_BatchCreateEndpoints_CallsSetMulti(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 	serverRepo := &ServerRepository{db: testDB}
 
@@ -321,6 +330,7 @@ func TestEndpointRepository_BatchCreateEndpoints_CallsSetMulti(t *testing.T) {
 }
 
 func TestEndpointRepository_BatchCreateEndpoints_RegisterBatchError(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 	serverRepo := &ServerRepository{db: testDB}
 
@@ -353,6 +363,7 @@ func TestEndpointRepository_BatchCreateEndpoints_RegisterBatchError(t *testing.T
 }
 
 func TestEndpointRepository_BatchCreateEndpoints_SetMultiError(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 	serverRepo := &ServerRepository{db: testDB}
 

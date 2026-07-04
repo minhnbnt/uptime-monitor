@@ -14,9 +14,7 @@ import (
 
 func seedCacheEndpoint(tb testing.TB, ep domain.Endpoint) {
 	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(tb)
 	key := metaCacheKey(ep.ID)
 	data := map[string]string{
 		"url":           ep.URL,
@@ -31,9 +29,7 @@ func seedCacheEndpoint(tb testing.TB, ep domain.Endpoint) {
 
 func verifyCacheContains(tb testing.TB, ep domain.Endpoint) {
 	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(tb)
 	key := metaCacheKey(ep.ID)
 	data, err := testRedis.HGetAll(tb.Context(), key).Result()
 	if err != nil {
@@ -57,9 +53,7 @@ func verifyCacheContains(tb testing.TB, ep domain.Endpoint) {
 
 func newEndpointProvider(tb testing.TB) *EndpointProvider {
 	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(tb)
 	return &EndpointProvider{
 		cache:   &EndpointMetaCache{client: testRedis},
 		fetcher: &EndpointFetcher{db: testDB},
@@ -67,9 +61,7 @@ func newEndpointProvider(tb testing.TB) *EndpointProvider {
 }
 
 func TestIntegration_GetBatch_AllCached(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(t)
 
 	testcontainers.CleanRedis(t, testRedis)
 
@@ -99,11 +91,10 @@ func TestIntegration_GetBatch_AllCached(t *testing.T) {
 }
 
 func TestIntegration_GetBatch_AllMissed(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(t)
 
 	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	seedServer(t, 1)
@@ -135,11 +126,10 @@ func TestIntegration_GetBatch_AllMissed(t *testing.T) {
 }
 
 func TestIntegration_GetBatch_PartialMiss(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(t)
 
 	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	seedCacheEndpoint(t, domain.Endpoint{
@@ -188,9 +178,7 @@ func TestIntegration_GetBatch_PartialMiss(t *testing.T) {
 }
 
 func TestIntegration_GetBatch_EmptyIDs(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(t)
 
 	testcontainers.CleanRedis(t, testRedis)
 
@@ -205,11 +193,10 @@ func TestIntegration_GetBatch_EmptyIDs(t *testing.T) {
 }
 
 func TestIntegration_GetBatch_AllMissedMultiple(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(t)
 
 	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	seedServer(t, 1)

@@ -28,9 +28,7 @@ func TestMain(m *testing.M) {
 
 func newCacheRepository(tb testing.TB) *OntimeCacheRepository {
 	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(tb)
 	return &OntimeCacheRepository{client: testRedis}
 }
 

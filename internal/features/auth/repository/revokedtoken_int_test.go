@@ -43,9 +43,7 @@ func TestMain(m *testing.M) {
 
 func newRevokedRepo(tb testing.TB) *RedisRevokedTokenRepository {
 	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(tb)
 	return &RedisRevokedTokenRepository{client: testRedis}
 }
 

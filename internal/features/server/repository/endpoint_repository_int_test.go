@@ -16,6 +16,7 @@ import (
 
 func TestIntegration_DeleteByServerID_FullCleanup(t *testing.T) {
 	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	serverRepo := &ServerRepository{db: testDB}
@@ -108,6 +109,7 @@ func TestIntegration_DeleteByServerID_FullCleanup(t *testing.T) {
 
 func TestIntegration_DeleteByServerID_NoRedisArtifacts(t *testing.T) {
 	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	serverRepo := &ServerRepository{db: testDB}
@@ -140,6 +142,7 @@ func TestIntegration_DeleteByServerID_NoRedisArtifacts(t *testing.T) {
 
 func TestIntegration_UpsertEndpoint_UpdatePath(t *testing.T) {
 	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	serverRepo := &ServerRepository{db: testDB}
@@ -235,6 +238,7 @@ func TestIntegration_UpsertEndpoint_UpdatePath(t *testing.T) {
 
 func TestIntegration_UpsertEndpoint_ClearsPreExistingCache(t *testing.T) {
 	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	serverRepo := &ServerRepository{db: testDB}
@@ -290,6 +294,7 @@ func TestIntegration_UpsertEndpoint_ClearsPreExistingCache(t *testing.T) {
 
 func TestIntegration_DeleteByServerID_NotFound(t *testing.T) {
 	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	endpointRepo := NewEndpointRepositoryWithDeps(

@@ -6,21 +6,18 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
 )
 
 func userRepo(tb testing.TB) *UserRepository {
 	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(tb)
 	return NewUserRepository(testDB)
 }
 
 func cleanUsers(tb testing.TB) {
 	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(tb)
 	if err := testDB.Where("1 = 1").Delete(&domain.User{}).Error; err != nil {
 		tb.Fatalf("clean users: %v", err)
 	}

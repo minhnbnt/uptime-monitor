@@ -59,9 +59,7 @@ func TestMain(m *testing.M) {
 func newImportIntegrationService(tb testing.TB) *ImportService {
 	tb.Helper()
 
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(tb)
 
 	zsetScheduler := scheduler.NewZSetScheduleRepository(testRedis)
 	metaCache := scheduler.NewEndpointMetaCache(testRedis)
@@ -132,6 +130,7 @@ func truncateTables(tb testing.TB) {
 }
 
 func TestIntegration_ImportServers_Success(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	rows := []dto.ImportRow{
@@ -179,6 +178,7 @@ func TestIntegration_ImportServers_Success(t *testing.T) {
 }
 
 func TestIntegration_ImportServers_SkipEmptyURL(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	rows := []dto.ImportRow{
@@ -212,6 +212,7 @@ func TestIntegration_ImportServers_SkipEmptyURL(t *testing.T) {
 }
 
 func TestIntegration_ImportServers_ParseErrors(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	rows := []dto.ImportRow{
@@ -240,6 +241,7 @@ func TestIntegration_ImportServers_ParseErrors(t *testing.T) {
 }
 
 func TestIntegration_ImportServers_PartialErrors(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	rows := []dto.ImportRow{
@@ -269,6 +271,7 @@ func TestIntegration_ImportServers_PartialErrors(t *testing.T) {
 }
 
 func TestIntegration_ImportServers_EmptyFile(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	svc := newImportIntegrationService(t)
@@ -286,6 +289,7 @@ func TestIntegration_ImportServers_EmptyFile(t *testing.T) {
 }
 
 func TestIntegration_ImportServers_DefaultValues(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	svc := newImportIntegrationService(t)
@@ -343,6 +347,7 @@ func TestIntegration_ImportServers_DefaultValues(t *testing.T) {
 }
 
 func TestIntegration_ImportServers_SchedulerAndCache(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	rows := []dto.ImportRow{
@@ -429,6 +434,7 @@ func TestIntegration_ImportServers_SchedulerAndCache(t *testing.T) {
 }
 
 func TestIntegration_ImportServers_EmptyURL_NoScheduler(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	rows := []dto.ImportRow{
@@ -482,6 +488,7 @@ func TestIntegration_ImportServers_EmptyURL_NoScheduler(t *testing.T) {
 }
 
 func TestIntegration_ImportServers_MetaCacheLookup(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	rows := []dto.ImportRow{

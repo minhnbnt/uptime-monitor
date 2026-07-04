@@ -55,9 +55,7 @@ func TestMain(m *testing.M) {
 
 func newDigestIntegrationService(tb testing.TB, mailer MailSender) *DigestService {
 	tb.Helper()
-	if testing.Short() {
-		tb.Skip("skipping integration test")
-	}
+	testcontainers.SkipIfShort(tb)
 
 	log := logger.NewMockLogger()
 	serverRepo := serverrepo.NewServerRepository(testDB)
@@ -139,6 +137,7 @@ func readExcelRows(tb testing.TB, r io.Reader) [][]string {
 }
 
 func TestIntegration_SendReport_WithServers(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
@@ -177,6 +176,7 @@ func TestIntegration_SendReport_WithServers(t *testing.T) {
 }
 
 func TestIntegration_SendReport_RespectsUserScoping(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
@@ -216,6 +216,7 @@ func TestIntegration_SendReport_RespectsUserScoping(t *testing.T) {
 }
 
 func TestIntegration_SendReport_ClampsDateRange(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
@@ -252,6 +253,7 @@ func TestIntegration_SendReport_ClampsDateRange(t *testing.T) {
 }
 
 func TestIntegration_SendReport_NoEvents(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
@@ -282,6 +284,7 @@ func TestIntegration_SendReport_NoEvents(t *testing.T) {
 }
 
 func TestIntegration_SendReport_MailerNotCalledWhenUserNotFound(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	mailer := &mockMailer{

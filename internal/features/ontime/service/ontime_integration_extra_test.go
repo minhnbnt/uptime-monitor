@@ -8,11 +8,13 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
+	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
 )
 
 // ---------- no events on the queried day, lowerbound from previous day ----------
 
 func TestIntegration_BatchGetOntime_LowerboundON_NoDayEvents(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	queryDate := oDay(2026, 6, 2)
@@ -40,6 +42,7 @@ func TestIntegration_BatchGetOntime_LowerboundON_NoDayEvents(t *testing.T) {
 }
 
 func TestIntegration_BatchGetOntime_LowerboundOFF_NoDayEvents(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	queryDate := oDay(2026, 6, 2)
@@ -69,6 +72,7 @@ func TestIntegration_BatchGetOntime_LowerboundOFF_NoDayEvents(t *testing.T) {
 // ---------- today with single event ----------
 
 func TestIntegration_BatchGetOntime_TodaySingleON_PrevDayOFF(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	today := oDay(time.Now().Year(), int(time.Now().Month()), time.Now().Day())
@@ -114,6 +118,7 @@ func TestIntegration_BatchGetOntime_TodaySingleON_PrevDayOFF(t *testing.T) {
 }
 
 func TestIntegration_BatchGetOntime_Today_ON_to_OFF(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	today := oDay(time.Now().Year(), int(time.Now().Month()), time.Now().Day())
@@ -159,6 +164,7 @@ func TestIntegration_BatchGetOntime_Today_ON_to_OFF(t *testing.T) {
 // ---------- server with no endpoint ----------
 
 func TestIntegration_BatchGetOntime_NoEndpoint(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	now := oDay(2026, 6, 1)
@@ -185,6 +191,7 @@ func TestIntegration_BatchGetOntime_NoEndpoint(t *testing.T) {
 // ---------- endpoint soft deleted ----------
 
 func TestIntegration_BatchGetOntime_SoftDeletedEndpoint(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	now := oDay(2026, 6, 1)
@@ -220,6 +227,7 @@ func TestIntegration_BatchGetOntime_SoftDeletedEndpoint(t *testing.T) {
 // ---------- server created today ----------
 
 func TestIntegration_BatchGetOntime_ServerCreatedToday(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	today := oDay(time.Now().Year(), int(time.Now().Month()), time.Now().Day())
@@ -252,6 +260,7 @@ func TestIntegration_BatchGetOntime_ServerCreatedToday(t *testing.T) {
 // ---------- multiple servers with mix of data ----------
 
 func TestIntegration_BatchGetOntime_MultipleServers(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	now := oDay(2026, 6, 1)
@@ -307,6 +316,7 @@ func TestIntegration_BatchGetOntime_MultipleServers(t *testing.T) {
 // ---------- server with multiple endpoints (only active one counts) ----------
 
 func TestIntegration_BatchGetOntime_MultipleEndpointsOneActive(t *testing.T) {
+	testcontainers.SkipIfShort(t)
 	truncateTables(t)
 
 	now := oDay(2026, 6, 1)
