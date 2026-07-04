@@ -56,7 +56,7 @@ func TestEndpointRepository_GetByServerID(t *testing.T) {
 	endpointRepo := &EndpointRepository{db: testDB}
 
 	s := &domain.Server{Name: "ep-server", CreatedByID: 1}
-	if err := serverRepo.Create(context.Background(), s); err != nil {
+	if err := serverRepo.Create(t.Context(), s); err != nil {
 		t.Fatalf("create server: %v", err)
 	}
 
@@ -65,11 +65,11 @@ func TestEndpointRepository_GetByServerID(t *testing.T) {
 		URL:      "https://example.com",
 		Method:   "GET",
 	}
-	if err := gorm.G[domain.Endpoint](testDB).Create(context.Background(), ep); err != nil {
+	if err := gorm.G[domain.Endpoint](testDB).Create(t.Context(), ep); err != nil {
 		t.Fatalf("create endpoint: %v", err)
 	}
 
-	got, err := endpointRepo.GetByServerID(context.Background(), s.ID)
+	got, err := endpointRepo.GetByServerID(t.Context(), s.ID)
 	if err != nil {
 		t.Fatalf("GetByServerID: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestEndpointRepository_GetByServerID_NotFound(t *testing.T) {
 	truncateTables(t)
 	repo := &EndpointRepository{db: testDB}
 
-	_, err := repo.GetByServerID(context.Background(), 999)
+	_, err := repo.GetByServerID(t.Context(), 999)
 	if err == nil {
 		t.Fatal("expected error for non-existent server")
 	}
@@ -106,7 +106,7 @@ func TestEndpointRepository_BatchCreateEndpoints(t *testing.T) {
 		{Name: "batch-a", CreatedByID: 1},
 		{Name: "batch-b", CreatedByID: 1},
 	}
-	if err := serverRepo.BatchCreateServers(context.Background(), servers); err != nil {
+	if err := serverRepo.BatchCreateServers(t.Context(), servers); err != nil {
 		t.Fatalf("create servers: %v", err)
 	}
 
@@ -114,13 +114,13 @@ func TestEndpointRepository_BatchCreateEndpoints(t *testing.T) {
 		{ServerID: servers[0].ID, URL: "https://a.com", Method: "GET"},
 		{ServerID: servers[1].ID, URL: "https://b.com", Method: "POST"},
 	}
-	err := endpointRepo.BatchCreateEndpoints(context.Background(), endpoints)
+	err := endpointRepo.BatchCreateEndpoints(t.Context(), endpoints)
 	if err != nil {
 		t.Fatalf("BatchCreateEndpoints: %v", err)
 	}
 
 	for _, ep := range endpoints {
-		got, err := endpointRepo.GetByServerID(context.Background(), ep.ServerID)
+		got, err := endpointRepo.GetByServerID(t.Context(), ep.ServerID)
 		if err != nil {
 			t.Fatalf("get endpoint for server %d: %v", ep.ServerID, err)
 		}
@@ -134,7 +134,7 @@ func TestEndpointRepository_DeleteByServerID_NotFound(t *testing.T) {
 	truncateTables(t)
 	repo := &EndpointRepository{db: testDB}
 
-	err := repo.DeleteByServerID(context.Background(), 999)
+	err := repo.DeleteByServerID(t.Context(), 999)
 	if err != nil {
 		t.Fatalf("expected nil for non-existent server, got: %v", err)
 	}
@@ -146,7 +146,7 @@ func TestEndpointRepository_UpsertEndpoint_Create(t *testing.T) {
 	var registeredEndpoint *domain.Endpoint
 
 	s := &domain.Server{Name: "upsert-test", CreatedByID: 1}
-	if err := serverRepo.Create(context.Background(), s); err != nil {
+	if err := serverRepo.Create(t.Context(), s); err != nil {
 		t.Fatalf("create server: %v", err)
 	}
 
@@ -169,12 +169,12 @@ func TestEndpointRepository_UpsertEndpoint_Create(t *testing.T) {
 		Timeout:      20000000000,
 		ExpectedCode: 200,
 	}
-	err := repo.UpsertEndpoint(context.Background(), ep)
+	err := repo.UpsertEndpoint(t.Context(), ep)
 	if err != nil {
 		t.Fatalf("UpsertEndpoint: %v", err)
 	}
 
-	got, err := repo.GetByServerID(context.Background(), s.ID)
+	got, err := repo.GetByServerID(t.Context(), s.ID)
 	if err != nil {
 		t.Fatalf("GetByServerID: %v", err)
 	}
@@ -195,7 +195,7 @@ func TestEndpointRepository_UpsertEndpoint_CallsMetaCacheDelete(t *testing.T) {
 	serverRepo := &ServerRepository{db: testDB}
 
 	s := &domain.Server{Name: "upsert-cache-test", CreatedByID: 1}
-	if err := serverRepo.Create(context.Background(), s); err != nil {
+	if err := serverRepo.Create(t.Context(), s); err != nil {
 		t.Fatalf("create server: %v", err)
 	}
 
@@ -221,7 +221,7 @@ func TestEndpointRepository_UpsertEndpoint_CallsMetaCacheDelete(t *testing.T) {
 		Timeout:      10000000000,
 		ExpectedCode: 200,
 	}
-	if err := repo.UpsertEndpoint(context.Background(), ep); err != nil {
+	if err := repo.UpsertEndpoint(t.Context(), ep); err != nil {
 		t.Fatalf("UpsertEndpoint: %v", err)
 	}
 
@@ -238,7 +238,7 @@ func TestEndpointRepository_BatchCreateEndpoints_CallsRegisterBatch(t *testing.T
 		{Name: "reg-batch-a", CreatedByID: 1},
 		{Name: "reg-batch-b", CreatedByID: 1},
 	}
-	if err := serverRepo.BatchCreateServers(context.Background(), servers); err != nil {
+	if err := serverRepo.BatchCreateServers(t.Context(), servers); err != nil {
 		t.Fatalf("create servers: %v", err)
 	}
 
@@ -260,7 +260,7 @@ func TestEndpointRepository_BatchCreateEndpoints_CallsRegisterBatch(t *testing.T
 		{ServerID: servers[0].ID, URL: "https://reg-batch-a.com", Method: "GET"},
 		{ServerID: servers[1].ID, URL: "https://reg-batch-b.com", Method: "POST"},
 	}
-	if err := endpointRepo.BatchCreateEndpoints(context.Background(), endpoints); err != nil {
+	if err := endpointRepo.BatchCreateEndpoints(t.Context(), endpoints); err != nil {
 		t.Fatalf("BatchCreateEndpoints: %v", err)
 	}
 
@@ -283,7 +283,7 @@ func TestEndpointRepository_BatchCreateEndpoints_CallsSetMulti(t *testing.T) {
 		{Name: "cache-batch-a", CreatedByID: 1},
 		{Name: "cache-batch-b", CreatedByID: 1},
 	}
-	if err := serverRepo.BatchCreateServers(context.Background(), servers); err != nil {
+	if err := serverRepo.BatchCreateServers(t.Context(), servers); err != nil {
 		t.Fatalf("create servers: %v", err)
 	}
 
@@ -305,7 +305,7 @@ func TestEndpointRepository_BatchCreateEndpoints_CallsSetMulti(t *testing.T) {
 		{ServerID: servers[0].ID, URL: "https://cache-batch-a.com", Method: "GET"},
 		{ServerID: servers[1].ID, URL: "https://cache-batch-b.com", Method: "POST"},
 	}
-	if err := endpointRepo.BatchCreateEndpoints(context.Background(), endpoints); err != nil {
+	if err := endpointRepo.BatchCreateEndpoints(t.Context(), endpoints); err != nil {
 		t.Fatalf("BatchCreateEndpoints: %v", err)
 	}
 
@@ -327,7 +327,7 @@ func TestEndpointRepository_BatchCreateEndpoints_RegisterBatchError(t *testing.T
 	servers := []domain.Server{
 		{Name: "reg-err", CreatedByID: 1},
 	}
-	if err := serverRepo.BatchCreateServers(context.Background(), servers); err != nil {
+	if err := serverRepo.BatchCreateServers(t.Context(), servers); err != nil {
 		t.Fatalf("create servers: %v", err)
 	}
 
@@ -346,7 +346,7 @@ func TestEndpointRepository_BatchCreateEndpoints_RegisterBatchError(t *testing.T
 	endpoints := []domain.Endpoint{
 		{ServerID: servers[0].ID, URL: "https://reg-err.com", Method: "GET"},
 	}
-	err := endpointRepo.BatchCreateEndpoints(context.Background(), endpoints)
+	err := endpointRepo.BatchCreateEndpoints(t.Context(), endpoints)
 	if err == nil {
 		t.Fatal("expected error from RegisterBatch, got nil")
 	}
@@ -359,7 +359,7 @@ func TestEndpointRepository_BatchCreateEndpoints_SetMultiError(t *testing.T) {
 	servers := []domain.Server{
 		{Name: "cache-err", CreatedByID: 1},
 	}
-	if err := serverRepo.BatchCreateServers(context.Background(), servers); err != nil {
+	if err := serverRepo.BatchCreateServers(t.Context(), servers); err != nil {
 		t.Fatalf("create servers: %v", err)
 	}
 
@@ -378,7 +378,7 @@ func TestEndpointRepository_BatchCreateEndpoints_SetMultiError(t *testing.T) {
 	endpoints := []domain.Endpoint{
 		{ServerID: servers[0].ID, URL: "https://cache-err.com", Method: "GET"},
 	}
-	err := endpointRepo.BatchCreateEndpoints(context.Background(), endpoints)
+	err := endpointRepo.BatchCreateEndpoints(t.Context(), endpoints)
 	if err == nil {
 		t.Fatal("expected error from SetMulti, got nil")
 	}

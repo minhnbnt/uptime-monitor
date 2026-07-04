@@ -29,7 +29,7 @@ func TestImportHandler_ImportServers(t *testing.T) {
 			},
 		}
 
-		resp, err := h.ImportServers(context.Background(), &api.ImportServersReq{})
+		resp, err := h.ImportServers(t.Context(), &api.ImportServersReq{})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -63,7 +63,7 @@ func TestImportHandler_ImportServers(t *testing.T) {
 			},
 		}
 
-		resp, err := h.ImportServers(context.Background(), &api.ImportServersReq{})
+		resp, err := h.ImportServers(t.Context(), &api.ImportServersReq{})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -81,7 +81,7 @@ func TestImportHandler_ImportServers(t *testing.T) {
 			},
 		}
 
-		resp, err := h.ImportServers(context.Background(), &api.ImportServersReq{})
+		resp, err := h.ImportServers(t.Context(), &api.ImportServersReq{})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -99,7 +99,7 @@ func TestImportHandler_ImportServers(t *testing.T) {
 			},
 		}
 
-		_, err := h.ImportServers(context.Background(), &api.ImportServersReq{})
+		_, err := h.ImportServers(t.Context(), &api.ImportServersReq{})
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -121,7 +121,7 @@ func TestImportHandler_DownloadImportTemplate(t *testing.T) {
 			},
 		}
 
-		resp, err := h.DownloadImportTemplate(context.Background())
+		resp, err := h.DownloadImportTemplate(t.Context())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -143,7 +143,7 @@ func TestImportHandler_DownloadImportTemplate(t *testing.T) {
 			},
 		}
 
-		_, err := h.DownloadImportTemplate(context.Background())
+		_, err := h.DownloadImportTemplate(t.Context())
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)

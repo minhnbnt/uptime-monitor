@@ -27,7 +27,7 @@ func TestNotificationService_GetNotificationConfig(t *testing.T) {
 			},
 		}
 		s := &NotificationService{configRepo: mockRepo, logger: logger.NewMockLogger()}
-		resp, err := s.GetNotificationConfig(context.Background(), 1)
+		resp, err := s.GetNotificationConfig(t.Context(), 1)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -46,7 +46,7 @@ func TestNotificationService_GetNotificationConfig(t *testing.T) {
 			},
 		}
 		s := &NotificationService{configRepo: mockRepo, logger: logger.NewMockLogger()}
-		resp, err := s.GetNotificationConfig(context.Background(), 1)
+		resp, err := s.GetNotificationConfig(t.Context(), 1)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -66,7 +66,7 @@ func TestNotificationService_GetNotificationConfig(t *testing.T) {
 		}
 		mockLog := logger.NewMockLogger()
 		s := &NotificationService{configRepo: mockRepo, logger: mockLog}
-		_, err := s.GetNotificationConfig(context.Background(), 1)
+		_, err := s.GetNotificationConfig(t.Context(), 1)
 		if !errors.Is(err, apperrors.ErrInternal) {
 			t.Errorf("got %v, want %v", err, apperrors.ErrInternal)
 		}
@@ -111,7 +111,7 @@ func TestNotificationService_UpdateNotificationConfig(t *testing.T) {
 			ToDate:     "2026-06-30",
 			DigestTime: "08:00",
 		}
-		err := s.UpdateNotificationConfig(context.Background(), 1, req)
+		err := s.UpdateNotificationConfig(t.Context(), 1, req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -143,7 +143,7 @@ func TestNotificationService_UpdateNotificationConfig(t *testing.T) {
 
 		s := &NotificationService{configRepo: mockRepo, digestStarter: mockDigest, logger: mockLog}
 		req := &dto.NotificationConfigRequest{DigestTime: "08:00"}
-		err := s.UpdateNotificationConfig(context.Background(), 1, req)
+		err := s.UpdateNotificationConfig(t.Context(), 1, req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -159,7 +159,7 @@ func TestNotificationService_UpdateNotificationConfig(t *testing.T) {
 			FromDate: "invalid-date",
 			ToDate:   "2026-06-30",
 		}
-		err := s.UpdateNotificationConfig(context.Background(), 1, req)
+		err := s.UpdateNotificationConfig(t.Context(), 1, req)
 		if !errors.Is(err, apperrors.ErrBadRequest) {
 			t.Errorf("got %v, want %v", err, apperrors.ErrBadRequest)
 		}
@@ -174,7 +174,7 @@ func TestNotificationService_UpdateNotificationConfig(t *testing.T) {
 		mockLog := logger.NewMockLogger()
 		s := &NotificationService{configRepo: mockRepo, logger: mockLog}
 		req := &dto.NotificationConfigRequest{DigestTime: "08:00"}
-		err := s.UpdateNotificationConfig(context.Background(), 1, req)
+		err := s.UpdateNotificationConfig(t.Context(), 1, req)
 		if !errors.Is(err, apperrors.ErrInternal) {
 			t.Errorf("got %v, want %v", err, apperrors.ErrInternal)
 		}
@@ -201,7 +201,7 @@ func TestNotificationService_UpdateNotificationConfig(t *testing.T) {
 			ToDate:     "2026-06-30",
 			DigestTime: "08:00",
 		}
-		err := s.UpdateNotificationConfig(context.Background(), 1, req)
+		err := s.UpdateNotificationConfig(t.Context(), 1, req)
 		if !errors.Is(err, apperrors.ErrInternal) {
 			t.Errorf("got %v, want %v", err, apperrors.ErrInternal)
 		}
@@ -223,7 +223,7 @@ func TestNotificationService_SendReport(t *testing.T) {
 			},
 		}
 		s := &NotificationService{digestStarter: mockDigest, logger: mockLog}
-		err := s.SendReport(context.Background(), 1)
+		err := s.SendReport(t.Context(), 1)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -240,7 +240,7 @@ func TestNotificationService_SendReport(t *testing.T) {
 		}
 		mockLog := logger.NewMockLogger()
 		s := &NotificationService{digestStarter: mockDigest, logger: mockLog}
-		err := s.SendReport(context.Background(), 1)
+		err := s.SendReport(t.Context(), 1)
 		if !errors.Is(err, apperrors.ErrInternal) {
 			t.Errorf("got %v, want %v", err, apperrors.ErrInternal)
 		}

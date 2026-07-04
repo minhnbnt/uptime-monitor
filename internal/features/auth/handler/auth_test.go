@@ -24,7 +24,7 @@ func TestAuthHandler_Register(t *testing.T) {
 		}
 
 		req := &api.RegisterRequest{Email: "a@b.com", Username: "user1", Password: "pass1234", Name: "Test"}
-		resp, err := h.Register(context.Background(), req)
+		resp, err := h.Register(t.Context(), req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -43,7 +43,7 @@ func TestAuthHandler_Register(t *testing.T) {
 		}
 
 		req := &api.RegisterRequest{Email: "a@b.com", Username: "user1", Password: "pass1234", Name: "Test"}
-		_, err := h.Register(context.Background(), req)
+		_, err := h.Register(t.Context(), req)
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -63,7 +63,7 @@ func TestAuthHandler_Register(t *testing.T) {
 		}
 
 		req := &api.RegisterRequest{Email: "a@b.com", Username: "user1", Password: "pass1234", Name: "Test"}
-		_, err := h.Register(context.Background(), req)
+		_, err := h.Register(t.Context(), req)
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -87,7 +87,7 @@ func TestAuthHandler_LoginRefresh(t *testing.T) {
 		}
 
 		req := &api.RefreshTokenRequest{RefreshToken: "valid-refresh-token"}
-		resp, err := h.LoginRefresh(context.Background(), req)
+		resp, err := h.LoginRefresh(t.Context(), req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -106,7 +106,7 @@ func TestAuthHandler_LoginRefresh(t *testing.T) {
 		}
 
 		req := &api.RefreshTokenRequest{RefreshToken: "expired-token"}
-		_, err := h.LoginRefresh(context.Background(), req)
+		_, err := h.LoginRefresh(t.Context(), req)
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -126,7 +126,7 @@ func TestAuthHandler_LoginRefresh(t *testing.T) {
 		}
 
 		req := &api.RefreshTokenRequest{RefreshToken: "some-token"}
-		_, err := h.LoginRefresh(context.Background(), req)
+		_, err := h.LoginRefresh(t.Context(), req)
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -149,7 +149,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 		}
 
 		req := &api.RefreshTokenRequest{RefreshToken: "some-token"}
-		err := h.Logout(context.Background(), req)
+		err := h.Logout(t.Context(), req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -165,7 +165,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 		}
 
 		req := &api.RefreshTokenRequest{RefreshToken: "invalid-token"}
-		err := h.Logout(context.Background(), req)
+		err := h.Logout(t.Context(), req)
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -185,7 +185,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 		}
 
 		req := &api.RefreshTokenRequest{RefreshToken: "some-token"}
-		err := h.Logout(context.Background(), req)
+		err := h.Logout(t.Context(), req)
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -209,7 +209,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		}
 
 		req := &api.LoginRequest{Login: "a@b.com", Password: "pass1234"}
-		resp, err := h.Login(context.Background(), req)
+		resp, err := h.Login(t.Context(), req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -228,7 +228,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		}
 
 		req := &api.LoginRequest{Login: "a@b.com", Password: "wrong"}
-		_, err := h.Login(context.Background(), req)
+		_, err := h.Login(t.Context(), req)
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -248,7 +248,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		}
 
 		req := &api.LoginRequest{Login: "a@b.com", Password: "pass1234"}
-		_, err := h.Login(context.Background(), req)
+		_, err := h.Login(t.Context(), req)
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)

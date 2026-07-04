@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"context"
 	"testing"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
@@ -12,7 +11,7 @@ func TestServerRepository_CreateAndGetByID(t *testing.T) {
 	repo := &ServerRepository{db: testDB}
 
 	s := &domain.Server{Name: "test-server", CreatedByID: 1}
-	err := repo.Create(context.Background(), s)
+	err := repo.Create(t.Context(), s)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -20,7 +19,7 @@ func TestServerRepository_CreateAndGetByID(t *testing.T) {
 		t.Fatal("ID not backfilled")
 	}
 
-	got, err := repo.GetByID(context.Background(), s.ID)
+	got, err := repo.GetByID(t.Context(), s.ID)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -36,7 +35,7 @@ func TestServerRepository_GetByID_NotFound(t *testing.T) {
 	truncateTables(t)
 	repo := &ServerRepository{db: testDB}
 
-	_, err := repo.GetByID(context.Background(), 999)
+	_, err := repo.GetByID(t.Context(), 999)
 	if err == nil {
 		t.Fatal("expected error for non-existent server")
 	}
@@ -47,17 +46,17 @@ func TestServerRepository_Update(t *testing.T) {
 	repo := &ServerRepository{db: testDB}
 
 	s := &domain.Server{Name: "original", CreatedByID: 1}
-	if err := repo.Create(context.Background(), s); err != nil {
+	if err := repo.Create(t.Context(), s); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
 	s.Name = "updated"
-	err := repo.Update(context.Background(), s)
+	err := repo.Update(t.Context(), s)
 	if err != nil {
 		t.Fatalf("Update: %v", err)
 	}
 
-	got, _ := repo.GetByID(context.Background(), s.ID)
+	got, _ := repo.GetByID(t.Context(), s.ID)
 	if got.Name != "updated" {
 		t.Errorf("Name = %q, want %q", got.Name, "updated")
 	}
@@ -69,7 +68,7 @@ func TestServerRepository_Update_NotFound(t *testing.T) {
 
 	s := &domain.Server{Name: "nope", CreatedByID: 1}
 	s.ID = 999
-	err := repo.Update(context.Background(), s)
+	err := repo.Update(t.Context(), s)
 	if err == nil {
 		t.Fatal("expected error for non-existent server")
 	}
@@ -80,16 +79,16 @@ func TestServerRepository_Delete(t *testing.T) {
 	repo := &ServerRepository{db: testDB}
 
 	s := &domain.Server{Name: "delete-me", CreatedByID: 1}
-	if err := repo.Create(context.Background(), s); err != nil {
+	if err := repo.Create(t.Context(), s); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
-	err := repo.Delete(context.Background(), s.ID)
+	err := repo.Delete(t.Context(), s.ID)
 	if err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
 
-	_, err = repo.GetByID(context.Background(), s.ID)
+	_, err = repo.GetByID(t.Context(), s.ID)
 	if err == nil {
 		t.Error("expected error after delete")
 	}
@@ -99,7 +98,7 @@ func TestServerRepository_Delete_NotFound(t *testing.T) {
 	truncateTables(t)
 	repo := &ServerRepository{db: testDB}
 
-	err := repo.Delete(context.Background(), 999)
+	err := repo.Delete(t.Context(), 999)
 	if err == nil {
 		t.Fatal("expected error for non-existent server")
 	}
@@ -111,13 +110,13 @@ func TestServerRepository_List(t *testing.T) {
 
 	for i := range 3 {
 		s := &domain.Server{Name: "srv", CreatedByID: 1}
-		if err := repo.Create(context.Background(), s); err != nil {
+		if err := repo.Create(t.Context(), s); err != nil {
 			t.Fatalf("Create %d: %v", i, err)
 		}
 	}
 
 	t.Run("all", func(t *testing.T) {
-		servers, err := repo.List(context.Background(), 1, 10, 0)
+		servers, err := repo.List(t.Context(), 1, 10, 0)
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
@@ -127,7 +126,7 @@ func TestServerRepository_List(t *testing.T) {
 	})
 
 	t.Run("limit", func(t *testing.T) {
-		servers, err := repo.List(context.Background(), 1, 2, 0)
+		servers, err := repo.List(t.Context(), 1, 2, 0)
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
@@ -137,7 +136,7 @@ func TestServerRepository_List(t *testing.T) {
 	})
 
 	t.Run("offset", func(t *testing.T) {
-		servers, err := repo.List(context.Background(), 1, 10, 2)
+		servers, err := repo.List(t.Context(), 1, 10, 2)
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
@@ -147,7 +146,7 @@ func TestServerRepository_List(t *testing.T) {
 	})
 
 	t.Run("different user", func(t *testing.T) {
-		servers, err := repo.List(context.Background(), 2, 10, 0)
+		servers, err := repo.List(t.Context(), 2, 10, 0)
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
@@ -163,12 +162,12 @@ func TestServerRepository_Count(t *testing.T) {
 
 	for i := range 3 {
 		s := &domain.Server{Name: "srv", CreatedByID: 1}
-		if err := repo.Create(context.Background(), s); err != nil {
+		if err := repo.Create(t.Context(), s); err != nil {
 			t.Fatalf("Create %d: %v", i, err)
 		}
 	}
 
-	count, err := repo.Count(context.Background(), 1)
+	count, err := repo.Count(t.Context(), 1)
 	if err != nil {
 		t.Fatalf("Count: %v", err)
 	}
@@ -185,7 +184,7 @@ func TestServerRepository_BatchCreateServers(t *testing.T) {
 		{Name: "batch-a", CreatedByID: 1},
 		{Name: "batch-b", CreatedByID: 1},
 	}
-	err := repo.BatchCreateServers(context.Background(), servers)
+	err := repo.BatchCreateServers(t.Context(), servers)
 	if err != nil {
 		t.Fatalf("BatchCreateServers: %v", err)
 	}
@@ -200,7 +199,7 @@ func TestServerRepository_BatchCreateServers(t *testing.T) {
 	}
 
 	for _, s := range servers {
-		got, err := repo.GetByID(context.Background(), s.ID)
+		got, err := repo.GetByID(t.Context(), s.ID)
 		if err != nil {
 			t.Fatalf("GetByID(%d): %v", s.ID, err)
 		}

@@ -32,7 +32,7 @@ func TestServerHandler_ListServers(t *testing.T) {
 			},
 		}
 
-		resp, err := h.ListServers(context.Background(), api.ListServersParams{
+		resp, err := h.ListServers(t.Context(), api.ListServersParams{
 			Page:    api.NewOptInt(2),
 			PerPage: api.NewOptInt(10),
 		})
@@ -55,7 +55,7 @@ func TestServerHandler_ListServers(t *testing.T) {
 				},
 			},
 		}
-		_, err := h.ListServers(context.Background(), api.ListServersParams{})
+		_, err := h.ListServers(t.Context(), api.ListServersParams{})
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -79,7 +79,7 @@ func TestServerHandler_CreateServer(t *testing.T) {
 			},
 		}
 		req := &api.CreateServerRequest{Name: "new-srv"}
-		resp, err := h.CreateServer(context.Background(), req)
+		resp, err := h.CreateServer(t.Context(), req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -97,7 +97,7 @@ func TestServerHandler_CreateServer(t *testing.T) {
 			},
 		}
 		req := &api.CreateServerRequest{Name: "x"}
-		_, err := h.CreateServer(context.Background(), req)
+		_, err := h.CreateServer(t.Context(), req)
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -121,7 +121,7 @@ func TestServerHandler_UpdateServer(t *testing.T) {
 			},
 		}
 		req := &api.UpdateServerRequest{Name: api.NewOptString("updated")}
-		resp, err := h.UpdateServer(context.Background(), req, api.UpdateServerParams{ID: 3})
+		resp, err := h.UpdateServer(t.Context(), req, api.UpdateServerParams{ID: 3})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -139,7 +139,7 @@ func TestServerHandler_UpdateServer(t *testing.T) {
 			},
 		}
 		req := &api.UpdateServerRequest{Name: api.NewOptString("x")}
-		_, err := h.UpdateServer(context.Background(), req, api.UpdateServerParams{ID: 99})
+		_, err := h.UpdateServer(t.Context(), req, api.UpdateServerParams{ID: 99})
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -158,7 +158,7 @@ func TestServerHandler_UpdateServer(t *testing.T) {
 			},
 		}
 		req := &api.UpdateServerRequest{Name: api.NewOptString("x")}
-		_, err := h.UpdateServer(context.Background(), req, api.UpdateServerParams{ID: 1})
+		_, err := h.UpdateServer(t.Context(), req, api.UpdateServerParams{ID: 1})
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -178,7 +178,7 @@ func TestServerHandler_DeleteServer(t *testing.T) {
 				},
 			},
 		}
-		err := h.DeleteServer(context.Background(), api.DeleteServerParams{ID: 4})
+		err := h.DeleteServer(t.Context(), api.DeleteServerParams{ID: 4})
 		if err != nil {
 			t.Errorf("expected nil, got %v", err)
 		}
@@ -192,7 +192,7 @@ func TestServerHandler_DeleteServer(t *testing.T) {
 				},
 			},
 		}
-		err := h.DeleteServer(context.Background(), api.DeleteServerParams{ID: 99})
+		err := h.DeleteServer(t.Context(), api.DeleteServerParams{ID: 99})
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -210,7 +210,7 @@ func TestServerHandler_DeleteServer(t *testing.T) {
 				},
 			},
 		}
-		err := h.DeleteServer(context.Background(), api.DeleteServerParams{ID: 1})
+		err := h.DeleteServer(t.Context(), api.DeleteServerParams{ID: 1})
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)

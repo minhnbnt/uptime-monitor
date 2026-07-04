@@ -103,16 +103,17 @@ func (sr *ServerRepository) CountByStatus(ctx context.Context, createdByID uint)
 		Offline int64
 	}
 
-	const query = `
-		SELECT COUNT(*) AS total,
-			COUNT(CASE WHEN e.monitor_status = 'ON' THEN 1 END) AS online,
-			COUNT(CASE WHEN e.monitor_status = 'OFF' THEN 1 END) AS offline
-		FROM servers s
-		JOIN endpoints e ON e.server_id = s.id
-		WHERE s.created_by_id = ?
-	`
+	result := sr.db.WithContext(ctx).
+		Select(`
+			COUNT(*) AS total,
+			SUM(CASE WHEN e.monitor_status = 'ON' THEN 1 ELSE 0 END) AS online,
+			SUM(CASE WHEN e.monitor_status = 'OFF' THEN 1 ELSE 0 END) AS offline
+		`).
+		Table("servers s").
+		Joins("JOIN endpoints e ON e.server_id = s.id").
+		Where("s.created_by_id = ?", createdByID).
+		Scan(&row)
 
-	result := sr.db.WithContext(ctx).Raw(query, createdByID).Scan(&row)
 	return row.Total, row.Online, row.Offline, result.Error
 }
 

@@ -26,7 +26,7 @@ func TestNotificationHandler_GetNotificationConfig(t *testing.T) {
 			},
 		}
 
-		resp, err := h.GetNotificationConfig(context.Background())
+		resp, err := h.GetNotificationConfig(t.Context())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -50,7 +50,7 @@ func TestNotificationHandler_GetNotificationConfig(t *testing.T) {
 			},
 		}
 
-		resp, err := h.GetNotificationConfig(context.Background())
+		resp, err := h.GetNotificationConfig(t.Context())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -71,7 +71,7 @@ func TestNotificationHandler_GetNotificationConfig(t *testing.T) {
 			},
 		}
 
-		resp, err := h.GetNotificationConfig(context.Background())
+		resp, err := h.GetNotificationConfig(t.Context())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -89,7 +89,7 @@ func TestNotificationHandler_GetNotificationConfig(t *testing.T) {
 			},
 		}
 
-		_, err := h.GetNotificationConfig(context.Background())
+		_, err := h.GetNotificationConfig(t.Context())
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -118,7 +118,7 @@ func TestNotificationHandler_UpdateNotificationConfig(t *testing.T) {
 			ToDate:     api.NewOptDate(time.Date(2026, 6, 30, 0, 0, 0, 0, time.UTC)),
 			DigestTime: api.NewOptString("08:00"),
 		}
-		err := h.UpdateNotificationConfig(context.Background(), req)
+		err := h.UpdateNotificationConfig(t.Context(), req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -148,7 +148,7 @@ func TestNotificationHandler_UpdateNotificationConfig(t *testing.T) {
 		req := &api.NotificationConfig{
 			DigestTime: api.NewOptString("09:00"),
 		}
-		err := h.UpdateNotificationConfig(context.Background(), req)
+		err := h.UpdateNotificationConfig(t.Context(), req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -164,7 +164,7 @@ func TestNotificationHandler_UpdateNotificationConfig(t *testing.T) {
 		}
 
 		req := &api.NotificationConfig{DigestTime: api.NewOptString("08:00")}
-		err := h.UpdateNotificationConfig(context.Background(), req)
+		err := h.UpdateNotificationConfig(t.Context(), req)
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -187,7 +187,7 @@ func TestNotificationHandler_SendReport(t *testing.T) {
 			},
 		}
 
-		err := h.SendReport(context.Background())
+		err := h.SendReport(t.Context())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -205,7 +205,7 @@ func TestNotificationHandler_SendReport(t *testing.T) {
 			},
 		}
 
-		err := h.SendReport(context.Background())
+		err := h.SendReport(t.Context())
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)

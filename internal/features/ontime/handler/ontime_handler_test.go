@@ -39,7 +39,7 @@ func TestOntimeHandler_GetServer(t *testing.T) {
 				},
 			},
 		}
-		resp, err := h.GetServer(context.Background(), api.GetServerParams{ID: 1})
+		resp, err := h.GetServer(t.Context(), api.GetServerParams{ID: 1})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -59,7 +59,7 @@ func TestOntimeHandler_GetServer(t *testing.T) {
 				},
 			},
 		}
-		_, err := h.GetServer(context.Background(), api.GetServerParams{ID: 99})
+		_, err := h.GetServer(t.Context(), api.GetServerParams{ID: 99})
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -77,7 +77,7 @@ func TestOntimeHandler_GetServer(t *testing.T) {
 				},
 			},
 		}
-		_, err := h.GetServer(context.Background(), api.GetServerParams{ID: 1})
+		_, err := h.GetServer(t.Context(), api.GetServerParams{ID: 1})
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -95,7 +95,7 @@ func TestOntimeHandler_GetServer(t *testing.T) {
 				},
 			},
 		}
-		_, err := h.GetServer(context.Background(), api.GetServerParams{ID: 1})
+		_, err := h.GetServer(t.Context(), api.GetServerParams{ID: 1})
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -123,7 +123,7 @@ func TestOntimeHandler_ListServersOntime(t *testing.T) {
 				},
 			},
 		}
-		resp, err := h.ListServersOntime(context.Background(), api.ListServersOntimeParams{
+		resp, err := h.ListServersOntime(t.Context(), api.ListServersOntimeParams{
 			Page:    api.NewOptInt(1),
 			PerPage: api.NewOptInt(10),
 		})
@@ -155,7 +155,7 @@ func TestOntimeHandler_ListServersOntime(t *testing.T) {
 				},
 			},
 		}
-		_, err := h.ListServersOntime(context.Background(), api.ListServersOntimeParams{})
+		_, err := h.ListServersOntime(t.Context(), api.ListServersOntimeParams{})
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)

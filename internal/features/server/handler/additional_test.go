@@ -17,21 +17,21 @@ func TestServerHandler_SearchServers(t *testing.T) {
 	now := time.Now()
 
 	t.Run("success with defaults", func(t *testing.T) {
-		h := &ServerHandler{
-			serverService: &mockServerService{
-				searchServersFn: func(_ context.Context, params dto.SearchParams, _ uint) ([]dto.Server, int64, error) {
-					if params.Q != "test" {
-						t.Errorf("Q = %q", params.Q)
-					}
-					if params.From != 0 {
-						t.Errorf("From = %d", params.From)
-					}
-					return []dto.Server{dtoServer(1, "s1", now)}, 1, nil
-				},
+		serverService := &mockServerService{
+			searchServersFn: func(_ context.Context, params dto.SearchParams, _ uint) ([]dto.Server, int64, error) {
+				if params.Q != "test" {
+					t.Errorf("Q = %q", params.Q)
+				}
+				if params.From != 0 {
+					t.Errorf("From = %d", params.From)
+				}
+				return []dto.Server{dtoServer(1, "s1", now)}, 1, nil
 			},
 		}
 
-		resp, err := h.SearchServers(context.Background(), api.SearchServersParams{
+		h := &ServerHandler{serverService: serverService}
+
+		resp, err := h.SearchServers(t.Context(), api.SearchServersParams{
 			Q: "test",
 		})
 		if err != nil {
@@ -57,7 +57,7 @@ func TestServerHandler_SearchServers(t *testing.T) {
 			},
 		}
 
-		resp, err := h.SearchServers(context.Background(), api.SearchServersParams{
+		resp, err := h.SearchServers(t.Context(), api.SearchServersParams{
 			Q:         "test",
 			Page:      api.NewOptInt(3),
 			PerPage:   api.NewOptInt(10),
@@ -81,7 +81,7 @@ func TestServerHandler_SearchServers(t *testing.T) {
 			},
 		}
 
-		_, err := h.SearchServers(context.Background(), api.SearchServersParams{Q: "test"})
+		_, err := h.SearchServers(t.Context(), api.SearchServersParams{Q: "test"})
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -108,7 +108,7 @@ func TestServerHandler_ExportServers(t *testing.T) {
 			excelExporter: nil,
 		}
 
-		_, err := h.ExportServers(context.Background(), api.ExportServersParams{})
+		_, err := h.ExportServers(t.Context(), api.ExportServersParams{})
 		// Without a real excel generator, the goroutine will panic
 		// Just test the happy path that doesn't error before the goroutine
 		var statusErr *api.ErrorResponseStatusCode
@@ -128,7 +128,7 @@ func TestServerHandler_ExportServers(t *testing.T) {
 			},
 		}
 
-		_, err := h.ExportServers(context.Background(), api.ExportServersParams{})
+		_, err := h.ExportServers(t.Context(), api.ExportServersParams{})
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -150,7 +150,7 @@ func TestServerHandler_ExportServers(t *testing.T) {
 			},
 		}
 
-		_, err := h.ExportServers(context.Background(), api.ExportServersParams{
+		_, err := h.ExportServers(t.Context(), api.ExportServersParams{
 			Q:         api.NewOptString("filter"),
 			From:      api.NewOptInt(0),
 			To:        api.NewOptInt(50),
@@ -177,7 +177,7 @@ func TestEndpointHandler_SetCheckMethod_PushNotImplemented(t *testing.T) {
 		},
 	}
 
-	_, err := h.SetCheckMethod(context.Background(), req, api.SetCheckMethodParams{ID: 1})
+	_, err := h.SetCheckMethod(t.Context(), req, api.SetCheckMethodParams{ID: 1})
 	var statusErr *api.ErrorResponseStatusCode
 	if !errors.As(err, &statusErr) {
 		t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -212,7 +212,7 @@ func TestEndpointHandler_SetCheckMethod_GetServerError(t *testing.T) {
 				ExpectedCode: 200,
 			},
 		}
-		_, err := h.SetCheckMethod(context.Background(), req, api.SetCheckMethodParams{ID: 1})
+		_, err := h.SetCheckMethod(t.Context(), req, api.SetCheckMethodParams{ID: 1})
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -246,7 +246,7 @@ func TestEndpointHandler_SetCheckMethod_GetServerError(t *testing.T) {
 				ExpectedCode: 200,
 			},
 		}
-		_, err := h.SetCheckMethod(context.Background(), req, api.SetCheckMethodParams{ID: 99})
+		_, err := h.SetCheckMethod(t.Context(), req, api.SetCheckMethodParams{ID: 99})
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -276,7 +276,7 @@ func TestEndpointHandler_TestEndpoint(t *testing.T) {
 			URL:    *parsedURL,
 			Method: api.TestEndpointRequestMethodGET,
 		}
-		resp, err := h.TestEndpoint(context.Background(), req)
+		resp, err := h.TestEndpoint(t.Context(), req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -302,7 +302,7 @@ func TestEndpointHandler_TestEndpoint(t *testing.T) {
 			URL:    *parsedURL,
 			Method: api.TestEndpointRequestMethodGET,
 		}
-		resp, err := h.TestEndpoint(context.Background(), req)
+		resp, err := h.TestEndpoint(t.Context(), req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -327,7 +327,7 @@ func TestEndpointHandler_TestEndpoint(t *testing.T) {
 			URL:    *parsedURL,
 			Method: api.TestEndpointRequestMethodGET,
 		}
-		_, err := h.TestEndpoint(context.Background(), req)
+		_, err := h.TestEndpoint(t.Context(), req)
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
@@ -358,7 +358,7 @@ func TestEndpointHandler_TestEndpoint(t *testing.T) {
 			Timeout:      api.NewOptInt(15),
 			ExpectedCode: api.NewOptInt(201),
 		}
-		resp, err := h.TestEndpoint(context.Background(), req)
+		resp, err := h.TestEndpoint(t.Context(), req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

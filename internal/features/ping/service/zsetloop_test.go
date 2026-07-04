@@ -48,15 +48,15 @@ func TestGetSleepDuration(t *testing.T) {
 func TestSleepCtx(t *testing.T) {
 	t.Run("non-positive duration returns immediately", func(t *testing.T) {
 		start := time.Now()
-		sleepCtx(context.Background(), 0)
-		sleepCtx(context.Background(), -1*time.Second)
+		sleepCtx(t.Context(), 0)
+		sleepCtx(t.Context(), -1*time.Second)
 		if time.Since(start) > 100*time.Millisecond {
 			t.Error("sleepCtx should return immediately for non-positive duration")
 		}
 	})
 
 	t.Run("cancelled context returns early", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
 
 		start := time.Now()
@@ -68,7 +68,7 @@ func TestSleepCtx(t *testing.T) {
 
 	t.Run("positive duration sleeps", func(t *testing.T) {
 		start := time.Now()
-		sleepCtx(context.Background(), 10*time.Millisecond)
+		sleepCtx(t.Context(), 10*time.Millisecond)
 		if time.Since(start) < 5*time.Millisecond {
 			t.Error("sleepCtx should block for at least the duration")
 		}

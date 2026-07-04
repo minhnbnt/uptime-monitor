@@ -31,8 +31,11 @@ var (
 )
 
 func TestMain(m *testing.M) {
+
 	flag.Parse()
+
 	if !testing.Short() {
+
 		ctx := context.Background()
 
 		pgContainer, _ = testcontainers.StartPostgres(ctx, testcontainers.PostgresConfig{
@@ -150,7 +153,7 @@ func TestApp_RunAllGoroutines_ContextCancel(t *testing.T) {
 	run("RunWebServer", func() {
 
 		listenConfig := net.ListenConfig{}
-		l, err := listenConfig.Listen(context.Background(), "tcp", ":8080")
+		l, err := listenConfig.Listen(t.Context(), "tcp", ":8080")
 		if err != nil {
 			return
 		}

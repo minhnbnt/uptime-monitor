@@ -37,7 +37,7 @@ func TestEndpointHandler_SetCheckMethod(t *testing.T) {
 				ExpectedCode: 200,
 			},
 		}
-		resp, err := h.SetCheckMethod(context.Background(), req, api.SetCheckMethodParams{ID: 1})
+		resp, err := h.SetCheckMethod(t.Context(), req, api.SetCheckMethodParams{ID: 1})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -66,7 +66,7 @@ func TestEndpointHandler_SetCheckMethod(t *testing.T) {
 				ExpectedCode: 200,
 			},
 		}
-		_, err := h.SetCheckMethod(context.Background(), req, api.SetCheckMethodParams{ID: 1})
+		_, err := h.SetCheckMethod(t.Context(), req, api.SetCheckMethodParams{ID: 1})
 		var statusErr *api.ErrorResponseStatusCode
 		if !errors.As(err, &statusErr) {
 			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
