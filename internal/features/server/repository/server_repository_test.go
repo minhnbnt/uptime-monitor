@@ -3,6 +3,8 @@ package repository
 import (
 	"testing"
 
+	"gorm.io/gorm"
+
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
 )
@@ -19,6 +21,12 @@ func TestServerRepository_CountByStatus(t *testing.T) {
 	s2 := &domain.Server{Name: "s2", CreatedByID: 1}
 	if err := repo.Create(t.Context(), s2); err != nil {
 		t.Fatalf("Create s2: %v", err)
+	}
+	if err := testDB.Create(&domain.User{
+		Model: gorm.Model{ID: 2}, Email: "user2@test.com",
+		Username: "user2", Password: "x", Name: "User 2",
+	}).Error; err != nil {
+		t.Fatalf("seed user 2: %v", err)
 	}
 	s3 := &domain.Server{Name: "s3", CreatedByID: 2}
 	if err := repo.Create(t.Context(), s3); err != nil {

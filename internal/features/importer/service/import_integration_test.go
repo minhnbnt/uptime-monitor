@@ -25,7 +25,6 @@ import (
 )
 
 var testDB *gorm.DB
-var testRedis *redis.Client
 var testRedisAddr string
 var testDSN string
 
@@ -62,14 +61,14 @@ func initTestDB(tb testing.TB) *gorm.DB {
 	})
 }
 
-func newImportIntegrationService(tb testing.TB) *ImportService {
+func newImportIntegrationService(tb testing.TB, redisClient *redis.Client) *ImportService {
 	tb.Helper()
 
 	testcontainers.SkipIfShort(tb)
 
-	zsetScheduler := scheduler.NewZSetScheduleRepository(testRedis)
-	metaCache := scheduler.NewEndpointMetaCache(testRedis)
-	statusStore := monitorrepo.NewRedisServerEventRepository(testRedis)
+	zsetScheduler := scheduler.NewZSetScheduleRepository(redisClient)
+	metaCache := scheduler.NewEndpointMetaCache(redisClient)
+	statusStore := monitorrepo.NewRedisServerEventRepository(redisClient)
 
 	return &ImportService{
 		serverRepository: serverrepo.NewServerRepository(testDB),
@@ -124,6 +123,7 @@ func buildExcel(tb testing.TB, rows []dto.ImportRow) io.Reader {
 func TestIntegration_ImportServers_Success(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	testDB = initTestDB(t)
+	redisClient := testcontainers.NewTestRedis(t, testRedisAddr)
 
 	rows := []dto.ImportRow{
 		{Name: "server-a", URL: "https://a.com", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},
@@ -131,7 +131,7 @@ func TestIntegration_ImportServers_Success(t *testing.T) {
 		{Name: "server-c", URL: "https://c.io", Method: "GET", Interval: 120, Timeout: 30, ExpectedCode: 200},
 	}
 
-	svc := newImportIntegrationService(t)
+	svc := newImportIntegrationService(t, redisClient)
 	file := buildExcel(t, rows)
 
 	result, err := svc.ImportServers(t.Context(), 1, file)
@@ -172,6 +172,7 @@ func TestIntegration_ImportServers_Success(t *testing.T) {
 func TestIntegration_ImportServers_SkipEmptyURL(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	testDB = initTestDB(t)
+	redisClient := testcontainers.NewTestRedis(t, testRedisAddr)
 
 	rows := []dto.ImportRow{
 		{Name: "server-a", URL: "https://a.com", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},
@@ -179,7 +180,7 @@ func TestIntegration_ImportServers_SkipEmptyURL(t *testing.T) {
 		{Name: "server-c", URL: "https://c.com", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},
 	}
 
-	svc := newImportIntegrationService(t)
+	svc := newImportIntegrationService(t, redisClient)
 	file := buildExcel(t, rows)
 
 	result, err := svc.ImportServers(t.Context(), 1, file)
@@ -206,12 +207,13 @@ func TestIntegration_ImportServers_SkipEmptyURL(t *testing.T) {
 func TestIntegration_ImportServers_ParseErrors(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	testDB = initTestDB(t)
+	redisClient := testcontainers.NewTestRedis(t, testRedisAddr)
 
 	rows := []dto.ImportRow{
 		{Name: "", URL: "", Method: "", Interval: 0, Timeout: 0, ExpectedCode: 0},
 	}
 
-	svc := newImportIntegrationService(t)
+	svc := newImportIntegrationService(t, redisClient)
 	file := buildExcel(t, rows)
 
 	result, err := svc.ImportServers(t.Context(), 1, file)
@@ -235,13 +237,14 @@ func TestIntegration_ImportServers_ParseErrors(t *testing.T) {
 func TestIntegration_ImportServers_PartialErrors(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	testDB = initTestDB(t)
+	redisClient := testcontainers.NewTestRedis(t, testRedisAddr)
 
 	rows := []dto.ImportRow{
 		{Name: "valid-server", URL: "https://valid.com", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},
 		{Name: "", URL: "https://bad.com", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},
 	}
 
-	svc := newImportIntegrationService(t)
+	svc := newImportIntegrationService(t, redisClient)
 	file := buildExcel(t, rows)
 
 	result, err := svc.ImportServers(t.Context(), 1, file)
@@ -265,8 +268,9 @@ func TestIntegration_ImportServers_PartialErrors(t *testing.T) {
 func TestIntegration_ImportServers_EmptyFile(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	testDB = initTestDB(t)
+	redisClient := testcontainers.NewTestRedis(t, testRedisAddr)
 
-	svc := newImportIntegrationService(t)
+	svc := newImportIntegrationService(t, redisClient)
 
 	xl := excelize.NewFile()
 	buf := new(bytes.Buffer)
@@ -283,8 +287,9 @@ func TestIntegration_ImportServers_EmptyFile(t *testing.T) {
 func TestIntegration_ImportServers_DefaultValues(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	testDB = initTestDB(t)
+	redisClient := testcontainers.NewTestRedis(t, testRedisAddr)
 
-	svc := newImportIntegrationService(t)
+	svc := newImportIntegrationService(t, redisClient)
 
 	xl := excelize.NewFile()
 	headers := []string{"server_name", "url", "method", "interval_sec", "timeout_sec", "expected_code"}
@@ -341,6 +346,7 @@ func TestIntegration_ImportServers_DefaultValues(t *testing.T) {
 func TestIntegration_ImportServers_SchedulerAndCache(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	testDB = initTestDB(t)
+	redisClient := testcontainers.NewTestRedis(t, testRedisAddr)
 
 	rows := []dto.ImportRow{
 		{Name: "server-a", URL: "https://a.com", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},
@@ -348,7 +354,7 @@ func TestIntegration_ImportServers_SchedulerAndCache(t *testing.T) {
 		{Name: "server-c", URL: "https://c.io", Method: "GET", Interval: 120, Timeout: 30, ExpectedCode: 200},
 	}
 
-	svc := newImportIntegrationService(t)
+	svc := newImportIntegrationService(t, redisClient)
 	file := buildExcel(t, rows)
 
 	result, err := svc.ImportServers(t.Context(), 1, file)
@@ -370,7 +376,7 @@ func TestIntegration_ImportServers_SchedulerAndCache(t *testing.T) {
 		t.Fatalf("got %d endpoints in DB, want 3", len(endpoints))
 	}
 
-	zset := testRedis.ZRangeWithScores(t.Context(), "scheduler:queue", 0, -1)
+	zset := redisClient.ZRangeWithScores(t.Context(), "scheduler:queue", 0, -1)
 	zsetResult, err := zset.Result()
 	if err != nil {
 		t.Fatalf("ZRANGE scheduler:queue: %v", err)
@@ -402,7 +408,7 @@ func TestIntegration_ImportServers_SchedulerAndCache(t *testing.T) {
 
 	for _, ep := range endpoints {
 		metaKey := fmt.Sprintf("scheduler:meta:%d", ep.ID)
-		data, err := testRedis.HGetAll(t.Context(), metaKey).Result()
+		data, err := redisClient.HGetAll(t.Context(), metaKey).Result()
 		if err != nil {
 			t.Fatalf("HGetAll %s: %v", metaKey, err)
 		}
@@ -428,6 +434,7 @@ func TestIntegration_ImportServers_SchedulerAndCache(t *testing.T) {
 func TestIntegration_ImportServers_EmptyURL_NoScheduler(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	testDB = initTestDB(t)
+	redisClient := testcontainers.NewTestRedis(t, testRedisAddr)
 
 	rows := []dto.ImportRow{
 		{Name: "server-a", URL: "https://a.com", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},
@@ -435,7 +442,7 @@ func TestIntegration_ImportServers_EmptyURL_NoScheduler(t *testing.T) {
 		{Name: "server-c", URL: "https://c.com", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},
 	}
 
-	svc := newImportIntegrationService(t)
+	svc := newImportIntegrationService(t, redisClient)
 	file := buildExcel(t, rows)
 
 	result, err := svc.ImportServers(t.Context(), 1, file)
@@ -458,7 +465,7 @@ func TestIntegration_ImportServers_EmptyURL_NoScheduler(t *testing.T) {
 		t.Fatalf("got %d endpoints, want 2", len(endpoints))
 	}
 
-	zset := testRedis.ZCard(t.Context(), "scheduler:queue")
+	zset := redisClient.ZCard(t.Context(), "scheduler:queue")
 	if zset.Val() != 2 {
 		t.Errorf("got %d entries in scheduler:queue, want 2", zset.Val())
 	}
@@ -466,7 +473,7 @@ func TestIntegration_ImportServers_EmptyURL_NoScheduler(t *testing.T) {
 	var metaCount int
 	for _, ep := range endpoints {
 		metaKey := fmt.Sprintf("scheduler:meta:%d", ep.ID)
-		exists, err := testRedis.Exists(t.Context(), metaKey).Result()
+		exists, err := redisClient.Exists(t.Context(), metaKey).Result()
 		if err != nil {
 			t.Fatalf("Exists %s: %v", metaKey, err)
 		}
@@ -482,12 +489,13 @@ func TestIntegration_ImportServers_EmptyURL_NoScheduler(t *testing.T) {
 func TestIntegration_ImportServers_MetaCacheLookup(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	testDB = initTestDB(t)
+	redisClient := testcontainers.NewTestRedis(t, testRedisAddr)
 
 	rows := []dto.ImportRow{
 		{Name: "server-a", URL: "https://a.com", Method: "GET", Interval: 30, Timeout: 10, ExpectedCode: 200},
 	}
 
-	svc := newImportIntegrationService(t)
+	svc := newImportIntegrationService(t, redisClient)
 	file := buildExcel(t, rows)
 
 	result, err := svc.ImportServers(t.Context(), 1, file)
@@ -503,7 +511,7 @@ func TestIntegration_ImportServers_MetaCacheLookup(t *testing.T) {
 		t.Fatalf("get endpoint: %v", err)
 	}
 
-	metaCache := scheduler.NewEndpointMetaCache(testRedis)
+	metaCache := scheduler.NewEndpointMetaCache(redisClient)
 
 	cached, err := metaCache.Get(t.Context(), endpoint.ID)
 	if err != nil {

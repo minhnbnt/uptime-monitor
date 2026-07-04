@@ -12,19 +12,12 @@ import (
 func userRepo(tb testing.TB) *UserRepository {
 	tb.Helper()
 	testcontainers.SkipIfShort(tb)
-	return NewUserRepository(testDB)
-}
-
-func cleanUsers(tb testing.TB) {
-	tb.Helper()
-	testcontainers.SkipIfShort(tb)
-	if err := testDB.Where("1 = 1").Delete(&domain.User{}).Error; err != nil {
-		tb.Fatalf("clean users: %v", err)
-	}
+	db := testcontainers.CreateTestDB(tb, testDSN)
+	return NewUserRepository(db)
 }
 
 func TestIntegration_CreateUser_Success(t *testing.T) {
-	cleanUsers(t)
+	testcontainers.SkipIfShort(t)
 
 	repo := userRepo(t)
 
@@ -45,7 +38,7 @@ func TestIntegration_CreateUser_Success(t *testing.T) {
 }
 
 func TestIntegration_CreateUser_DuplicateEmail(t *testing.T) {
-	cleanUsers(t)
+	testcontainers.SkipIfShort(t)
 
 	repo := userRepo(t)
 
@@ -72,7 +65,7 @@ func TestIntegration_CreateUser_DuplicateEmail(t *testing.T) {
 }
 
 func TestIntegration_CreateUser_DuplicateUsername(t *testing.T) {
-	cleanUsers(t)
+	testcontainers.SkipIfShort(t)
 
 	repo := userRepo(t)
 
