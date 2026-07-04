@@ -10,6 +10,7 @@ make test             # run all unit tests (skip integration tests via -short)
 make test-cover       # unit tests with coverage
 make test-cover-html  # open coverage report in browser
 make test-integration # run all tests including integration (needs Docker)
+go test -parallel 4 ./internal/...  # run integration tests in parallel (packages each start their own Docker containers)
 go build ./...        # compile check
 make format           # auto-fix with golangci-lint (gofmt, gci, govet, ...)
 golangci-lint run ./...  # lint check only
@@ -21,6 +22,8 @@ hurl --test --variable base_url=http://localhost:8080 tests/*.hurl
 ## Architecture
 
 - **DI**: `samber/do/v2` — every component has a `Register*` function called in `main.go` (registration order matters: config → repo → service → handler).
+  - **Production**: use `RegisterPackages(injector, configPath, dev)` which reads config via Viper (env/file).
+  - **Tests**: use `RegisterPackagesFromConfig(injector, *Config, dev)` to inject a pre-built `*Config` directly, avoiding `os.Setenv` and enabling parallel test execution.
 - **Handler → Service → Repository → DB**: layers use consumer-package interfaces (defined where used, not where implemented).
 - **API**: OpenAPI spec at `api/spec.yaml`. Run `make generate` to regenerate `generated/api/gen.go` via ogen.
 - **CompositeHandler** (`internal/server/composite.go`) embeds `ServerHandler` and `EndpointHandler` to satisfy the generated `ServerInterface`.
@@ -61,6 +64,7 @@ internal/utils/             ← TruncateDay, Last30Days, PageValidator
   - The unified `*config.Config` struct is registered in DI; individual configs (`*JwtConfig`, `*TokenConfig`, etc.) are populated from it.
 - **Temporal**: `TemporalSchedulerRepository` reads `TEMPORAL_TASK_QUEUE` and `TEMPORAL_WORKFLOW_NAME` from env (or `config.yaml`). Temporal server runs via compose.
 - **Running integration tests**: `podman compose up -d --build` (or `docker compose up -d --build`) rebuilds and starts postgres + temporal + app. Hurl tests call the running instance on `:8080`. Use whichever compose tool is available — never use the hyphenated `podman-compose` or `docker-compose`.
+  - In-process integration tests (testcontainers): `go test -parallel 4 ./internal/...` — each package starts its own Postgres/Redis/Temporal containers. Ports are randomized, so parallelism is safe.
 - **Database**: PostgreSQL with GORM auto-migrate (`Server`, `Endpoint` models). No manual migrations. Endpoint upsert uses `ON CONFLICT (server_id) DO UPDATE`.
 - **Redis cleanup**: Deleting a server removes associated Redis keys (status, ZSet, metadata hash) and unregisters from the scheduler (Temporal/ZSet).
 - **Import order** (enforced by gci): std → third-party → `github.com/minhnbnt/uptime-monitor/`.
