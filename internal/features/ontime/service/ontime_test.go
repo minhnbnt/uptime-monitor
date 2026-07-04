@@ -715,11 +715,11 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 					}
 					return servers, nil
 				},
-				countFn: func(_ context.Context, createdByID uint) (int64, error) {
+				countByStatusFn: func(_ context.Context, createdByID uint) (total, online, offline int64, err error) {
 					if createdByID != 1 {
-						t.Errorf("Count createdByID = %d, want 1", createdByID)
+						t.Errorf("CountByStatus createdByID = %d, want 1", createdByID)
 					}
-					return 2, nil
+					return 2, 1, 1, nil
 				},
 			},
 			batcher: &Batcher{
@@ -740,12 +740,18 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		got, total, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
+		got, total, online, offline, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if total != 2 {
 			t.Errorf("total = %d, want 2", total)
+		}
+		if online != 1 {
+			t.Errorf("online = %d, want 1", online)
+		}
+		if offline != 1 {
+			t.Errorf("offline = %d, want 1", offline)
 		}
 		if len(got) != 2 {
 			t.Fatalf("len(got) = %d, want 2", len(got))
@@ -774,15 +780,15 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 				listFn: func(_ context.Context, _ uint, limit, offset int) ([]domain.Server, error) {
 					return nil, nil
 				},
-				countFn: func(_ context.Context, _ uint) (int64, error) {
-					return 0, nil
+				countByStatusFn: func(_ context.Context, _ uint) (int64, int64, int64, error) {
+					return 0, 0, 0, nil
 				},
 			},
 			batcher: &Batcher{},
 			logger:  logger.NewMockLogger(),
 		}
 
-		got, total, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
+		got, total, _, _, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -800,12 +806,15 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 				listFn: func(_ context.Context, _ uint, limit, offset int) ([]domain.Server, error) {
 					return nil, errors.New("db error")
 				},
+				countByStatusFn: func(_ context.Context, _ uint) (int64, int64, int64, error) {
+					return 0, 0, 0, nil
+				},
 			},
 			batcher: &Batcher{},
 			logger:  logger.NewMockLogger(),
 		}
 
-		_, _, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
+		_, _, _, _, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -819,15 +828,15 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 						{Model: gormModel(1, oldTime), Name: "s1"},
 					}, nil
 				},
-				countFn: func(_ context.Context, _ uint) (int64, error) {
-					return 0, errors.New("count error")
+				countByStatusFn: func(_ context.Context, _ uint) (int64, int64, int64, error) {
+					return 0, 0, 0, errors.New("count error")
 				},
 			},
 			batcher: &Batcher{},
 			logger:  logger.NewMockLogger(),
 		}
 
-		_, _, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
+		_, _, _, _, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -845,8 +854,8 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 				listFn: func(_ context.Context, _ uint, limit, offset int) ([]domain.Server, error) {
 					return servers, nil
 				},
-				countFn: func(_ context.Context, _ uint) (int64, error) {
-					return 1, nil
+				countByStatusFn: func(_ context.Context, _ uint) (int64, int64, int64, error) {
+					return 1, 0, 0, nil
 				},
 			},
 			batcher: &Batcher{
@@ -864,7 +873,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		got, total, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
+		got, total, _, _, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

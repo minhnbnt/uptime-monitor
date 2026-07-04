@@ -29,6 +29,8 @@ ServerOntimeListResponse:
   required:
     - data
     - meta
+    - online_count
+    - offline_count
   properties:
     data:
       type: array
@@ -36,3 +38,7 @@ ServerOntimeListResponse:
         $ref: "#/ServerWithOntime"
     meta:
       $ref: "./common.yaml#/PaginationMeta"
+    online_count:
+      type: integer
+    offline_count:
+      type: integer

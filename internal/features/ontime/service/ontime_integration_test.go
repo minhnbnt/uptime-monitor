@@ -368,7 +368,7 @@ func TestIntegration_ListServersWithOntime(t *testing.T) {
 	seedEvent(t, 2, domain.StatusOff, oTm(2026, 6, 2, 0, 0))
 
 	svc := newService(t)
-	results, total, err := svc.ListServersWithOntime(t.Context(), 1, 1, 20)
+	results, total, _, _, err := svc.ListServersWithOntime(t.Context(), 1, 1, 20)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

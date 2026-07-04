@@ -44,7 +44,7 @@ func (h *OntimeHandler) ListServersOntime(ctx context.Context, params api.ListSe
 	page, perPage := params.Page.Or(1), params.PerPage.Or(20)
 
 	userID := middleware.GetUserID(ctx)
-	result, total, err := h.ontimeService.ListServersWithOntime(ctx, userID, page, perPage)
+	result, total, online, offline, err := h.ontimeService.ListServersWithOntime(ctx, userID, page, perPage)
 	if err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}
@@ -57,7 +57,9 @@ func (h *OntimeHandler) ListServersOntime(ctx context.Context, params api.ListSe
 	})
 
 	return &api.ServerOntimeListResponse{
-		Meta: serverhandler.ToPaginationMeta(page, perPage, total),
-		Data: data,
+		Meta:         serverhandler.ToPaginationMeta(page, perPage, total),
+		Data:         data,
+		OnlineCount:  int(online),
+		OfflineCount: int(offline),
 	}, nil
 }

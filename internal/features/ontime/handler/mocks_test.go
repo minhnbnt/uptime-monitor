@@ -7,13 +7,13 @@ import (
 )
 
 type mockOntimeService struct {
-	listServersWithOntimeFn func(ctx context.Context, createdByID uint, page, perPage int) ([]ontimedto.ServerWithOntime, int64, error)
+	listServersWithOntimeFn func(ctx context.Context, createdByID uint, page, perPage int) ([]ontimedto.ServerWithOntime, int64, int64, int64, error)
 	getServerWithOntimeFn   func(ctx context.Context, serverID uint, userID uint) (*ontimedto.ServerWithOntime, error)
 }
 
-func (m *mockOntimeService) ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]ontimedto.ServerWithOntime, int64, error) {
+func (m *mockOntimeService) ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]ontimedto.ServerWithOntime, int64, int64, int64, error) {
 	if m.listServersWithOntimeFn == nil {
-		return nil, 0, nil
+		return nil, 0, 0, 0, nil
 	}
 	return m.listServersWithOntimeFn(ctx, createdByID, page, perPage)
 }

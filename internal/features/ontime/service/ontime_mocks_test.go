@@ -19,6 +19,7 @@ func gormModel(id uint, t time.Time) gorm.Model {
 type mockServerRepo struct {
 	listFn               func(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error)
 	countFn              func(ctx context.Context, createdByID uint) (int64, error)
+	countByStatusFn      func(ctx context.Context, createdByID uint) (total, online, offline int64, err error)
 	createFn             func(ctx context.Context, s *domain.Server) error
 	getByIDFn            func(ctx context.Context, id uint) (*domain.Server, error)
 	updateFn             func(ctx context.Context, s *domain.Server) error
@@ -32,6 +33,10 @@ func (m *mockServerRepo) List(ctx context.Context, createdByID uint, limit, offs
 
 func (m *mockServerRepo) Count(ctx context.Context, createdByID uint) (int64, error) {
 	return m.countFn(ctx, createdByID)
+}
+
+func (m *mockServerRepo) CountByStatus(ctx context.Context, createdByID uint) (total, online, offline int64, err error) {
+	return m.countByStatusFn(ctx, createdByID)
 }
 
 func (m *mockServerRepo) Create(ctx context.Context, s *domain.Server) error {

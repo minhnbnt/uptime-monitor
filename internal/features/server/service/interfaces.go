@@ -9,6 +9,7 @@ import (
 
 type ServerRepository interface {
 	Count(ctx context.Context, createdByID uint) (int64, error)
+	CountByStatus(ctx context.Context, createdByID uint) (total, online, offline int64, err error)
 	List(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error)
 	Create(ctx context.Context, s *domain.Server) error
 	GetByID(ctx context.Context, id uint) (*domain.Server, error)

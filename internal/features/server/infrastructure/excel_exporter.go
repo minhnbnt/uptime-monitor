@@ -23,7 +23,7 @@ func RegisterExcelExporter(i do.Injector) {
 func (g *ExcelExporter) GenerateTemplate(w io.Writer) error {
 
 	xl := excelize.NewFile()
-	defer xl.Close()
+	defer func() { _ = xl.Close() }()
 
 	headers := []string{
 		"server_name",
@@ -54,7 +54,7 @@ func (g *ExcelExporter) GenerateTemplate(w io.Writer) error {
 func (g *ExcelExporter) GenerateExportFile(w io.Writer, servers []serverdto.Server) error {
 
 	xl := excelize.NewFile()
-	defer xl.Close()
+	defer func() { _ = xl.Close() }()
 
 	headers := []string{
 		"server_name",

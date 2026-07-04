@@ -49,23 +49,23 @@ type serverDayKey struct {
 	Day      time.Time
 }
 
-func (s *OntimeService) ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]ontimedto.ServerWithOntime, int64, error) {
+func (s *OntimeService) ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]ontimedto.ServerWithOntime, int64, int64, int64, error) {
 
 	servers, err := s.serverRepository.List(ctx, createdByID, perPage, (page-1)*perPage)
 	if err != nil {
 		s.logger.Error("failed to list servers", logger.Error(err))
-		return nil, 0, apperrors.ErrInternal
+		return nil, 0, 0, 0, apperrors.ErrInternal
 	}
 
-	total, err := s.serverRepository.Count(ctx, createdByID)
+	total, online, offline, err := s.serverRepository.CountByStatus(ctx, createdByID)
 	if err != nil {
-		s.logger.Error("failed to count servers", logger.Error(err))
-		return nil, 0, apperrors.ErrInternal
+		s.logger.Error("failed to count server status", logger.Error(err))
+		return nil, 0, 0, 0, apperrors.ErrInternal
 	}
 
 	ontimeMap, err := s.getServersOntime(ctx, servers)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, 0, 0, err
 	}
 
 	out := lo.Map(servers, func(sv domain.Server, _ int) ontimedto.ServerWithOntime {
@@ -75,7 +75,7 @@ func (s *OntimeService) ListServersWithOntime(ctx context.Context, createdByID u
 		}
 	})
 
-	return out, total, nil
+	return out, total, online, offline, nil
 }
 
 func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID uint, userID uint) (*ontimedto.ServerWithOntime, error) {

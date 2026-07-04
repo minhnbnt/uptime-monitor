@@ -25,6 +25,9 @@ func (m *mockServerRepo) List(ctx context.Context, createdByID uint, limit, offs
 func (m *mockServerRepo) Count(ctx context.Context, createdByID uint) (int64, error) {
 	return m.countFn(ctx, createdByID)
 }
+func (m *mockServerRepo) CountByStatus(ctx context.Context, createdByID uint) (total, online, offline int64, err error) {
+	return 0, 0, 0, nil
+}
 func (m *mockServerRepo) Create(ctx context.Context, s *domain.Server) error {
 	return m.createFn(ctx, s)
 }
@@ -39,6 +42,9 @@ func (m *mockServerRepo) Delete(ctx context.Context, id uint) error {
 }
 
 func (m *mockServerRepo) BatchCreateServers(ctx context.Context, servers []domain.Server) error {
+	if m.batchCreateServersFn == nil {
+		return nil
+	}
 	return m.batchCreateServersFn(ctx, servers)
 }
 

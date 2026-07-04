@@ -31,7 +31,7 @@ func (p *ExcelParser) ParseImportFile(file io.Reader) ([]dto.ImportRow, []dto.Im
 		return nil, nil, fmt.Errorf("invalid excel file: %w", err)
 	}
 
-	defer xl.Close()
+	defer func() { _ = xl.Close() }()
 
 	rows, err := xl.GetRows(xl.GetSheetName(0))
 	if err != nil {

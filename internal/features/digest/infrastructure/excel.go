@@ -17,7 +17,7 @@ type ServerRow struct {
 func GenerateStatusReport(rows []ServerRow, dates []time.Time) (io.Reader, error) {
 
 	xl := excelize.NewFile()
-	defer xl.Close()
+	defer func() { _ = xl.Close() }()
 
 	headers := []string{"Server Name"}
 	for _, d := range dates {

@@ -7,6 +7,6 @@ import (
 )
 
 type OntimeService interface {
-	ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]ontimedto.ServerWithOntime, int64, error)
+	ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]ontimedto.ServerWithOntime, int64, int64, int64, error)
 	GetServerWithOntime(ctx context.Context, serverID uint, userID uint) (*ontimedto.ServerWithOntime, error)
 }

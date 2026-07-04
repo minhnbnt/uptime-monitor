@@ -115,11 +115,11 @@ func TestOntimeHandler_ListServersOntime(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		h := &OntimeHandler{
 			ontimeService: &mockOntimeService{
-				listServersWithOntimeFn: func(_ context.Context, createdByID uint, page, perPage int) ([]ontimedto.ServerWithOntime, int64, error) {
+				listServersWithOntimeFn: func(_ context.Context, createdByID uint, page, perPage int) ([]ontimedto.ServerWithOntime, int64, int64, int64, error) {
 					return []ontimedto.ServerWithOntime{
 						{Server: dtoServer(1, "s1", now), OntimeStats: stats},
 						{Server: dtoServer(2, "s2", now), OntimeStats: stats},
-					}, 5, nil
+					}, 5, 2, 3, nil
 				},
 			},
 		}
@@ -139,13 +139,19 @@ func TestOntimeHandler_ListServersOntime(t *testing.T) {
 		if resp.Meta.Total.Or(0) != 5 {
 			t.Errorf("total = %d, want 5", resp.Meta.Total.Or(0))
 		}
+		if resp.OnlineCount != 2 {
+			t.Errorf("online_count = %d, want 2", resp.OnlineCount)
+		}
+		if resp.OfflineCount != 3 {
+			t.Errorf("offline_count = %d, want 3", resp.OfflineCount)
+		}
 	})
 
 	t.Run("internal error", func(t *testing.T) {
 		h := &OntimeHandler{
 			ontimeService: &mockOntimeService{
-				listServersWithOntimeFn: func(_ context.Context, _ uint, _, _ int) ([]ontimedto.ServerWithOntime, int64, error) {
-					return nil, 0, errors.New("db error")
+				listServersWithOntimeFn: func(_ context.Context, _ uint, _, _ int) ([]ontimedto.ServerWithOntime, int64, int64, int64, error) {
+					return nil, 0, 0, 0, errors.New("db error")
 				},
 			},
 		}
