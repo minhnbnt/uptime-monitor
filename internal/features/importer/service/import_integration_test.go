@@ -26,6 +26,7 @@ import (
 
 var testDB *gorm.DB
 var testRedis *redis.Client
+var testRedisAddr string
 var testDSN string
 
 func TestMain(m *testing.M) {
@@ -35,10 +36,9 @@ func TestMain(m *testing.M) {
 	if !testing.Short() {
 		ctx := context.Background()
 
-		redisContainer, client := testcontainers.StartRedis(ctx)
+		redisContainer, addr := testcontainers.StartRedisAddr(ctx)
 		defer func() { _ = redisContainer.Terminate(ctx) }()
-		testRedis = client
-
+		testRedisAddr = addr
 		container, dsn := testcontainers.StartPostgres(ctx)
 		defer func() { _ = container.Terminate(ctx) }()
 		testDSN = dsn

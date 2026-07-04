@@ -14,14 +14,15 @@ import (
 )
 
 var testRedis *redis.Client
+var testRedisAddr string
 
 func TestMain(m *testing.M) {
 	flag.Parse()
 	if !testing.Short() {
 		ctx := context.Background()
-		container, client := testcontainers.StartRedis(ctx)
+		container, addr := testcontainers.StartRedisAddr(ctx)
 		defer func() { _ = container.Terminate(ctx) }()
-		testRedis = client
+		testRedisAddr = addr
 	}
 	os.Exit(m.Run())
 }
@@ -52,7 +53,8 @@ func TestIntegration_RedisKey(t *testing.T) {
 }
 
 func TestIntegration_MGet_Empty(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 	repo := newCacheRepository(t)
 
 	result, err := repo.MGet(t.Context(), nil)
@@ -65,7 +67,8 @@ func TestIntegration_MGet_Empty(t *testing.T) {
 }
 
 func TestIntegration_MGet_AllHit(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	yesterday := time.Now().AddDate(0, 0, -1)
 	key1 := redisKey(1, yesterday)
@@ -100,7 +103,8 @@ func TestIntegration_MGet_AllHit(t *testing.T) {
 }
 
 func TestIntegration_MGet_PartialHit(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	yesterday := time.Now().AddDate(0, 0, -1)
 	key1 := redisKey(1, yesterday)
@@ -132,7 +136,8 @@ func TestIntegration_MGet_PartialHit(t *testing.T) {
 }
 
 func TestIntegration_MGet_AllMiss(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	repo := newCacheRepository(t)
 	items := []dto.BatchGetOntimeItem{
@@ -150,7 +155,8 @@ func TestIntegration_MGet_AllMiss(t *testing.T) {
 }
 
 func TestIntegration_MGet_TypeError(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	yesterday := time.Now().AddDate(0, 0, -1)
 	key := redisKey(1, yesterday)
@@ -174,7 +180,8 @@ func TestIntegration_MGet_TypeError(t *testing.T) {
 }
 
 func TestIntegration_MSet_Empty(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	repo := newCacheRepository(t)
 	err := repo.MSet(t.Context(), nil)
@@ -184,7 +191,8 @@ func TestIntegration_MSet_Empty(t *testing.T) {
 }
 
 func TestIntegration_MSet_PastDate(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	repo := newCacheRepository(t)
 	yesterday := time.Now().AddDate(0, 0, -1)
@@ -215,7 +223,8 @@ func TestIntegration_MSet_PastDate(t *testing.T) {
 }
 
 func TestIntegration_MSet_MultipleItems(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	repo := newCacheRepository(t)
 	yesterday := time.Now().AddDate(0, 0, -1)

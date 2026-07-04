@@ -39,7 +39,8 @@ func TestMain(m *testing.M) {
 func TestPingWorkflow_Success(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 
-	w := worker.New(temporalClient, "ping-test", worker.Options{})
+	taskQueue := testcontainers.NewTestTemporalTaskQueue(t)
+	w := worker.New(temporalClient, taskQueue, worker.Options{})
 	w.RegisterWorkflow(PingWorkflow)
 
 	var capturedMethod string
@@ -66,7 +67,7 @@ func TestPingWorkflow_Success(t *testing.T) {
 	defer w.Stop()
 
 	run, err := temporalClient.ExecuteWorkflow(t.Context(), temporalclient.StartWorkflowOptions{
-		TaskQueue:          "ping-test",
+		TaskQueue:          taskQueue,
 		ID:                 fmt.Sprintf("ping-test-%d", time.Now().UnixNano()),
 		WorkflowRunTimeout: 30 * time.Second,
 	}, PingWorkflow, uint(1), "GET", "https://example.com", 200)
@@ -91,7 +92,8 @@ func TestPingWorkflow_Success(t *testing.T) {
 func TestPingWorkflow_StatusOffOnPingError(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 
-	w := worker.New(temporalClient, "ping-test", worker.Options{})
+	taskQueue := testcontainers.NewTestTemporalTaskQueue(t)
+	w := worker.New(temporalClient, taskQueue, worker.Options{})
 	w.RegisterWorkflow(PingWorkflow)
 
 	w.RegisterActivityWithOptions(
@@ -116,7 +118,7 @@ func TestPingWorkflow_StatusOffOnPingError(t *testing.T) {
 	defer w.Stop()
 
 	run, err := temporalClient.ExecuteWorkflow(t.Context(), temporalclient.StartWorkflowOptions{
-		TaskQueue:          "ping-test",
+		TaskQueue:          taskQueue,
 		ID:                 fmt.Sprintf("ping-test-%d", time.Now().UnixNano()),
 		WorkflowRunTimeout: 30 * time.Second,
 	}, PingWorkflow, uint(1), "GET", "https://example.com", 200)
@@ -138,7 +140,8 @@ func TestPingWorkflow_StatusOffOnPingError(t *testing.T) {
 func TestPingWorkflow_StatusOffOnCodeMismatch(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 
-	w := worker.New(temporalClient, "ping-test", worker.Options{})
+	taskQueue := testcontainers.NewTestTemporalTaskQueue(t)
+	w := worker.New(temporalClient, taskQueue, worker.Options{})
 	w.RegisterWorkflow(PingWorkflow)
 
 	w.RegisterActivityWithOptions(
@@ -163,7 +166,7 @@ func TestPingWorkflow_StatusOffOnCodeMismatch(t *testing.T) {
 	defer w.Stop()
 
 	run, err := temporalClient.ExecuteWorkflow(t.Context(), temporalclient.StartWorkflowOptions{
-		TaskQueue:          "ping-test",
+		TaskQueue:          taskQueue,
 		ID:                 fmt.Sprintf("ping-test-%d", time.Now().UnixNano()),
 		WorkflowRunTimeout: 30 * time.Second,
 	}, PingWorkflow, uint(1), "GET", "https://example.com", 200)
@@ -185,7 +188,8 @@ func TestPingWorkflow_StatusOffOnCodeMismatch(t *testing.T) {
 func TestPingWorkflow_RecordActivityError(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 
-	w := worker.New(temporalClient, "ping-test", worker.Options{})
+	taskQueue := testcontainers.NewTestTemporalTaskQueue(t)
+	w := worker.New(temporalClient, taskQueue, worker.Options{})
 	w.RegisterWorkflow(PingWorkflow)
 
 	w.RegisterActivityWithOptions(
@@ -207,7 +211,7 @@ func TestPingWorkflow_RecordActivityError(t *testing.T) {
 	defer w.Stop()
 
 	run, err := temporalClient.ExecuteWorkflow(t.Context(), temporalclient.StartWorkflowOptions{
-		TaskQueue:          "ping-test",
+		TaskQueue:          taskQueue,
 		ID:                 fmt.Sprintf("ping-test-%d", time.Now().UnixNano()),
 		WorkflowRunTimeout: 30 * time.Second,
 	}, PingWorkflow, uint(1), "GET", "https://example.com", 200)

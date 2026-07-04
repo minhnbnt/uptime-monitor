@@ -14,14 +14,15 @@ import (
 )
 
 var testRedis *redis.Client
+var testRedisAddr string
 
 func TestMain(m *testing.M) {
 	flag.Parse()
 	if !testing.Short() {
 		ctx := context.Background()
-		container, client := testcontainers.StartRedis(ctx)
+		container, addr := testcontainers.StartRedisAddr(ctx)
 		defer func() { _ = container.Terminate(ctx) }()
-		testRedis = client
+		testRedisAddr = addr
 	}
 	os.Exit(m.Run())
 }
@@ -33,7 +34,8 @@ func newRepository(tb testing.TB) *RedisServerEventRepository {
 }
 
 func TestIntegration_GetStatus_NotFound(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	repo := newRepository(t)
 	got, err := repo.GetStatus(t.Context(), 999)
@@ -46,7 +48,8 @@ func TestIntegration_GetStatus_NotFound(t *testing.T) {
 }
 
 func TestIntegration_SetGetStatus(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	repo := newRepository(t)
 	endpointID := uint(42)
@@ -66,7 +69,8 @@ func TestIntegration_SetGetStatus(t *testing.T) {
 }
 
 func TestIntegration_SetStatus_Overwrite(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	repo := newRepository(t)
 	endpointID := uint(1)
@@ -88,7 +92,8 @@ func TestIntegration_SetStatus_Overwrite(t *testing.T) {
 }
 
 func TestIntegration_DeleteStatus(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	repo := newRepository(t)
 	endpointID := uint(7)
@@ -110,7 +115,8 @@ func TestIntegration_DeleteStatus(t *testing.T) {
 }
 
 func TestIntegration_SetStatus_TTL(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	repo := newRepository(t)
 	endpointID := uint(10)

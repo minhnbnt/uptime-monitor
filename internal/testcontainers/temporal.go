@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
+	"testing"
 	"time"
 
 	tc "github.com/testcontainers/testcontainers-go"
@@ -39,4 +41,10 @@ func StartTemporal(ctx context.Context) (Container, string) {
 
 	addr := fmt.Sprintf("%s:%s", host, port.Port())
 	return c, addr
+}
+
+func NewTestTemporalTaskQueue(tb testing.TB) string {
+	tb.Helper()
+	name := strings.NewReplacer("/", "_", "#", "_", " ", "_").Replace(tb.Name())
+	return fmt.Sprintf("tq_%s_%d", name, time.Now().UnixNano())
 }

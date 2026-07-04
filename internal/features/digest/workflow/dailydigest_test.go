@@ -38,7 +38,8 @@ func TestMain(m *testing.M) {
 func TestSendReportWorkflow_Success(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 
-	w := worker.New(temporalClient, "digest-test", worker.Options{})
+	taskQueue := testcontainers.NewTestTemporalTaskQueue(t)
+	w := worker.New(temporalClient, taskQueue, worker.Options{})
 	w.RegisterWorkflow(SendReportWorkflow)
 
 	var capturedUserID uint
@@ -56,7 +57,7 @@ func TestSendReportWorkflow_Success(t *testing.T) {
 	defer w.Stop()
 
 	run, err := temporalClient.ExecuteWorkflow(t.Context(), temporalclient.StartWorkflowOptions{
-		TaskQueue:          "digest-test",
+		TaskQueue:          taskQueue,
 		ID:                 fmt.Sprintf("digest-test-%d", time.Now().UnixNano()),
 		WorkflowRunTimeout: 30 * time.Second,
 	}, SendReportWorkflow, uint(1))
@@ -74,7 +75,8 @@ func TestSendReportWorkflow_Success(t *testing.T) {
 func TestSendReportWorkflow_ActivityError(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 
-	w := worker.New(temporalClient, "digest-test", worker.Options{})
+	taskQueue := testcontainers.NewTestTemporalTaskQueue(t)
+	w := worker.New(temporalClient, taskQueue, worker.Options{})
 	w.RegisterWorkflow(SendReportWorkflow)
 
 	w.RegisterActivityWithOptions(
@@ -90,7 +92,7 @@ func TestSendReportWorkflow_ActivityError(t *testing.T) {
 	defer w.Stop()
 
 	run, err := temporalClient.ExecuteWorkflow(t.Context(), temporalclient.StartWorkflowOptions{
-		TaskQueue:          "digest-test",
+		TaskQueue:          taskQueue,
 		ID:                 fmt.Sprintf("digest-test-%d", time.Now().UnixNano()),
 		WorkflowRunTimeout: 30 * time.Second,
 	}, SendReportWorkflow, uint(1))

@@ -14,7 +14,8 @@ func newScoreUpdater(tb testing.TB) *ScoreUpdater {
 }
 
 func TestIntegration_UpdateBatch_Empty(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	u := newScoreUpdater(t)
 	err := u.UpdateBatch(t.Context(), nil)
@@ -29,7 +30,8 @@ func TestIntegration_UpdateBatch_Empty(t *testing.T) {
 }
 
 func TestIntegration_UpdateBatch_SingleItem(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	u := newScoreUpdater(t)
 	err := u.UpdateBatch(t.Context(), map[uint]int64{42: 1000})
@@ -47,7 +49,8 @@ func TestIntegration_UpdateBatch_SingleItem(t *testing.T) {
 }
 
 func TestIntegration_UpdateBatch_MultipleItems(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	u := newScoreUpdater(t)
 	items := map[uint]int64{
@@ -84,7 +87,8 @@ func TestIntegration_UpdateBatch_MultipleItems(t *testing.T) {
 }
 
 func TestIntegration_UpdateBatch_UpdatesExisting(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	u := newScoreUpdater(t)
 	if err := u.UpdateBatch(t.Context(), map[uint]int64{1: 500}); err != nil {

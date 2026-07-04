@@ -26,6 +26,7 @@ import (
 
 var testDB *gorm.DB
 var testRedis *redis.Client
+var testRedisAddr string
 var testDSN string
 
 func TestMain(m *testing.M) {
@@ -35,9 +36,9 @@ func TestMain(m *testing.M) {
 	if !testing.Short() {
 		ctx := context.Background()
 
-		redisContainer, redisClient := testcontainers.StartRedis(ctx)
+		redisContainer, addr := testcontainers.StartRedisAddr(ctx)
 		defer func() { _ = redisContainer.Terminate(ctx) }()
-		testRedis = redisClient
+		testRedisAddr = addr
 
 		container, dsn := testcontainers.StartPostgres(ctx)
 		defer func() { _ = container.Terminate(ctx) }()
@@ -240,7 +241,8 @@ func TestIntegration_BatchGetOntime_EmptyRequest(t *testing.T) {
 func TestIntegration_BatchGetOntime_CacheHit(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	testDB = initTestDB(t)
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	now := oDay(2026, 6, 1)
 	svc := newServiceWithRedis(t)
@@ -266,7 +268,8 @@ func TestIntegration_BatchGetOntime_CacheHit(t *testing.T) {
 func TestIntegration_BatchGetOntime_CacheMissThenWarm(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	testDB = initTestDB(t)
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	now := oDay(2026, 6, 1)
 	seedServer(t, 1, "s1", now.Add(-48*time.Hour))
@@ -300,7 +303,8 @@ func TestIntegration_BatchGetOntime_CacheMissThenWarm(t *testing.T) {
 func TestIntegration_BatchGetOntime_PartialCacheHit(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	testDB = initTestDB(t)
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	now := oDay(2026, 6, 1)
 	seedServer(t, 1, "s1", now.Add(-48*time.Hour))

@@ -17,6 +17,7 @@ import (
 )
 
 var testRedis *redis.Client
+var testRedisAddr string
 var testDB *gorm.DB
 var testDSN string
 
@@ -27,10 +28,9 @@ func TestMain(m *testing.M) {
 	if !testing.Short() {
 		ctx := context.Background()
 
-		redisContainer, client := testcontainers.StartRedis(ctx)
+		redisContainer, addr := testcontainers.StartRedisAddr(ctx)
 		defer func() { _ = redisContainer.Terminate(ctx) }()
-		testRedis = client
-
+		testRedisAddr = addr
 		pgContainer, dsn := testcontainers.StartPostgres(ctx)
 		defer func() { _ = pgContainer.Terminate(ctx) }()
 		testDSN = dsn
@@ -73,7 +73,8 @@ func makeToken(tb testing.TB, jti string, exp time.Time) *jwt.Token {
 }
 
 func TestIntegration_RevokeAndIsRevoked(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	repo := newRevokedRepo(t)
 	jti := "0195f0b0-0000-7000-8000-000000000001"
@@ -94,7 +95,8 @@ func TestIntegration_RevokeAndIsRevoked(t *testing.T) {
 }
 
 func TestIntegration_IsRevoked_NotFound(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	repo := newRevokedRepo(t)
 	revoked, err := repo.IsRevoked(t.Context(), "nonexistent-jti")
@@ -107,7 +109,8 @@ func TestIntegration_IsRevoked_NotFound(t *testing.T) {
 }
 
 func TestIntegration_Revoke_TTL(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	repo := newRevokedRepo(t)
 	jti := "0195f0b0-0000-7000-8000-000000000002"
@@ -129,7 +132,8 @@ func TestIntegration_Revoke_TTL(t *testing.T) {
 }
 
 func TestIntegration_Revoke_MultipleTokens(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	repo := newRevokedRepo(t)
 

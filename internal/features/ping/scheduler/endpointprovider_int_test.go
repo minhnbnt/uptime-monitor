@@ -63,7 +63,8 @@ func newEndpointProvider(tb testing.TB) *EndpointProvider {
 func TestIntegration_GetBatch_AllCached(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	seedCacheEndpoint(t, domain.Endpoint{
 		Model:        gorm.Model{ID: 1},
@@ -93,7 +94,7 @@ func TestIntegration_GetBatch_AllCached(t *testing.T) {
 func TestIntegration_GetBatch_AllMissed(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 
-	testcontainers.CleanRedis(t, testRedis)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 	testcontainers.SkipIfShort(t)
 	testDB = initTestDB(t)
 
@@ -128,7 +129,7 @@ func TestIntegration_GetBatch_AllMissed(t *testing.T) {
 func TestIntegration_GetBatch_PartialMiss(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 
-	testcontainers.CleanRedis(t, testRedis)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 	testcontainers.SkipIfShort(t)
 	testDB = initTestDB(t)
 
@@ -180,7 +181,8 @@ func TestIntegration_GetBatch_PartialMiss(t *testing.T) {
 func TestIntegration_GetBatch_EmptyIDs(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	p := newEndpointProvider(t)
 	results, err := p.GetBatch(t.Context(), nil)
@@ -195,7 +197,7 @@ func TestIntegration_GetBatch_EmptyIDs(t *testing.T) {
 func TestIntegration_GetBatch_AllMissedMultiple(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 
-	testcontainers.CleanRedis(t, testRedis)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 	testcontainers.SkipIfShort(t)
 	testDB = initTestDB(t)
 

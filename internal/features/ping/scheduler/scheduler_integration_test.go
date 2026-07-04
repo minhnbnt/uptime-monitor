@@ -16,6 +16,7 @@ import (
 )
 
 var testRedis *redis.Client
+var testRedisAddr string
 var testDB *gorm.DB
 var testDSN string
 
@@ -24,10 +25,9 @@ func TestMain(m *testing.M) {
 	if !testing.Short() {
 		ctx := context.Background()
 
-		redisContainer, client := testcontainers.StartRedis(ctx)
+		redisContainer, addr := testcontainers.StartRedisAddr(ctx)
 		defer func() { _ = redisContainer.Terminate(ctx) }()
-		testRedis = client
-
+		testRedisAddr = addr
 		pgContainer, dsn := testcontainers.StartPostgres(ctx, testcontainers.PostgresConfig{
 			Image:    testcontainers.DefaultParadedbImage,
 			User:     "postgres",

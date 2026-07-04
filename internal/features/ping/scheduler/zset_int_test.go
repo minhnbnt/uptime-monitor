@@ -37,7 +37,8 @@ func addMetaCache(tb testing.TB, id uint) {
 }
 
 func TestIntegration_Register(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	repo := newSchedulerRepo(t)
 	ep := &domain.Endpoint{
@@ -62,7 +63,8 @@ func TestIntegration_Register(t *testing.T) {
 }
 
 func TestIntegration_Unregister(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	repo := newSchedulerRepo(t)
 	endpointID := uint(7)
@@ -90,7 +92,8 @@ func TestIntegration_Unregister(t *testing.T) {
 }
 
 func TestIntegration_ClaimDueTasks_NoDue(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	repo := newSchedulerRepo(t)
 	futureScore := time.Now().Add(time.Hour).UnixMilli()
@@ -115,7 +118,8 @@ func TestIntegration_ClaimDueTasks_NoDue(t *testing.T) {
 }
 
 func TestIntegration_ClaimDueTasks_Due(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	repo := newSchedulerRepo(t)
 	pastScore := time.Now().Add(-time.Minute).UnixMilli()
@@ -147,7 +151,8 @@ func TestIntegration_ClaimDueTasks_Due(t *testing.T) {
 }
 
 func TestIntegration_ClaimDueTasks_WithLimit(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	repo := newSchedulerRepo(t)
 	pastScore := time.Now().Add(-time.Minute).UnixMilli()
@@ -165,7 +170,8 @@ func TestIntegration_ClaimDueTasks_WithLimit(t *testing.T) {
 }
 
 func TestIntegration_ClaimDueTasks_ZeroLimit(t *testing.T) {
-	testcontainers.CleanRedis(t, testRedis)
+	testcontainers.SkipIfShort(t)
+	testRedis = testcontainers.NewTestRedis(t, testRedisAddr)
 
 	repo := newSchedulerRepo(t)
 
