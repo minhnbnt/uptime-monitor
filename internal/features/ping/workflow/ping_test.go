@@ -12,6 +12,7 @@ import (
 
 	"go.temporal.io/sdk/activity"
 	temporalclient "go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/worker"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
@@ -200,7 +201,7 @@ func TestPingWorkflow_RecordActivityError(t *testing.T) {
 	)
 	w.RegisterActivityWithOptions(
 		func(ctx context.Context, event *domain.ServerEvent) error {
-			return errors.New("db error")
+			return temporal.NewApplicationError("db error", "DB_ERROR", true)
 		},
 		activity.RegisterOptions{Name: "Record"},
 	)

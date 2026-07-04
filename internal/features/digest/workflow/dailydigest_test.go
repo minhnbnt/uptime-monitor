@@ -2,7 +2,6 @@ package workflow
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -12,6 +11,7 @@ import (
 
 	"go.temporal.io/sdk/activity"
 	temporalclient "go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/worker"
 
 	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
@@ -81,7 +81,7 @@ func TestSendReportWorkflow_ActivityError(t *testing.T) {
 
 	w.RegisterActivityWithOptions(
 		func(ctx context.Context, userID uint) error {
-			return errors.New("digest failed")
+			return temporal.NewApplicationError("digest failed", "DIGEST_ERROR", true)
 		},
 		activity.RegisterOptions{Name: "SendUserDigest"},
 	)
