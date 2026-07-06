@@ -329,7 +329,7 @@ servers-export:
           type: integer
           default: 100
           minimum: 1
-          maximum: 100
+          maximum: 10000
       - name: sort_by
         in: query
         schema:
