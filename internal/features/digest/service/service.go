@@ -150,6 +150,8 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 		return apperrors.ErrInternal
 	}
 
+	defer reader.Close()
+
 	subject := fmt.Sprintf("Uptime Monitor - Daily Digest - %s", now.Format("2006-01-02"))
 	if err := s.mailer.Send(user.Email, subject, reader); err != nil {
 		s.logger.Error("failed to send mail", logger.Error(err))

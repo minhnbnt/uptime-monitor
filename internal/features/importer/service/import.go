@@ -128,10 +128,14 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 
 var _ ExcelParser = (*infrastructure.ExcelParser)(nil)
 
-func (s *ImportService) GenerateTemplate(w io.Writer) error {
-	if err := s.excelExporter.GenerateTemplate(w); err != nil {
+func (s *ImportService) GenerateTemplate() (io.ReadCloser, error) {
+
+	reader, err := s.excelExporter.GenerateTemplate()
+
+	if err != nil {
 		s.logger.Error("failed to generate template", logger.Error(err))
-		return apperrors.ErrInternal
+		return nil, apperrors.ErrInternal
 	}
-	return nil
+
+	return reader, nil
 }

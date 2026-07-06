@@ -107,18 +107,11 @@ func generateReportSheet(xl *excelize.File, rows []ServerRow) error {
 				return fmt.Errorf("failed to create cell name: %w", err)
 			}
 
-			pct, ok := row.Stats[date]
-			if !ok {
-
-				err = xl.SetCellValue(ReportSheetName, cell, "-")
-				if err != nil {
-					return fmt.Errorf("failed to set value: %w", err)
-				}
-
-				continue
+			value := "-"
+			if pct, ok := row.Stats[date]; ok {
+				value = fmt.Sprintf("%.2f%%", pct)
 			}
 
-			value := fmt.Sprintf("%.2f%%", pct)
 			if err := xl.SetCellValue(ReportSheetName, cell, value); err != nil {
 				return fmt.Errorf("failed to set ontime value: %w", err)
 			}
@@ -128,29 +121,41 @@ func generateReportSheet(xl *excelize.File, rows []ServerRow) error {
 	return nil
 }
 
-func GenerateStatusReport(rows []ServerRow, summary *ServerSummary) (io.Reader, error) {
+func fillExcelFile(xl *excelize.File, rows []ServerRow, summary *ServerSummary) error {
 
-	xl := excelize.NewFile()
-	defer func() { _ = xl.Close() }()
-
-	if err := xl.SetSheetName("Sheet1", ReportSheetName); err != nil {
-		return nil, fmt.Errorf("failed to rename sheet: %w", err)
-	}
-
-	if err := generateReportSheet(xl, rows); err != nil {
-		return nil, fmt.Errorf("failed to generate report sheet: %w", err)
-	}
-
-	if _, err := xl.NewSheet(SummarySheetName); err != nil {
-		return nil, fmt.Errorf("failed to create summary sheet: %w", err)
+	if err := xl.SetSheetName("Sheet1", SummarySheetName); err != nil {
+		return fmt.Errorf("failed to rename sheet: %w", err)
 	}
 
 	if err := generateSummarySheet(xl, summary); err != nil {
-		return nil, fmt.Errorf("failed to generate summary sheet: %w", err)
+		return fmt.Errorf("failed to generate summary sheet: %w", err)
+	}
+
+	if _, err := xl.NewSheet(ReportSheetName); err != nil {
+		return fmt.Errorf("failed to create report sheet: %w", err)
+	}
+
+	if err := generateReportSheet(xl, rows); err != nil {
+		return fmt.Errorf("failed to generate report sheet: %w", err)
+	}
+
+	return nil
+}
+
+func GenerateStatusReport(rows []ServerRow, summary *ServerSummary) (io.ReadCloser, error) {
+
+	xl := excelize.NewFile()
+
+	if err := fillExcelFile(xl, rows, summary); err != nil {
+		_ = xl.Close()
+		return nil, fmt.Errorf("failed to fill Excel file: %w", err)
 	}
 
 	pr, pw := io.Pipe()
 	go func() {
+
+		defer func() { _ = xl.Close() }()
+
 		if err := xl.Write(pw); err != nil {
 			err = fmt.Errorf("failed to write Excel file: %w", err)
 			_ = pw.CloseWithError(err)

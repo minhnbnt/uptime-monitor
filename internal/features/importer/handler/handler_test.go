@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -114,9 +115,8 @@ func TestImportHandler_DownloadImportTemplate(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		h := &ImportHandler{
 			importService: &mockImportService{
-				generateTemplateFn: func(w io.Writer) error {
-					_, _ = w.Write([]byte("template content"))
-					return nil
+				generateTemplateFn: func() (io.ReadCloser, error) {
+					return io.NopCloser(bytes.NewReader([]byte("template content"))), nil
 				},
 			},
 		}
@@ -137,8 +137,8 @@ func TestImportHandler_DownloadImportTemplate(t *testing.T) {
 	t.Run("service error", func(t *testing.T) {
 		h := &ImportHandler{
 			importService: &mockImportService{
-				generateTemplateFn: func(_ io.Writer) error {
-					return errors.New("template error")
+				generateTemplateFn: func() (io.ReadCloser, error) {
+					return nil, errors.New("template error")
 				},
 			},
 		}

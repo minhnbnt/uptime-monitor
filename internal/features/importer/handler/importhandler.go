@@ -1,19 +1,25 @@
 package handler
 
 import (
-	"bytes"
 	"context"
+	"io"
 
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/middleware"
-	"github.com/minhnbnt/uptime-monitor/internal/features/importer/service"
+	"github.com/minhnbnt/uptime-monitor/internal/features/importer/dto"
+	importer "github.com/minhnbnt/uptime-monitor/internal/features/importer/service"
 )
 
 type ImportHandler struct {
 	importService ImportService
+}
+
+type ImportService interface {
+	ImportServers(ctx context.Context, userID uint, file io.Reader) (*dto.ImportResult, error)
+	GenerateTemplate() (io.ReadCloser, error)
 }
 
 func RegisterImportHandler(i do.Injector) {
@@ -70,11 +76,10 @@ var _ ImportService = (*importer.ImportService)(nil)
 
 func (h *ImportHandler) DownloadImportTemplate(ctx context.Context) (api.DownloadImportTemplateOK, error) {
 
-	buf := new(bytes.Buffer)
-
-	if err := h.importService.GenerateTemplate(buf); err != nil {
+	reader, err := h.importService.GenerateTemplate()
+	if err != nil {
 		return api.DownloadImportTemplateOK{}, apperrors.ToAPIError(err)
 	}
 
-	return api.DownloadImportTemplateOK{Data: buf}, nil
+	return api.DownloadImportTemplateOK{Data: reader}, nil
 }

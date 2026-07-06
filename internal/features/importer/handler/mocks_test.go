@@ -9,13 +9,13 @@ import (
 
 type mockImportService struct {
 	importServersFn    func(ctx context.Context, userID uint, file io.Reader) (*dto.ImportResult, error)
-	generateTemplateFn func(w io.Writer) error
+	generateTemplateFn func() (io.ReadCloser, error)
 }
 
 func (m *mockImportService) ImportServers(ctx context.Context, userID uint, file io.Reader) (*dto.ImportResult, error) {
 	return m.importServersFn(ctx, userID, file)
 }
 
-func (m *mockImportService) GenerateTemplate(w io.Writer) error {
-	return m.generateTemplateFn(w)
+func (m *mockImportService) GenerateTemplate() (io.ReadCloser, error) {
+	return m.generateTemplateFn()
 }

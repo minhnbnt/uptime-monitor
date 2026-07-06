@@ -20,10 +20,7 @@ func RegisterExcelExporter(i do.Injector) {
 	})
 }
 
-func (g *ExcelExporter) GenerateTemplate(w io.Writer) error {
-
-	xl := excelize.NewFile()
-	defer func() { _ = xl.Close() }()
+func fillTemplate(xl *excelize.File) error {
 
 	headers := []string{
 		"server_name",
@@ -44,11 +41,32 @@ func (g *ExcelExporter) GenerateTemplate(w io.Writer) error {
 		return fmt.Errorf("failed to set cell value: %w", err)
 	}
 
-	if err := xl.Write(w); err != nil {
-		return fmt.Errorf("failed to write Excel file: %w", err)
+	return nil
+}
+
+func (g *ExcelExporter) GenerateTemplate() (io.ReadCloser, error) {
+
+	xl := excelize.NewFile()
+
+	if err := fillTemplate(xl); err != nil {
+		_ = xl.Close()
+		return nil, fmt.Errorf("failed to fill template: %w", err)
 	}
 
-	return nil
+	pr, pw := io.Pipe()
+	go func() {
+
+		defer xl.Close()
+
+		if err := xl.Write(pw); err != nil {
+			pw.CloseWithError(fmt.Errorf("failed to write Excel file: %w", err))
+		} else {
+			pw.Close()
+		}
+
+	}()
+
+	return pr, nil
 }
 
 func (g *ExcelExporter) GenerateExportFile(w io.Writer, servers []serverdto.Server) error {

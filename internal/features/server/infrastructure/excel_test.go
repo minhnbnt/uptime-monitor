@@ -165,12 +165,12 @@ func TestGenerateExportFile_MultipleServers(t *testing.T) {
 
 func TestGenerateTemplate(t *testing.T) {
 	t.Run("writes valid xlsx", func(t *testing.T) {
-		var buf bytes.Buffer
-		err := (&ExcelExporter{}).GenerateTemplate(&buf)
+		reader, err := (&ExcelExporter{}).GenerateTemplate()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		xl, err := excelize.OpenReader(&buf)
+		defer reader.Close()
+		xl, err := excelize.OpenReader(reader)
 		if err != nil {
 			t.Fatalf("not a valid xlsx: %v", err)
 		}

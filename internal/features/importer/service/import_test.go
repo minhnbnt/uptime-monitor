@@ -309,17 +309,18 @@ func TestImportService_ImportServers(t *testing.T) {
 
 func TestImportService_GenerateTemplate(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		var buf bytes.Buffer
 		svc := &ImportService{
 			excelExporter: &infrastructure.ExcelExporter{},
 			logger:        logger.NewMockLogger(),
 		}
 
-		err := svc.GenerateTemplate(&buf)
+		reader, err := svc.GenerateTemplate()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if buf.Len() == 0 {
+		defer reader.Close()
+		data, _ := io.ReadAll(reader)
+		if len(data) == 0 {
 			t.Error("expected non-empty template output")
 		}
 	})
