@@ -1,7 +1,6 @@
 package infrastructure
 
 import (
-	"bytes"
 	"testing"
 	"time"
 
@@ -11,13 +10,14 @@ import (
 	serverdto "github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 )
 
-func TestGenerateExportFile_Empty(t *testing.T) {
-	var buf bytes.Buffer
-	err := (&ExcelExporter{}).GenerateExportFile(&buf, nil)
+func readExportXLSX(t *testing.T, servers []serverdto.Server) [][]string {
+	t.Helper()
+	reader, err := (&ExcelExporter{}).GenerateExportFile(servers)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	xl, err := excelize.OpenReader(&buf)
+	defer reader.Close()
+	xl, err := excelize.OpenReader(reader)
 	if err != nil {
 		t.Fatalf("not a valid xlsx: %v", err)
 	}
@@ -26,6 +26,11 @@ func TestGenerateExportFile_Empty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get rows: %v", err)
 	}
+	return rows
+}
+
+func TestGenerateExportFile_Empty(t *testing.T) {
+	rows := readExportXLSX(t, nil)
 	if len(rows) != 1 {
 		t.Fatalf("expected 1 row (header only), got %d", len(rows))
 	}
@@ -39,29 +44,22 @@ func TestGenerateExportFile_Empty(t *testing.T) {
 
 func TestGenerateExportFile_SingleServerOnline(t *testing.T) {
 	now := time.Date(2025, 6, 15, 10, 0, 0, 0, time.UTC)
-	var buf bytes.Buffer
 	servers := []serverdto.Server{
 		{
 			Name:          "Test Server",
 			MonitorStatus: domain.StatusOn,
-			Endpoint:      &serverdto.Endpoint{URL: "https://example.com/health", Method: "GET", Interval: 30 * time.Second, Timeout: 10 * time.Second, ExpectedCode: 200},
-			CreatedAt:     now,
-			UpdatedAt:     now,
+			Endpoint: &serverdto.Endpoint{
+				URL:          "https://example.com/health",
+				Method:       "GET",
+				Interval:     30 * time.Second,
+				Timeout:      10 * time.Second,
+				ExpectedCode: 200,
+			},
+			CreatedAt: now,
+			UpdatedAt: now,
 		},
 	}
-	err := (&ExcelExporter{}).GenerateExportFile(&buf, servers)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	xl, err := excelize.OpenReader(&buf)
-	if err != nil {
-		t.Fatalf("not a valid xlsx: %v", err)
-	}
-	defer xl.Close()
-	rows, err := xl.GetRows("Sheet1")
-	if err != nil {
-		t.Fatalf("get rows: %v", err)
-	}
+	rows := readExportXLSX(t, servers)
 	if len(rows) != 2 {
 		t.Fatalf("expected 2 rows, got %d", len(rows))
 	}
@@ -86,7 +84,6 @@ func TestGenerateExportFile_SingleServerOnline(t *testing.T) {
 }
 
 func TestGenerateExportFile_SingleServerOfflineNoEndpoint(t *testing.T) {
-	var buf bytes.Buffer
 	servers := []serverdto.Server{
 		{
 			Name:          "Offline Server",
@@ -94,19 +91,7 @@ func TestGenerateExportFile_SingleServerOfflineNoEndpoint(t *testing.T) {
 			Endpoint:      nil,
 		},
 	}
-	err := (&ExcelExporter{}).GenerateExportFile(&buf, servers)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	xl, err := excelize.OpenReader(&buf)
-	if err != nil {
-		t.Fatalf("not a valid xlsx: %v", err)
-	}
-	defer xl.Close()
-	rows, err := xl.GetRows("Sheet1")
-	if err != nil {
-		t.Fatalf("get rows: %v", err)
-	}
+	rows := readExportXLSX(t, servers)
 	if len(rows) != 2 {
 		t.Fatalf("expected 2 rows, got %d", len(rows))
 	}
@@ -131,31 +116,39 @@ func TestGenerateExportFile_SingleServerOfflineNoEndpoint(t *testing.T) {
 }
 
 func TestGenerateExportFile_MultipleServers(t *testing.T) {
-	var buf bytes.Buffer
 	servers := []serverdto.Server{
-		{Name: "Alpha", MonitorStatus: domain.StatusOn, Endpoint: &serverdto.Endpoint{URL: "https://a.com", Method: "GET", Interval: 30 * time.Second, Timeout: 10 * time.Second, ExpectedCode: 200}},
-		{Name: "Beta", MonitorStatus: domain.StatusOff, Endpoint: nil},
+		{
+			Name:          "Alpha",
+			MonitorStatus: domain.StatusOn,
+			Endpoint: &serverdto.Endpoint{
+				URL:          "https://a.com",
+				Method:       "GET",
+				Interval:     30 * time.Second,
+				Timeout:      10 * time.Second,
+				ExpectedCode: 200,
+			},
+		},
+		{
+			Name:          "Beta",
+			MonitorStatus: domain.StatusOff,
+			Endpoint:      nil,
+		},
 	}
-	err := (&ExcelExporter{}).GenerateExportFile(&buf, servers)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	xl, err := excelize.OpenReader(&buf)
-	if err != nil {
-		t.Fatalf("not a valid xlsx: %v", err)
-	}
-	defer xl.Close()
-	rows, err := xl.GetRows("Sheet1")
-	if err != nil {
-		t.Fatalf("get rows: %v", err)
-	}
+	rows := readExportXLSX(t, servers)
 	if len(rows) != 3 {
 		t.Fatalf("expected 3 rows, got %d", len(rows))
 	}
 	if rows[1][0] != "Alpha" || rows[2][0] != "Beta" {
 		t.Errorf("names: %q, %q", rows[1][0], rows[2][0])
 	}
-	expected := []string{"server_name", "url", "method", "interval_sec", "timeout_sec", "expected_code", "status"}
+	expected := []string{
+		"server_name",
+		"url", "method",
+		"interval_sec",
+		"timeout_sec",
+		"expected_code",
+		"status",
+	}
 	for i, h := range expected {
 		if rows[0][i] != h {
 			t.Errorf("header[%d] = %q, want %q", i, rows[0][i], h)

@@ -69,10 +69,7 @@ func (g *ExcelExporter) GenerateTemplate() (io.ReadCloser, error) {
 	return pr, nil
 }
 
-func (g *ExcelExporter) GenerateExportFile(w io.Writer, servers []serverdto.Server) error {
-
-	xl := excelize.NewFile()
-	defer func() { _ = xl.Close() }()
+func fillExportFile(xl *excelize.File, servers []serverdto.Server) error {
 
 	headers := []string{
 		"server_name",
@@ -134,11 +131,32 @@ func (g *ExcelExporter) GenerateExportFile(w io.Writer, servers []serverdto.Serv
 		}
 	}
 
-	if err := xl.Write(w); err != nil {
-		return fmt.Errorf("failed to write Excel file: %w", err)
+	return nil
+}
+
+func (g *ExcelExporter) GenerateExportFile(servers []serverdto.Server) (io.ReadCloser, error) {
+
+	xl := excelize.NewFile()
+
+	if err := fillExportFile(xl, servers); err != nil {
+		_ = xl.Close()
+		return nil, fmt.Errorf("failed to fill export file: %w", err)
 	}
 
-	return nil
+	pr, pw := io.Pipe()
+	go func() {
+
+		defer func() { _ = xl.Close() }()
+
+		if err := xl.Write(pw); err != nil {
+			err = fmt.Errorf("failed to write Excel file: %w", err)
+			_ = pw.CloseWithError(err)
+		} else {
+			_ = pw.Close()
+		}
+	}()
+
+	return pr, nil
 }
 
 func setHeader(f *excelize.File, sheet string, headers []string) error {

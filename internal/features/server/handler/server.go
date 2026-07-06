@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"io"
 
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
@@ -130,18 +129,14 @@ func (h *ServerHandler) ExportServers(ctx context.Context, params api.ExportServ
 		return nil, apperrors.ToAPIError(err)
 	}
 
-	pr, pw := io.Pipe()
-	go func() {
-		if err := h.excelExporter.GenerateExportFile(pw, result); err != nil {
-			_ = pw.CloseWithError(err)
-		} else {
-			pw.Close()
-		}
-	}()
+	reader, err := h.excelExporter.GenerateExportFile(result)
+	if err != nil {
+		return nil, apperrors.ToAPIError(err)
+	}
 
 	return &api.ExportServersOKHeaders{
 		ContentDisposition: api.NewOptString(`attachment; filename="servers.xlsx"`),
-		Response:           api.ExportServersOK{Data: pr},
+		Response:           api.ExportServersOK{Data: reader},
 	}, nil
 }
 
