@@ -53,9 +53,11 @@ func (s *DigestService) buildReport(servers []domain.Server, dates []time.Time, 
 	return rows
 }
 
-const thirtyDays = 30 * 24 * time.Hour
-const maxDigestRange = thirtyDays
-const maxReportServers = 1000
+const (
+	thirtyDays       = 30 * 24 * time.Hour
+	maxDigestRange   = thirtyDays
+	maxReportServers = 10000
+)
 
 type DigestService struct {
 	configRepo NotificationConfigRepository
@@ -138,7 +140,15 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 	activeDates := getActiveDate(ontimeMap)
 	rows := s.buildReport(servers, activeDates, ontimeMap)
 
-	reader, err := digestinfra.GenerateStatusReport(rows, activeDates)
+	total, online, offline, err := s.serverRepo.CountByStatus(ctx, userID)
+	if err != nil {
+		s.logger.Error("failed to count servers by status", logger.Error(err))
+		return apperrors.ErrInternal
+	}
+
+	summary := digestinfra.ServerSummary{Total: total, Online: online, Offline: offline}
+
+	reader, err := digestinfra.GenerateStatusReport(rows, activeDates, summary)
 	if err != nil {
 		s.logger.Error("failed to generate excel report", logger.Error(err))
 		return apperrors.ErrInternal

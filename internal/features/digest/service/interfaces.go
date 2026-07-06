@@ -23,6 +23,7 @@ type NotificationConfigRepository interface {
 
 type ServerLister interface {
 	List(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error)
+	CountByStatus(ctx context.Context, createdByID uint) (total, online, offline int64, err error)
 }
 
 type OntimeStatsService interface {

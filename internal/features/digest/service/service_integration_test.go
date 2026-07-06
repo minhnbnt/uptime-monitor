@@ -15,6 +15,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	authrepo "github.com/minhnbnt/uptime-monitor/internal/features/auth/repository"
+	digestinfra "github.com/minhnbnt/uptime-monitor/internal/features/digest/infrastructure"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
 	ontimesvc "github.com/minhnbnt/uptime-monitor/internal/features/ontime/service"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
@@ -93,14 +94,18 @@ func seedServer(tb testing.TB, id uint, name string, createdByID uint) {
 	})
 }
 
-func seedEndpoint(tb testing.TB, id, serverID uint, url string) {
+func seedEndpoint(tb testing.TB, id, serverID uint, url string, monitorStatus ...domain.ServerStatus) {
 	tb.Helper()
-	testDB.Create(&domain.Endpoint{
+	e := domain.Endpoint{
 		Model:    gorm.Model{ID: id},
 		ServerID: serverID,
 		URL:      url,
 		Method:   "GET",
-	})
+	}
+	if len(monitorStatus) > 0 {
+		e.MonitorStatus = monitorStatus[0]
+	}
+	testDB.Create(&e)
 }
 
 func seedEvent(tb testing.TB, endpointID uint, status domain.ServerStatus, tm time.Time) {
@@ -113,7 +118,7 @@ func seedEvent(tb testing.TB, endpointID uint, status domain.ServerStatus, tm ti
 	})
 }
 
-func readExcelRows(tb testing.TB, r io.Reader) [][]string {
+func readExcelSheet(tb testing.TB, r io.Reader, sheet string) [][]string {
 	tb.Helper()
 	data, err := io.ReadAll(r)
 	if err != nil {
@@ -125,11 +130,15 @@ func readExcelRows(tb testing.TB, r io.Reader) [][]string {
 	}
 	defer xl.Close()
 
-	rows, err := xl.GetRows("Sheet1")
+	rows, err := xl.GetRows(sheet)
 	if err != nil {
-		tb.Fatalf("get rows: %v", err)
+		tb.Fatalf("get rows from %s: %v", sheet, err)
 	}
 	return rows
+}
+
+func readExcelRows(tb testing.TB, r io.Reader) [][]string {
+	return readExcelSheet(tb, r, digestinfra.ReportSheetName)
 }
 
 func TestIntegration_SendReport_WithServers(t *testing.T) {
@@ -138,14 +147,15 @@ func TestIntegration_SendReport_WithServers(t *testing.T) {
 
 	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
 	seedServer(t, 1, "server-a", 1)
-	seedEndpoint(t, 1, 1, "https://example.com/a")
+	seedEndpoint(t, 1, 1, "https://example.com/a", domain.StatusOn)
 	seedEvent(t, 1, domain.StatusOn, now.Add(-24*time.Hour))
 
-	var capturedAttachment io.Reader
+	var capturedData []byte
 	mailer := &mockMailer{
 		sendFn: func(_ string, _ string, attachment io.Reader) error {
-			capturedAttachment = attachment
-			return nil
+			var err error
+			capturedData, err = io.ReadAll(attachment)
+			return err
 		},
 	}
 
@@ -154,11 +164,11 @@ func TestIntegration_SendReport_WithServers(t *testing.T) {
 	if err := svc.SendReport(t.Context(), 1, from); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if capturedAttachment == nil {
+	if capturedData == nil {
 		t.Fatal("mailer.Send was not called")
 	}
 
-	rows := readExcelRows(t, capturedAttachment)
+	rows := readExcelSheet(t, bytes.NewReader(capturedData), digestinfra.ReportSheetName)
 	// Header + 1 server row
 	if len(rows) != 2 {
 		t.Fatalf("got %d rows (incl header), want 2", len(rows))
@@ -168,6 +178,20 @@ func TestIntegration_SendReport_WithServers(t *testing.T) {
 	}
 	if rows[1][0] != "server-a" {
 		t.Errorf("row[1] server = %q, want server-a", rows[1][0])
+	}
+
+	summary := readExcelSheet(t, bytes.NewReader(capturedData), digestinfra.SummarySheetName)
+	if len(summary) != 4 {
+		t.Fatalf("got %d summary rows, want 4", len(summary))
+	}
+	if summary[1][0] != "Total Servers" || summary[1][1] != "1" {
+		t.Errorf("total: %v, want [Total Servers 1]", summary[1])
+	}
+	if summary[2][0] != "Online" || summary[2][1] != "1" {
+		t.Errorf("online: %v, want [Online 1]", summary[2])
+	}
+	if summary[3][0] != "Offline" || summary[3][1] != "0" {
+		t.Errorf("offline: %v, want [Offline 0]", summary[3])
 	}
 }
 
@@ -179,12 +203,12 @@ func TestIntegration_SendReport_RespectsUserScoping(t *testing.T) {
 
 	// User 1's data
 	seedServer(t, 1, "user1-server", 1)
-	seedEndpoint(t, 1, 1, "https://u1.com")
+	seedEndpoint(t, 1, 1, "https://u1.com", domain.StatusOn)
 	seedEvent(t, 1, domain.StatusOn, now.Add(-24*time.Hour))
 
 	// User 2's data
 	seedServer(t, 2, "user2-server", 2)
-	seedEndpoint(t, 2, 2, "https://u2.com")
+	seedEndpoint(t, 2, 2, "https://u2.com", domain.StatusOff)
 	seedEvent(t, 2, domain.StatusOff, now.Add(-24*time.Hour))
 
 	var capturedAttachment io.Reader

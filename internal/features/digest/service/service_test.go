@@ -29,12 +29,19 @@ func (m *mockMailer) Send(to, subject string, attachment io.Reader) error {
 }
 
 type mockServerLister struct {
-	servers []domain.Server
-	err     error
+	servers      []domain.Server
+	err          error
+	totalCount   int64
+	onlineCount  int64
+	offlineCount int64
 }
 
 func (m *mockServerLister) List(_ context.Context, _ uint, _, _ int) ([]domain.Server, error) {
 	return m.servers, m.err
+}
+
+func (m *mockServerLister) CountByStatus(_ context.Context, _ uint) (int64, int64, int64, error) {
+	return m.totalCount, m.onlineCount, m.offlineCount, m.err
 }
 
 type mockOntimeSvc struct {
@@ -52,7 +59,7 @@ func (m *mockOntimeSvc) GetServersOntimeForDates(_ context.Context, servers []do
 func emptyDigestService() *DigestService {
 	return &DigestService{
 		logger:     logger.NewMockLogger(),
-		serverRepo: &mockServerLister{servers: nil},
+		serverRepo: &mockServerLister{servers: nil, totalCount: 1, onlineCount: 1, offlineCount: 0},
 	}
 }
 
