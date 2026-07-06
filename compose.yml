@@ -48,7 +48,7 @@ services:
     command: "redis-server --appendonly yes"
 
   postgres:
-    image: paradedb/paradedb:pg17
+    image: paradedb/paradedb:pg18
 
     ports:
       - "5432:5432"

@@ -12,7 +12,7 @@ type PostgresConfig struct {
 }
 
 const (
-	defaultPostgresImage = "postgres:17-alpine"
+	defaultPostgresImage = DefaultParadedbImage
 	defaultPostgresUser  = "test"
 	defaultPostgresPass  = "test"
 	defaultPostgresDB    = "uptime_test"
