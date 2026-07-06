@@ -10,14 +10,8 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
-func defaultSummary() ServerSummary {
-	return ServerSummary{Total: 10, Online: 7, Offline: 3}
-}
-
-func TestGenerateStatusReport_SheetNameConstant(t *testing.T) {
-	if ReportSheetName != "Server Uptime" {
-		t.Errorf("ReportSheetName = %q, want Server Uptime", ReportSheetName)
-	}
+func defaultSummary() *ServerSummary {
+	return &ServerSummary{Total: 10, Online: 7, Offline: 3}
 }
 
 func readSheetRows(t *testing.T, r io.Reader, sheet string) [][]string {
@@ -35,7 +29,7 @@ func readSheetRows(t *testing.T, r io.Reader, sheet string) [][]string {
 }
 
 func TestGenerateStatusReport_Empty(t *testing.T) {
-	r, err := GenerateStatusReport(nil, nil, defaultSummary())
+	r, err := GenerateStatusReport(nil, defaultSummary())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -48,32 +42,13 @@ func TestGenerateStatusReport_Empty(t *testing.T) {
 	}
 }
 
-func TestGenerateStatusReport_WithDates(t *testing.T) {
-	d1 := utils.TruncateDay(time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC))
-	d2 := utils.TruncateDay(time.Date(2025, 6, 2, 0, 0, 0, 0, time.UTC))
-	r, err := GenerateStatusReport(nil, []time.Time{d1, d2}, defaultSummary())
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	rows := readSheetRows(t, r, ReportSheetName)
-	if len(rows) != 1 {
-		t.Fatalf("expected 1 row, got %d", len(rows))
-	}
-	if len(rows[0]) != 3 {
-		t.Fatalf("expected 3 columns, got %d", len(rows[0]))
-	}
-	if rows[0][1] != "2025-06-01" || rows[0][2] != "2025-06-02" {
-		t.Errorf("dates: %v", rows[0][1:])
-	}
-}
-
 func TestGenerateStatusReport_SingleRow(t *testing.T) {
 	d1 := utils.TruncateDay(time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC))
 	d2 := utils.TruncateDay(time.Date(2025, 6, 2, 0, 0, 0, 0, time.UTC))
 	rows := []ServerRow{
 		{ServerID: 1, ServerName: "Alpha", Stats: map[time.Time]float64{d1: 99.5, d2: 87.3}},
 	}
-	r, err := GenerateStatusReport(rows, []time.Time{d1, d2}, defaultSummary())
+	r, err := GenerateStatusReport(rows, defaultSummary())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -96,18 +71,19 @@ func TestGenerateStatusReport_MissingStats(t *testing.T) {
 	d1 := utils.TruncateDay(time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC))
 	d2 := utils.TruncateDay(time.Date(2025, 6, 2, 0, 0, 0, 0, time.UTC))
 	rows := []ServerRow{
-		{ServerID: 1, ServerName: "Beta", Stats: map[time.Time]float64{d1: 95.0}},
+		{ServerID: 1, ServerName: "Alpha", Stats: map[time.Time]float64{d1: 99.5, d2: 87.3}},
+		{ServerID: 2, ServerName: "Beta", Stats: map[time.Time]float64{d1: 95.0}},
 	}
-	r, err := GenerateStatusReport(rows, []time.Time{d1, d2}, defaultSummary())
+	r, err := GenerateStatusReport(rows, defaultSummary())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	got := readSheetRows(t, r, ReportSheetName)
-	if got[1][1] != "95.00%" {
-		t.Errorf("d1 = %q, want 95.00%%", got[1][1])
+	if got[2][1] != "95.00%" {
+		t.Errorf("Beta d1 = %q, want 95.00%%", got[2][1])
 	}
-	if got[1][2] != "-" {
-		t.Errorf("d2 = %q, want '-'", got[1][2])
+	if got[2][2] != "-" {
+		t.Errorf("Beta d2 = %q, want '-'", got[2][2])
 	}
 }
 
@@ -117,7 +93,7 @@ func TestGenerateStatusReport_MultipleServers(t *testing.T) {
 		{ServerID: 1, ServerName: "Alpha", Stats: map[time.Time]float64{d: 100}},
 		{ServerID: 2, ServerName: "Beta", Stats: map[time.Time]float64{d: 50.5}},
 	}
-	r, err := GenerateStatusReport(rows, []time.Time{d}, defaultSummary())
+	r, err := GenerateStatusReport(rows, defaultSummary())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -131,8 +107,8 @@ func TestGenerateStatusReport_MultipleServers(t *testing.T) {
 }
 
 func TestGenerateStatusReport_SummarySheet(t *testing.T) {
-	summary := ServerSummary{Total: 15, Online: 10, Offline: 5}
-	r, err := GenerateStatusReport(nil, nil, summary)
+	summary := &ServerSummary{Total: 15, Online: 10, Offline: 5}
+	r, err := GenerateStatusReport(nil, summary)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -151,5 +127,29 @@ func TestGenerateStatusReport_SummarySheet(t *testing.T) {
 	}
 	if rows[3][0] != "Offline" || rows[3][1] != "5" {
 		t.Errorf("row 3 = %v, want [Offline 5]", rows[3])
+	}
+}
+
+func TestGetActiveDate_Empty(t *testing.T) {
+	got := getActiveDate(nil)
+	if len(got) != 0 {
+		t.Errorf("got %d dates, want 0", len(got))
+	}
+}
+
+func TestGetActiveDate_UniqueSorted(t *testing.T) {
+	d1 := utils.TruncateDay(time.Date(2025, 1, 3, 0, 0, 0, 0, time.UTC))
+	d2 := utils.TruncateDay(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
+	d3 := utils.TruncateDay(time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC))
+	rows := []ServerRow{
+		{ServerName: "A", Stats: map[time.Time]float64{d1: 100, d2: 50}},
+		{ServerName: "B", Stats: map[time.Time]float64{d3: 75, d1: 90}},
+	}
+	got := getActiveDate(rows)
+	if len(got) != 3 {
+		t.Fatalf("got %d dates, want 3", len(got))
+	}
+	if !got[0].Equal(d2) || !got[1].Equal(d3) || !got[2].Equal(d1) {
+		t.Errorf("got %v, want [d2 d3 d1]", got)
 	}
 }

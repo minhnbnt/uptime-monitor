@@ -3,13 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
-	"iter"
-	"maps"
 	"slices"
 	"time"
 
 	"github.com/samber/do/v2"
-	"github.com/samber/lo/it"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
@@ -23,7 +20,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
-func (s *DigestService) buildReport(servers []domain.Server, dates []time.Time, ontimeMap map[uint][]ontimedto.OntimeStats) []digestinfra.ServerRow {
+func (s *DigestService) buildReport(servers []domain.Server, ontimeMap map[uint][]ontimedto.OntimeStats) []digestinfra.ServerRow {
 
 	slices.SortFunc(servers, func(a, b domain.Server) int {
 		if a.Name < b.Name {
@@ -38,7 +35,7 @@ func (s *DigestService) buildReport(servers []domain.Server, dates []time.Time, 
 	rows := make([]digestinfra.ServerRow, 0, len(servers))
 	for _, sv := range servers {
 
-		stats := make(map[time.Time]float64, len(dates))
+		stats := make(map[time.Time]float64)
 		for _, stat := range ontimeMap[sv.ID] {
 			stats[utils.TruncateDay(stat.Date)] = stat.Stats
 		}
@@ -137,8 +134,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 		return apperrors.ErrInternal
 	}
 
-	activeDates := getActiveDate(ontimeMap)
-	rows := s.buildReport(servers, activeDates, ontimeMap)
+	rows := s.buildReport(servers, ontimeMap)
 
 	total, online, offline, err := s.serverRepo.CountByStatus(ctx, userID)
 	if err != nil {
@@ -148,7 +144,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 	summary := digestinfra.ServerSummary{Total: total, Online: online, Offline: offline}
 
-	reader, err := digestinfra.GenerateStatusReport(rows, activeDates, summary)
+	reader, err := digestinfra.GenerateStatusReport(rows, &summary)
 	if err != nil {
 		s.logger.Error("failed to generate excel report", logger.Error(err))
 		return apperrors.ErrInternal
@@ -161,25 +157,6 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 	}
 
 	return nil
-}
-
-func getActiveDate(onTimeMap map[uint][]ontimedto.OntimeStats) []time.Time {
-
-	mapValues := maps.Values(onTimeMap)
-
-	stats := it.FlatMap(mapValues, func(stats []ontimedto.OntimeStats) iter.Seq[ontimedto.OntimeStats] {
-		return slices.Values(stats)
-	})
-
-	activeDates := it.Map(stats, func(stat ontimedto.OntimeStats) time.Time {
-		return utils.TruncateDay(stat.Date)
-	})
-
-	activeDates = it.Uniq(activeDates)
-
-	return slices.SortedFunc(activeDates, func(a, b time.Time) int {
-		return a.Compare(b)
-	})
 }
 
 var (

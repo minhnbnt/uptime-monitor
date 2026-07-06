@@ -206,7 +206,7 @@ func (m *mockNotificationConfigRepo) GetByUserID(ctx context.Context, userID uin
 
 func TestBuildReport_Empty(t *testing.T) {
 	svc := emptyDigestService()
-	rows := svc.buildReport(nil, nil, nil)
+	rows := svc.buildReport(nil, nil)
 	if len(rows) != 0 {
 		t.Errorf("got %d rows, want 0", len(rows))
 	}
@@ -217,7 +217,7 @@ func TestBuildReport_SingleServer(t *testing.T) {
 	date := utils.TruncateDay(time.Now())
 	s := domain.Server{Name: "Server A"}
 	s.ID = 1
-	rows := svc.buildReport([]domain.Server{s}, []time.Time{date}, map[uint][]ontimedto.OntimeStats{
+	rows := svc.buildReport([]domain.Server{s}, map[uint][]ontimedto.OntimeStats{
 		1: {{Date: date, Stats: 99.5}},
 	})
 	if len(rows) != 1 {
@@ -233,41 +233,16 @@ func TestBuildReport_SingleServer(t *testing.T) {
 
 func TestBuildReport_MultipleServersSorted(t *testing.T) {
 	svc := emptyDigestService()
-	date := utils.TruncateDay(time.Now())
 	s1 := domain.Server{Name: "Zeta"}
 	s1.ID = 1
 	s2 := domain.Server{Name: "Alpha"}
 	s2.ID = 2
-	rows := svc.buildReport([]domain.Server{s1, s2}, []time.Time{date}, nil)
+	rows := svc.buildReport([]domain.Server{s1, s2}, nil)
 	if len(rows) != 2 {
 		t.Fatalf("got %d rows, want 2", len(rows))
 	}
 	if rows[0].ServerName != "Alpha" || rows[1].ServerName != "Zeta" {
 		t.Errorf("order: %q, %q", rows[0].ServerName, rows[1].ServerName)
-	}
-}
-
-func TestGetActiveDate_Empty(t *testing.T) {
-	got := getActiveDate(nil)
-	if len(got) != 0 {
-		t.Errorf("got %d dates, want 0", len(got))
-	}
-}
-
-func TestGetActiveDate_UniqueSorted(t *testing.T) {
-	d1 := utils.TruncateDay(time.Date(2025, 1, 3, 0, 0, 0, 0, time.UTC))
-	d2 := utils.TruncateDay(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
-	d3 := utils.TruncateDay(time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC))
-	input := map[uint][]ontimedto.OntimeStats{
-		1: {{Date: d1}, {Date: d2}},
-		2: {{Date: d3}, {Date: d1}},
-	}
-	got := getActiveDate(input)
-	if len(got) != 3 {
-		t.Fatalf("got %d dates, want 3", len(got))
-	}
-	if !got[0].Equal(d2) || !got[1].Equal(d3) || !got[2].Equal(d1) {
-		t.Errorf("got %v, want [d2 d3 d1]", got)
 	}
 }
 

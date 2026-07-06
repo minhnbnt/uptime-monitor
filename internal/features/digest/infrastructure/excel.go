@@ -3,8 +3,12 @@ package infrastructure
 import (
 	"fmt"
 	"io"
+	"iter"
+	"maps"
+	"slices"
 	"time"
 
+	"github.com/samber/lo/it"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -25,11 +29,7 @@ type ServerSummary struct {
 	Offline int64
 }
 
-func generateSummarySheet(xl *excelize.File, summary ServerSummary) error {
-
-	if _, err := xl.NewSheet(SummarySheetName); err != nil {
-		return fmt.Errorf("failed to create summary sheet: %w", err)
-	}
+func generateSummarySheet(xl *excelize.File, summary *ServerSummary) error {
 
 	headers := []string{"Metric", "Count"}
 	for i, h := range headers {
@@ -68,16 +68,11 @@ func generateSummarySheet(xl *excelize.File, summary ServerSummary) error {
 	return nil
 }
 
-func GenerateStatusReport(rows []ServerRow, dates []time.Time, summary ServerSummary) (io.Reader, error) {
-
-	xl := excelize.NewFile()
-	defer func() { _ = xl.Close() }()
-
-	if err := xl.SetSheetName("Sheet1", ReportSheetName); err != nil {
-		return nil, fmt.Errorf("failed to rename sheet: %w", err)
-	}
+func generateReportSheet(xl *excelize.File, rows []ServerRow) error {
 
 	headers := []string{"Server Name"}
+
+	dates := getActiveDate(rows)
 	for _, d := range dates {
 		headers = append(headers, d.Format("2006-01-02"))
 	}
@@ -85,10 +80,10 @@ func GenerateStatusReport(rows []ServerRow, dates []time.Time, summary ServerSum
 	for i, h := range headers {
 		cell, err := excelize.CoordinatesToCellName(i+1, 1)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create cell name: %w", err)
+			return fmt.Errorf("failed to create cell name: %w", err)
 		}
 		if err := xl.SetCellValue(ReportSheetName, cell, h); err != nil {
-			return nil, fmt.Errorf("failed to set header: %w", err)
+			return fmt.Errorf("failed to set header: %w", err)
 		}
 	}
 
@@ -98,18 +93,18 @@ func GenerateStatusReport(rows []ServerRow, dates []time.Time, summary ServerSum
 
 		serverCell, err := excelize.CoordinatesToCellName(1, rowIndex)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create cell name: %w", err)
+			return fmt.Errorf("failed to create cell name: %w", err)
 		}
 
 		if err := xl.SetCellValue(ReportSheetName, serverCell, row.ServerName); err != nil {
-			return nil, fmt.Errorf("failed to set server name: %w", err)
+			return fmt.Errorf("failed to set server name: %w", err)
 		}
 
 		for colIdx, date := range dates {
 
 			cell, err := excelize.CoordinatesToCellName(colIdx+2, rowIndex)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create cell name: %w", err)
+				return fmt.Errorf("failed to create cell name: %w", err)
 			}
 
 			pct, ok := row.Stats[date]
@@ -117,7 +112,7 @@ func GenerateStatusReport(rows []ServerRow, dates []time.Time, summary ServerSum
 
 				err = xl.SetCellValue(ReportSheetName, cell, "-")
 				if err != nil {
-					return nil, fmt.Errorf("failed to set value: %w", err)
+					return fmt.Errorf("failed to set value: %w", err)
 				}
 
 				continue
@@ -125,9 +120,29 @@ func GenerateStatusReport(rows []ServerRow, dates []time.Time, summary ServerSum
 
 			value := fmt.Sprintf("%.2f%%", pct)
 			if err := xl.SetCellValue(ReportSheetName, cell, value); err != nil {
-				return nil, fmt.Errorf("failed to set ontime value: %w", err)
+				return fmt.Errorf("failed to set ontime value: %w", err)
 			}
 		}
+	}
+
+	return nil
+}
+
+func GenerateStatusReport(rows []ServerRow, summary *ServerSummary) (io.Reader, error) {
+
+	xl := excelize.NewFile()
+	defer func() { _ = xl.Close() }()
+
+	if err := xl.SetSheetName("Sheet1", ReportSheetName); err != nil {
+		return nil, fmt.Errorf("failed to rename sheet: %w", err)
+	}
+
+	if err := generateReportSheet(xl, rows); err != nil {
+		return nil, fmt.Errorf("failed to generate report sheet: %w", err)
+	}
+
+	if _, err := xl.NewSheet(SummarySheetName); err != nil {
+		return nil, fmt.Errorf("failed to create summary sheet: %w", err)
 	}
 
 	if err := generateSummarySheet(xl, summary); err != nil {
@@ -145,4 +160,19 @@ func GenerateStatusReport(rows []ServerRow, dates []time.Time, summary ServerSum
 	}()
 
 	return pr, nil
+}
+
+func getActiveDate(rows []ServerRow) []time.Time {
+
+	rowsIter := slices.Values(rows)
+
+	activeDates := it.FlatMap(rowsIter, func(row ServerRow) iter.Seq[time.Time] {
+		return maps.Keys(row.Stats)
+	})
+
+	activeDates = it.Uniq(activeDates)
+
+	return slices.SortedFunc(activeDates, func(a, b time.Time) int {
+		return a.Compare(b)
+	})
 }
