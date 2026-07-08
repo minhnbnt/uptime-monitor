@@ -8,6 +8,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/samber/do/v2"
+	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
@@ -45,20 +46,20 @@ func (r *ZSetScheduleRepository) Register(ctx context.Context, endpoint *domain.
 
 func (r *ZSetScheduleRepository) RegisterBatch(ctx context.Context, endpoints []domain.Endpoint) error {
 
-	pipe := r.client.Pipeline()
+	members := lo.Map(endpoints, func(endpoint domain.Endpoint, _ int) redis.Z {
 
-	for _, ep := range endpoints {
-
-		idStr := fmt.Sprint(ep.ID)
-		offset := utils.GenerateOffset(idStr, ep.Interval)
+		idStr := fmt.Sprint(endpoint.ID)
+		offset := utils.GenerateOffset(idStr, endpoint.Interval)
 		score := offset.Milliseconds()
 
-		pipe.ZAdd(ctx, schedulerQueueKey, redis.Z{
-			Member: idStr, Score: float64(score),
-		})
+		return redis.Z{Member: idStr, Score: float64(score)}
+	})
+
+	if len(members) == 0 {
+		return nil
 	}
 
-	_, err := pipe.Exec(ctx)
+	_, err := r.client.ZAdd(ctx, schedulerQueueKey, members...).Result()
 
 	return err
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/jwt"
+	"github.com/minhnbnt/uptime-monitor/internal/features/auth/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
@@ -24,7 +25,7 @@ func RegisterTokenValidator(i do.Injector) {
 		return NewTokenValidator(
 			do.MustInvoke[*jwt.Provider](i),
 			do.MustInvoke[*config.TokenConfig](i),
-			do.MustInvoke[RevokedTokenRepository](i),
+			do.MustInvoke[*repository.RedisRevokedTokenRepository](i),
 			do.MustInvoke[logger.Logger](i),
 		), nil
 	})
@@ -111,3 +112,5 @@ func (tv *TokenValidator) ParseRefreshToken(tokenStr string) (*jwt.Token, error)
 	expectedIssuer := tv.tokenConfig.GetRefreshTokenIssuer()
 	return tv.provider.ParseWithIssuer(tokenStr, expectedIssuer)
 }
+
+var _ RevokedTokenRepository = (*repository.RedisRevokedTokenRepository)(nil)

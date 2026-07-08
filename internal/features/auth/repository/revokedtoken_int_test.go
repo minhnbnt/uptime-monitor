@@ -9,7 +9,6 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/samber/do/v2"
-	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/jwt"
@@ -18,7 +17,6 @@ import (
 
 var testRedis *redis.Client
 var testRedisAddr string
-var testDB *gorm.DB
 var testDSN string
 
 func TestMain(m *testing.M) {
@@ -122,12 +120,19 @@ func TestIntegration_Revoke_TTL(t *testing.T) {
 		t.Fatalf("Revoke error: %v", err)
 	}
 
-	ttl, err := testRedis.TTL(t.Context(), "revoked_token:"+jti).Result()
+	ttls, err := testRedis.HExpireTime(t.Context(), revokedPrefix, jti).Result()
 	if err != nil {
-		t.Fatalf("TTL error: %v", err)
+		t.Fatalf("HExpireTime error: %v", err)
 	}
-	if ttl < time.Hour || ttl > 3*time.Hour {
-		t.Errorf("TTL = %v, want ~2h", ttl)
+	if len(ttls) != 1 {
+		t.Fatalf("expected 1 TTL result, got %d", len(ttls))
+	}
+	if ttls[0] < 0 {
+		t.Fatalf("field has no TTL set")
+	}
+	got := time.Until(time.Unix(ttls[0], 0))
+	if got < time.Hour || got > 3*time.Hour+time.Minute {
+		t.Errorf("TTL = %v, want ~2h", got)
 	}
 }
 

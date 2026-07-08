@@ -92,8 +92,8 @@ func TestPingAndRecordEndpoint_PingError(t *testing.T) {
 	if recordedEvent.Status != domain.StatusOff {
 		t.Errorf("Status = %s, want %s", recordedEvent.Status, domain.StatusOff)
 	}
-	if !mockLog.ErrorCalled {
-		t.Error("expected error log for ping failure")
+	if !mockLog.WarnCalled {
+		t.Error("expected warn log for ping failure")
 	}
 }
 

@@ -211,11 +211,12 @@ func TestIntegration_SendReport_RespectsUserScoping(t *testing.T) {
 	seedEndpoint(t, 2, 2, "https://u2.com", domain.StatusOff)
 	seedEvent(t, 2, domain.StatusOff, now.Add(-24*time.Hour))
 
-	var capturedAttachment io.Reader
+	var capturedData []byte
 	mailer := &mockMailer{
 		sendFn: func(_ string, _ string, attachment io.Reader) error {
-			capturedAttachment = attachment
-			return nil
+			var err error
+			capturedData, err = io.ReadAll(attachment)
+			return err
 		},
 	}
 
@@ -225,7 +226,7 @@ func TestIntegration_SendReport_RespectsUserScoping(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	rows := readExcelRows(t, capturedAttachment)
+	rows := readExcelRows(t, bytes.NewReader(capturedData))
 	// Only user1's server
 	if len(rows) != 2 {
 		t.Fatalf("got %d rows (incl header), want 2", len(rows))
@@ -248,11 +249,12 @@ func TestIntegration_SendReport_ClampsDateRange(t *testing.T) {
 	// Event 10 days ago — should be included
 	seedEvent(t, 1, domain.StatusOff, now.Add(-10*24*time.Hour))
 
-	var capturedAttachment io.Reader
+	var capturedData []byte
 	mailer := &mockMailer{
 		sendFn: func(_ string, _ string, attachment io.Reader) error {
-			capturedAttachment = attachment
-			return nil
+			var err error
+			capturedData, err = io.ReadAll(attachment)
+			return err
 		},
 	}
 
@@ -262,7 +264,7 @@ func TestIntegration_SendReport_ClampsDateRange(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	rows := readExcelRows(t, capturedAttachment)
+	rows := readExcelRows(t, bytes.NewReader(capturedData))
 	// Header + 1 server (only events within 30 day clamp)
 	if len(rows) != 2 {
 		t.Fatalf("got %d rows (incl header), want 2", len(rows))
@@ -280,11 +282,12 @@ func TestIntegration_SendReport_NoEvents(t *testing.T) {
 	seedServer(t, 1, "server-a", 1)
 	seedEndpoint(t, 1, 1, "https://example.com/a")
 
-	var capturedAttachment io.Reader
+	var capturedData []byte
 	mailer := &mockMailer{
 		sendFn: func(_ string, _ string, attachment io.Reader) error {
-			capturedAttachment = attachment
-			return nil
+			var err error
+			capturedData, err = io.ReadAll(attachment)
+			return err
 		},
 	}
 
@@ -292,11 +295,11 @@ func TestIntegration_SendReport_NoEvents(t *testing.T) {
 	if err := svc.SendReport(t.Context(), 1, now.Add(-7*24*time.Hour)); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if capturedAttachment == nil {
+	if capturedData == nil {
 		t.Fatal("mailer.Send was not called")
 	}
 
-	rows := readExcelRows(t, capturedAttachment)
+	rows := readExcelRows(t, bytes.NewReader(capturedData))
 	// Header + 1 server row (server exists, stats show 0%)
 	if len(rows) != 2 {
 		t.Fatalf("got %d rows, want 2", len(rows))

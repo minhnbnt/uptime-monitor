@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -125,11 +126,18 @@ func TestIntegration_SetStatus_TTL(t *testing.T) {
 		t.Fatalf("SetStatus error: %v", err)
 	}
 
-	ttl, err := testRedis.TTL(t.Context(), statusKey(endpointID)).Result()
+	ttls, err := testRedis.HExpireTime(t.Context(), statusKey, fmt.Sprint(endpointID)).Result()
 	if err != nil {
-		t.Fatalf("TTL error: %v", err)
+		t.Fatalf("HExpireTime error: %v", err)
 	}
-	if ttl < 6*24*time.Hour || ttl > 7*24*time.Hour {
-		t.Errorf("TTL = %v, want ~7d", ttl)
+	if len(ttls) != 1 {
+		t.Fatalf("expected 1 TTL result, got %d", len(ttls))
+	}
+	if ttls[0] < 0 {
+		t.Fatalf("field has no TTL set")
+	}
+	got := time.Until(time.Unix(ttls[0], 0))
+	if got < 6*24*time.Hour || got > 7*24*time.Hour+time.Minute {
+		t.Errorf("TTL = %v, want ~7d", got)
 	}
 }

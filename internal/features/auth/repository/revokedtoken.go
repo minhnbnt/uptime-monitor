@@ -9,17 +9,16 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/jwt"
-	"github.com/minhnbnt/uptime-monitor/internal/features/auth/token"
 )
 
-const revokedPrefix = "revoked_token:"
+const revokedPrefix = "auth:revokedtoken"
 
 type RedisRevokedTokenRepository struct {
 	client *redis.Client
 }
 
 func RegisterRedisRevokedTokenRepository(i do.Injector) {
-	do.Provide[token.RevokedTokenRepository](i, func(i do.Injector) (token.RevokedTokenRepository, error) {
+	do.Provide(i, func(i do.Injector) (*RedisRevokedTokenRepository, error) {
 		wrapper := do.MustInvoke[*config.RedisClientWrapper](i)
 		return &RedisRevokedTokenRepository{client: wrapper.GetClient()}, nil
 	})
@@ -42,15 +41,22 @@ func (r *RedisRevokedTokenRepository) Revoke(ctx context.Context, token *jwt.Tok
 		return nil
 	}
 
-	return r.client.Set(ctx, revokedPrefix+jti, time.Now().UnixMilli(), ttl).Err()
+	pipe := r.client.Pipeline()
+
+	pipe.HSet(ctx, revokedPrefix, jti, ttl)
+	pipe.HExpire(ctx, revokedPrefix, ttl, jti)
+
+	_, err = pipe.Exec(ctx)
+
+	return err
 }
 
 func (r *RedisRevokedTokenRepository) IsRevoked(ctx context.Context, jti string) (bool, error) {
 
-	n, err := r.client.Exists(ctx, revokedPrefix+jti).Result()
+	n, err := r.client.HExists(ctx, revokedPrefix, jti).Result()
 	if err != nil {
 		return false, err
 	}
 
-	return n > 0, nil
+	return n, nil
 }

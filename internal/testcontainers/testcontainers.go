@@ -17,7 +17,7 @@ const (
 	defaultPostgresPass  = "test"
 	defaultPostgresDB    = "uptime_test"
 
-	defaultRedisImage = "redis:8-alpine"
+	defaultRedisImage = "valkey/valkey:9-alpine"
 
 	defaultTemporalImage = "temporalio/temporal:1.7.2"
 

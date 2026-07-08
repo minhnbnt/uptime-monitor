@@ -58,7 +58,7 @@ func (r *ZSetWorkerRunner) pingAndRecordEndpoint(ctx context.Context, ep *domain
 	statusCode, pingErr := r.pingService.Ping(ctx, ep.Method, ep.URL)
 
 	if pingErr != nil {
-		r.logger.Error(
+		r.logger.Warn(
 			"ping failed",
 			logger.String("url", ep.URL),
 			logger.String("method", ep.Method),

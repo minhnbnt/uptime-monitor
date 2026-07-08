@@ -13,9 +13,8 @@ import (
 )
 
 const (
-	statusKeyPrefix = "endpoint:"
-	statusKeySuffix = ":status"
-	defaultTTL      = 7 * 24 * time.Hour
+	statusKey  = "endpoint:status"
+	defaultTTL = 7 * 24 * time.Hour
 )
 
 type RedisServerEventRepository struct {
@@ -35,13 +34,9 @@ func RegisterRedisServerEventRepository(i do.Injector) {
 	do.Provide(i, newRedisServerEventRepository)
 }
 
-func statusKey(endpointID uint) string {
-	return fmt.Sprintf("%s%d%s", statusKeyPrefix, endpointID, statusKeySuffix)
-}
-
 func (r *RedisServerEventRepository) GetStatus(ctx context.Context, endpointID uint) (domain.ServerStatus, error) {
 
-	val, err := r.client.Get(ctx, statusKey(endpointID)).Result()
+	val, err := r.client.HGet(ctx, statusKey, fmt.Sprint(endpointID)).Result()
 	if err != nil && err != redis.Nil {
 		return "", err
 	}
@@ -50,9 +45,17 @@ func (r *RedisServerEventRepository) GetStatus(ctx context.Context, endpointID u
 }
 
 func (r *RedisServerEventRepository) SetStatus(ctx context.Context, endpointID uint, status domain.ServerStatus) error {
-	return r.client.Set(ctx, statusKey(endpointID), string(status), defaultTTL).Err()
+
+	pipe := r.client.Pipeline()
+
+	pipe.HSet(ctx, statusKey, fmt.Sprint(endpointID), string(status))
+	pipe.HExpire(ctx, statusKey, defaultTTL, fmt.Sprint(endpointID))
+
+	_, err := pipe.Exec(ctx)
+
+	return err
 }
 
 func (r *RedisServerEventRepository) DeleteStatus(ctx context.Context, endpointID uint) error {
-	return r.client.Del(ctx, statusKey(endpointID)).Err()
+	return r.client.HDel(ctx, statusKey, fmt.Sprint(endpointID)).Err()
 }
