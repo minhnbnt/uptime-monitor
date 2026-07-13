@@ -1,0 +1,2 @@
+CREATE USER auth WITH PASSWORD 'auth';
+CREATE DATABASE auth OWNER auth;

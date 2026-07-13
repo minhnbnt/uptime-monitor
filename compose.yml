@@ -1,26 +1,72 @@
 services:
-  server:
-    build: .
-    ports:
-      - 8080:8080
+  traefik:
+    image: traefik:latest
 
-    command: ["--dev", "--config=/app/config.yml"]
+    command:
+      - --entryPoints.web.address=:8080
+      - --providers.docker.endpoint=unix:///var/run/docker.sock
+      - --providers.docker.exposedByDefault=false
+
+    ports:
+      - "8080:8080"
 
     volumes:
-      - ./config.yml:/app/config.yml
+      - /run/user/1000/podman/podman.sock:/var/run/docker.sock:Z
 
+    labels:
+      traefik.enable: "true"
+
+  auth-service:
+    build: ./auth-service
+    ports:
+      - 8081:8081
+
+    environment:
+      DB_HOST: postgres
+      DB_USER: auth
+      DB_PASSWORD: auth
+      DB_NAME: auth
+      REDIS_ADDR: redis:6379
+      REDIS_DB: 1
+      JWT_KEY: change-me-in-production
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+    labels:
+      traefik.enable: true
+      traefik.http.routers.auth.rule: PathPrefix(`/api/v1/auth`)
+      traefik.http.routers.auth.service: auth-service
+      traefik.http.services.auth-service.loadbalancer.server.port: 8081
+
+  server:
+    build: ./server
+    ports:
+      - "8080"
+    command: ["--dev", "--config=/app/config.yml"]
+    volumes:
+      - ./server/config.yml:/app/config.yml
     depends_on:
       redis:
         condition: service_started
       pgbouncer:
         condition: service_started
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.server.rule: "PathPrefix(`/api/v1`) && !PathPrefix(`/api/v1/auth`)"
+      traefik.http.routers.server.service: "server"
+      traefik.http.services.server.loadbalancer.server.port: "8080"
+      traefik.http.routers.server.middlewares: "forward-auth"
+      traefik.http.middlewares.forward-auth.forwardauth.address: "http://auth-service:8081/auth/verify"
+      traefik.http.middlewares.forward-auth.forwardauth.authResponseHeaders: "X-User-ID"
 
   pgbouncer:
     image: edoburu/pgbouncer:v1.25.1-p0
-
     ports:
       - "6432:6432"
-
     environment:
       DB_HOST: postgres
       DB_PORT: "5432"
@@ -31,68 +77,54 @@ services:
       AUTH_TYPE: scram-sha-256
       POOL_MODE: transaction
       DEFAULT_POOL_SIZE: "20"
-
     depends_on:
       postgres:
         condition: service_healthy
 
   redis:
     image: valkey/valkey:9-alpine
-
     ports:
       - "6379:6379"
-
     volumes:
       - redis_data:/data
-
     command: "redis-server --appendonly yes"
 
   postgres:
     image: paradedb/paradedb:pg18
-
     ports:
-      - "5432:5432"
-
+      - "5433:5432"
     environment:
       POSTGRES_DB: uptime_monitor
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-
     volumes:
       - postgres-data:/var/lib/postgresql/
-
+      - ./postgres/init:/docker-entrypoint-initdb.d/
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d uptime_monitor"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   temporal:
     image: temporalio/temporal:1.7.2
-
     ports:
       - 7233:7233
       - 8233:8233
-
     volumes:
       - temporal-data:/home/temporal
-
     command: server start-dev --ip 0.0.0.0 --db-filename /home/temporal/temporal.db
 
   pgadmin:
     image: dpage/pgadmin4:9
-
     environment:
       PGADMIN_DEFAULT_EMAIL: minhnbnt@example.com
       PGADMIN_DEFAULT_PASSWORD: 12345678
       PGADMIN_CONFIG_SERVER_MODE: "False"
-
     ports:
       - 8000:80
-
     depends_on:
       - postgres
-
     volumes:
       - pgadmin-data:/var/lib/pgadmin
 

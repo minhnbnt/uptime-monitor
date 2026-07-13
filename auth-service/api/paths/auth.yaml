@@ -1,0 +1,133 @@
+register:
+  post:
+    summary: Register a new user
+    operationId: Register
+    x-ogen-operation-group: Auth
+    tags:
+      - auth
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/auth.yaml#/RegisterRequest"
+    responses:
+      "201":
+        description: User registered successfully
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/auth.yaml#/AuthResponse"
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+login:
+  post:
+    summary: Login with email or username
+    operationId: Login
+    x-ogen-operation-group: Auth
+    tags:
+      - auth
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/auth.yaml#/LoginRequest"
+    responses:
+      "200":
+        description: Login successful
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/auth.yaml#/AuthResponse"
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+refresh:
+  post:
+    summary: Refresh access token
+    operationId: LoginRefresh
+    x-ogen-operation-group: Auth
+    tags:
+      - auth
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/auth.yaml#/RefreshTokenRequest"
+    responses:
+      "200":
+        description: Token refreshed successfully
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/auth.yaml#/AuthResponse"
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+logout:
+  post:
+    summary: Logout and revoke refresh token
+    operationId: Logout
+    x-ogen-operation-group: Auth
+    tags:
+      - auth
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/auth.yaml#/RefreshTokenRequest"
+    responses:
+      "204":
+        description: Logged out successfully
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+validate:
+  get:
+    summary: Validate access token
+    operationId: ValidateToken
+    x-ogen-operation-group: Auth
+    tags:
+      - auth
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: Token is valid
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user_id
+              properties:
+                user_id:
+                  type: integer
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"

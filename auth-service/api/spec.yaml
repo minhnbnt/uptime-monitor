@@ -1,0 +1,47 @@
+openapi: "3.0.3"
+info:
+  title: Auth Service API
+  description: Authentication service for uptime-monitor
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8081
+    description: Development server
+
+tags:
+  - name: auth
+    description: Authentication and user management
+
+paths:
+  /api/v1/auth/register:
+    $ref: "./paths/auth.yaml#/register"
+  /api/v1/auth/login:
+    $ref: "./paths/auth.yaml#/login"
+  /api/v1/auth/refresh:
+    $ref: "./paths/auth.yaml#/refresh"
+  /api/v1/auth/logout:
+    $ref: "./paths/auth.yaml#/logout"
+  /api/v1/auth/validate:
+    $ref: "./paths/auth.yaml#/validate"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      $ref: "./schemas/common.yaml#/ErrorResponse"
+
+    RegisterRequest:
+      $ref: "./schemas/auth.yaml#/RegisterRequest"
+    LoginRequest:
+      $ref: "./schemas/auth.yaml#/LoginRequest"
+    UserProfile:
+      $ref: "./schemas/auth.yaml#/UserProfile"
+    AuthResponse:
+      $ref: "./schemas/auth.yaml#/AuthResponse"
+    RefreshTokenRequest:
+      $ref: "./schemas/auth.yaml#/RefreshTokenRequest"
