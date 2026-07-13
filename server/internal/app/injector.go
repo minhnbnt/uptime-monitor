@@ -82,7 +82,6 @@ func providersAfterConfig(dev bool) []func(do.Injector) {
 		notificationhandler.RegisterNotificationHandler,
 
 		authclient.RegisterAuthMiddleware,
-		authclient.RegisterAuthHandler,
 
 		server.RegisterCompositeHandler,
 		pinghandler.RegisterTemporalWorkerRunner,

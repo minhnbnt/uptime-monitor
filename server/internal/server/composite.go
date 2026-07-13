@@ -7,7 +7,6 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
-	"github.com/minhnbnt/uptime-monitor/internal/authclient"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	importerhandler "github.com/minhnbnt/uptime-monitor/internal/features/importer/handler"
 	notificationhandler "github.com/minhnbnt/uptime-monitor/internal/features/notification/handler"
@@ -20,7 +19,6 @@ type CompositeHandler struct {
 	*serverhandler.EndpointHandler
 	*importerhandler.ImportHandler
 	*ontimehandler.OntimeHandler
-	*authclient.AuthHandler
 	*notificationhandler.NotificationHandler
 	logger *slog.Logger
 }
@@ -32,7 +30,6 @@ func RegisterCompositeHandler(i do.Injector) {
 			EndpointHandler:     do.MustInvoke[*serverhandler.EndpointHandler](i),
 			ImportHandler:       do.MustInvoke[*importerhandler.ImportHandler](i),
 			OntimeHandler:       do.MustInvoke[*ontimehandler.OntimeHandler](i),
-			AuthHandler:         do.MustInvoke[*authclient.AuthHandler](i),
 			NotificationHandler: do.MustInvoke[*notificationhandler.NotificationHandler](i),
 			logger:              do.MustInvoke[*slog.Logger](i),
 		}, nil

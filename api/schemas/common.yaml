@@ -1,0 +1,31 @@
+MonitorStatus:
+  type: string
+  enum:
+    - online
+    - offline
+
+PaginationMeta:
+  type: object
+  properties:
+    page:
+      type: integer
+    per_page:
+      type: integer
+    total:
+      type: integer
+
+ErrorResponse:
+  type: object
+  required:
+    - error
+  properties:
+    error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string

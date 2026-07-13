@@ -40,12 +40,11 @@ func RunWebServer(ctx context.Context, i do.Injector, dev bool) {
 
 	rawSrv, err := api.NewServer(
 		compositeHandler,
-		authMiddleware,
 		api.WithPathPrefix(""),
 		api.WithErrorHandler(errorHandler),
 	)
 
-	srv := authclient.XUserIDMiddleware(log)(rawSrv)
+	srv := authMiddleware.XUserIDMiddleware(rawSrv)
 
 	if err != nil {
 		log.Error("failed to create server", slog.Any("error", err))

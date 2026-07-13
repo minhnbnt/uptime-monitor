@@ -9,6 +9,8 @@ servers:
     description: Development server
 
 tags:
+  - name: auth
+    description: Authentication and user management
   - name: servers
     description: Create, list, update, and delete servers
   - name: servers-search
@@ -23,6 +25,16 @@ tags:
     description: Notification and digest report configuration
 
 paths:
+  # ── Auth ─────────────────────────────────
+  /api/v1/auth/register:
+    $ref: "./paths/auth.yaml#/register"
+  /api/v1/auth/login:
+    $ref: "./paths/auth.yaml#/login"
+  /api/v1/auth/refresh:
+    $ref: "./paths/auth.yaml#/refresh"
+  /api/v1/auth/logout:
+    $ref: "./paths/auth.yaml#/logout"
+
   # ── Servers (CRUD) ───────────────────────
   /api/v1/servers:
     $ref: "./paths/servers.yaml#/servers"
@@ -56,6 +68,12 @@ paths:
     $ref: "./paths/notification.yaml#/notification-send-report"
 
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     MonitorStatus:
       $ref: "./schemas/common.yaml#/MonitorStatus"
@@ -92,6 +110,17 @@ components:
       $ref: "./schemas/ontime.yaml#/ServerWithOntime"
     ServerOntimeListResponse:
       $ref: "./schemas/ontime.yaml#/ServerOntimeListResponse"
+
+    RegisterRequest:
+      $ref: "./schemas/auth.yaml#/RegisterRequest"
+    LoginRequest:
+      $ref: "./schemas/auth.yaml#/LoginRequest"
+    UserProfile:
+      $ref: "./schemas/auth.yaml#/UserProfile"
+    AuthResponse:
+      $ref: "./schemas/auth.yaml#/AuthResponse"
+    RefreshTokenRequest:
+      $ref: "./schemas/auth.yaml#/RefreshTokenRequest"
 
     NotificationConfig:
       $ref: "./schemas/notification.yaml#/NotificationConfig"

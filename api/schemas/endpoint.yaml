@@ -1,0 +1,104 @@
+CheckMethodType:
+  type: string
+  enum:
+    - push
+    - pull
+
+Endpoint:
+  type: object
+  required:
+    - url
+    - interval
+    - timeout
+    - method
+    - expected_code
+  properties:
+    url:
+      type: string
+      format: uri
+    monitor_status:
+      $ref: "./common.yaml#/MonitorStatus"
+    interval:
+      type: integer
+      minimum: 1
+      description: Interval in seconds (default 30)
+    timeout:
+      type: integer
+      minimum: 1
+      description: Timeout in seconds (default 10)
+    method:
+      type: string
+      enum:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - PATCH
+        - HEAD
+        - OPTIONS
+        - CONNECT
+        - TRACE
+      description: HTTP method (default GET)
+    expected_code:
+      type: integer
+      minimum: 100
+      maximum: 599
+      description: Expected HTTP status code (default 200)
+
+SetCheckMethodRequest:
+  type: object
+  required:
+    - method
+    - endpoint
+  properties:
+    method:
+      $ref: "#/CheckMethodType"
+    endpoint:
+      $ref: "#/Endpoint"
+
+TestEndpointRequest:
+  type: object
+  required:
+    - url
+    - method
+  properties:
+    url:
+      type: string
+      format: uri
+    method:
+      type: string
+      enum:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - PATCH
+        - HEAD
+        - OPTIONS
+        - CONNECT
+        - TRACE
+      description: HTTP method
+    timeout:
+      type: integer
+      minimum: 1
+      default: 10
+      description: Timeout in seconds (default 10)
+    expected_code:
+      type: integer
+      minimum: 100
+      maximum: 599
+      default: 200
+      description: Expected HTTP status code (default 200)
+
+TestEndpointResponse:
+  type: object
+  required:
+    - success
+    - status_code
+  properties:
+    success:
+      type: boolean
+    status_code:
+      type: integer
+    error:
+      type: string

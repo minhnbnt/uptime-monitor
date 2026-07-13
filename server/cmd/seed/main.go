@@ -17,17 +17,12 @@ const baseURL = "http://localhost:8080"
 
 func authToken() string {
 
-	reqBody, _ := json.Marshal(api.RegisterRequest{
-		Email:    "seed@uptime.local",
-		Username: "seed",
-		Password: "seedseed",
-		Name:     "Seed User",
-	})
+	reqBody := bytes.NewBufferString(`{"email":"seed@uptime.local","username":"seed","password":"seedseed","name":"Seed User"}`)
 
 	ctx := context.Background()
 	client := &http.Client{}
 
-	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/api/v1/auth/register", bytes.NewReader(reqBody))
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/api/v1/auth/register", reqBody)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
@@ -36,11 +31,8 @@ func authToken() string {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusConflict {
-		loginBody, _ := json.Marshal(api.LoginRequest{
-			Login:    "seed",
-			Password: "seedseed",
-		})
-		req, _ = http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/api/v1/auth/login", bytes.NewReader(loginBody))
+		loginBody := bytes.NewBufferString(`{"login":"seed","password":"seedseed"}`)
+		req, _ = http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/api/v1/auth/login", loginBody)
 		req.Header.Set("Content-Type", "application/json")
 		resp, err = client.Do(req)
 		if err != nil {
@@ -54,12 +46,14 @@ func authToken() string {
 		panic(fmt.Sprintf("auth: status %d\n  body: %s", resp.StatusCode, string(body)))
 	}
 
-	var authResp api.AuthResponse
-	if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
+	var result struct {
+		AccessToken string `json:"access_token"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		panic(fmt.Sprintf("decode auth: %v", err))
 	}
 
-	return authResp.AccessToken
+	return result.AccessToken
 }
 
 func main() {

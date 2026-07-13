@@ -1,0 +1,40 @@
+ImportServersResponse:
+  type: object
+  required:
+    - success_count
+    - successes
+    - failed_count
+    - failed
+  properties:
+    success_count:
+      type: integer
+    successes:
+      type: array
+      items:
+        $ref: '#/ImportServerSuccess'
+    failed_count:
+      type: integer
+    failed:
+      type: array
+      items:
+        $ref: '#/ImportServerRowError'
+
+ImportServerSuccess:
+  type: object
+  properties:
+    row:
+      type: integer
+    name:
+      type: string
+    url:
+      type: string
+    server_id:
+      type: integer
+
+ImportServerRowError:
+  type: object
+  properties:
+    row:
+      type: integer
+    message:
+      type: string

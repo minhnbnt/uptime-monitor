@@ -111,6 +111,7 @@ func EnablePGSearch(db *gorm.DB) error {
 func RunMigration(db *gorm.DB) error {
 
 	schemas := []any{
+		&domain.User{},
 		&domain.Server{},
 		&domain.Endpoint{},
 		&domain.ServerEvent{},

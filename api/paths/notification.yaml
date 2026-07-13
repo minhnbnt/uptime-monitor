@@ -5,6 +5,8 @@ notification-config:
     x-ogen-operation-group: Notification
     tags:
       - notifications
+    security:
+      - BearerAuth: []
     responses:
       "200":
         description: OK
@@ -24,6 +26,8 @@ notification-config:
     x-ogen-operation-group: Notification
     tags:
       - notifications
+    security:
+      - BearerAuth: []
     requestBody:
       required: true
       content:
@@ -47,6 +51,8 @@ notification-send-report:
     x-ogen-operation-group: Notification
     tags:
       - notifications
+    security:
+      - BearerAuth: []
     responses:
       "200":
         description: Sent
