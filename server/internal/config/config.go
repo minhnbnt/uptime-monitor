@@ -10,6 +10,11 @@ type Config struct {
 	Scheduler SchedulerCfg   `mapstructure:"scheduler"`
 	Log       LogConfig      `mapstructure:"log"`
 	Mail      MailConfig     `mapstructure:"mail"`
+	GRPC      GRPCConfig     `mapstructure:"grpc"`
+}
+
+type GRPCConfig struct {
+	Port string `mapstructure:"port"`
 }
 
 type SchedulerCfg struct {

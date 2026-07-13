@@ -43,11 +43,11 @@ func main() {
 	waitgroup.Go(func() { _, _ = injector.ShutdownOnSignalsWithContext(ctx) })
 
 	if *enableWorker {
-		waitgroup.Go(func() { app.RunPingWorker(ctx, injector) })
 		waitgroup.Go(func() { app.RunDigestWorker(ctx, injector) })
 	}
 
 	if *enableServer {
 		waitgroup.Go(func() { app.RunWebServer(ctx, injector, *dev) })
+		waitgroup.Go(func() { app.RunGRPCServer(ctx, injector) })
 	}
 }

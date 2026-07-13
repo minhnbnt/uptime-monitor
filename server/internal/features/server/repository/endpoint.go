@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 
 	"github.com/samber/do/v2"
 	"gorm.io/gorm"
@@ -13,20 +12,11 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
-	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
-	"github.com/minhnbnt/uptime-monitor/internal/features/ping/scheduler"
 )
 
-type endpointMetaCache interface {
-	SetMulti(ctx context.Context, endpoints []domain.Endpoint) error
-	Delete(ctx context.Context, id uint) error
-}
-
 type EndpointRepository struct {
-	db          *gorm.DB
-	scheduler   scheduler.SchedulerRepository
-	statusStore *monitorrepo.RedisServerEventRepository
-	metaCache   endpointMetaCache
+	db      *gorm.DB
+	events  *StreamEventPublisher
 }
 
 func NewEndpointRepository(db *gorm.DB) *EndpointRepository {
@@ -35,53 +25,29 @@ func NewEndpointRepository(db *gorm.DB) *EndpointRepository {
 
 func NewEndpointRepositoryWithDeps(
 	db *gorm.DB,
-	scheduler scheduler.SchedulerRepository,
-	statusStore *monitorrepo.RedisServerEventRepository,
-	metaCache *scheduler.EndpointMetaCache,
+	events *StreamEventPublisher,
 ) *EndpointRepository {
 	return &EndpointRepository{
-		db:          db,
-		scheduler:   scheduler,
-		statusStore: statusStore,
-		metaCache:   metaCache,
-	}
-}
-
-func getSchedulerRepository(i do.Injector) scheduler.SchedulerRepository {
-
-	cfg := do.MustInvoke[*config.Config](i)
-	log := do.MustInvoke[*slog.Logger](i)
-
-	backend := cfg.Scheduler.Backend
-
-	switch backend {
-	case "temporal":
-		return do.MustInvoke[*scheduler.TemporalSchedulerRepository](i)
-
-	case "redis":
-		return do.MustInvoke[*scheduler.ZSetScheduleRepository](i)
-
-	default:
-		log.Error(
-			"unsupported scheduler backend",
-			slog.String("backend", backend),
-		)
-		panic("unsupported scheduler backend")
+		db:     db,
+		events: events,
 	}
 }
 
 func RegisterEndpointRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointRepository, error) {
-
 		dbWrapper := do.MustInvoke[*config.GORMWrapper](i)
-
 		return NewEndpointRepositoryWithDeps(
 			dbWrapper.GetDB(),
-			getSchedulerRepository(i),
-			do.MustInvoke[*monitorrepo.RedisServerEventRepository](i),
-			do.MustInvoke[*scheduler.EndpointMetaCache](i),
+			do.MustInvoke[*StreamEventPublisher](i),
 		), nil
 	})
+}
+
+func (er *EndpointRepository) GetByIDs(ctx context.Context, ids []uint) ([]domain.Endpoint, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	return gorm.G[domain.Endpoint](er.db).Where("id IN ?", ids).Find(ctx)
 }
 
 func (er *EndpointRepository) GetByServerID(ctx context.Context, serverID uint) (*domain.Endpoint, error) {
@@ -111,16 +77,8 @@ func (er *EndpointRepository) DeleteByServerID(ctx context.Context, serverID uin
 			return fmt.Errorf("failed to delete endpoint %d: %w", ep.ID, err)
 		}
 
-		if err := er.scheduler.Unregister(ctx, ep.ID); err != nil {
-			return fmt.Errorf("failed to unregister endpoint %d: %w", ep.ID, err)
-		}
-
-		if err := er.statusStore.DeleteStatus(ctx, ep.ID); err != nil {
-			return fmt.Errorf("failed to delete status for endpoint %d: %w", ep.ID, err)
-		}
-
-		if err := er.metaCache.Delete(ctx, ep.ID); err != nil {
-			return fmt.Errorf("failed to delete meta cache for endpoint %d: %w", ep.ID, err)
+		if err := er.events.Publish(ctx, "deleted", &ep); err != nil {
+			return fmt.Errorf("failed to publish delete event: %w", err)
 		}
 
 		return nil
@@ -145,11 +103,7 @@ func (er *EndpointRepository) UpsertEndpoint(ctx context.Context, endpoint domai
 			return err
 		}
 
-		if err := er.scheduler.Register(ctx, &endpoint); err != nil {
-			return err
-		}
-
-		return er.metaCache.Delete(ctx, endpoint.ID)
+		return er.events.Publish(ctx, "created", &endpoint)
 	})
 }
 
@@ -178,12 +132,10 @@ func (er *EndpointRepository) BatchCreateEndpoints(ctx context.Context, endpoint
 		return fmt.Errorf("failed to batch create endpoints: %w", err)
 	}
 
-	if err := er.scheduler.RegisterBatch(ctx, endpoints); err != nil {
-		return fmt.Errorf("failed to batch register endpoints: %w", err)
-	}
-
-	if err := er.metaCache.SetMulti(ctx, endpoints); err != nil {
-		return fmt.Errorf("failed to set meta cache: %w", err)
+	for i := range endpoints {
+		if err := er.events.Publish(ctx, "created", &endpoints[i]); err != nil {
+			return fmt.Errorf("failed to publish create event: %w", err)
+		}
 	}
 
 	return nil

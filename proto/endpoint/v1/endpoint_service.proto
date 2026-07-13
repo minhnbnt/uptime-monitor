@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package endpoint.v1;
+
+option go_package = "github.com/minhnbnt/uptime-monitor-microservices/proto/gen/endpoint/v1;endpointv1";
+
+message EndpointData {
+  uint64 id = 1;
+  uint64 server_id = 2;
+  string url = 3;
+  string method = 4;
+  int32 expected_code = 5;
+  int64 interval_ms = 6;
+  int64 timeout_ms = 7;
+  string monitor_status = 8;
+}
+
+message GetEndpointsRequest {
+  repeated uint64 endpoint_ids = 1;
+}
+
+message GetEndpointsResponse {
+  repeated EndpointData endpoints = 1;
+}
+
+message UpdateMonitorStatusRequest {
+  uint64 endpoint_id = 1;
+  string status = 2;
+}
+
+message UpdateMonitorStatusResponse {}
+
+service EndpointService {
+  rpc GetEndpoints(GetEndpointsRequest) returns (GetEndpointsResponse);
+  rpc UpdateMonitorStatus(UpdateMonitorStatusRequest) returns (UpdateMonitorStatusResponse);
+}

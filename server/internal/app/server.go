@@ -13,7 +13,10 @@ import (
 	apidocs "github.com/minhnbnt/uptime-monitor/api"
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	"github.com/minhnbnt/uptime-monitor/internal/authclient"
+	"github.com/minhnbnt/uptime-monitor/internal/config"
+	servergrpc "github.com/minhnbnt/uptime-monitor/internal/grpc"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
+	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 )
 
 func RunWebServer(ctx context.Context, i do.Injector, dev bool) {
@@ -94,6 +97,20 @@ func RunWebServer(ctx context.Context, i do.Injector, dev bool) {
 
 	if err != nil {
 		log.Error("failed to run server", slog.Any("error", err))
+		panic(err)
+	}
+}
+
+func RunGRPCServer(ctx context.Context, i do.Injector) {
+	log := do.MustInvoke[*slog.Logger](i)
+	cfg := do.MustInvoke[*config.Config](i)
+	endpointRepo := do.MustInvoke[*serverrepo.EndpointRepository](i)
+
+	addr := ":" + cfg.GRPC.Port
+	log.Info("gRPC server starting", slog.String("addr", addr))
+
+	if err := servergrpc.StartGRPCServer(ctx, addr, endpointRepo); err != nil {
+		log.Error("gRPC server failed", slog.Any("error", err))
 		panic(err)
 	}
 }
