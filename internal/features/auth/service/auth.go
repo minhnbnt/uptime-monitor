@@ -42,7 +42,7 @@ func RegisterAuthService(i do.Injector) {
 			passwordEncoder:        do.MustInvoke[*argon2.Argon2PasswordEncoder](i),
 			tokenGenerator:         do.MustInvoke[token.TokenGenerator](i),
 			tokenValidator:         do.MustInvoke[*token.TokenValidator](i),
-			revokedTokenRepository: do.MustInvoke[token.RevokedTokenRepository](i),
+			revokedTokenRepository: do.MustInvoke[*repository.RedisRevokedTokenRepository](i),
 			logger:                 do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})

@@ -120,9 +120,7 @@ func bindEnvVars(v *viper.Viper) error {
 }
 
 func RegisterConfig(cfg *Config) func(do.Injector) {
-	return func(i do.Injector) {
-		do.ProvideValue(i, cfg)
-	}
+	return func(i do.Injector) { do.ProvideValue(i, cfg) }
 }
 
 func RegisterConfigPath(configPath string) func(do.Injector) {

@@ -107,14 +107,18 @@ func providersAfterConfig(dev bool) []func(do.Injector) {
 }
 
 func RegisterPackages(injector do.Injector, configPath string, dev bool) {
+
 	config.RegisterConfigPath(configPath)(injector)
+
 	for _, p := range providersAfterConfig(dev) {
 		p(injector)
 	}
 }
 
 func RegisterPackagesFromConfig(injector do.Injector, cfg *config.Config, dev bool) {
+
 	config.RegisterConfig(cfg)(injector)
+
 	for _, p := range providersAfterConfig(dev) {
 		p(injector)
 	}
