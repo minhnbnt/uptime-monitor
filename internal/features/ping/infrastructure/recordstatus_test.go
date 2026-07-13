@@ -60,7 +60,7 @@ func event(endpointID uint, status domain.ServerStatus) *domain.ServerEvent {
 
 func TestRecordStatusWorker_Record(t *testing.T) {
 	t.Run("redis get fails -> log warning, return nil", func(t *testing.T) {
-		log := logger.NewMockLogger()
+		log, capLog := logger.NewCapturingLogger()
 		w := &RecordStatusWorker{
 			endpointStatusUpdater: &mockEndpointStatusUpdater{},
 			statusStore: &mockStatusStore{
@@ -75,7 +75,7 @@ func TestRecordStatusWorker_Record(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if !log.WarnCalled {
+		if !capLog.HasWarn() {
 			t.Error("expected Warn to be called")
 		}
 	})
@@ -290,7 +290,7 @@ func TestRecordStatusWorker_Record(t *testing.T) {
 
 	t.Run("cache miss -> db error -> log warning, proceed save", func(t *testing.T) {
 		var saveCalled bool
-		log := logger.NewMockLogger()
+		log, capLog := logger.NewCapturingLogger()
 		w := &RecordStatusWorker{
 			endpointStatusUpdater: &mockEndpointStatusUpdater{},
 			statusStore: &mockStatusStore{
@@ -320,7 +320,7 @@ func TestRecordStatusWorker_Record(t *testing.T) {
 		if !saveCalled {
 			t.Error("Save should be called — DB error is uncertain, better safe")
 		}
-		if !log.WarnCalled {
+		if !capLog.HasWarn() {
 			t.Error("expected Warn to be called on DB error")
 		}
 	})

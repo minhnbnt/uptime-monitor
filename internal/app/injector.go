@@ -4,7 +4,6 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
-	temporalcfg "github.com/minhnbnt/uptime-monitor/internal/config/temporal"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/argon2"
 	authhandler "github.com/minhnbnt/uptime-monitor/internal/features/auth/handler"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/jwt"
@@ -32,23 +31,20 @@ import (
 	serverinfra "github.com/minhnbnt/uptime-monitor/internal/features/server/infrastructure"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 	featservice "github.com/minhnbnt/uptime-monitor/internal/features/server/service"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
 )
 
 func providersAfterConfig(dev bool) []func(do.Injector) {
 	return []func(do.Injector){
 
-		config.RegisterZapLogger(dev),
+		config.RegisterLogger(dev),
 		config.RegisterGORMDB,
 		config.RegisterRedisClient,
 		config.RegisterJwtConfig,
 		config.RegisterTokenConfig,
 		config.RegisterArgon2Config,
-		temporalcfg.RegisterConfig,
-		temporalcfg.RegisterClient,
+		config.RegisterTemporalClient,
 
-		logger.RegisterLogger,
 		serverrepo.RegisterServerRepository,
 		serverrepo.RegisterEndpointRepository,
 		pingsched.RegisterTemporalSchedulerRepository,

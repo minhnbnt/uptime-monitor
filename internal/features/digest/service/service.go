@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"slices"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	ontimedto "github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
 	ontimesvc "github.com/minhnbnt/uptime-monitor/internal/features/ontime/service"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
@@ -62,7 +62,7 @@ type DigestService struct {
 	serverRepo ServerLister
 	ontimeSvc  OntimeStatsService
 	mailer     MailSender
-	logger     logger.Logger
+	logger     *slog.Logger
 }
 
 func RegisterDigestService(i do.Injector) {
@@ -73,7 +73,7 @@ func RegisterDigestService(i do.Injector) {
 			userRepo:   do.MustInvoke[*authrepo.UserRepository](i),
 			ontimeSvc:  do.MustInvoke[*ontimesvc.OntimeService](i),
 			mailer:     do.MustInvoke[*digestinfra.Mailer](i),
-			logger:     do.MustInvoke[logger.Logger](i),
+			logger:     do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
@@ -82,17 +82,17 @@ func (s *DigestService) SendUserDigest(ctx context.Context, userID uint) error {
 
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
-		s.logger.Error("failed to find user", logger.Error(err))
+		s.logger.Error("failed to find user", slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 	if user == nil {
-		s.logger.Warn("user not found, skipping digest", logger.Int("user_id", int(userID)))
+		s.logger.Warn("user not found, skipping digest", slog.Int("user_id", int(userID)))
 		return nil
 	}
 
 	cfg, err := s.configRepo.GetByUserID(ctx, userID)
 	if err != nil {
-		s.logger.Error("failed to get notification config", logger.Error(err))
+		s.logger.Error("failed to get notification config", slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 
@@ -107,11 +107,11 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
-		s.logger.Error("failed to find user", logger.Error(err))
+		s.logger.Error("failed to find user", slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 	if user == nil {
-		s.logger.Error("user not found", logger.Int("user_id", int(userID)))
+		s.logger.Error("user not found", slog.Int("user_id", int(userID)))
 		return fmt.Errorf("user %d: %w", userID, apperrors.ErrNotFound)
 	}
 
@@ -122,7 +122,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 	servers, err := s.serverRepo.List(ctx, userID, maxReportServers, 0)
 	if err != nil {
-		s.logger.Error("failed to list servers", logger.Error(err))
+		s.logger.Error("failed to list servers", slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 
@@ -130,7 +130,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 	ontimeMap, err := s.ontimeSvc.GetServersOntimeForDates(ctx, servers, dates)
 	if err != nil {
-		s.logger.Error("failed to get ontime stats", logger.Error(err))
+		s.logger.Error("failed to get ontime stats", slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 
@@ -138,7 +138,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 	total, online, offline, err := s.serverRepo.CountByStatus(ctx, userID)
 	if err != nil {
-		s.logger.Error("failed to count servers by status", logger.Error(err))
+		s.logger.Error("failed to count servers by status", slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 
@@ -146,7 +146,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 	reader, err := digestinfra.GenerateStatusReport(rows, &summary)
 	if err != nil {
-		s.logger.Error("failed to generate excel report", logger.Error(err))
+		s.logger.Error("failed to generate excel report", slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 
@@ -154,7 +154,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 	subject := fmt.Sprintf("Uptime Monitor - Daily Digest - %s", now.Format("2006-01-02"))
 	if err := s.mailer.Send(user.Email, subject, reader); err != nil {
-		s.logger.Error("failed to send mail", logger.Error(err))
+		s.logger.Error("failed to send mail", slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 

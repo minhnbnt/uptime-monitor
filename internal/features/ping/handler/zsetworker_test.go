@@ -68,7 +68,7 @@ func TestPingAndRecordEndpoint_PingOK_CodeMismatch(t *testing.T) {
 
 func TestPingAndRecordEndpoint_PingError(t *testing.T) {
 	var recordedEvent *domain.ServerEvent
-	mockLog := logger.NewMockLogger()
+	log, capLog := logger.NewCapturingLogger()
 	r := &ZSetWorkerRunner{
 		pingService: &mockPingService{
 			pingFn: func(_ context.Context, method, url string) (int, error) {
@@ -79,7 +79,7 @@ func TestPingAndRecordEndpoint_PingError(t *testing.T) {
 				return nil
 			},
 		},
-		logger: mockLog,
+		logger: log,
 	}
 
 	ep := &domain.Endpoint{Method: "GET", URL: "https://example.com", ExpectedCode: 200}
@@ -92,13 +92,13 @@ func TestPingAndRecordEndpoint_PingError(t *testing.T) {
 	if recordedEvent.Status != domain.StatusOff {
 		t.Errorf("Status = %s, want %s", recordedEvent.Status, domain.StatusOff)
 	}
-	if !mockLog.WarnCalled {
+	if !capLog.HasWarn() {
 		t.Error("expected warn log for ping failure")
 	}
 }
 
 func TestPingAndRecordEndpoint_RecordError(t *testing.T) {
-	mockLog := logger.NewMockLogger()
+	log, capLog := logger.NewCapturingLogger()
 	r := &ZSetWorkerRunner{
 		pingService: &mockPingService{
 			pingFn: func(_ context.Context, method, url string) (int, error) {
@@ -108,14 +108,14 @@ func TestPingAndRecordEndpoint_RecordError(t *testing.T) {
 				return io.ErrClosedPipe
 			},
 		},
-		logger: mockLog,
+		logger: log,
 	}
 
 	ep := &domain.Endpoint{Method: "GET", URL: "https://example.com", ExpectedCode: 200}
 	ep.ID = 4
 	r.pingAndRecordEndpoint(t.Context(), ep)
 
-	if !mockLog.ErrorCalled {
+	if !capLog.HasError() {
 		t.Error("expected error log for record failure")
 	}
 }

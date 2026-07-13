@@ -1,95 +1,63 @@
 package logger
 
-type MockLogger struct {
-	InfoCalled  bool
-	WarnCalled  bool
-	ErrorCalled bool
-	DebugCalled bool
-	FatalCalled bool
-	PanicCalled bool
+import (
+	"context"
+	"io"
+	"log/slog"
+	"slices"
+	"sync"
+)
 
-	LastMsg string
-
-	InfoFunc  func(msg string, fields ...Field)
-	WarnFunc  func(msg string, fields ...Field)
-	ErrorFunc func(msg string, fields ...Field)
-	DebugFunc func(msg string, fields ...Field)
-	FatalFunc func(msg string, fields ...Field)
-	PanicFunc func(msg string, fields ...Field)
-	WithFunc  func(fields ...Field) Logger
+func NewMockLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
-func NewMockLogger() *MockLogger {
-	m := &MockLogger{}
-	m.InfoFunc = func(msg string, fields ...Field) {
-		m.InfoCalled = true
-		m.LastMsg = msg
-	}
-	m.WarnFunc = func(msg string, fields ...Field) {
-		m.WarnCalled = true
-		m.LastMsg = msg
-	}
-	m.ErrorFunc = func(msg string, fields ...Field) {
-		m.ErrorCalled = true
-		m.LastMsg = msg
-	}
-	m.DebugFunc = func(msg string, fields ...Field) {
-		m.DebugCalled = true
-		m.LastMsg = msg
-	}
-	m.FatalFunc = func(msg string, fields ...Field) {
-		m.FatalCalled = true
-		m.LastMsg = msg
-	}
-	m.PanicFunc = func(msg string, fields ...Field) {
-		m.PanicCalled = true
-		m.LastMsg = msg
-	}
-	m.WithFunc = func(fields ...Field) Logger {
-		return m
-	}
-	return m
+type captureHandler struct {
+	mu      sync.RWMutex
+	records []slog.Record
 }
 
-func (m *MockLogger) Info(msg string, fields ...Field) {
-	if m.InfoFunc != nil {
-		m.InfoFunc(msg, fields...)
-	}
+func (h *captureHandler) Enabled(context.Context, slog.Level) bool {
+	return true
 }
 
-func (m *MockLogger) Warn(msg string, fields ...Field) {
-	if m.WarnFunc != nil {
-		m.WarnFunc(msg, fields...)
-	}
+func (h *captureHandler) Handle(_ context.Context, r slog.Record) error {
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	h.records = append(h.records, r.Clone())
+
+	return nil
 }
 
-func (m *MockLogger) Error(msg string, fields ...Field) {
-	if m.ErrorFunc != nil {
-		m.ErrorFunc(msg, fields...)
-	}
+func (h *captureHandler) Has(level slog.Level) bool {
+
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	return slices.ContainsFunc(h.records, func(record slog.Record) bool {
+		return record.Level == level
+	})
 }
 
-func (m *MockLogger) Debug(msg string, fields ...Field) {
-	if m.DebugFunc != nil {
-		m.DebugFunc(msg, fields...)
-	}
+func (h *captureHandler) WithAttrs([]slog.Attr) slog.Handler {
+	return h
 }
 
-func (m *MockLogger) Fatal(msg string, fields ...Field) {
-	if m.FatalFunc != nil {
-		m.FatalFunc(msg, fields...)
-	}
+func (h *captureHandler) WithGroup(string) slog.Handler {
+	return h
 }
 
-func (m *MockLogger) Panic(msg string, fields ...Field) {
-	if m.PanicFunc != nil {
-		m.PanicFunc(msg, fields...)
-	}
+func (h *captureHandler) HasWarn() bool {
+	return h.Has(slog.LevelWarn)
 }
 
-func (m *MockLogger) With(fields ...Field) Logger {
-	if m.WithFunc != nil {
-		return m.WithFunc(fields...)
-	}
-	return m
+func (h *captureHandler) HasError() bool {
+	return h.Has(slog.LevelError)
+}
+
+func NewCapturingLogger() (*slog.Logger, *captureHandler) {
+	h := &captureHandler{}
+	return slog.New(h), h
 }

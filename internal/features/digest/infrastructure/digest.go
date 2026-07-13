@@ -9,7 +9,7 @@ import (
 	"github.com/samber/do/v2"
 	temporalclient "go.temporal.io/sdk/client"
 
-	temporalcfg "github.com/minhnbnt/uptime-monitor/internal/config/temporal"
+	"github.com/minhnbnt/uptime-monitor/internal/config"
 )
 
 type DigestStarter struct {
@@ -21,8 +21,8 @@ type DigestStarter struct {
 func RegisterDigestStarter(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*DigestStarter, error) {
 
-		clientWrapper := do.MustInvoke[*temporalcfg.ClientWrapper](i)
-		temporalCfg := do.MustInvoke[*temporalcfg.Config](i)
+		clientWrapper := do.MustInvoke[*config.TemporalClientWrapper](i)
+		config := do.MustInvoke[*config.Config](i)
 
 		client := clientWrapper.GetClient()
 		scheduleClient := client.ScheduleClient()
@@ -30,7 +30,7 @@ func RegisterDigestStarter(i do.Injector) {
 		return &DigestStarter{
 			client:         client,
 			scheduleClient: scheduleClient,
-			taskQueue:      temporalCfg.DigestTaskQueue,
+			taskQueue:      config.Temporal.DigestTaskQueue,
 		}, nil
 	})
 }

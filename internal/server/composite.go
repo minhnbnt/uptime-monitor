@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/samber/do/v2"
 
@@ -12,7 +13,6 @@ import (
 	notificationhandler "github.com/minhnbnt/uptime-monitor/internal/features/notification/handler"
 	ontimehandler "github.com/minhnbnt/uptime-monitor/internal/features/ontime/handler"
 	serverhandler "github.com/minhnbnt/uptime-monitor/internal/features/server/handler"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
 type CompositeHandler struct {
@@ -22,7 +22,7 @@ type CompositeHandler struct {
 	*ontimehandler.OntimeHandler
 	*handler.AuthHandler
 	*notificationhandler.NotificationHandler
-	logger logger.Logger
+	logger *slog.Logger
 }
 
 func RegisterCompositeHandler(i do.Injector) {
@@ -34,12 +34,12 @@ func RegisterCompositeHandler(i do.Injector) {
 			OntimeHandler:       do.MustInvoke[*ontimehandler.OntimeHandler](i),
 			AuthHandler:         do.MustInvoke[*handler.AuthHandler](i),
 			NotificationHandler: do.MustInvoke[*notificationhandler.NotificationHandler](i),
-			logger:              do.MustInvoke[logger.Logger](i),
+			logger:              do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
 
 func (h *CompositeHandler) NewError(_ context.Context, err error) *api.ErrorResponseStatusCode {
-	h.logger.Error("unhandled error", logger.Error(err))
+	h.logger.Error("unhandled error", slog.Any("error", err))
 	return apperrors.ToAPIError(err)
 }

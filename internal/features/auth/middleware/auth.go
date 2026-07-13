@@ -2,13 +2,13 @@ package middleware
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/token"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
 type userIDKey struct{}
@@ -29,14 +29,14 @@ type AccessTokenValidator interface {
 
 type AuthMiddleware struct {
 	tokenValidator AccessTokenValidator
-	logger         logger.Logger
+	logger         *slog.Logger
 }
 
 func RegisterAuthMiddleware(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*AuthMiddleware, error) {
 		return &AuthMiddleware{
 			tokenValidator: do.MustInvoke[*token.TokenValidator](i),
-			logger:         do.MustInvoke[logger.Logger](i),
+			logger:         do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
@@ -45,7 +45,7 @@ func (m *AuthMiddleware) HandleBearerAuth(ctx context.Context, _ api.OperationNa
 
 	userID, err := m.tokenValidator.ValidateAccessToken(t.Token)
 	if err != nil {
-		m.logger.Debug("bearer auth failed", logger.Error(err))
+		m.logger.Debug("bearer auth failed", slog.Any("error", err))
 		return ctx, apperrors.ErrInvalidAccessToken
 	}
 

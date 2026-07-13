@@ -2,38 +2,40 @@ package handler
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/samber/do/v2"
 	temporalworker "go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 
-	temporalcfg "github.com/minhnbnt/uptime-monitor/internal/config/temporal"
+	"github.com/minhnbnt/uptime-monitor/internal/config"
 	pingservice "github.com/minhnbnt/uptime-monitor/internal/features/ping/service"
 	pingworkflow "github.com/minhnbnt/uptime-monitor/internal/features/ping/workflow"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
 type TemporalWorkerRunner struct {
 	worker      temporalworker.Worker
 	taskQueue   string
 	pingService *pingservice.PingService
-	logger      logger.Logger
+	logger      *slog.Logger
 }
 
 func RegisterTemporalWorkerRunner(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*TemporalWorkerRunner, error) {
 
-		clientWrapper := do.MustInvoke[*temporalcfg.ClientWrapper](i)
-		temporalCfg := do.MustInvoke[*temporalcfg.Config](i)
+		clientWrapper := do.MustInvoke[*config.TemporalClientWrapper](i)
+		cfg := do.MustInvoke[*config.Config](i)
 		pingService := do.MustInvoke[*pingservice.PingService](i)
-		logger := do.MustInvoke[logger.Logger](i)
+		logger := do.MustInvoke[*slog.Logger](i)
+
+		taskQueue := cfg.Temporal.TaskQueue
 
 		client := clientWrapper.GetClient()
-		worker := temporalworker.New(client, temporalCfg.TaskQueue, temporalworker.Options{})
+		worker := temporalworker.New(client, taskQueue, temporalworker.Options{})
 
 		return &TemporalWorkerRunner{
 			worker:      worker,
-			taskQueue:   temporalCfg.TaskQueue,
+			taskQueue:   taskQueue,
 			pingService: pingService,
 			logger:      logger,
 		}, nil

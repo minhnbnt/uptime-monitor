@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/samber/do/v2"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/dto"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/token"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
 type UserRepository interface {
@@ -32,7 +32,7 @@ type AuthService struct {
 	tokenGenerator         token.TokenGenerator
 	tokenValidator         *token.TokenValidator
 	revokedTokenRepository token.RevokedTokenRepository
-	logger                 logger.Logger
+	logger                 *slog.Logger
 }
 
 func RegisterAuthService(i do.Injector) {
@@ -43,7 +43,7 @@ func RegisterAuthService(i do.Injector) {
 			tokenGenerator:         do.MustInvoke[token.TokenGenerator](i),
 			tokenValidator:         do.MustInvoke[*token.TokenValidator](i),
 			revokedTokenRepository: do.MustInvoke[token.RevokedTokenRepository](i),
-			logger:                 do.MustInvoke[logger.Logger](i),
+			logger:                 do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
@@ -61,7 +61,7 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 
 	hash, err := s.passwordEncoder.Encode(req.Password)
 	if err != nil {
-		s.logger.Error("failed to hash password", logger.Error(err))
+		s.logger.Error("failed to hash password", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
@@ -78,19 +78,19 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 	}
 
 	if err != nil {
-		s.logger.Error("failed to create user", logger.Error(err))
+		s.logger.Error("failed to create user", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
 	accessToken, err := s.tokenGenerator.GenerateAccessToken(&user)
 	if err != nil {
-		s.logger.Error("failed to generate access token", logger.Error(err))
+		s.logger.Error("failed to generate access token", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
 	refreshToken, err := s.tokenGenerator.GenerateRefreshToken(&user)
 	if err != nil {
-		s.logger.Error("failed to generate refresh token", logger.Error(err))
+		s.logger.Error("failed to generate refresh token", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
@@ -109,7 +109,7 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 	}
 
 	if err := s.revokedTokenRepository.Revoke(ctx, token); err != nil {
-		s.logger.Error("failed to revoke token", logger.Error(err))
+		s.logger.Error("failed to revoke token", slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 
@@ -120,7 +120,7 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Aut
 
 	user, err := s.userRepository.FindByEmailOrUsername(ctx, req.Login)
 	if err != nil {
-		s.logger.Error("failed to find user", logger.Error(err))
+		s.logger.Error("failed to find user", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 	if user == nil {
@@ -129,7 +129,7 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Aut
 
 	ok, err := s.passwordEncoder.Verify(req.Password, user.Password)
 	if err != nil {
-		s.logger.Error("failed to verify password", logger.Error(err))
+		s.logger.Error("failed to verify password", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
@@ -139,13 +139,13 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Aut
 
 	accessToken, err := s.tokenGenerator.GenerateAccessToken(user)
 	if err != nil {
-		s.logger.Error("failed to generate access token", logger.Error(err))
+		s.logger.Error("failed to generate access token", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
 	refreshToken, err := s.tokenGenerator.GenerateRefreshToken(user)
 	if err != nil {
-		s.logger.Error("failed to generate refresh token", logger.Error(err))
+		s.logger.Error("failed to generate refresh token", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
@@ -165,7 +165,7 @@ func (s *AuthService) Refresh(ctx context.Context, req dto.RefreshRequest) (*dto
 
 	user, err := s.userRepository.FindByID(ctx, userID)
 	if err != nil {
-		s.logger.Error("failed to find user", logger.Error(err))
+		s.logger.Error("failed to find user", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 	if user == nil {
@@ -174,13 +174,13 @@ func (s *AuthService) Refresh(ctx context.Context, req dto.RefreshRequest) (*dto
 
 	accessToken, err := s.tokenGenerator.GenerateAccessToken(user)
 	if err != nil {
-		s.logger.Error("failed to generate access token", logger.Error(err))
+		s.logger.Error("failed to generate access token", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
 	refreshToken, err := s.tokenGenerator.GenerateRefreshToken(user)
 	if err != nil {
-		s.logger.Error("failed to generate refresh token", logger.Error(err))
+		s.logger.Error("failed to generate refresh token", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 

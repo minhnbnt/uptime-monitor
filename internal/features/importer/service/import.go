@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"slices"
 	"time"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/infrastructure"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 	featservice "github.com/minhnbnt/uptime-monitor/internal/features/server/service"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
 type ImportService struct {
@@ -25,7 +25,7 @@ type ImportService struct {
 	endpointRepository featservice.EndpointRepository
 	excelExporter      *infrastructure.ExcelExporter
 	excelParser        ExcelParser
-	logger             logger.Logger
+	logger             *slog.Logger
 }
 
 func RegisterImportService(i do.Injector) {
@@ -35,7 +35,7 @@ func RegisterImportService(i do.Injector) {
 			endpointRepository: do.MustInvoke[*serverrepo.EndpointRepository](i),
 			excelExporter:      do.MustInvoke[*infrastructure.ExcelExporter](i),
 			excelParser:        do.MustInvoke[*infrastructure.ExcelParser](i),
-			logger:             do.MustInvoke[logger.Logger](i),
+			logger:             do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
@@ -87,7 +87,7 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 
 	rows, rowErrors, err := s.excelParser.ParseImportFile(file)
 	if err != nil {
-		s.logger.Error("failed to parse import file", logger.Error(err))
+		s.logger.Error("failed to parse import file", slog.Any("error", err))
 		return nil, fmt.Errorf("%w: %s", apperrors.ErrBadRequest, err.Error())
 	}
 
@@ -105,7 +105,7 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 		servers := buildServers(chunks, userID)
 
 		if err := s.serverRepository.BatchCreateServers(ctx, servers); err != nil {
-			s.logger.Error("failed to create servers", logger.Error(err))
+			s.logger.Error("failed to create servers", slog.Any("error", err))
 			batchErrors = append(batchErrors, dto.ImportError{Message: "failed to create servers"})
 			continue
 		}
@@ -118,7 +118,7 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 		}
 
 		if err := s.endpointRepository.BatchCreateEndpoints(ctx, endpoints); err != nil {
-			s.logger.Error("failed to create endpoints", logger.Error(err))
+			s.logger.Error("failed to create endpoints", slog.Any("error", err))
 			batchErrors = append(batchErrors, dto.ImportError{Message: "failed to create endpoints"})
 		}
 	}
@@ -133,7 +133,7 @@ func (s *ImportService) GenerateTemplate() (io.ReadCloser, error) {
 	reader, err := s.excelExporter.GenerateTemplate()
 
 	if err != nil {
-		s.logger.Error("failed to generate template", logger.Error(err))
+		s.logger.Error("failed to generate template", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 

@@ -8,7 +8,7 @@ import (
 	temporalclient "go.temporal.io/sdk/client"
 	"golang.org/x/sync/errgroup"
 
-	temporalcfg "github.com/minhnbnt/uptime-monitor/internal/config/temporal"
+	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
@@ -29,9 +29,11 @@ type TemporalSchedulerRepository struct {
 func RegisterTemporalSchedulerRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*TemporalSchedulerRepository, error) {
 
-		clientWrapper := do.MustInvoke[*temporalcfg.ClientWrapper](i)
-		temporalCfg := do.MustInvoke[*temporalcfg.Config](i)
+		clientWrapper := do.MustInvoke[*config.TemporalClientWrapper](i)
+		config := do.MustInvoke[*config.Config](i)
 		schedulerClient := clientWrapper.GetClient().ScheduleClient()
+
+		temporalCfg := config.Temporal
 
 		return &TemporalSchedulerRepository{
 			client:    schedulerClient,

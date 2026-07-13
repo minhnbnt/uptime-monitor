@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
@@ -11,14 +12,13 @@ import (
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
 type ServerService struct {
 	serverRepository   ServerRepository
 	searchRepository   ServerSearchRepository
 	endpointRepository EndpointRepository
-	logger             logger.Logger
+	logger             *slog.Logger
 }
 
 func RegisterServerService(i do.Injector) {
@@ -28,7 +28,7 @@ func RegisterServerService(i do.Injector) {
 			serverRepository:   do.MustInvoke[*serverrepo.ServerRepository](i),
 			searchRepository:   do.MustInvoke[*serverrepo.ParadeDBSearcher](i),
 			endpointRepository: do.MustInvoke[*serverrepo.EndpointRepository](i),
-			logger:             do.MustInvoke[logger.Logger](i),
+			logger:             do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
@@ -38,13 +38,13 @@ func (ss *ServerService) ListServers(ctx context.Context, createdByID uint, page
 	limit, offset := perPage, (page-1)*perPage
 	result, err := ss.serverRepository.List(ctx, createdByID, limit, offset)
 	if err != nil {
-		ss.logger.Error("failed to get servers", logger.Error(err))
+		ss.logger.Error("failed to get servers", slog.Any("error", err))
 		return nil, 0, apperrors.ErrInternal
 	}
 
 	total, err := ss.serverRepository.Count(ctx, createdByID)
 	if err != nil {
-		ss.logger.Error("failed to count servers", logger.Error(err))
+		ss.logger.Error("failed to count servers", slog.Any("error", err))
 		return nil, 0, apperrors.ErrInternal
 	}
 
@@ -61,7 +61,7 @@ func (ss *ServerService) CreateServer(ctx context.Context, req dto.CreateServerR
 	}
 
 	if err := ss.serverRepository.Create(ctx, &server); err != nil {
-		ss.logger.Error("failed to create server", logger.Error(err))
+		ss.logger.Error("failed to create server", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
@@ -76,7 +76,7 @@ func (ss *ServerService) GetServer(ctx context.Context, id uint) (*dto.Server, e
 		return nil, apperrors.ErrNotFound
 	}
 	if err != nil {
-		ss.logger.Error("failed to get server", logger.Error(err))
+		ss.logger.Error("failed to get server", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
@@ -91,7 +91,7 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uint, userID uint,
 		return nil, apperrors.ErrNotFound
 	}
 	if err != nil {
-		ss.logger.Error("failed to get server for update", logger.Error(err))
+		ss.logger.Error("failed to get server for update", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
@@ -108,7 +108,7 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uint, userID uint,
 		return nil, apperrors.ErrNotFound
 	}
 	if updateErr != nil {
-		ss.logger.Error("failed to update server", logger.Error(updateErr))
+		ss.logger.Error("failed to update server", slog.Any("error", updateErr))
 		return nil, apperrors.ErrInternal
 	}
 
@@ -123,7 +123,7 @@ func (ss *ServerService) DeleteServer(ctx context.Context, id uint, userID uint)
 		return apperrors.ErrNotFound
 	}
 	if err != nil {
-		ss.logger.Error("failed to get server", logger.Error(err))
+		ss.logger.Error("failed to get server", slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 
@@ -136,12 +136,12 @@ func (ss *ServerService) DeleteServer(ctx context.Context, id uint, userID uint)
 		return apperrors.ErrNotFound
 	}
 	if err != nil {
-		ss.logger.Error("failed to delete server", logger.Error(err))
+		ss.logger.Error("failed to delete server", slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 
 	if err := ss.endpointRepository.DeleteByServerID(ctx, id); err != nil {
-		ss.logger.Error("failed to clean up endpoint resources", logger.Error(err))
+		ss.logger.Error("failed to clean up endpoint resources", slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 
@@ -154,7 +154,7 @@ func (ss *ServerService) SearchServers(
 
 	servers, total, err := ss.searchRepository.Search(ctx, params, createdByID)
 	if err != nil {
-		ss.logger.Error("failed to search servers", logger.Error(err))
+		ss.logger.Error("failed to search servers", slog.Any("error", err))
 		return nil, 0, apperrors.ErrInternal
 	}
 

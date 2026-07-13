@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -11,7 +12,6 @@ import (
 	temporal "github.com/minhnbnt/uptime-monitor/internal/features/digest/infrastructure"
 	notificationrepo "github.com/minhnbnt/uptime-monitor/internal/features/digest/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/features/notification/dto"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
 const dateLayout = "2006-01-02"
@@ -19,7 +19,7 @@ const dateLayout = "2006-01-02"
 type NotificationService struct {
 	configRepo    NotificationConfigRepository
 	digestStarter DigestStarter
-	logger        logger.Logger
+	logger        *slog.Logger
 }
 
 func RegisterNotificationService(i do.Injector) {
@@ -27,7 +27,7 @@ func RegisterNotificationService(i do.Injector) {
 		return &NotificationService{
 			configRepo:    do.MustInvoke[*notificationrepo.NotificationConfigRepository](i),
 			digestStarter: do.MustInvoke[*temporal.DigestStarter](i),
-			logger:        do.MustInvoke[logger.Logger](i),
+			logger:        do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
@@ -35,7 +35,7 @@ func RegisterNotificationService(i do.Injector) {
 func (s *NotificationService) GetNotificationConfig(ctx context.Context, userID uint) (*dto.NotificationConfigResponse, error) {
 	cfg, err := s.configRepo.GetByUserID(ctx, userID)
 	if err != nil {
-		s.logger.Error("failed to get notification config", logger.Error(err))
+		s.logger.Error("failed to get notification config", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
@@ -77,18 +77,18 @@ func (s *NotificationService) UpdateNotificationConfig(ctx context.Context, user
 	}
 
 	if err := s.configRepo.Upsert(ctx, cfg); err != nil {
-		s.logger.Error("failed to update notification config", logger.Error(err))
+		s.logger.Error("failed to update notification config", slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 
 	if cfg.Active {
 		if err := s.digestStarter.UpsertSchedule(ctx, userID, cfg.FromDate, cfg.ToDate, cfg.DigestTime); err != nil {
-			s.logger.Error("failed to upsert digest schedule", logger.Error(err))
+			s.logger.Error("failed to upsert digest schedule", slog.Any("error", err))
 			return apperrors.ErrInternal
 		}
 	} else {
 		if err := s.digestStarter.DeleteSchedule(ctx, userID); err != nil {
-			s.logger.Error("failed to delete digest schedule", logger.Error(err))
+			s.logger.Error("failed to delete digest schedule", slog.Any("error", err))
 		}
 	}
 
@@ -103,7 +103,7 @@ var (
 func (s *NotificationService) SendReport(ctx context.Context, userID uint) error {
 
 	if err := s.digestStarter.StartDigest(ctx, userID); err != nil {
-		s.logger.Error("failed to start digest workflow", logger.Error(err))
+		s.logger.Error("failed to start digest workflow", slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 

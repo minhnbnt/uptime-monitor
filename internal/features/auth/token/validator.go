@@ -2,6 +2,7 @@ package token
 
 import (
 	"context"
+	"log/slog"
 	"strconv"
 
 	"github.com/samber/do/v2"
@@ -10,14 +11,13 @@ import (
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/jwt"
 	"github.com/minhnbnt/uptime-monitor/internal/features/auth/repository"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
 type TokenValidator struct {
 	provider         *jwt.Provider
 	tokenConfig      *config.TokenConfig
 	revokedTokenRepo RevokedTokenRepository
-	logger           logger.Logger
+	logger           *slog.Logger
 }
 
 func RegisterTokenValidator(i do.Injector) {
@@ -26,7 +26,7 @@ func RegisterTokenValidator(i do.Injector) {
 			do.MustInvoke[*jwt.Provider](i),
 			do.MustInvoke[*config.TokenConfig](i),
 			do.MustInvoke[*repository.RedisRevokedTokenRepository](i),
-			do.MustInvoke[logger.Logger](i),
+			do.MustInvoke[*slog.Logger](i),
 		), nil
 	})
 }
@@ -35,7 +35,7 @@ func NewTokenValidator(
 	provider *jwt.Provider,
 	tokenConfig *config.TokenConfig,
 	revokedTokenRepo RevokedTokenRepository,
-	logger logger.Logger,
+	logger *slog.Logger,
 ) *TokenValidator {
 	return &TokenValidator{
 		logger:           logger,
@@ -50,19 +50,19 @@ func (tv *TokenValidator) ValidateAccessToken(tokenStr string) (uint, error) {
 	expectedIssuer := tv.tokenConfig.GetAccessTokenIssuer()
 	token, err := tv.provider.ParseWithIssuer(tokenStr, expectedIssuer)
 	if err != nil {
-		tv.logger.Debug("invalid access token", logger.Error(err))
+		tv.logger.Debug("invalid access token", slog.Any("error", err))
 		return 0, apperrors.ErrInvalidAccessToken
 	}
 
 	sub, err := token.Subject()
 	if err != nil {
-		tv.logger.Debug("invalid access token subject", logger.Error(err))
+		tv.logger.Debug("invalid access token subject", slog.Any("error", err))
 		return 0, apperrors.ErrInvalidAccessToken
 	}
 
 	userID, err := strconv.ParseUint(sub, 10, 64)
 	if err != nil {
-		tv.logger.Debug("invalid access token subject format", logger.Error(err))
+		tv.logger.Debug("invalid access token subject format", slog.Any("error", err))
 		return 0, apperrors.ErrInvalidAccessToken
 	}
 
@@ -74,19 +74,19 @@ func (tv *TokenValidator) ValidateRefreshToken(ctx context.Context, tokenStr str
 	expectedIssuer := tv.tokenConfig.GetRefreshTokenIssuer()
 	token, err := tv.provider.ParseWithIssuer(tokenStr, expectedIssuer)
 	if err != nil {
-		tv.logger.Debug("invalid refresh token", logger.Error(err))
+		tv.logger.Debug("invalid refresh token", slog.Any("error", err))
 		return 0, "", apperrors.ErrInvalidRefreshToken
 	}
 
 	jti, err := token.JTI()
 	if err != nil {
-		tv.logger.Debug("invalid refresh token jti", logger.Error(err))
+		tv.logger.Debug("invalid refresh token jti", slog.Any("error", err))
 		return 0, "", apperrors.ErrInvalidRefreshToken
 	}
 
 	revoked, err := tv.revokedTokenRepo.IsRevoked(ctx, jti)
 	if err != nil {
-		tv.logger.Debug("failed to check revoked token", logger.Error(err))
+		tv.logger.Debug("failed to check revoked token", slog.Any("error", err))
 		return 0, "", apperrors.ErrInvalidRefreshToken
 	}
 	if revoked {
@@ -95,13 +95,13 @@ func (tv *TokenValidator) ValidateRefreshToken(ctx context.Context, tokenStr str
 
 	sub, err := token.Subject()
 	if err != nil {
-		tv.logger.Debug("invalid refresh token subject", logger.Error(err))
+		tv.logger.Debug("invalid refresh token subject", slog.Any("error", err))
 		return 0, "", apperrors.ErrInvalidRefreshToken
 	}
 
 	userID, err := strconv.ParseUint(sub, 10, 64)
 	if err != nil {
-		tv.logger.Debug("invalid refresh token subject format", logger.Error(err))
+		tv.logger.Debug("invalid refresh token subject format", slog.Any("error", err))
 		return 0, "", apperrors.ErrInvalidRefreshToken
 	}
 

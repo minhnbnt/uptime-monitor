@@ -2,15 +2,15 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
+	sloggorm "github.com/orandin/slog-gorm"
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
-	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"moul.io/zapgorm2"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 )
@@ -38,9 +38,12 @@ func newPostgresDriver(cfg *Config) (gorm.Dialector, error) {
 func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 
 	dialector := do.MustInvoke[gorm.Dialector](i)
-	logger := do.MustInvoke[*zap.Logger](i)
+	log := do.MustInvoke[*slog.Logger](i)
 
-	gormLogger := zapgorm2.New(logger)
+	gormLogger := sloggorm.New(
+		sloggorm.WithHandler(log.Handler()),
+		sloggorm.WithTraceAll(),
+	)
 
 	var db *gorm.DB
 	var err error
@@ -55,10 +58,10 @@ func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 			break
 		}
 
-		logger.Warn(
+		log.Warn(
 			"gorm open failed, retrying",
-			zap.Int("attempt", attempt+1),
-			zap.Error(err),
+			slog.Int("attempt", attempt+1),
+			slog.Any("error", err),
 		)
 
 		time.Sleep(time.Second)
@@ -83,7 +86,7 @@ func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 
 	searchEnabled := true
 	if err := EnablePGSearch(db); err != nil {
-		logger.Warn("failed to enable pg_search, ParadeDB search disabled", zap.Error(err))
+		log.Warn("failed to enable pg_search, ParadeDB search disabled", slog.Any("error", err))
 		searchEnabled = false
 	}
 

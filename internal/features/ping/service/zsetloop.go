@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"iter"
+	"log/slog"
 	"maps"
 	"time"
 
@@ -11,7 +12,6 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	scheduler "github.com/minhnbnt/uptime-monitor/internal/features/ping/scheduler"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
 const (
@@ -30,7 +30,7 @@ type scoreUpdater interface {
 }
 
 type LoopService struct {
-	logger           logger.Logger
+	logger           *slog.Logger
 	schedulerStorage *scheduler.ZSetScheduleRepository
 	scoreUpdater     scoreUpdater
 	endpointProvider endpointProvider
@@ -39,7 +39,7 @@ type LoopService struct {
 func RegisterLoopService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*LoopService, error) {
 		return &LoopService{
-			logger:           do.MustInvoke[logger.Logger](i),
+			logger:           do.MustInvoke[*slog.Logger](i),
 			schedulerStorage: do.MustInvoke[*scheduler.ZSetScheduleRepository](i),
 			scoreUpdater:     do.MustInvoke[*scheduler.ScoreUpdater](i),
 			endpointProvider: do.MustInvoke[*scheduler.EndpointProvider](i),
@@ -106,7 +106,7 @@ func (s *LoopService) runIteration(ctx context.Context, due []scheduler.Schedule
 		if !ok {
 			s.logger.Warn(
 				"endpoint not found in batch, skipping reschedule",
-				logger.Int("endpoint_id", int(task.EndpointID)),
+				slog.Int("endpoint_id", int(task.EndpointID)),
 			)
 			continue
 		}
@@ -127,14 +127,14 @@ func (s *LoopService) Run(ctx context.Context, dueHandler DueHandler) {
 
 		due, next, hasNext, err := s.schedulerStorage.ClaimDueTasks(ctx, defaultClaimLimit)
 		if err != nil {
-			s.logger.Error("failed to claim due tasks", logger.Error(err))
+			s.logger.Error("failed to claim due tasks", slog.Any("error", err))
 			sleepCtx(ctx, defaultSleepDuration)
 			continue
 		}
 
 		err = s.runIteration(ctx, due, dueHandler)
 		if err != nil {
-			s.logger.Error("failed to run iteration", logger.Error(err))
+			s.logger.Error("failed to run iteration", slog.Any("error", err))
 			sleepCtx(ctx, defaultSleepDuration)
 			continue
 		}

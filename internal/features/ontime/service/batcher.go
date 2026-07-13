@@ -2,6 +2,7 @@ package ontime
 
 import (
 	"context"
+	"log/slog"
 	"maps"
 	"slices"
 	"time"
@@ -12,11 +13,10 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
-func NewBatcher(repo OntineRepository, cache *ontimerepo.OntimeCacheRepository, l logger.Logger) *Batcher {
+func NewBatcher(repo OntineRepository, cache *ontimerepo.OntimeCacheRepository, l *slog.Logger) *Batcher {
 	var cacheInterface OntimeCacheRepository
 	if cache != nil {
 		cacheInterface = cache
@@ -34,7 +34,7 @@ func RegisterBatcher(i do.Injector) {
 		return NewBatcher(
 			do.MustInvoke[*ontimerepo.OntineRepository](i),
 			do.MustInvoke[*ontimerepo.OntimeCacheRepository](i),
-			do.MustInvoke[logger.Logger](i),
+			do.MustInvoke[*slog.Logger](i),
 		), nil
 	})
 }
@@ -46,7 +46,7 @@ type OntineRepository interface {
 type Batcher struct {
 	ontineRepository      OntineRepository
 	ontimeCacheRepository OntimeCacheRepository
-	logger                logger.Logger
+	logger                *slog.Logger
 	calculator            OntimeCalculator
 }
 
@@ -69,7 +69,7 @@ func (b *Batcher) BatchGetOntimeUntil(ctx context.Context, req []dto.BatchGetOnt
 
 	if b.ontimeCacheRepository != nil {
 		if err := b.ontimeCacheRepository.MSet(ctx, toCache); err != nil {
-			b.logger.Warn("failed to batch cache ontime results", logger.Error(err))
+			b.logger.Warn("failed to batch cache ontime results", slog.Any("error", err))
 		}
 	}
 
@@ -103,7 +103,7 @@ func (b *Batcher) resolveCache(ctx context.Context, keys []dto.BatchGetOntimeIte
 	cached, err := b.ontimeCacheRepository.MGet(ctx, keys)
 
 	if err != nil {
-		b.logger.Warn("ontime cache MGet failed, falling back to DB", logger.Error(err))
+		b.logger.Warn("ontime cache MGet failed, falling back to DB", slog.Any("error", err))
 		return make(map[dto.BatchGetOntimeItem]float64, len(keys))
 	}
 
@@ -118,7 +118,7 @@ func (b *Batcher) fillMisses(ctx context.Context, missedKeys []dto.BatchGetOntim
 
 	rows, err := b.ontineRepository.BatchGetOntime(ctx, requests)
 	if err != nil {
-		b.logger.Warn("failed to get missed ontime keys", logger.Error(err))
+		b.logger.Warn("failed to get missed ontime keys", slog.Any("error", err))
 		return make(map[dto.BatchGetOntimeItem]float64)
 	}
 

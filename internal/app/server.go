@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/rs/cors"
@@ -12,17 +13,16 @@ import (
 	apidocs "github.com/minhnbnt/uptime-monitor/api"
 	"github.com/minhnbnt/uptime-monitor/generated/api"
 	authmiddleware "github.com/minhnbnt/uptime-monitor/internal/features/auth/middleware"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
 )
 
 func RunWebServer(ctx context.Context, i do.Injector, dev bool) {
 
-	log := do.MustInvoke[logger.Logger](i)
+	log := do.MustInvoke[*slog.Logger](i)
 
 	errorHandler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
 
-		log.Error("request validation failed", logger.Error(err))
+		log.Error("request validation failed", slog.Any("error", err))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
@@ -46,7 +46,8 @@ func RunWebServer(ctx context.Context, i do.Injector, dev bool) {
 	)
 
 	if err != nil {
-		log.Panic("failed to create server", logger.Error(err))
+		log.Error("failed to create server", slog.Any("error", err))
+		panic(err)
 	}
 
 	corsMiddleware := cors.New(cors.Options{
@@ -61,7 +62,8 @@ func RunWebServer(ctx context.Context, i do.Injector, dev bool) {
 
 		docsHandler, err := apidocs.GetHandler("Uptime Monitor API")
 		if err != nil {
-			log.Panic("failed to get API docs", logger.Error(err))
+			log.Error("failed to get API docs", slog.Any("error", err))
+			panic(err)
 		}
 
 		mux := http.NewServeMux()
@@ -78,7 +80,8 @@ func RunWebServer(ctx context.Context, i do.Injector, dev bool) {
 	go func() {
 		<-ctx.Done()
 		if err := httpServer.Close(); err != nil {
-			log.Panic("failed to shutdown server", logger.Error(err))
+			log.Error("failed to shutdown server", slog.Any("error", err))
+			panic(err)
 		}
 	}()
 
@@ -89,6 +92,7 @@ func RunWebServer(ctx context.Context, i do.Injector, dev bool) {
 	}
 
 	if err != nil {
-		log.Panic("failed to run server", logger.Error(err))
+		log.Error("failed to run server", slog.Any("error", err))
+		panic(err)
 	}
 }

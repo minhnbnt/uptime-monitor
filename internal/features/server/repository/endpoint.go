@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/samber/do/v2"
 	"gorm.io/gorm"
@@ -14,7 +15,6 @@ import (
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/features/ping/scheduler"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
 type endpointMetaCache interface {
@@ -50,7 +50,7 @@ func NewEndpointRepositoryWithDeps(
 func getSchedulerRepository(i do.Injector) scheduler.SchedulerRepository {
 
 	cfg := do.MustInvoke[*config.Config](i)
-	log := do.MustInvoke[logger.Logger](i)
+	log := do.MustInvoke[*slog.Logger](i)
 
 	backend := cfg.Scheduler.Backend
 
@@ -62,13 +62,12 @@ func getSchedulerRepository(i do.Injector) scheduler.SchedulerRepository {
 		return do.MustInvoke[*scheduler.ZSetScheduleRepository](i)
 
 	default:
-		log.Panic(
+		log.Error(
 			"unsupported scheduler backend",
-			logger.String("backend", backend),
+			slog.String("backend", backend),
 		)
+		panic("unsupported scheduler backend")
 	}
-
-	return nil
 }
 
 func RegisterEndpointRepository(i do.Injector) {

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/samber/do/v2"
 
@@ -11,7 +12,6 @@ import (
 	infra "github.com/minhnbnt/uptime-monitor/internal/features/ping/infrastructure"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
 type Pinger interface {
@@ -22,7 +22,7 @@ type EndpointService struct {
 	serverRepository   ServerRepository
 	endpointRepository EndpointRepository
 	pingWorker         Pinger
-	logger             logger.Logger
+	logger             *slog.Logger
 }
 
 func RegisterEndpointService(i do.Injector) {
@@ -31,7 +31,7 @@ func RegisterEndpointService(i do.Injector) {
 			serverRepository:   do.MustInvoke[*serverrepo.ServerRepository](i),
 			endpointRepository: do.MustInvoke[*serverrepo.EndpointRepository](i),
 			pingWorker:         do.MustInvoke[*infra.PingWorker](i),
-			logger:             do.MustInvoke[logger.Logger](i),
+			logger:             do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
@@ -55,7 +55,7 @@ func (es *EndpointService) SetCheckMethod(ctx context.Context, serverID uint, us
 		return apperrors.ErrNotFound
 	}
 	if err != nil {
-		es.logger.Error("failed to get server for set check method", logger.Error(err))
+		es.logger.Error("failed to get server for set check method", slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 
@@ -66,7 +66,7 @@ func (es *EndpointService) SetCheckMethod(ctx context.Context, serverID uint, us
 	endpoint := toDomainEndpoint(serverID, req)
 
 	if err := es.endpointRepository.UpsertEndpoint(ctx, endpoint); err != nil {
-		es.logger.Error("failed to upsert endpoint", logger.Error(err))
+		es.logger.Error("failed to upsert endpoint", slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 

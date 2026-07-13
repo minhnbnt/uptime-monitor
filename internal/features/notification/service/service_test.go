@@ -64,13 +64,13 @@ func TestNotificationService_GetNotificationConfig(t *testing.T) {
 				return nil, errors.New("db error")
 			},
 		}
-		mockLog := logger.NewMockLogger()
-		s := &NotificationService{configRepo: mockRepo, logger: mockLog}
+		log, capLog := logger.NewCapturingLogger()
+		s := &NotificationService{configRepo: mockRepo, logger: log}
 		_, err := s.GetNotificationConfig(t.Context(), 1)
 		if !errors.Is(err, apperrors.ErrInternal) {
 			t.Errorf("got %v, want %v", err, apperrors.ErrInternal)
 		}
-		if !mockLog.ErrorCalled {
+		if !capLog.HasError() {
 			t.Error("expected Error log")
 		}
 	})
@@ -171,14 +171,14 @@ func TestNotificationService_UpdateNotificationConfig(t *testing.T) {
 				return errors.New("db error")
 			},
 		}
-		mockLog := logger.NewMockLogger()
-		s := &NotificationService{configRepo: mockRepo, logger: mockLog}
+		log, capLog := logger.NewCapturingLogger()
+		s := &NotificationService{configRepo: mockRepo, logger: log}
 		req := &dto.NotificationConfigRequest{DigestTime: "08:00"}
 		err := s.UpdateNotificationConfig(t.Context(), 1, req)
 		if !errors.Is(err, apperrors.ErrInternal) {
 			t.Errorf("got %v, want %v", err, apperrors.ErrInternal)
 		}
-		if !mockLog.ErrorCalled {
+		if !capLog.HasError() {
 			t.Error("expected Error log")
 		}
 	})
@@ -194,8 +194,8 @@ func TestNotificationService_UpdateNotificationConfig(t *testing.T) {
 				return errors.New("temporal error")
 			},
 		}
-		mockLog := logger.NewMockLogger()
-		s := &NotificationService{configRepo: mockRepo, digestStarter: mockDigest, logger: mockLog}
+		log, capLog := logger.NewCapturingLogger()
+		s := &NotificationService{configRepo: mockRepo, digestStarter: mockDigest, logger: log}
 		req := &dto.NotificationConfigRequest{
 			FromDate:   "2026-06-01",
 			ToDate:     "2026-06-30",
@@ -205,7 +205,7 @@ func TestNotificationService_UpdateNotificationConfig(t *testing.T) {
 		if !errors.Is(err, apperrors.ErrInternal) {
 			t.Errorf("got %v, want %v", err, apperrors.ErrInternal)
 		}
-		if !mockLog.ErrorCalled {
+		if !capLog.HasError() {
 			t.Error("expected Error log")
 		}
 	})
@@ -238,13 +238,13 @@ func TestNotificationService_SendReport(t *testing.T) {
 				return errors.New("temporal error")
 			},
 		}
-		mockLog := logger.NewMockLogger()
-		s := &NotificationService{digestStarter: mockDigest, logger: mockLog}
+		log, capLog := logger.NewCapturingLogger()
+		s := &NotificationService{digestStarter: mockDigest, logger: log}
 		err := s.SendReport(t.Context(), 1)
 		if !errors.Is(err, apperrors.ErrInternal) {
 			t.Errorf("got %v, want %v", err, apperrors.ErrInternal)
 		}
-		if !mockLog.ErrorCalled {
+		if !capLog.HasError() {
 			t.Error("expected Error log")
 		}
 	})

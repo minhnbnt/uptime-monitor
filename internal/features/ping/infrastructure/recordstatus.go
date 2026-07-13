@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -9,14 +10,13 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
 )
 
 type RecordStatusWorker struct {
 	statusStore           StatusStore
 	eventSaver            EventSaver
 	endpointStatusUpdater EndpointStatusUpdater
-	logger                logger.Logger
+	logger                *slog.Logger
 }
 
 func RegisterRecordStatusWorker(i do.Injector) {
@@ -25,7 +25,7 @@ func RegisterRecordStatusWorker(i do.Injector) {
 			statusStore:           do.MustInvoke[*monitorrepo.RedisServerEventRepository](i),
 			eventSaver:            do.MustInvoke[*monitorrepo.ServerEventRepository](i),
 			endpointStatusUpdater: do.MustInvoke[*serverrepo.EndpointRepository](i),
-			logger:                do.MustInvoke[logger.Logger](i),
+			logger:                do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
@@ -37,8 +37,8 @@ func (w *RecordStatusWorker) handleOnCacheMiss(ctx context.Context, event *domai
 
 		w.logger.Warn(
 			"failed to get latest status from db",
-			logger.Int64("endpointID", int64(event.EndpointID)),
-			logger.Error(err),
+			slog.Int64("endpointID", int64(event.EndpointID)),
+			slog.Any("error", err),
 		)
 
 		// Unsure — proceed to save; ontime calculator handles duplicates
@@ -61,8 +61,8 @@ func (w *RecordStatusWorker) Record(ctx context.Context, event *domain.ServerEve
 	if err != nil {
 		w.logger.Warn(
 			"failed to get status from redis",
-			logger.Int64("endpointID", int64(event.EndpointID)),
-			logger.Error(err),
+			slog.Int64("endpointID", int64(event.EndpointID)),
+			slog.Any("error", err),
 		)
 		return nil
 	}

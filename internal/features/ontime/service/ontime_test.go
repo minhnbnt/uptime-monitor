@@ -184,7 +184,7 @@ func TestResolveCache(t *testing.T) {
 		keys := []dto.BatchGetOntimeItem{
 			{ServerID: 1, Date: d1},
 		}
-		log := logger.NewMockLogger()
+		log, capLog := logger.NewCapturingLogger()
 
 		b := &Batcher{
 			ontimeCacheRepository: &mockOntimeCacheRepo{
@@ -200,7 +200,7 @@ func TestResolveCache(t *testing.T) {
 		if len(got) != 0 {
 			t.Errorf("len = %d, want 0", len(got))
 		}
-		if !log.WarnCalled {
+		if !capLog.HasWarn() {
 			t.Error("expected Warn to be called")
 		}
 	})
@@ -317,7 +317,7 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 
 	t.Run("DB error logs warning", func(t *testing.T) {
 		req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: d1}}
-		log := logger.NewMockLogger()
+		log, capLog := logger.NewCapturingLogger()
 
 		b := &Batcher{
 			ontineRepository: &mockOntineRepo{
@@ -333,14 +333,14 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if !log.WarnCalled {
+		if !capLog.HasWarn() {
 			t.Error("expected Warn to be called on DB error")
 		}
 	})
 
 	t.Run("MSet error logs warning", func(t *testing.T) {
 		req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: d1}}
-		log := logger.NewMockLogger()
+		log, capLog := logger.NewCapturingLogger()
 
 		b := &Batcher{
 			ontineRepository: &mockOntineRepo{
@@ -362,7 +362,7 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if !log.WarnCalled {
+		if !capLog.HasWarn() {
 			t.Error("expected Warn to be called on MSet error")
 		}
 		if len(got) != 1 || len(got[0].Result) != 1 {

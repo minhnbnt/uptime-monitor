@@ -3,6 +3,7 @@ package ontime
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"slices"
 	"time"
 
@@ -16,17 +17,16 @@ import (
 	serverdto "github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/service"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
 	"github.com/minhnbnt/uptime-monitor/internal/utils"
 )
 
 type OntimeService struct {
 	serverRepository service.ServerRepository
 	batcher          *Batcher
-	logger           logger.Logger
+	logger           *slog.Logger
 }
 
-func NewOntimeService(sr service.ServerRepository, b *Batcher, l logger.Logger) *OntimeService {
+func NewOntimeService(sr service.ServerRepository, b *Batcher, l *slog.Logger) *OntimeService {
 	return &OntimeService{
 		serverRepository: sr,
 		batcher:          b,
@@ -39,7 +39,7 @@ func RegisterOntimeService(i do.Injector) {
 		return NewOntimeService(
 			do.MustInvoke[*serverrepo.ServerRepository](i),
 			do.MustInvoke[*Batcher](i),
-			do.MustInvoke[logger.Logger](i),
+			do.MustInvoke[*slog.Logger](i),
 		), nil
 	})
 }
@@ -53,13 +53,13 @@ func (s *OntimeService) ListServersWithOntime(ctx context.Context, createdByID u
 
 	servers, err := s.serverRepository.List(ctx, createdByID, perPage, (page-1)*perPage)
 	if err != nil {
-		s.logger.Error("failed to list servers", logger.Error(err))
+		s.logger.Error("failed to list servers", slog.Any("error", err))
 		return nil, 0, 0, 0, apperrors.ErrInternal
 	}
 
 	total, online, offline, err := s.serverRepository.CountByStatus(ctx, createdByID)
 	if err != nil {
-		s.logger.Error("failed to count server status", logger.Error(err))
+		s.logger.Error("failed to count server status", slog.Any("error", err))
 		return nil, 0, 0, 0, apperrors.ErrInternal
 	}
 
@@ -85,7 +85,7 @@ func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID uint, 
 		return nil, apperrors.ErrNotFound
 	}
 	if err != nil {
-		s.logger.Error("failed to get server", logger.Error(err))
+		s.logger.Error("failed to get server", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
@@ -137,7 +137,7 @@ func (s *OntimeService) GetServersOntimeForDates(ctx context.Context, servers []
 
 	results, err := s.batcher.BatchGetOntime(ctx, items)
 	if err != nil {
-		s.logger.Error("failed to batch get ontime", logger.Error(err))
+		s.logger.Error("failed to batch get ontime", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
