@@ -23,6 +23,7 @@ services:
 
     environment:
       DB_HOST: pgbouncer
+      DB_PORT: "6432"
       DB_USER: auth
       DB_PASSWORD: auth
       DB_NAME: auth
