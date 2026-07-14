@@ -3,13 +3,13 @@ package app
 import (
 	"github.com/samber/do/v2"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/argon2"
+	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/argon2"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/handler"
-	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/jwt"
-	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/repository"
+	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/jwt"
+	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/service"
-	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/token"
+	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/token"
 )
 
 func RegisterPackages(injector do.Injector, configPath string, dev bool) {

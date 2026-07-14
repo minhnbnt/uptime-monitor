@@ -3,12 +3,12 @@ package app
 import (
 	"github.com/samber/do/v2"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/authclient"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/authclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/config"
-	ontimehandler "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/features/ontime/handler"
-	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/features/ontime/repository"
-	ontime "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/features/ontime/service"
-	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/serverclient"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/handler"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/service"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/serverclient"
 )
 
 func RegisterPackages(injector do.Injector, configPath string, dev bool) {
@@ -24,13 +24,13 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 
 		serverclient.RegisterClient,
 
-		ontimerepo.RegisterOntineRepository,
-		ontimerepo.RegisterOntimeCacheRepository,
-		ontime.RegisterBatcher,
-		ontime.RegisterOntimeService,
+		repository.RegisterOntineRepository,
+		repository.RegisterOntimeCacheRepository,
+		service.RegisterBatcher,
+		service.RegisterOntimeService,
 
 		authclient.RegisterAuthMiddleware,
-		ontimehandler.RegisterOntimeHandler,
+		handler.RegisterOntimeHandler,
 	}
 
 	for _, p := range packages {

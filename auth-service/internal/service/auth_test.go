@@ -12,9 +12,9 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/dto"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/errors"
-	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/jwt"
+	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/jwt"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/logger"
-	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/token"
+	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/token"
 )
 
 func testConfig() *config.Config {

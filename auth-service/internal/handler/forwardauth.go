@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/token"
+	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/token"
 	"github.com/samber/do/v2"
 )
 

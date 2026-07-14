@@ -9,16 +9,16 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/generated/api"
-	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/authclient"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/authclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/config"
-	ontimehandler "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/features/ontime/handler"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/handler"
 )
 
 func RunWebServer(ctx context.Context, injector do.Injector) {
 
-	handler := do.MustInvoke[*ontimehandler.OntimeHandler](injector)
+	ontimeHandler := do.MustInvoke[*handler.OntimeHandler](injector)
 
-	srv, err := api.NewServer(handler, api.WithPathPrefix(""))
+	srv, err := api.NewServer(ontimeHandler, api.WithPathPrefix(""))
 	if err != nil {
 		panic(err)
 	}

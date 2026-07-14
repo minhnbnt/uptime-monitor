@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/domain"
-	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/jwt"
+	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/jwt"
 )
 
 func gormModel(id uint, t time.Time) gorm.Model {

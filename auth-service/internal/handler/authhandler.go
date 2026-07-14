@@ -9,7 +9,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/dto"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/service"
-	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/token"
+	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/token"
 )
 
 type userIDKey struct{}
