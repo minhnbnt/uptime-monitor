@@ -8,10 +8,20 @@ import (
 	"google.golang.org/grpc"
 
 	endpointv1 "github.com/minhnbnt/uptime-monitor-microservices/proto/gen/endpoint/v1"
+	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/proto/gen/server/v1"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
+	"github.com/samber/do/v2"
 )
+
+func RegisterEndpointServer(i do.Injector) {
+	do.Provide(i, func(i do.Injector) (*EndpointServer, error) {
+		return NewEndpointServer(
+			do.MustInvoke[*repository.EndpointRepository](i),
+		), nil
+	})
+}
 
 type EndpointServer struct {
 	endpointv1.UnimplementedEndpointServiceServer
@@ -61,14 +71,15 @@ func (s *EndpointServer) UpdateMonitorStatus(ctx context.Context, req *endpointv
 	return &endpointv1.UpdateMonitorStatusResponse{}, nil
 }
 
-func StartGRPCServer(ctx context.Context, addr string, endpointRepo *repository.EndpointRepository) error {
+func StartGRPCServer(ctx context.Context, addr string, endpointSrv *EndpointServer, serverSrv *ServerServer) error {
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
 
 	srv := grpc.NewServer()
-	endpointv1.RegisterEndpointServiceServer(srv, NewEndpointServer(endpointRepo))
+	endpointv1.RegisterEndpointServiceServer(srv, endpointSrv)
+	serverv1.RegisterServerServiceServer(srv, serverSrv)
 
 	go func() {
 		<-ctx.Done()

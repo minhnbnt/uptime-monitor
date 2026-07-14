@@ -1,0 +1,107 @@
+openapi: "3.0.3"
+info:
+  title: OnTime Service API
+  description: Server ontime (uptime) statistics service
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8084
+    description: Development server
+
+paths:
+  /api/v1/servers/ontime:
+    get:
+      operationId: listServersOntime
+      summary: List servers with ontime stats
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerOntimeListResponse"
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/servers/{id}:
+    get:
+      operationId: getServerOntime
+      summary: Get server with ontime stats
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerOntimeResponse"
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    OntimeStats:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date-time
+        stats:
+          type: number
+          format: double
+
+    ServerOntime:
+      type: object
+      properties:
+        server_id:
+          type: integer
+        ontime_stats:
+          type: array
+          items:
+            $ref: "#/components/schemas/OntimeStats"
+
+    ServerOntimeListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServerOntime"
+
+    ServerOntimeResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/ServerOntime"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string

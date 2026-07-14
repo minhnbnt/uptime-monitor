@@ -1,0 +1,21 @@
+db:
+  host: pgbouncer
+  port: 6432
+  user: analytics
+  password: analytics
+  dbname: analytics
+
+redis:
+  addr: redis:6379
+  password: ""
+  db: 2
+
+server:
+  port: 8084
+
+grpc:
+  port: 50052
+  server_addr: server:50051
+
+log:
+  level: info

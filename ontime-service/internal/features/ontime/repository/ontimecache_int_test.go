@@ -1,3 +1,5 @@
+//go:build ignore
+
 package repository
 
 import (
@@ -9,8 +11,8 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
-	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/features/ontime/dto"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/testcontainers"
 )
 
 var testRedis *redis.Client

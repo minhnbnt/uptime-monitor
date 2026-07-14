@@ -2,64 +2,11 @@ package ontime
 
 import (
 	"context"
-	"time"
 
-	"gorm.io/gorm"
-
-	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	"github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
-	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
-	featservice "github.com/minhnbnt/uptime-monitor/internal/features/server/service"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/features/ontime/dto"
+	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/features/ontime/repository"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/serverclient"
 )
-
-func gormModel(id uint, t time.Time) gorm.Model {
-	return gorm.Model{ID: id, CreatedAt: t, UpdatedAt: t}
-}
-
-type mockServerRepo struct {
-	listFn               func(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error)
-	countFn              func(ctx context.Context, createdByID uint) (int64, error)
-	countByStatusFn      func(ctx context.Context, createdByID uint) (total, online, offline int64, err error)
-	createFn             func(ctx context.Context, s *domain.Server) error
-	getByIDFn            func(ctx context.Context, id uint) (*domain.Server, error)
-	updateFn             func(ctx context.Context, s *domain.Server) error
-	deleteFn             func(ctx context.Context, id uint) error
-	batchCreateServersFn func(ctx context.Context, servers []domain.Server) error
-}
-
-func (m *mockServerRepo) List(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error) {
-	return m.listFn(ctx, createdByID, limit, offset)
-}
-
-func (m *mockServerRepo) Count(ctx context.Context, createdByID uint) (int64, error) {
-	return m.countFn(ctx, createdByID)
-}
-
-func (m *mockServerRepo) CountByStatus(ctx context.Context, createdByID uint) (total, online, offline int64, err error) {
-	return m.countByStatusFn(ctx, createdByID)
-}
-
-func (m *mockServerRepo) Create(ctx context.Context, s *domain.Server) error {
-	return m.createFn(ctx, s)
-}
-
-func (m *mockServerRepo) GetByID(ctx context.Context, id uint) (*domain.Server, error) {
-	return m.getByIDFn(ctx, id)
-}
-
-func (m *mockServerRepo) Update(ctx context.Context, s *domain.Server) error {
-	return m.updateFn(ctx, s)
-}
-
-func (m *mockServerRepo) Delete(ctx context.Context, id uint) error {
-	return m.deleteFn(ctx, id)
-}
-
-func (m *mockServerRepo) BatchCreateServers(ctx context.Context, servers []domain.Server) error {
-	return m.batchCreateServersFn(ctx, servers)
-}
-
-var _ featservice.ServerRepository = (*mockServerRepo)(nil)
 
 type mockOntineRepo struct {
 	batchGetOntimeFn func(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error)
@@ -91,3 +38,18 @@ func (m *mockOntimeCacheRepo) MSet(ctx context.Context, items map[dto.BatchGetOn
 }
 
 var _ OntimeCacheRepository = (*mockOntimeCacheRepo)(nil)
+
+type mockServerClient struct {
+	listServersFn func(ctx context.Context, userID uint, page, perPage int) ([]serverclient.ServerBrief, error)
+	getServerFn   func(ctx context.Context, serverID uint, userID uint) (*serverclient.ServerBrief, error)
+}
+
+func (m *mockServerClient) ListServers(ctx context.Context, userID uint, page, perPage int) ([]serverclient.ServerBrief, error) {
+	return m.listServersFn(ctx, userID, page, perPage)
+}
+
+func (m *mockServerClient) GetServer(ctx context.Context, serverID uint, userID uint) (*serverclient.ServerBrief, error) {
+	return m.getServerFn(ctx, serverID, userID)
+}
+
+var _ ServerClient = (*mockServerClient)(nil)

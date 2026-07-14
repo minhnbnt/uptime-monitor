@@ -11,16 +11,27 @@ import (
 	"github.com/samber/lo"
 	"github.com/samber/lo/it"
 
-	"github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
-	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
-	"github.com/minhnbnt/uptime-monitor/internal/utils"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/features/ontime/dto"
+	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/features/ontime/repository"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/utils"
 )
 
+type OntineRepository interface {
+	BatchGetOntime(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error)
+}
+
+type OntimeCacheRepository interface {
+	MGet(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error)
+	MSet(ctx context.Context, items map[dto.BatchGetOntimeItem]float64) error
+}
+
 func NewBatcher(repo OntineRepository, cache *ontimerepo.OntimeCacheRepository, l *slog.Logger) *Batcher {
+
 	var cacheInterface OntimeCacheRepository
 	if cache != nil {
 		cacheInterface = cache
 	}
+
 	return &Batcher{
 		ontineRepository:      repo,
 		ontimeCacheRepository: cacheInterface,
@@ -39,10 +50,6 @@ func RegisterBatcher(i do.Injector) {
 	})
 }
 
-type OntineRepository interface {
-	BatchGetOntime(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error)
-}
-
 type Batcher struct {
 	ontineRepository      OntineRepository
 	ontimeCacheRepository OntimeCacheRepository
@@ -51,7 +58,6 @@ type Batcher struct {
 }
 
 func (b *Batcher) BatchGetOntimeUntil(ctx context.Context, req []dto.BatchGetOntimeItem, until time.Time) ([]dto.BatchGetOntimeResponse, error) {
-
 	cacheKeys := getCacheKey(req)
 	resultMap := b.resolveCache(ctx, cacheKeys)
 
@@ -81,27 +87,21 @@ func (b *Batcher) BatchGetOntime(ctx context.Context, req []dto.BatchGetOntimeIt
 }
 
 func getCacheKey(req []dto.BatchGetOntimeItem) []dto.BatchGetOntimeItem {
-
 	reqIter := slices.Values(req)
-
 	cacheKeys := it.Map(reqIter, func(item dto.BatchGetOntimeItem) dto.BatchGetOntimeItem {
 		item.Date = utils.TruncateDay(item.Date)
 		return item
 	})
-
 	cacheKeys = it.Uniq(cacheKeys)
-
 	return slices.Collect(cacheKeys)
 }
 
 func (b *Batcher) resolveCache(ctx context.Context, keys []dto.BatchGetOntimeItem) map[dto.BatchGetOntimeItem]float64 {
-
 	if b.ontimeCacheRepository == nil {
 		return make(map[dto.BatchGetOntimeItem]float64, len(keys))
 	}
 
 	cached, err := b.ontimeCacheRepository.MGet(ctx, keys)
-
 	if err != nil {
 		b.logger.Warn("ontime cache MGet failed, falling back to DB", slog.Any("error", err))
 		return make(map[dto.BatchGetOntimeItem]float64, len(keys))
@@ -152,4 +152,9 @@ func (b *Batcher) buildResponse(req []dto.BatchGetOntimeItem, resultMap map[dto.
 			Result:   result,
 		}
 	})
+}
+
+type serverDayKey struct {
+	ServerID uint
+	Day      time.Time
 }

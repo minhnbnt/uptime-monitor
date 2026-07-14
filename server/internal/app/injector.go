@@ -5,7 +5,6 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/authclient"
 	"github.com/minhnbnt/uptime-monitor/internal/config"
-	infraPing "github.com/minhnbnt/uptime-monitor/internal/features/ping/infrastructure"
 	digesthandler "github.com/minhnbnt/uptime-monitor/internal/features/digest/handler"
 	digestinfra "github.com/minhnbnt/uptime-monitor/internal/features/digest/infrastructure"
 	digestrepo "github.com/minhnbnt/uptime-monitor/internal/features/digest/repository"
@@ -17,10 +16,12 @@ import (
 	ontimehandler "github.com/minhnbnt/uptime-monitor/internal/features/ontime/handler"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
 	ontimeservice "github.com/minhnbnt/uptime-monitor/internal/features/ontime/service"
+	infraPing "github.com/minhnbnt/uptime-monitor/internal/features/ping/infrastructure"
 	serverhandler "github.com/minhnbnt/uptime-monitor/internal/features/server/handler"
 	serverinfra "github.com/minhnbnt/uptime-monitor/internal/features/server/infrastructure"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 	featservice "github.com/minhnbnt/uptime-monitor/internal/features/server/service"
+	servergrpc "github.com/minhnbnt/uptime-monitor/internal/grpc"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
 )
 
@@ -63,6 +64,9 @@ func providersAfterConfig(dev bool) []func(do.Injector) {
 		importerhandler.RegisterImportHandler,
 		ontimehandler.RegisterOntimeHandler,
 		notificationhandler.RegisterNotificationHandler,
+
+		servergrpc.RegisterEndpointServer,
+		servergrpc.RegisterServerServer,
 
 		authclient.RegisterAuthMiddleware,
 

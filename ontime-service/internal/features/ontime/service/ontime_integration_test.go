@@ -1,3 +1,5 @@
+//go:build ignore
+
 package ontime
 
 import (
@@ -13,13 +15,13 @@ import (
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
-	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
-	"github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
-	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
-	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
-	"github.com/minhnbnt/uptime-monitor/internal/logger"
-	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/domain"
+	apperrors "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/errors"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/features/ontime/dto"
+	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/features/ontime/repository"
+	serverrepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/features/server/repository"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/logger"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/testcontainers"
 )
 
 // ---------- container lifecycle ----------

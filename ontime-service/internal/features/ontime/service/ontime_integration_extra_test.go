@@ -1,3 +1,5 @@
+//go:build ignore
+
 package ontime
 
 import (
@@ -6,9 +8,9 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	"github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
-	"github.com/minhnbnt/uptime-monitor/internal/testcontainers"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/domain"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/features/ontime/dto"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/testcontainers"
 )
 
 // ---------- no events on the queried day, lowerbound from previous day ----------

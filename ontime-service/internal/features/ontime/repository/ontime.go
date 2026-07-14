@@ -8,7 +8,7 @@ import (
 	"github.com/samber/do/v2"
 	"gorm.io/gorm"
 
-	"github.com/minhnbnt/uptime-monitor/internal/config"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/config"
 )
 
 type BatchGetOntimeRequest struct {
@@ -40,6 +40,7 @@ func RegisterOntineRepository(i do.Injector) {
 }
 
 func (r *OntineRepository) BatchGetOntime(ctx context.Context, req []BatchGetOntimeRequest) ([]RawEvent, error) {
+
 	payload, err := json.Marshal(req)
 	if err != nil {
 		return nil, err

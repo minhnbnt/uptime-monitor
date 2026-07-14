@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
+	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/features/ontime/repository"
 )
 
 func e(day, t time.Time, status string) ontimerepo.RawEvent {

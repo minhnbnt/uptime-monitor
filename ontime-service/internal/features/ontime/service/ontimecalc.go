@@ -3,8 +3,8 @@ package ontime
 import (
 	"time"
 
-	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/domain"
+	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/features/ontime/repository"
 )
 
 type Timeline struct {
@@ -18,7 +18,6 @@ type Timeline struct {
 type OntimeCalculator struct{}
 
 func (OntimeCalculator) CalculateDayOntime(events []ontimerepo.RawEvent, today time.Time, now time.Time) float64 {
-
 	if len(events) == 0 {
 		return 0
 	}
@@ -58,7 +57,6 @@ func (o OntimeCalculator) BuildTimeline(events []ontimerepo.RawEvent, today time
 }
 
 func (o OntimeCalculator) splitByDayBoundary(events []ontimerepo.RawEvent, day time.Time) (prev, inside []ontimerepo.RawEvent) {
-
 	dayEnd := day.Add(24 * time.Hour)
 
 	for _, e := range events {
@@ -73,16 +71,12 @@ func (o OntimeCalculator) splitByDayBoundary(events []ontimerepo.RawEvent, day t
 }
 
 func (o OntimeCalculator) applyStartState(t *Timeline, prevEvents, dayEvents, allEvents []ontimerepo.RawEvent, isToday bool) {
-
 	if len(prevEvents) > 0 {
-
 		last := prevEvents[len(prevEvents)-1]
-
 		t.StartStatus = last.Status
 		if isToday {
 			t.StartTime = last.Time
 		}
-
 		return
 	}
 
@@ -104,7 +98,6 @@ func (o OntimeCalculator) applyStartState(t *Timeline, prevEvents, dayEvents, al
 }
 
 func (o OntimeCalculator) dedupEvents(events []ontimerepo.RawEvent) []ontimerepo.RawEvent {
-
 	if len(events) <= 1 {
 		return events
 	}
@@ -120,7 +113,6 @@ func (o OntimeCalculator) dedupEvents(events []ontimerepo.RawEvent) []ontimerepo
 }
 
 func (o OntimeCalculator) CalculateOnlineDuration(t Timeline) float64 {
-
 	prevTime := t.StartTime
 	prevStatus := t.StartStatus
 	var total float64

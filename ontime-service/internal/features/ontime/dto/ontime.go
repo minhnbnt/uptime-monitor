@@ -1,10 +1,6 @@
 package dto
 
-import (
-	"time"
-
-	serverdto "github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
-)
+import "time"
 
 type BatchGetOntimeItem struct {
 	ServerID uint
@@ -12,8 +8,8 @@ type BatchGetOntimeItem struct {
 }
 
 type OntimeStats struct {
-	Date  time.Time
-	Stats float64
+	Date  time.Time `json:"date"`
+	Stats float64   `json:"stats"`
 }
 
 type BatchGetOntimeResponse struct {
@@ -21,7 +17,7 @@ type BatchGetOntimeResponse struct {
 	Result   []OntimeStats
 }
 
-type ServerWithOntime struct {
-	Server      serverdto.Server
-	OntimeStats []OntimeStats
+type ServerOntime struct {
+	ServerID    uint          `json:"server_id"`
+	OntimeStats []OntimeStats `json:"ontime_stats"`
 }

@@ -90,6 +90,26 @@ services:
       redis:
         condition: service_started
 
+  ontime-service:
+    build:
+      context: .
+      dockerfile: ontime-service/Dockerfile
+
+    command: ["--config=/config.yml"]
+
+    environment:
+      GRPC_SERVER_ADDR: server:50051
+      REDIS_ADDR: redis:6379
+
+    volumes:
+      - ./config/ontime-service.yml:/config.yml
+
+    depends_on:
+      server:
+        condition: service_started
+      redis:
+        condition: service_started
+
   pgbouncer:
     image: edoburu/pgbouncer:v1.25.1-p0
 
@@ -115,13 +135,16 @@ services:
     image: valkey/valkey:9-alpine
     ports:
       - 6379:6379
+
     volumes:
       - redis_data:/data
+
     command: redis-server --appendonly yes
 
   postgres:
     image: paradedb/paradedb:pg18
     command: postgres -c wal_level=logical
+
     ports:
       - 5433:5432
 
@@ -142,11 +165,13 @@ services:
 
   debezium:
     image: quay.io/debezium/server:3.6.0.Final
+
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_started
+
     volumes:
       - ./config/debezium.yml:/debezium/config/application.yaml:ro
       - debezium-data:/debezium/data

@@ -10,9 +10,9 @@ import (
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 
-	"github.com/minhnbnt/uptime-monitor/internal/config"
-	"github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
-	"github.com/minhnbnt/uptime-monitor/internal/utils"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/config"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/features/ontime/dto"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/utils"
 )
 
 const (

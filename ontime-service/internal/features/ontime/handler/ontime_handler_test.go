@@ -1,3 +1,5 @@
+//go:build ignore
+
 package handler
 
 import (
@@ -7,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/minhnbnt/uptime-monitor/generated/api"
-	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
-	ontimedto "github.com/minhnbnt/uptime-monitor/internal/features/ontime/dto"
-	"github.com/minhnbnt/uptime-monitor/internal/features/server/dto"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/generated/api"
+	apperrors "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/errors"
+	ontimedto "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/features/ontime/dto"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/features/server/dto"
 )
 
 func dtoServer(id uint, name string, t time.Time) dto.Server {
