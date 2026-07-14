@@ -13,6 +13,9 @@ redis:
 server:
   port: 8083
 
+grpc:
+  server_addr: server:50051
+
 log:
   level: info
 

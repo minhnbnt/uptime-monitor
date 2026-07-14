@@ -8,7 +8,7 @@ services:
       - --providers.docker.exposedByDefault=false
 
     ports:
-      - "8080:8080"
+      - 8080:8080
 
     volumes:
       - /run/user/1000/podman/podman.sock:/var/run/docker.sock:Z
@@ -21,15 +21,10 @@ services:
     ports:
       - 8081:8081
 
-    environment:
-      DB_HOST: pgbouncer
-      DB_PORT: "6432"
-      DB_USER: auth
-      DB_PASSWORD: auth
-      DB_NAME: auth
-      REDIS_ADDR: redis:6379
-      REDIS_DB: 1
-      JWT_KEY: change-me-in-production
+    command: ["--config=/config.yml"]
+
+    volumes:
+      - ./config/auth-service.yaml:/config.yml
 
     depends_on:
       postgres:
@@ -78,10 +73,6 @@ services:
 
     command: ["--config=/config.yml"]
 
-    environment:
-      GRPC_SERVER_ADDR: server:50051
-      REDIS_ADDR: redis:6379
-
     volumes:
       - ./config/ping-service.yml:/config.yml
 
@@ -97,10 +88,6 @@ services:
       dockerfile: ontime-service/Dockerfile
 
     command: ["--config=/config.yml"]
-
-    environment:
-      GRPC_SERVER_ADDR: server:50051
-      REDIS_ADDR: redis:6379
 
     volumes:
       - ./config/ontime-service.yml:/config.yml
