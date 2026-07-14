@@ -1,0 +1,53 @@
+debezium:
+  source:
+    connector:
+      class: io.debezium.connector.postgresql.PostgresConnector
+
+    offset:
+      storage:
+        file:
+          filename: /debezium/data/offsets.dat
+      flush:
+        interval:
+          ms: 0
+
+    database:
+      hostname: postgres
+      port: 5432
+      user: postgres
+      password: postgres
+      dbname: uptime_monitor
+
+    topic:
+      prefix: uptime
+
+    table:
+      include:
+        list: public.endpoints
+
+    plugin:
+      name: pgoutput
+
+    schema:
+      history:
+        internal: io.debezium.storage.file.history.FileSchemaHistory
+        file:
+          filename: /debezium/data/schema_history.dat
+
+  format:
+    value:
+      schemas:
+        enable: false
+
+  sink:
+    type: redis
+    redis:
+      address: redis:6379
+      message:
+        format: extended
+
+quarkus:
+  log:
+    console:
+      json:
+        enabled: false

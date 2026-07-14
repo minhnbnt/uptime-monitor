@@ -1,0 +1,20 @@
+db:
+  host: pgbouncer
+  port: 6432
+  user: postgres
+  password: postgres
+  dbname: uptime_monitor
+
+redis:
+  addr: redis:6379
+  password: ""
+  db: 0
+
+server:
+  port: 8083
+
+log:
+  level: info
+
+scheduler:
+  backend: redis

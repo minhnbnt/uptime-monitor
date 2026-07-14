@@ -1,0 +1,33 @@
+server:
+  port: 8081
+
+db:
+  host: localhost
+  port: 5432
+  user: auth
+  password: auth
+  dbname: auth
+
+redis:
+  addr: localhost:6379
+  password: ""
+  db: 1
+
+jwt:
+  key: change-me-in-production
+
+token:
+  access_ttl: 15m
+  refresh_ttl: 168h
+  access_issuer: uptime-monitor
+  refresh_issuer: uptime-monitor-refresh
+
+argon2:
+  memory: 16384
+  iterations: 2
+  parallelism: 1
+  salt_length: 16
+  key_length: 32
+
+log:
+  level: info
