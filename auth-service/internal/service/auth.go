@@ -7,10 +7,10 @@ import (
 
 	"github.com/samber/do/v2"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/domain"
-	apperrors "github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/argon2"
+	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/dto"
+	apperrors "github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/repository"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/token"
 )

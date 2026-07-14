@@ -16,7 +16,6 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/features/importer/dto"
-	monitorrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
 	"github.com/minhnbnt/uptime-monitor/internal/features/ping/scheduler"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/infrastructure"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
@@ -61,23 +60,17 @@ func initTestDB(tb testing.TB) *gorm.DB {
 	})
 }
 
-func newImportIntegrationService(tb testing.TB, redisClient *redis.Client) *ImportService {
+func newImportIntegrationService(tb testing.TB, _ *redis.Client) *ImportService {
 	tb.Helper()
 
 	testcontainers.SkipIfShort(tb)
 
-	zsetScheduler := scheduler.NewZSetScheduleRepository(redisClient)
-	metaCache := scheduler.NewEndpointMetaCache(redisClient)
-	statusStore := monitorrepo.NewRedisServerEventRepository(redisClient)
-
 	return &ImportService{
-		serverRepository: serverrepo.NewServerRepository(testDB),
-		endpointRepository: serverrepo.NewEndpointRepositoryWithDeps(
-			testDB, zsetScheduler, statusStore, metaCache,
-		),
-		excelExporter: &infrastructure.ExcelExporter{},
-		excelParser:   &infrastructure.ExcelParser{},
-		logger:        logger.NewMockLogger(),
+		serverRepository:   serverrepo.NewServerRepository(testDB),
+		endpointRepository: serverrepo.NewEndpointRepository(testDB),
+		excelExporter:      &infrastructure.ExcelExporter{},
+		excelParser:        &infrastructure.ExcelParser{},
+		logger:             logger.NewMockLogger(),
 	}
 }
 

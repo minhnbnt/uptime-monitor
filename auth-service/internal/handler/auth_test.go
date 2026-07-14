@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/generated/api"
-	apperrors "github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/dto"
+	apperrors "github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/errors"
 )
 
 func TestAuthHandler_Register(t *testing.T) {

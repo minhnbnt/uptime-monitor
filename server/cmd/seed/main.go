@@ -63,7 +63,7 @@ func main() {
 	ports := make(chan int, 10000)
 
 	go func() {
-		for p := 10000; p <= 19999; p++ {
+		for p := 10001; p <= 19999; p++ {
 			ports <- p
 		}
 		close(ports)

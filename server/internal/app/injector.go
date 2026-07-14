@@ -5,6 +5,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/authclient"
 	"github.com/minhnbnt/uptime-monitor/internal/config"
+	infraPing "github.com/minhnbnt/uptime-monitor/internal/features/ping/infrastructure"
 	digesthandler "github.com/minhnbnt/uptime-monitor/internal/features/digest/handler"
 	digestinfra "github.com/minhnbnt/uptime-monitor/internal/features/digest/infrastructure"
 	digestrepo "github.com/minhnbnt/uptime-monitor/internal/features/digest/repository"
@@ -16,11 +17,6 @@ import (
 	ontimehandler "github.com/minhnbnt/uptime-monitor/internal/features/ontime/handler"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
 	ontimeservice "github.com/minhnbnt/uptime-monitor/internal/features/ontime/service"
-	pinghandler "github.com/minhnbnt/uptime-monitor/internal/features/ping/handler"
-	pinginfra "github.com/minhnbnt/uptime-monitor/internal/features/ping/infrastructure"
-	pingrepo "github.com/minhnbnt/uptime-monitor/internal/features/ping/repository"
-	pingsched "github.com/minhnbnt/uptime-monitor/internal/features/ping/scheduler"
-	pingservice "github.com/minhnbnt/uptime-monitor/internal/features/ping/service"
 	serverhandler "github.com/minhnbnt/uptime-monitor/internal/features/server/handler"
 	serverinfra "github.com/minhnbnt/uptime-monitor/internal/features/server/infrastructure"
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
@@ -38,11 +34,7 @@ func providersAfterConfig(dev bool) []func(do.Injector) {
 
 		serverrepo.RegisterServerRepository,
 		serverrepo.RegisterEndpointRepository,
-		pingsched.RegisterTemporalSchedulerRepository,
 		serverrepo.RegisterParadeDBSearcher,
-
-		pingrepo.RegisterServerEventRepository,
-		pingrepo.RegisterRedisServerEventRepository,
 
 		digestrepo.RegisterNotificationConfigRepository,
 		digestrepo.RegisterUserRepository,
@@ -50,19 +42,12 @@ func providersAfterConfig(dev bool) []func(do.Injector) {
 		ontimerepo.RegisterOntineRepository,
 		ontimerepo.RegisterOntimeCacheRepository,
 
-		pinginfra.RegisterPingWorker,
-		pinginfra.RegisterRecordStatusWorker,
 		config.RegisterMailClient,
 		digestinfra.RegisterMailer,
 
-		pingsched.RegisterZSetScheduleRepository,
-		pingsched.RegisterScoreUpdater,
-		pingsched.RegisterEndpointFetcher,
-		pingsched.RegisterEndpointProvider,
-		pingsched.RegisterEndpointMetaCache,
-
 		serverinfra.RegisterExcelExporter,
 		serverinfra.RegisterExcelParser,
+		infraPing.RegisterPingWorker,
 		digestinfra.RegisterDigestStarter,
 
 		featservice.RegisterServerService,
@@ -70,8 +55,6 @@ func providersAfterConfig(dev bool) []func(do.Injector) {
 		importerservice.RegisterImportService,
 		ontimeservice.RegisterBatcher,
 		ontimeservice.RegisterOntimeService,
-		pingservice.RegisterPingService,
-		pingservice.RegisterLoopService,
 		digestservice.RegisterDigestService,
 		notifyservice.RegisterNotificationService,
 
@@ -82,11 +65,8 @@ func providersAfterConfig(dev bool) []func(do.Injector) {
 		notificationhandler.RegisterNotificationHandler,
 
 		authclient.RegisterAuthMiddleware,
-		authclient.RegisterAuthHandler,
 
 		server.RegisterCompositeHandler,
-		pinghandler.RegisterTemporalWorkerRunner,
-		pinghandler.RegisterZSetWorkerRunner,
 		digesthandler.RegisterDigestWorkerRunner,
 	}
 }

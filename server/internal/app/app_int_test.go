@@ -186,7 +186,6 @@ func TestApp_RunAllGoroutines_ContextCancel(t *testing.T) {
 		})
 	}
 
-	run("RunPingWorker", func() { RunPingWorker(ctx, injector) })
 	run("RunDigestWorker", func() { RunDigestWorker(ctx, injector) })
 
 	run("RunWebServer", func() {

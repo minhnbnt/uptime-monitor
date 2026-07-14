@@ -1,14 +1,28 @@
 FROM golang:1.26-alpine AS builder
-WORKDIR /app
-COPY go.mod go.sum ./
-RUN go mod download
-COPY . .
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /auth-service ./cmd
 
-FROM alpine:3.21
-RUN apk --no-cache add ca-certificates
-COPY --from=builder /auth-service /auth-service
-COPY config.yaml /config.yaml
-EXPOSE 8081
-ENTRYPOINT ["/auth-service"]
-CMD ["--config", "/config.yaml"]
+ENV CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64
+
+WORKDIR /app/auth-service
+
+COPY . ./
+
+RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
+    --mount=type=cache,id=go-build,target=/root/.cache/go-build \
+    go generate ./...
+
+RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
+    --mount=type=cache,id=go-build,target=/root/.cache/go-build \
+    go build -trimpath -ldflags="-s -w" -o app ./cmd/main.go
+
+
+FROM gcr.io/distroless/static-debian13:nonroot
+
+WORKDIR /app
+
+COPY --from=builder /app/auth-service/app .
+
+EXPOSE 8080
+
+ENTRYPOINT ["./app"]
