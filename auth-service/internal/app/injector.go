@@ -14,30 +14,23 @@ import (
 
 func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 
-	packages := []func(do.Injector) {
+	config.RegisterConfigPath(configPath)(injector)
+	config.RegisterLogger(dev)(injector)
+	config.RegisterJwtConfig(injector)
+	config.RegisterTokenConfig(injector)
+	config.RegisterArgon2Config(injector)
+	config.RegisterGORMDB(injector)
+	config.RegisterRedisClient(injector)
 
-		config.RegisterConfigPath(configPath),
-		config.RegisterLogger(dev),
-		config.RegisterJwtConfig,
-		config.RegisterTokenConfig,
-		config.RegisterArgon2Config,
-		config.RegisterGORMDB,
-		config.RegisterRedisClient,
+	repository.RegisterUserRepository(injector)
+	repository.RegisterRedisRevokedTokenRepository(injector)
 
-		repository.RegisterUserRepository,
-		repository.RegisterRedisRevokedTokenRepository,
+	jwt.RegisterProvider(injector)
+	argon2.RegisterArgon2PasswordEncoder(injector)
+	token.RegisterTokenGenerator(injector)
+	token.RegisterTokenValidator(injector)
 
-		jwt.RegisterProvider,
-		argon2.RegisterArgon2PasswordEncoder,
-		token.RegisterTokenGenerator,
-		token.RegisterTokenValidator,
+	service.RegisterAuthService(injector)
 
-		service.RegisterAuthService,
-
-		handler.RegisterAuthHandler,
-	}
-
-	for _, p := range packages {
-		p(injector)
-	}
+	handler.RegisterAuthHandler(injector)
 }
