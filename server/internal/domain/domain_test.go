@@ -41,12 +41,6 @@ func TestUser_TableName(t *testing.T) {
 	}
 }
 
-func TestNotificationConfig_TableName(t *testing.T) {
-	if (NotificationConfig{}).TableName() != "notification_configs" {
-		t.Errorf("NotificationConfig.TableName() = %q, want %q", (NotificationConfig{}).TableName(), "notification_configs")
-	}
-}
-
 func TestServerFieldAccess(t *testing.T) {
 	s := Server{Name: "test-server"}
 	if s.Name != "test-server" {
@@ -88,12 +82,3 @@ func TestServerEventFieldAccess(t *testing.T) {
 	}
 }
 
-func TestNotificationConfigFieldAccess(t *testing.T) {
-	nc := NotificationConfig{
-		UserID:     1,
-		DigestTime: "08:00",
-	}
-	if nc.DigestTime != "08:00" {
-		t.Errorf("NotificationConfig.DigestTime = %q", nc.DigestTime)
-	}
-}

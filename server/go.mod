@@ -10,18 +10,15 @@ tool (
 require (
 	github.com/go-faster/errors v0.7.1
 	github.com/go-faster/jx v1.2.0
-	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/minhnbnt/uptime-monitor-microservices/common/proto v0.0.0-00010101000000-000000000000
 	github.com/ogen-go/ogen v1.22.0
 	github.com/orandin/slog-gorm v1.4.0
 	github.com/redis/go-redis/v9 v9.21.0
-	github.com/rs/cors v1.11.1
 	github.com/samber/do/v2 v2.0.0
 	github.com/samber/lo v1.53.0
 	github.com/spf13/viper v1.21.0
 	github.com/testcontainers/testcontainers-go v0.43.0
-	github.com/wneessen/go-mail v0.8.0
 	github.com/xuri/excelize/v2 v2.10.1
 	go.temporal.io/sdk v1.45.0
 	golang.org/x/sync v0.21.0

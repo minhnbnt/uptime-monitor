@@ -20,7 +20,6 @@ func main() {
 	configPath := flag.String("config", "", "path to config file")
 
 	enableServer := flag.Bool("server", true, "start HTTP API server")
-	enableWorker := flag.Bool("worker", true, "start background worker")
 
 	dev := flag.Bool("dev", false, "enable dev features (API docs)")
 
@@ -41,10 +40,6 @@ func main() {
 	defer waitgroup.Wait()
 
 	waitgroup.Go(func() { _, _ = injector.ShutdownOnSignalsWithContext(ctx) })
-
-	if *enableWorker {
-		waitgroup.Go(func() { app.RunDigestWorker(ctx, injector) })
-	}
 
 	if *enableServer {
 		waitgroup.Go(func() { app.RunWebServer(ctx, injector, *dev) })

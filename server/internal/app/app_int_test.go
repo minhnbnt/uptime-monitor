@@ -182,8 +182,6 @@ func TestApp_RunAllGoroutines_ContextCancel(t *testing.T) {
 		})
 	}
 
-	run("RunDigestWorker", func() { RunDigestWorker(ctx, injector) })
-
 	run("RunWebServer", func() {
 
 		listenConfig := net.ListenConfig{}

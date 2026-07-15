@@ -115,7 +115,6 @@ func RunMigration(db *gorm.DB) error {
 		&domain.Server{},
 		&domain.Endpoint{},
 		&domain.ServerEvent{},
-		&domain.NotificationConfig{},
 	}
 
 	if err := db.AutoMigrate(schemas...); err != nil {
