@@ -59,7 +59,7 @@ services:
 
     labels:
       traefik.enable: "true"
-      traefik.http.routers.server.rule: "PathPrefix(`/api/v1`) && !PathPrefix(`/api/v1/auth`)"
+      traefik.http.routers.server.rule: "PathPrefix(`/api/v1`) && !PathPrefix(`/api/v1/auth`) && !PathPrefix(`/api/v1/notifications`)"
       traefik.http.routers.server.service: "server"
       traefik.http.services.server.loadbalancer.server.port: "8080"
       traefik.http.routers.server.middlewares: "forward-auth"
@@ -97,6 +97,28 @@ services:
         condition: service_started
       redis:
         condition: service_started
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+
+    command: ["--config=/config.yml"]
+
+    volumes:
+      - ./config/notification-service.yml:/config.yml
+
+    depends_on:
+      temporal:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+
+    labels:
+      traefik.enable: true
+      traefik.http.routers.notification.rule: PathPrefix(`/api/v1/notifications`)
+      traefik.http.routers.notification.service: notification-service
+      traefik.http.services.notification-service.loadbalancer.server.port: 8085
 
   pgbouncer:
     image: edoburu/pgbouncer:v1.25.1-p0
