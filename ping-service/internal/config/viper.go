@@ -43,9 +43,8 @@ func initConfig(configPath string) (*Config, error) {
 func setDefaults(v *viper.Viper) {
 
 	defaults := map[string]any{
-		"log.level":         "info",
-		"scheduler.backend": "redis",
-		"db.port":           "5432",
+		"log.level":   "info",
+		"db.port":     "5432",
 		"redis.db":          0,
 		"server.port":       "8083",
 		"grpc.server_addr":  "server:50051",

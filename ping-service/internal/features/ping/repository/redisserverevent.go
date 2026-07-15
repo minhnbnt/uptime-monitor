@@ -56,6 +56,4 @@ func (r *RedisServerEventRepository) SetStatus(ctx context.Context, endpointID u
 	return err
 }
 
-func (r *RedisServerEventRepository) DeleteStatus(ctx context.Context, endpointID uint) error {
-	return r.client.HDel(ctx, statusKey, fmt.Sprint(endpointID)).Err()
-}
+

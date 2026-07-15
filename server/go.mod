@@ -1,6 +1,6 @@
 module github.com/minhnbnt/uptime-monitor
 
-go 1.26.3
+go 1.26.5
 
 tool (
 	github.com/air-verse/air

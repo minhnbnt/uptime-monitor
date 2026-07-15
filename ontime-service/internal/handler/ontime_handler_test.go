@@ -1,5 +1,3 @@
-//go:build ignore
-
 package handler
 
 import (
@@ -7,121 +5,60 @@ import (
 	"errors"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/generated/api"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/errors"
 	ontimedto "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
-	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/features/server/dto"
 )
 
-func dtoServer(id uint, name string, t time.Time) dto.Server {
-	return dto.Server{ID: id, Name: name, CreatedAt: t, UpdatedAt: t}
-}
-
-func dtoOntimeStats(date time.Time, stats float64) ontimedto.OntimeStats {
-	return ontimedto.OntimeStats{Date: date, Stats: stats}
-}
-
-func TestOntimeHandler_GetServer(t *testing.T) {
-	now := time.Now()
-	stats := []ontimedto.OntimeStats{
-		dtoOntimeStats(now, 99.5),
-		dtoOntimeStats(now.Add(-24*time.Hour), 100.0),
-	}
-
+func TestGetServerOntime(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		h := &OntimeHandler{
 			ontimeService: &mockOntimeService{
-				getServerWithOntimeFn: func(_ context.Context, id uint, _ uint) (*ontimedto.ServerWithOntime, error) {
-					return &ontimedto.ServerWithOntime{
-						Server:      dtoServer(id, "server-a", now),
-						OntimeStats: stats,
+				getServerWithOntimeFn: func(_ context.Context, serverID, _ uint) (*ontimedto.ServerOntime, error) {
+					return &ontimedto.ServerOntime{
+						ServerID:    serverID,
+						OntimeStats: []ontimedto.OntimeStats{},
 					}, nil
 				},
 			},
 		}
-		resp, err := h.GetServer(t.Context(), api.GetServerParams{ID: 1})
+		resp, err := h.GetServerOntime(t.Context(), api.GetServerOntimeParams{ID: 1})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if resp.Data.Name != "server-a" {
-			t.Errorf("name = %q, want server-a", resp.Data.Name)
+		if !resp.Data.IsSet() {
+			t.Fatal("expected data")
 		}
-		if len(resp.Data.OntimeStats) != 2 {
-			t.Errorf("len stats = %d, want 2", len(resp.Data.OntimeStats))
-		}
-	})
-
-	t.Run("not found", func(t *testing.T) {
-		h := &OntimeHandler{
-			ontimeService: &mockOntimeService{
-				getServerWithOntimeFn: func(_ context.Context, _ uint, _ uint) (*ontimedto.ServerWithOntime, error) {
-					return nil, apperrors.ErrNotFound
-				},
-			},
-		}
-		_, err := h.GetServer(t.Context(), api.GetServerParams{ID: 99})
-		var statusErr *api.ErrorResponseStatusCode
-		if !errors.As(err, &statusErr) {
-			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
-		}
-		if statusErr.StatusCode != http.StatusNotFound {
-			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusNotFound)
+		if resp.Data.Value.ServerID.Value != 1 {
+			t.Errorf("server_id = %d, want 1", resp.Data.Value.ServerID.Value)
 		}
 	})
 
-	t.Run("internal error", func(t *testing.T) {
+	t.Run("service error", func(t *testing.T) {
 		h := &OntimeHandler{
 			ontimeService: &mockOntimeService{
-				getServerWithOntimeFn: func(_ context.Context, _ uint, _ uint) (*ontimedto.ServerWithOntime, error) {
-					return nil, errors.New("db error")
+				getServerWithOntimeFn: func(_ context.Context, _, _ uint) (*ontimedto.ServerOntime, error) {
+					return nil, errors.New("some error")
 				},
 			},
 		}
-		_, err := h.GetServer(t.Context(), api.GetServerParams{ID: 1})
-		var statusErr *api.ErrorResponseStatusCode
-		if !errors.As(err, &statusErr) {
-			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
-		}
-		if statusErr.StatusCode != http.StatusInternalServerError {
-			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusInternalServerError)
-		}
-	})
-
-	t.Run("forbidden", func(t *testing.T) {
-		h := &OntimeHandler{
-			ontimeService: &mockOntimeService{
-				getServerWithOntimeFn: func(_ context.Context, _ uint, _ uint) (*ontimedto.ServerWithOntime, error) {
-					return nil, apperrors.ErrForbidden
-				},
-			},
-		}
-		_, err := h.GetServer(t.Context(), api.GetServerParams{ID: 1})
-		var statusErr *api.ErrorResponseStatusCode
-		if !errors.As(err, &statusErr) {
-			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
-		}
-		if statusErr.StatusCode != http.StatusForbidden {
-			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusForbidden)
+		_, err := h.GetServerOntime(t.Context(), api.GetServerOntimeParams{ID: 1})
+		if err == nil {
+			t.Fatal("expected error")
 		}
 	})
 }
 
-func TestOntimeHandler_ListServersOntime(t *testing.T) {
-	now := time.Now()
-	stats := []ontimedto.OntimeStats{
-		dtoOntimeStats(now, 100.0),
-	}
-
+func TestListServersOntime(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		h := &OntimeHandler{
 			ontimeService: &mockOntimeService{
-				listServersWithOntimeFn: func(_ context.Context, createdByID uint, page, perPage int) ([]ontimedto.ServerWithOntime, int64, int64, int64, error) {
-					return []ontimedto.ServerWithOntime{
-						{Server: dtoServer(1, "s1", now), OntimeStats: stats},
-						{Server: dtoServer(2, "s2", now), OntimeStats: stats},
-					}, 5, 2, 3, nil
+				listServersWithOntimeFn: func(_ context.Context, _ uint, _, _ int) ([]ontimedto.ServerOntime, error) {
+					return []ontimedto.ServerOntime{
+						{ServerID: 1, OntimeStats: []ontimedto.OntimeStats{}},
+						{ServerID: 2, OntimeStats: []ontimedto.OntimeStats{}},
+					}, nil
 				},
 			},
 		}
@@ -135,35 +72,44 @@ func TestOntimeHandler_ListServersOntime(t *testing.T) {
 		if len(resp.Data) != 2 {
 			t.Errorf("len data = %d, want 2", len(resp.Data))
 		}
-		if resp.Data[0].Server.Name != "s1" {
-			t.Errorf("name = %q, want s1", resp.Data[0].Server.Name)
-		}
-		if resp.Meta.Total.Or(0) != 5 {
-			t.Errorf("total = %d, want 5", resp.Meta.Total.Or(0))
-		}
-		if resp.OnlineCount != 2 {
-			t.Errorf("online_count = %d, want 2", resp.OnlineCount)
-		}
-		if resp.OfflineCount != 3 {
-			t.Errorf("offline_count = %d, want 3", resp.OfflineCount)
-		}
 	})
 
-	t.Run("internal error", func(t *testing.T) {
+	t.Run("service error", func(t *testing.T) {
 		h := &OntimeHandler{
 			ontimeService: &mockOntimeService{
-				listServersWithOntimeFn: func(_ context.Context, _ uint, _, _ int) ([]ontimedto.ServerWithOntime, int64, int64, int64, error) {
-					return nil, 0, 0, 0, errors.New("db error")
+				listServersWithOntimeFn: func(_ context.Context, _ uint, _, _ int) ([]ontimedto.ServerOntime, error) {
+					return nil, errors.New("db error")
 				},
 			},
 		}
 		_, err := h.ListServersOntime(t.Context(), api.ListServersOntimeParams{})
-		var statusErr *api.ErrorResponseStatusCode
-		if !errors.As(err, &statusErr) {
-			t.Fatalf("expected ErrorResponseStatusCode, got %T", err)
+		if err == nil {
+			t.Fatal("expected error")
 		}
-		if statusErr.StatusCode != http.StatusInternalServerError {
-			t.Errorf("status = %d, want %d", statusErr.StatusCode, http.StatusInternalServerError)
+	})
+}
+
+func TestNewError(t *testing.T) {
+	h := &OntimeHandler{}
+
+	t.Run("not found", func(t *testing.T) {
+		err := h.NewError(t.Context(), apperrors.ErrNotFound)
+		if err.StatusCode != http.StatusNotFound {
+			t.Errorf("status = %d, want %d", err.StatusCode, http.StatusNotFound)
+		}
+	})
+
+	t.Run("forbidden", func(t *testing.T) {
+		err := h.NewError(t.Context(), apperrors.ErrForbidden)
+		if err.StatusCode != http.StatusForbidden {
+			t.Errorf("status = %d, want %d", err.StatusCode, http.StatusForbidden)
+		}
+	})
+
+	t.Run("internal error", func(t *testing.T) {
+		err := h.NewError(t.Context(), errors.New("db error"))
+		if err.StatusCode != http.StatusInternalServerError {
+			t.Errorf("status = %d, want %d", err.StatusCode, http.StatusInternalServerError)
 		}
 	})
 }

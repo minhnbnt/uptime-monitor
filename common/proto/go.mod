@@ -1,6 +1,6 @@
 module github.com/minhnbnt/uptime-monitor-microservices/common/proto
 
-go 1.26.3
+go 1.26.5
 
 require (
 	google.golang.org/grpc v1.82.0

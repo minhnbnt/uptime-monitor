@@ -15,6 +15,3 @@ server:
 
 log:
   level: info
-
-scheduler:
-  backend: redis
