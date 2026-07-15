@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package endpoint.v1;
 
-option go_package = "github.com/minhnbnt/uptime-monitor-microservices/proto/gen/endpoint/v1;endpointv1";
+option go_package = "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/endpoint/v1;endpointv1";
 
 message EndpointData {
   uint64 id = 1;

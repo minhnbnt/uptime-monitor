@@ -1,6 +1,6 @@
 FROM bufbuild/buf:1.71 as buf
 
-COPY proto /proto
+COPY common/proto /proto
 WORKDIR /proto
 
 # -----------------------------------------------------
@@ -16,7 +16,8 @@ ENV CGO_ENABLED=0 \
 WORKDIR /app/ping-service
 
 COPY ping-service/ ./
-COPY --from=buf /proto/gen ../proto/gen
+COPY common/ ../common/
+COPY --from=buf /proto/generated ../common/proto/generated
 
 RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
     --mount=type=cache,id=go-build,target=/root/.cache/go-build \

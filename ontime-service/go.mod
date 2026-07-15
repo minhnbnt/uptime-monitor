@@ -8,7 +8,7 @@ require (
 	github.com/go-faster/errors v0.7.1
 	github.com/go-faster/jx v1.2.0
 	github.com/google/uuid v1.6.0
-	github.com/minhnbnt/uptime-monitor-microservices/proto/gen v0.0.0-00010101000000-000000000000
+	github.com/minhnbnt/uptime-monitor-microservices/common/proto v0.0.0-00010101000000-000000000000
 	github.com/ogen-go/ogen v1.22.0
 	github.com/redis/go-redis/v9 v9.21.0
 	github.com/samber/do/v2 v2.0.0
@@ -63,4 +63,4 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-replace github.com/minhnbnt/uptime-monitor-microservices/proto/gen => ../proto/gen
+replace github.com/minhnbnt/uptime-monitor-microservices/common/proto => ../common/proto

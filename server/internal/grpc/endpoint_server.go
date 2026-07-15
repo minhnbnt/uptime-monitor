@@ -7,8 +7,8 @@ import (
 
 	"google.golang.org/grpc"
 
-	endpointv1 "github.com/minhnbnt/uptime-monitor-microservices/proto/gen/endpoint/v1"
-	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/proto/gen/server/v1"
+	endpointv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/endpoint/v1"
+	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/server/v1"
 
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/repository"

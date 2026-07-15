@@ -2,11 +2,11 @@ module github.com/minhnbnt/uptime-monitor-microservices/ping-service
 
 go 1.26.5
 
-replace github.com/minhnbnt/uptime-monitor-microservices/proto/gen => ../proto/gen
+replace github.com/minhnbnt/uptime-monitor-microservices/common/proto => ../common/proto
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/minhnbnt/uptime-monitor-microservices/proto/gen v0.0.0-00010101000000-000000000000
+	github.com/minhnbnt/uptime-monitor-microservices/common/proto v0.0.0-00010101000000-000000000000
 	github.com/orandin/slog-gorm v1.4.0
 	github.com/redis/go-redis/v9 v9.21.0
 	github.com/samber/do/v2 v2.0.0

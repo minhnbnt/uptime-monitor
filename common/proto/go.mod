@@ -1,4 +1,4 @@
-module github.com/minhnbnt/uptime-monitor-microservices/proto/gen
+module github.com/minhnbnt/uptime-monitor-microservices/common/proto
 
 go 1.26.3
 

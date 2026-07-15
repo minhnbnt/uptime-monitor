@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package server.v1;
 
-option go_package = "github.com/minhnbnt/uptime-monitor-microservices/proto/gen/server/v1;serverv1";
+option go_package = "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/server/v1;serverv1";
 
 message ServerBrief {
   uint64 id = 1;

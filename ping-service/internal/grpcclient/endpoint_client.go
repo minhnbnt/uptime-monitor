@@ -7,7 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
-	endpointv1 "github.com/minhnbnt/uptime-monitor-microservices/proto/gen/endpoint/v1"
+	endpointv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/endpoint/v1"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
