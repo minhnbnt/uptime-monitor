@@ -3,12 +3,14 @@ package app
 import (
 	"github.com/samber/do/v2"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/authclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/config"
+	ontimegrpc "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/grpc"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/handler"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/authclient"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/recorder"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
-	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/service"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/serverclient"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/service"
 )
 
 func RegisterPackages(injector do.Injector, configPath string, dev bool) {
@@ -31,6 +33,9 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 
 		authclient.RegisterAuthMiddleware,
 		handler.RegisterOntimeHandler,
+
+		recorder.RegisterDedupRecorder,
+		ontimegrpc.RegisterEventServer,
 	}
 
 	for _, p := range packages {

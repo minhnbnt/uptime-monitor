@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 
 	"github.com/samber/do/v2"
+	"google.golang.org/grpc"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/generated/api"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/authclient"
@@ -53,6 +55,30 @@ func RunWebServer(ctx context.Context, injector do.Injector) {
 
 	if err != nil {
 		log.Error("server error", slog.Any("error", err))
+		panic(err)
+	}
+}
+
+func RunGRPCServer(ctx context.Context, injector do.Injector) {
+
+	listener := do.MustInvoke[net.Listener](injector)
+	grpcServer := do.MustInvoke[*grpc.Server](injector)
+	log := do.MustInvoke[*slog.Logger](injector)
+
+	go func() {
+		<-ctx.Done()
+		grpcServer.GracefulStop()
+	}()
+
+	addr := listener.Addr().String()
+	log.Info("ontime gRPC server starting", slog.String("addr", addr))
+
+	err := grpcServer.Serve(listener)
+	if errors.Is(err, grpc.ErrServerStopped) {
+		return
+	}
+	if err != nil {
+		log.Error("gRPC server error", slog.Any("error", err))
 		panic(err)
 	}
 }

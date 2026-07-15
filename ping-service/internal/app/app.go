@@ -21,9 +21,9 @@ func providers(dev bool) []func(do.Injector) {
 		config.RegisterRedisClient,
 		config.RegisterGRPCClient,
 
-		pingrepo.RegisterServerEventRepository,
 		pingrepo.RegisterRedisServerEventRepository,
 		grpcclient.RegisterEndpointClient,
+		grpcclient.RegisterEventRecorderClient,
 
 		pingsched.RegisterZSetScheduleRepository,
 		pingsched.RegisterScoreUpdater,

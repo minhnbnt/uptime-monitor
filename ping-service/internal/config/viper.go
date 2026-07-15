@@ -43,11 +43,11 @@ func initConfig(configPath string) (*Config, error) {
 func setDefaults(v *viper.Viper) {
 
 	defaults := map[string]any{
-		"log.level":   "info",
-		"db.port":     "5432",
+		"log.level":         "info",
 		"redis.db":          0,
 		"server.port":       "8083",
 		"grpc.server_addr":  "server:50051",
+		"grpc.event_addr":   "ontime:50052",
 	}
 
 	for key, value := range defaults {
@@ -58,12 +58,6 @@ func setDefaults(v *viper.Viper) {
 func bindEnvVars(v *viper.Viper) error {
 
 	envMap := map[string]string{
-		"db.host":     "DB_HOST",
-		"db.port":     "DB_PORT",
-		"db.user":     "DB_USER",
-		"db.password": "DB_PASSWORD",
-		"db.dbname":   "DB_NAME",
-
 		"redis.addr":     "REDIS_ADDR",
 		"redis.password": "REDIS_PASSWORD",
 		"redis.db":       "REDIS_DB",
@@ -71,6 +65,7 @@ func bindEnvVars(v *viper.Viper) error {
 		"server.port": "PING_SERVICE_PORT",
 
 		"grpc.server_addr": "GRPC_SERVER_ADDR",
+		"grpc.event_addr":  "GRPC_EVENT_ADDR",
 
 		"log.level": "LOG_LEVEL",
 	}

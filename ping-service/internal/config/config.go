@@ -1,8 +1,7 @@
 package config
 
 type Config struct {
-	DB     DBConfig    `mapstructure:"db"`
-	Redis  RedisConfig `mapstructure:"redis"`
+	Redis  RedisConfig  `mapstructure:"redis"`
 	Server ServerCfg   `mapstructure:"server"`
 	Log    LogConfig   `mapstructure:"log"`
 	GRPC   GRPCConfig  `mapstructure:"grpc"`
@@ -10,6 +9,7 @@ type Config struct {
 
 type GRPCConfig struct {
 	ServerAddr string `mapstructure:"server_addr"`
+	EventAddr  string `mapstructure:"event_addr"`
 }
 
 type ServerCfg struct {

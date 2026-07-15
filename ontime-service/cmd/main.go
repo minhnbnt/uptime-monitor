@@ -31,4 +31,5 @@ func main() {
 
 	waitgroup.Go(func() { _, _ = injector.ShutdownOnSignalsWithContext(ctx) })
 	waitgroup.Go(func() { app.RunWebServer(ctx, injector) })
+	waitgroup.Go(func() { app.RunGRPCServer(ctx, injector) })
 }

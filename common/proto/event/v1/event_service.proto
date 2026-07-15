@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package event.v1;
+
+option go_package = "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/event/v1;eventv1";
+
+message RecordEventRequest {
+  uint64 endpoint_id = 1;
+  string status = 2;
+}
+
+message RecordEventResponse {}
+
+service EventService {
+  rpc RecordEvent(RecordEventRequest) returns (RecordEventResponse);
+}
