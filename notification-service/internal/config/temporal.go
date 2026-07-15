@@ -1,35 +1,48 @@
 package config
 
 import (
-	"fmt"
-	"sync"
+	"log/slog"
 
 	"github.com/samber/do/v2"
-	"go.temporal.io/sdk/client"
+	temporalclient "go.temporal.io/sdk/client"
 )
 
 type TemporalClientWrapper struct {
-	client client.Client
-	mu     sync.Mutex
+	client temporalclient.Client
 }
 
-func (w *TemporalClientWrapper) GetClient() client.Client {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	return w.client
+func newClientOption(i do.Injector) (*temporalclient.Options, error) {
+
+	cfg := do.MustInvoke[*Config](i)
+	log := do.MustInvoke[*slog.Logger](i)
+
+	return &temporalclient.Options{
+		HostPort: cfg.Temporal.Host,
+		Logger:   log,
+	}, nil
+}
+
+func newTemporalClient(i do.Injector) (*TemporalClientWrapper, error) {
+
+	option := do.MustInvoke[*temporalclient.Options](i)
+
+	client, err := temporalclient.Dial(*option)
+	if err != nil {
+		return nil, err
+	}
+
+	return &TemporalClientWrapper{client: client}, nil
 }
 
 func RegisterTemporalClient(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (*TemporalClientWrapper, error) {
-		cfg := do.MustInvoke[*Config](i)
+	do.Provide(i, newClientOption)
+	do.Provide(i, newTemporalClient)
+}
 
-		c, err := client.Dial(client.Options{
-			HostPort: cfg.Temporal.HostPort,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to connect to Temporal: %w", err)
-		}
+func (cw *TemporalClientWrapper) Shutdown() {
+	cw.client.Close()
+}
 
-		return &TemporalClientWrapper{client: c}, nil
-	})
+func (cw *TemporalClientWrapper) GetClient() temporalclient.Client {
+	return cw.client
 }

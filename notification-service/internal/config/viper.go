@@ -1,112 +1,124 @@
 package config
 
 import (
-	"flag"
+	"fmt"
 
 	"github.com/samber/do/v2"
 	"github.com/spf13/viper"
 )
 
-const configPathKey = "config"
+func initConfig(configPath string) (*Config, error) {
 
-func RegisterConfigPath(configPath string) func(do.Injector) {
-	return func(i do.Injector) {
-		do.ProvideValue[viper.Viper](i, func() viper.Viper {
-			v := viper.New()
-			v.SetConfigFile(configPath)
-			v.AddConfigPath(".")
-			v.SetEnvPrefix("NOTIFICATION")
-			v.AutomaticEnv()
+	v := viper.NewWithOptions(
+		viper.KeyDelimiter("."),
+	)
 
-			if err := v.ReadInConfig(); err != nil {
-				panic(err)
-			}
+	setDefaults(v)
 
-			return *v
-		}())
+	if err := bindEnvVars(v); err != nil {
+		return nil, fmt.Errorf("bind env vars: %w", err)
+	}
+
+	v.SetConfigName("config")
+	v.SetConfigType("yaml")
+	v.AddConfigPath(".")
+	v.AddConfigPath("./config")
+
+	if configPath != "" {
+		v.SetConfigFile(configPath)
+	}
+
+	if err := v.ReadInConfig(); err != nil {
+		if configPath != "" {
+			return nil, fmt.Errorf("read config: %w", err)
+		}
+	}
+
+	cfg := new(Config)
+	if err := v.Unmarshal(&cfg); err != nil {
+		return nil, fmt.Errorf("unmarshal config: %w", err)
+	}
+
+	return cfg, nil
+}
+
+func setDefaults(v *viper.Viper) {
+
+	defaults := map[string]any{
+
+		"log.level": "info",
+
+		"temporal.host":              "localhost:7233",
+		"temporal.task_queue":        "digest-task-queue",
+		"temporal.workflow_name":     "send-report",
+		"temporal.digest_task_queue": "digest-task-queue",
+
+		"db.host": "localhost",
+		"db.port": "5432",
+
+		"server.port": "8085",
+
+		"mail.smtp_host":     "localhost",
+		"mail.smtp_port":     1025,
+		"mail.smtp_user":     "",
+		"mail.smtp_password": "",
+		"mail.from_address":  "noreply@uptime-monitor.local",
+
+		"auth_service.addr":   "http://localhost:8081",
+		"server_service.addr": "http://localhost:8080",
+		"ontime_service.addr": "http://localhost:8084",
+	}
+
+	for key, value := range defaults {
+		v.SetDefault(key, value)
 	}
 }
 
-func RegisterConfigPathFlag() (string, error) {
-	configPath := flag.String("config", "", "path to config file")
-	flag.Parse()
+func bindEnvVars(v *viper.Viper) error {
 
-	if *configPath == "" {
-		return "", nil
+	envMap := map[string]string{
+
+		"db.host":     "DB_HOST",
+		"db.port":     "DB_PORT",
+		"db.user":     "DB_USER",
+		"db.password": "DB_PASSWORD",
+		"db.dbname":   "DB_NAME",
+
+		"log.level": "LOG_LEVEL",
+
+		"temporal.host":              "TEMPORAL_HOST",
+		"temporal.task_queue":        "TEMPORAL_TASK_QUEUE",
+		"temporal.workflow_name":     "TEMPORAL_WORKFLOW_NAME",
+		"temporal.digest_task_queue": "TEMPORAL_DIGEST_TASK_QUEUE",
+
+		"mail.smtp_host":     "SMTP_HOST",
+		"mail.smtp_port":     "SMTP_PORT",
+		"mail.smtp_user":     "SMTP_USER",
+		"mail.smtp_password": "SMTP_PASSWORD",
+		"mail.from_address":  "SMTP_FROM",
+
+		"auth_service.addr":   "AUTH_SERVICE_ADDR",
+		"server_service.addr": "SERVER_SERVICE_ADDR",
+		"ontime_service.addr": "ONTIME_SERVICE_ADDR",
 	}
 
-	return *configPath, nil
+	for key, env := range envMap {
+		if err := v.BindEnv(key, env); err != nil {
+			return fmt.Errorf("bind env var %s: %w", key, err)
+		}
+	}
+
+	return nil
 }
 
 func RegisterConfig(cfg *Config) func(do.Injector) {
+	return func(i do.Injector) { do.ProvideValue(i, cfg) }
+}
+
+func RegisterConfigPath(configPath string) func(do.Injector) {
 	return func(i do.Injector) {
-		do.ProvideValue(i, cfg)
-
-		initViperFrom(cfg)
+		do.Provide(i, func(i do.Injector) (*Config, error) {
+			return initConfig(configPath)
+		})
 	}
-}
-
-func initViperFrom(cfg *Config) {
-	set := map[string]any{
-		"server.port":         cfg.Server.Port,
-		"db.host":             cfg.DB.Host,
-		"db.port":             cfg.DB.Port,
-		"db.user":             cfg.DB.User,
-		"db.password":         cfg.DB.Password,
-		"db.dbname":           cfg.DB.DBName,
-		"temporal.host_port":  cfg.Temporal.HostPort,
-		"mail.host":           cfg.Mail.Host,
-		"mail.port":           cfg.Mail.Port,
-		"mail.username":       cfg.Mail.Username,
-		"mail.password":       cfg.Mail.Password,
-		"mail.from_address":   cfg.Mail.FromAddress,
-		"log.level":           cfg.Log.Level,
-		"auth_service.addr":   cfg.AuthService.Addr,
-		"server_service.addr": cfg.ServerService.Addr,
-		"ontime_service.addr": cfg.OntimeService.Addr,
-	}
-
-	v := viper.New()
-	for k, val := range set {
-		v.SetDefault(k, val)
-	}
-}
-
-func defaultConfig() *Config {
-	return &Config{
-		Server: ServerConfig{Port: "8085"},
-		DB: DBConfig{
-			Host: "localhost", Port: "5432", User: "notification",
-			Password: "notification", DBName: "notification",
-		},
-		Temporal: TemporalCfg{
-			HostPort: "localhost:7233", DigestTaskQueue: "digest-task-queue",
-		},
-		Mail: MailConfig{
-			Host: "localhost", Port: 1025, FromAddress: "noreply@uptime-monitor.local",
-		},
-		Log: LogConfig{Level: "info"},
-		AuthService:   ServiceAddr{Addr: "http://auth-service:8081"},
-		ServerService: ServiceAddr{Addr: "grpc://server:50051"},
-		OntimeService: ServiceAddr{Addr: "http://ontime-service:8084"},
-	}
-}
-
-func LoadConfig(configPath string) *Config {
-	v := viper.New()
-	v.SetConfigFile(configPath)
-	v.AddConfigPath(".")
-	v.SetEnvPrefix("NOTIFICATION")
-	v.AutomaticEnv()
-
-	if err := v.ReadInConfig(); err != nil {
-		panic(err)
-	}
-
-	cfg := defaultConfig()
-	if err := v.Unmarshal(cfg); err != nil {
-		panic(err)
-	}
-
-	return cfg
 }

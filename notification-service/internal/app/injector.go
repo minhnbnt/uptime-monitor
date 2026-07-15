@@ -15,10 +15,8 @@ import (
 
 func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 
-	cfg := config.LoadConfig(configPath)
-
 	packages := []func(do.Injector){
-		config.RegisterConfig(cfg),
+		config.RegisterConfigPath(configPath),
 		config.RegisterLogger(dev),
 		config.RegisterGORMDB,
 		config.RegisterTemporalClient,

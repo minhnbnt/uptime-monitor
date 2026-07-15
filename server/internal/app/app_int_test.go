@@ -14,9 +14,7 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
-	digestHandler "github.com/minhnbnt/uptime-monitor/internal/features/digest/handler"
 	importerHandler "github.com/minhnbnt/uptime-monitor/internal/features/importer/handler"
-	notificationHandler "github.com/minhnbnt/uptime-monitor/internal/features/notification/handler"
 	ontimeHandler "github.com/minhnbnt/uptime-monitor/internal/features/ontime/handler"
 	pingHandler "github.com/minhnbnt/uptime-monitor/internal/features/ping/handler"
 	serverHandler "github.com/minhnbnt/uptime-monitor/internal/features/server/handler"
@@ -151,10 +149,8 @@ func TestApp_Wiring_CompositeHandler(t *testing.T) {
 	_ = do.MustInvoke[*serverHandler.EndpointHandler](injector)
 	_ = do.MustInvoke[*importerHandler.ImportHandler](injector)
 	_ = do.MustInvoke[*ontimeHandler.OntimeHandler](injector)
-	_ = do.MustInvoke[*notificationHandler.NotificationHandler](injector)
 
 	_ = do.MustInvoke[*pingHandler.ZSetWorkerRunner](injector)
-	_ = do.MustInvoke[*digestHandler.DigestWorkerRunner](injector)
 
 	_ = ctx
 }

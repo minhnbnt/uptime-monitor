@@ -21,9 +21,12 @@ func RunWebServer(ctx context.Context, i do.Injector) {
 	log := do.MustInvoke[*slog.Logger](i)
 
 	errorHandler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
+
 		log.Error("request validation failed", slog.Any("error", err))
 		w.Header().Set("Content-Type", "application/json")
+
 		w.WriteHeader(http.StatusBadRequest)
+
 		_ = json.NewEncoder(w).Encode(api.ErrorResponse{
 			Error: api.ErrorResponseError{
 				Code:    "VALIDATION_ERROR",

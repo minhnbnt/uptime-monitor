@@ -1,15 +1,14 @@
 package config
 
 type Config struct {
-	DB      DBConfig      `mapstructure:"db"`
-	Temporal TemporalCfg  `mapstructure:"temporal"`
-	Mail    MailConfig    `mapstructure:"mail"`
-	Log     LogConfig     `mapstructure:"log"`
-	Server  ServerConfig  `mapstructure:"server"`
-
-	AuthService  ServiceAddr `mapstructure:"auth_service"`
-	ServerService ServiceAddr `mapstructure:"server_service"`
-	OntimeService ServiceAddr `mapstructure:"ontime_service"`
+	DB            DBConfig      `mapstructure:"db"`
+	Temporal      TemporalCfg   `mapstructure:"temporal"`
+	Mail          MailConfig    `mapstructure:"mail"`
+	Log           LogConfig     `mapstructure:"log"`
+	Server        ServerConfig  `mapstructure:"server"`
+	AuthService   ServiceAddr   `mapstructure:"auth_service"`
+	ServerService ServiceAddr   `mapstructure:"server_service"`
+	OntimeService ServiceAddr   `mapstructure:"ontime_service"`
 }
 
 type ServerConfig struct {
@@ -28,17 +27,19 @@ type LogConfig struct {
 	Level string `mapstructure:"level"`
 }
 
-type MailConfig struct {
-	Host         string `mapstructure:"host"`
-	Port         int    `mapstructure:"port"`
-	Username     string `mapstructure:"username"`
-	Password     string `mapstructure:"password"`
-	FromAddress  string `mapstructure:"from_address"`
+type TemporalCfg struct {
+	Host            string `mapstructure:"host"`
+	TaskQueue       string `mapstructure:"task_queue"`
+	WorkflowName    string `mapstructure:"workflow_name"`
+	DigestTaskQueue string `mapstructure:"digest_task_queue"`
 }
 
-type TemporalCfg struct {
-	HostPort        string `mapstructure:"host_port"`
-	DigestTaskQueue string `mapstructure:"digest_task_queue"`
+type MailConfig struct {
+	SMTPHost     string `mapstructure:"smtp_host"`
+	SMTPPort     int    `mapstructure:"smtp_port"`
+	SMTPUser     string `mapstructure:"smtp_user"`
+	SMTPPassword string `mapstructure:"smtp_password"`
+	FromAddress  string `mapstructure:"from_address"`
 }
 
 type ServiceAddr struct {

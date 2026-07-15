@@ -9,14 +9,16 @@ db:
   dbname: notification
 
 temporal:
-  host_port: temporal:7233
+  host: temporal:7233
+  task_queue: digest-task-queue
+  workflow_name: send-report
   digest_task_queue: digest-task-queue
 
 mail:
-  host: mailpit
-  port: 1025
-  username: ""
-  password: ""
+  smtp_host: mailpit
+  smtp_port: 1025
+  smtp_user: ""
+  smtp_password: ""
   from_address: noreply@uptime-monitor.local
 
 log:
