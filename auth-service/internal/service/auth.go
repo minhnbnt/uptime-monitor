@@ -156,6 +156,21 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Aut
 	}, nil
 }
 
+func (s *AuthService) GetUser(ctx context.Context, id uint) (*dto.UserProfile, error) {
+
+	user, err := s.userRepository.FindByID(ctx, id)
+	if err != nil {
+		s.logger.Error("failed to find user", slog.Any("error", err))
+		return nil, apperrors.ErrInternal
+	}
+	if user == nil {
+		return nil, apperrors.ErrNotFound
+	}
+
+	profile := toUserProfile(*user)
+	return &profile, nil
+}
+
 func (s *AuthService) Refresh(ctx context.Context, req dto.RefreshRequest) (*dto.AuthResponse, error) {
 
 	userID, _, err := s.tokenValidator.ValidateRefreshToken(ctx, req.RefreshToken)

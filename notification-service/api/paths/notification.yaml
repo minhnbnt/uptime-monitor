@@ -1,0 +1,53 @@
+notification-config:
+  get:
+    summary: Get notification config
+    operationId: GetNotificationConfig
+    x-ogen-operation-group: Notification
+    tags: [notifications]
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/notification.yaml#/NotificationConfig"
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+  put:
+    summary: Update notification config
+    operationId: UpdateNotificationConfig
+    x-ogen-operation-group: Notification
+    tags: [notifications]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/notification.yaml#/NotificationConfig"
+    responses:
+      "200": { description: Updated }
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+notification-send-report:
+  post:
+    summary: Trigger report email now
+    operationId: SendReport
+    x-ogen-operation-group: Notification
+    tags: [notifications]
+    responses:
+      "200": { description: Sent }
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"

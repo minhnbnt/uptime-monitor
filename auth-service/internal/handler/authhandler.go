@@ -111,6 +111,21 @@ func (h *AuthHandler) HandleBearerAuth(ctx context.Context, _ api.OperationName,
 	return context.WithValue(ctx, userIDKey{}, userID), nil
 }
 
+func (h *AuthHandler) GetUser(ctx context.Context, params api.GetUserParams) (*api.UserProfile, error) {
+
+	user, err := h.authService.GetUser(ctx, uint(params.ID))
+	if err != nil {
+		return nil, apperrors.ToAPIError(err)
+	}
+
+	return &api.UserProfile{
+		ID:       int(user.ID),
+		Email:    user.Email,
+		Username: user.Username,
+		Name:     user.Name,
+	}, nil
+}
+
 func (h *AuthHandler) ValidateToken(ctx context.Context) (*api.ValidateTokenOK, error) {
 
 	userID, ok := ctx.Value(userIDKey{}).(uint)

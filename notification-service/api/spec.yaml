@@ -1,0 +1,32 @@
+openapi: "3.0.3"
+info:
+  title: Notification Service API
+  description: Notification and digest service for uptime-monitor
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8085
+    description: Development server
+
+tags:
+  - name: notifications
+    description: Notification and digest configuration
+
+paths:
+  /api/v1/notifications/config:
+    $ref: "./paths/notification.yaml#/notification-config"
+  /api/v1/notifications/send-report:
+    $ref: "./paths/notification.yaml#/notification-send-report"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      $ref: "./schemas/common.yaml#/ErrorResponse"
+    NotificationConfig:
+      $ref: "./schemas/notification.yaml#/NotificationConfig"

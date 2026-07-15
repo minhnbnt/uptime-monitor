@@ -5,14 +5,8 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/authclient"
 	"github.com/minhnbnt/uptime-monitor/internal/config"
-	digesthandler "github.com/minhnbnt/uptime-monitor/internal/features/digest/handler"
-	digestinfra "github.com/minhnbnt/uptime-monitor/internal/features/digest/infrastructure"
-	digestrepo "github.com/minhnbnt/uptime-monitor/internal/features/digest/repository"
-	digestservice "github.com/minhnbnt/uptime-monitor/internal/features/digest/service"
 	importerhandler "github.com/minhnbnt/uptime-monitor/internal/features/importer/handler"
 	importerservice "github.com/minhnbnt/uptime-monitor/internal/features/importer/service"
-	notificationhandler "github.com/minhnbnt/uptime-monitor/internal/features/notification/handler"
-	notifyservice "github.com/minhnbnt/uptime-monitor/internal/features/notification/service"
 	ontimehandler "github.com/minhnbnt/uptime-monitor/internal/features/ontime/handler"
 	ontimerepo "github.com/minhnbnt/uptime-monitor/internal/features/ontime/repository"
 	ontimeservice "github.com/minhnbnt/uptime-monitor/internal/features/ontime/service"
@@ -37,33 +31,23 @@ func providersAfterConfig(dev bool) []func(do.Injector) {
 		serverrepo.RegisterEndpointRepository,
 		serverrepo.RegisterParadeDBSearcher,
 
-		digestrepo.RegisterNotificationConfigRepository,
-		digestrepo.RegisterUserRepository,
-
 		ontimerepo.RegisterOntineRepository,
 		ontimerepo.RegisterOntimeCacheRepository,
-
-		config.RegisterMailClient,
-		digestinfra.RegisterMailer,
 
 		serverinfra.RegisterExcelExporter,
 		serverinfra.RegisterExcelParser,
 		infraPing.RegisterPingWorker,
-		digestinfra.RegisterDigestStarter,
 
 		featservice.RegisterServerService,
 		featservice.RegisterEndpointService,
 		importerservice.RegisterImportService,
 		ontimeservice.RegisterBatcher,
 		ontimeservice.RegisterOntimeService,
-		digestservice.RegisterDigestService,
-		notifyservice.RegisterNotificationService,
 
 		serverhandler.RegisterServerHandler,
 		serverhandler.RegisterEndpointHandler,
 		importerhandler.RegisterImportHandler,
 		ontimehandler.RegisterOntimeHandler,
-		notificationhandler.RegisterNotificationHandler,
 
 		servergrpc.RegisterEndpointServer,
 		servergrpc.RegisterServerServer,
@@ -71,7 +55,6 @@ func providersAfterConfig(dev bool) []func(do.Injector) {
 		authclient.RegisterAuthMiddleware,
 
 		server.RegisterCompositeHandler,
-		digesthandler.RegisterDigestWorkerRunner,
 	}
 }
 

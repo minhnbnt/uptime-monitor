@@ -1,0 +1,15 @@
+NotificationConfig:
+  type: object
+  properties:
+    digest_time:
+      type: string
+      pattern: "^\\d{2}:\\d{2}$"
+      description: "Time of day to send digest (HH:MM format)"
+    from_date:
+      type: string
+      format: date
+      description: "Start date for the digest report range"
+    to_date:
+      type: string
+      format: date
+      description: "End date for the digest report range"

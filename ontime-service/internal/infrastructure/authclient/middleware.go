@@ -47,7 +47,8 @@ func (am *AuthMiddleware) XUserIDMiddleware(next http.Handler) http.Handler {
 		if err != nil {
 			am.log.Warn("invalid X-User-ID", slog.String("value", uid))
 		} else {
-			r = r.WithContext(context.WithValue(r.Context(), userIDKey{}, uint(id)))
+			ctxWithCredential := context.WithValue(r.Context(), userIDKey{}, uint(id))
+			r = r.WithContext(ctxWithCredential)
 		}
 
 		next.ServeHTTP(w, r)

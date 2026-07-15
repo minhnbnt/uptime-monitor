@@ -19,9 +19,6 @@ tags:
     description: Endpoint configuration and testing
   - name: import
     description: Import and export server data
-  - name: notifications
-    description: Notification and digest report configuration
-
 paths:
   # ── Servers (CRUD) ───────────────────────
   /api/v1/servers:
@@ -48,12 +45,6 @@ paths:
     $ref: "./paths/servers.yaml#/servers-export"
   /api/v1/servers/import:
     $ref: "./paths/servers.yaml#/import-servers"
-
-  # ── Notifications ────────────────────────
-  /api/v1/notifications/config:
-    $ref: "./paths/notification.yaml#/notification-config"
-  /api/v1/notifications/send-report:
-    $ref: "./paths/notification.yaml#/notification-send-report"
 
 components:
   schemas:
@@ -93,5 +84,4 @@ components:
     ServerOntimeListResponse:
       $ref: "./schemas/ontime.yaml#/ServerOntimeListResponse"
 
-    NotificationConfig:
-      $ref: "./schemas/notification.yaml#/NotificationConfig"
+
