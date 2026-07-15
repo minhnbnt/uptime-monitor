@@ -32,7 +32,7 @@ func testConfig() *config.Config {
 func setupProviderWithConfig(t *testing.T) (*jwt.Provider, *config.TokenConfig) {
 	t.Helper()
 	i := do.New()
-	config.RegisterConfig(testConfig())(i)
+	do.ProvideValue(i, testConfig())
 	config.RegisterJwtConfig(i)
 	config.RegisterTokenConfig(i)
 	jwt.RegisterProvider(i)

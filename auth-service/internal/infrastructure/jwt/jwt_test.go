@@ -19,7 +19,7 @@ func testConfig() *config.Config {
 func TestParser_ExpiredToken(t *testing.T) {
 
 	i := do.New()
-	config.RegisterConfig(testConfig())(i)
+	do.ProvideValue(i, testConfig())
 	config.RegisterJwtConfig(i)
 	RegisterProvider(i)
 
@@ -42,7 +42,7 @@ func TestParser_ExpiredToken(t *testing.T) {
 func TestParser_RoundTrip(t *testing.T) {
 
 	i := do.New()
-	config.RegisterConfig(testConfig())(i)
+	do.ProvideValue(i, testConfig())
 	config.RegisterJwtConfig(i)
 	RegisterProvider(i)
 

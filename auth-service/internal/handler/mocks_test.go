@@ -11,6 +11,7 @@ type mockAuthService struct {
 	loginFn    func(ctx context.Context, req dto.LoginRequest) (*dto.AuthResponse, error)
 	refreshFn  func(ctx context.Context, req dto.RefreshRequest) (*dto.AuthResponse, error)
 	logoutFn   func(ctx context.Context, refreshToken string) error
+	getUserFn  func(ctx context.Context, id uint) (*dto.UserProfile, error)
 }
 
 func (m *mockAuthService) Register(ctx context.Context, req dto.RegisterRequest) (*dto.AuthResponse, error) {
@@ -33,4 +34,11 @@ func (m *mockAuthService) Logout(ctx context.Context, refreshToken string) error
 		return nil
 	}
 	return m.logoutFn(ctx, refreshToken)
+}
+
+func (m *mockAuthService) GetUser(ctx context.Context, id uint) (*dto.UserProfile, error) {
+	if m.getUserFn == nil {
+		return nil, nil
+	}
+	return m.getUserFn(ctx, id)
 }
