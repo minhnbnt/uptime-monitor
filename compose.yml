@@ -111,8 +111,8 @@ services:
     depends_on:
       temporal:
         condition: service_started
-      postgres:
-        condition: service_healthy
+      pgbouncer:
+        condition: service_started
 
     labels:
       traefik.enable: true

@@ -1,0 +1,32 @@
+server:
+  port: 8085
+
+db:
+  host: pgbouncer
+  port: 6432
+  user: notification
+  password: notification
+  dbname: notification
+
+temporal:
+  host_port: temporal:7233
+  digest_task_queue: digest-task-queue
+
+mail:
+  host: mailpit
+  port: 1025
+  username: ""
+  password: ""
+  from_address: noreply@uptime-monitor.local
+
+log:
+  level: info
+
+auth_service:
+  addr: http://auth-service:8081
+
+server_service:
+  addr: http://server:8080
+
+ontime_service:
+  addr: http://ontime-service:8084
