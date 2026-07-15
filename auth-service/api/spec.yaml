@@ -23,7 +23,7 @@ paths:
     $ref: "./paths/auth.yaml#/logout"
   /api/v1/auth/validate:
     $ref: "./paths/auth.yaml#/validate"
-  /api/v1/auth/users/{id}:
+  /api/v1/auth/private/users/{id}:
     $ref: "./paths/auth.yaml#/get-user"
 
 components:

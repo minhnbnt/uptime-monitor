@@ -31,7 +31,7 @@ func RegisterClient(i do.Injector) {
 
 func (a *Client) FindByID(ctx context.Context, id uint) (*domain.User, error) {
 
-	url := fmt.Sprintf("%s/api/v1/auth/users/%d", a.baseURL, id)
+	url := fmt.Sprintf("%s/api/v1/auth/private/users/%d", a.baseURL, id)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
