@@ -11,7 +11,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
-	scheduler "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/features/ping/scheduler"
+	scheduler "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
 )
 
 const (

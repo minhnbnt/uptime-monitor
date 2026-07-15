@@ -10,7 +10,7 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
-	pinghandler "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/features/ping/handler"
+	pinghandler "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/handler"
 )
 
 func RunZSetWorker(ctx context.Context, i do.Injector) {

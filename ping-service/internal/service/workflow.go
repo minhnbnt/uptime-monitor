@@ -6,7 +6,7 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
-	infra "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/features/ping/infrastructure"
+	infra "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure"
 )
 
 type PingService struct {

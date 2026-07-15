@@ -7,7 +7,7 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/grpcclient"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/grpcclient"
 )
 
 type endpointBatchProvider interface {

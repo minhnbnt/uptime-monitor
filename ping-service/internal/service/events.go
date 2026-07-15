@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/features/ping/infrastructure/redis"
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/features/ping/scheduler"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
 	"github.com/samber/do/v2"
 )
 
