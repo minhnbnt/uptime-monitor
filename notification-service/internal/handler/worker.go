@@ -23,9 +23,10 @@ func RegisterDigestWorkerRunner(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*DigestWorkerRunner, error) {
 
 		clientWrapper := do.MustInvoke[*config.TemporalClientWrapper](i)
-		cfg := do.MustInvoke[*config.Config](i)
 		digestService := do.MustInvoke[*service.DigestService](i)
+
 		logger := do.MustInvoke[*slog.Logger](i)
+		cfg := do.MustInvoke[*config.Config](i)
 
 		client := clientWrapper.GetClient()
 		worker := temporalworker.New(

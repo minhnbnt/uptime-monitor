@@ -15,11 +15,21 @@ RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
     go build -trimpath -ldflags="-s -w" -o /app/notification-service ./cmd
 
 
+FROM alpine:3.22 AS upx
+
+RUN --mount=type=cache,id=apk-cache,target=/var/cache/apk \
+    apk add upx
+
+COPY --from=builder /app/notification-service /app/notification-service
+
+RUN upx --best --lzma /app/notification-service
+
+
 FROM gcr.io/distroless/static-debian13:nonroot
 
 WORKDIR /app
 
-COPY --from=builder /app/notification-service .
+COPY --from=upx /app/notification-service .
 
 EXPOSE 8085
 

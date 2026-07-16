@@ -1,0 +1,19 @@
+db:
+  host: pgbouncer
+  port: 6432
+  user: postgres
+  password: postgres
+  dbname: uptime_monitor
+
+redis:
+  addr: redis:6379
+  password: ""
+  db: 0
+
+log:
+  level: info
+
+grpc:
+  port: "50051"
+  server_addr: "localhost:50051"
+  event_addr: ontime:50052

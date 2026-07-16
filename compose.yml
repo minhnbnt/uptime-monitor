@@ -14,14 +14,18 @@ services:
       - /run/user/1000/podman/podman.sock:/var/run/docker.sock:Z
 
     labels:
-      traefik.enable: "true"
+      traefik.enable: true
+      traefik.http.middlewares.cors.headers.accessControlAllowOriginList: "*"
+      traefik.http.middlewares.cors.headers.accessControlAllowMethods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+      traefik.http.middlewares.cors.headers.accessControlAllowHeaders: "*"
+      traefik.http.middlewares.cors.headers.accessControlMaxAge: 86400
 
   auth-service:
     build: ./auth-service
     ports:
       - 8081:8081
 
-    command: ["--config=/config.yml"]
+    command: --config=/config.yml
 
     volumes:
       - ./config/auth-service.yaml:/config.yml
@@ -34,22 +38,23 @@ services:
 
     labels:
       traefik.enable: true
-      traefik.http.routers.auth.rule: PathPrefix(`/api/v1/auth`) && !PathPrefix(`/api/v1/auth/private`)
+      traefik.http.routers.auth.rule: PathPrefix(`/api/v1/auth`)
       traefik.http.routers.auth.service: auth-service
+      traefik.http.routers.auth.middlewares: cors
       traefik.http.services.auth-service.loadbalancer.server.port: 8081
 
-  server:
+  server-service:
     build:
       context: .
-      dockerfile: server/Dockerfile
+      dockerfile: server-service/Dockerfile
 
     ports:
-      - "8080"
+      - 8080
 
     command: ["--dev", "--config=/app/config.yml"]
 
     volumes:
-      - ./config/server.yml:/app/config.yml
+      - ./config/server-service.yml:/app/config.yml
 
     depends_on:
       redis:
@@ -59,12 +64,12 @@ services:
 
     labels:
       traefik.enable: "true"
-      traefik.http.routers.server.rule: "PathPrefix(`/api/v1`) && !PathPrefix(`/api/v1/auth`) && !PathPrefix(`/api/v1/notifications`)"
-      traefik.http.routers.server.service: "server"
-      traefik.http.services.server.loadbalancer.server.port: "8080"
-      traefik.http.routers.server.middlewares: "forward-auth"
-      traefik.http.middlewares.forward-auth.forwardauth.address: "http://auth-service:8081/auth/verify"
-      traefik.http.middlewares.forward-auth.forwardauth.authResponseHeaders: "X-User-ID"
+      traefik.http.routers.server.rule: PathPrefix(`/api/v1/servers`) || PathPrefix(`/api/v1/test-endpoint`)
+      traefik.http.routers.server.service: server-service
+      traefik.http.services.server-service.loadbalancer.server.port: 8080
+      traefik.http.routers.server.middlewares: cors, forward-auth
+      traefik.http.middlewares.forward-auth.forwardauth.address: http://auth-service:8081/auth/verify
+      traefik.http.middlewares.forward-auth.forwardauth.authResponseHeaders: X-User-ID
 
   ping-service:
     build:
@@ -77,7 +82,7 @@ services:
       - ./config/ping-service.yml:/config.yml
 
     depends_on:
-      server:
+      server-service:
         condition: service_started
       redis:
         condition: service_started
@@ -93,7 +98,7 @@ services:
       - ./config/ontime-service.yml:/config.yml
 
     depends_on:
-      server:
+      server-service:
         condition: service_started
       redis:
         condition: service_started
@@ -118,6 +123,7 @@ services:
       traefik.enable: true
       traefik.http.routers.notification.rule: PathPrefix(`/api/v1/notifications`)
       traefik.http.routers.notification.service: notification-service
+      traefik.http.routers.notification.middlewares: cors
       traefik.http.services.notification-service.loadbalancer.server.port: 8085
 
   pgbouncer:
@@ -197,7 +203,7 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: minhnbnt@example.com
       PGADMIN_DEFAULT_PASSWORD: 12345678
-      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_SERVER_MODE: False
 
     ports:
       - 8000:80

@@ -24,11 +24,21 @@ RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
     go build -trimpath -ldflags="-s -w" -o /app/ontime-service ./cmd
 
 
+FROM alpine:3.22 AS upx
+
+RUN --mount=type=cache,id=apk-cache,target=/var/cache/apk \
+    apk add upx
+
+COPY --from=builder /app/ontime-service /app/ontime-service
+
+RUN upx --best --lzma /app/ontime-service
+
+
 FROM gcr.io/distroless/static-debian13:nonroot
 
 WORKDIR /app
 
-COPY --from=builder /app/ontime-service .
+COPY --from=upx /app/ontime-service .
 
 EXPOSE 8084
 

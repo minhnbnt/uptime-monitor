@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/rs/cors"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/generated/api"
@@ -47,13 +46,7 @@ func RunWebServer(ctx context.Context, i do.Injector) {
 		panic(err)
 	}
 
-	corsMiddleware := cors.New(cors.Options{
-		AllowedOrigins: []string{"*"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"Content-Type", "Authorization"},
-	})
-
-	muxHandler := authclient.XUserIDMiddleware(corsMiddleware.Handler(srv))
+	muxHandler := authclient.XUserIDMiddleware(srv)
 
 	cfg := do.MustInvoke[*config.Config](i)
 

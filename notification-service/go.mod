@@ -9,7 +9,6 @@ require (
 	github.com/go-faster/jx v1.2.0
 	github.com/ogen-go/ogen v1.22.0
 	github.com/orandin/slog-gorm v1.4.0
-	github.com/rs/cors v1.11.1
 	github.com/samber/do/v2 v2.0.0
 	github.com/samber/lo v1.53.0
 	github.com/spf13/viper v1.21.0
