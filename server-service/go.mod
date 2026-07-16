@@ -6,11 +6,14 @@ tool github.com/ogen-go/ogen/cmd/ogen
 
 replace github.com/minhnbnt/uptime-monitor-microservices/common/proto => ../common/proto
 
+replace github.com/minhnbnt/uptime-monitor-microservices/common/authclient => ../common/authclient
+
 require (
 	github.com/go-faster/errors v0.7.1
 	github.com/go-faster/jx v1.2.0
 	github.com/google/uuid v1.6.0
 	github.com/minhnbnt/uptime-monitor-microservices/common/proto v0.0.0-00010101000000-000000000000
+	github.com/minhnbnt/uptime-monitor-microservices/common/authclient v0.0.0-00010101000000-000000000000
 	github.com/ogen-go/ogen v1.23.0
 	github.com/orandin/slog-gorm v1.4.0
 	github.com/redis/go-redis/v9 v9.21.0

@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/generated/api"
-	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/authclient"
+	"github.com/minhnbnt/uptime-monitor-microservices/common/authclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/handler"
 )
@@ -28,10 +28,10 @@ func RunWebServer(ctx context.Context, injector do.Injector) {
 	cfg := do.MustInvoke[*config.Config](injector)
 	log := do.MustInvoke[*slog.Logger](injector)
 
-	auth := do.MustInvoke[*authclient.AuthMiddleware](injector)
+	middleWare := authclient.NewAuthMiddleware(log)
 
 	mux := http.NewServeMux()
-	mux.Handle("/", auth.XUserIDMiddleware(srv))
+	mux.Handle("/", middleWare.XUserIDMiddleware(srv))
 
 	httpServer := http.Server{
 		Addr:    ":" + cfg.Server.Port,

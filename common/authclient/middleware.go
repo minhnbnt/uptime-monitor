@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-
-	"github.com/samber/do/v2"
 )
 
 type userIDKey struct{}
@@ -24,17 +22,12 @@ type AuthMiddleware struct {
 	log *slog.Logger
 }
 
-func RegisterAuthMiddleware(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (*AuthMiddleware, error) {
-		return &AuthMiddleware{
-			log: do.MustInvoke[*slog.Logger](i),
-		}, nil
-	})
+func NewAuthMiddleware(log *slog.Logger) *AuthMiddleware {
+	return &AuthMiddleware{log: log}
 }
 
 func (am *AuthMiddleware) XUserIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 		uid := r.Header.Get("X-User-ID")
 		uid = strings.TrimSpace(uid)
 
@@ -47,8 +40,7 @@ func (am *AuthMiddleware) XUserIDMiddleware(next http.Handler) http.Handler {
 		if err != nil {
 			am.log.Warn("invalid X-User-ID", slog.String("value", uid))
 		} else {
-			ctxWithCredential := context.WithValue(r.Context(), userIDKey{}, uint(id))
-			r = r.WithContext(ctxWithCredential)
+			r = r.WithContext(context.WithValue(r.Context(), userIDKey{}, uint(id)))
 		}
 
 		next.ServeHTTP(w, r)

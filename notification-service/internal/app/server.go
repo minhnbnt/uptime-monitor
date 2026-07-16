@@ -12,7 +12,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/generated/api"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/handler"
-	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/authclient"
+	"github.com/minhnbnt/uptime-monitor-microservices/common/authclient"
 )
 
 func RunWebServer(ctx context.Context, i do.Injector) {
@@ -46,7 +46,8 @@ func RunWebServer(ctx context.Context, i do.Injector) {
 		panic(err)
 	}
 
-	muxHandler := authclient.XUserIDMiddleware(srv)
+	middleWare := authclient.NewAuthMiddleware(log)
+	muxHandler := middleWare.XUserIDMiddleware(srv)
 
 	cfg := do.MustInvoke[*config.Config](i)
 

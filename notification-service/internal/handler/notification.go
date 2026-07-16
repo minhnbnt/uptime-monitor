@@ -7,7 +7,7 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/generated/api"
-	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/authclient"
+	"github.com/minhnbnt/uptime-monitor-microservices/common/authclient"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/dto"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/service"

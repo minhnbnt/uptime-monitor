@@ -9,7 +9,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/generated/api"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/errors"
-	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/authclient"
+	"github.com/minhnbnt/uptime-monitor-microservices/common/authclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/service"
 )
 

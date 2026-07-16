@@ -6,7 +6,6 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/config"
 	ontimegrpc "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/grpc"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/handler"
-	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/authclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/recorder"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/serverclient"
@@ -31,7 +30,6 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 		service.RegisterBatcher,
 		service.RegisterOntimeService,
 
-		authclient.RegisterAuthMiddleware,
 		handler.RegisterOntimeHandler,
 
 		recorder.RegisterDedupRecorder,
