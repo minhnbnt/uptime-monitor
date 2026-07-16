@@ -14,7 +14,7 @@ import (
 )
 
 type PingService interface {
-	Ping(ctx context.Context, method, url string) (int, error)
+	Ping(ctx context.Context, ep *domain.Endpoint) (int, error)
 	Record(ctx context.Context, event *domain.ServerEvent) error
 }
 
@@ -55,7 +55,7 @@ func (r *ZSetWorkerRunner) RunZSetWorker(ctx context.Context) {
 
 func (r *ZSetWorkerRunner) pingAndRecordEndpoint(ctx context.Context, ep *domain.Endpoint) {
 
-	statusCode, pingErr := r.pingService.Ping(ctx, ep.Method, ep.URL)
+	statusCode, pingErr := r.pingService.Ping(ctx, ep)
 
 	if pingErr != nil {
 		r.logger.Warn(

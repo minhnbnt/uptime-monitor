@@ -23,8 +23,8 @@ func RegisterPingService(i do.Injector) {
 	})
 }
 
-func (s *PingService) Ping(ctx context.Context, method, url string) (int, error) {
-	return s.pingWorker.Ping(ctx, method, url)
+func (s *PingService) Ping(ctx context.Context, ep *domain.Endpoint) (int, error) {
+	return s.pingWorker.Ping(ctx, ep)
 }
 
 func (s *PingService) Record(ctx context.Context, event *domain.ServerEvent) error {
