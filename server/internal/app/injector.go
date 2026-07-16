@@ -17,6 +17,7 @@ import (
 	featservice "github.com/minhnbnt/uptime-monitor/internal/features/server/service"
 	servergrpc "github.com/minhnbnt/uptime-monitor/internal/grpc"
 	"github.com/minhnbnt/uptime-monitor/internal/grpcclient"
+	"github.com/minhnbnt/uptime-monitor/internal/features/ping/scheduler"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
 )
 
@@ -52,6 +53,10 @@ func providersAfterConfig(dev bool) []func(do.Injector) {
 		serverhandler.RegisterEndpointHandler,
 		importerhandler.RegisterImportHandler,
 		ontimehandler.RegisterOntimeHandler,
+
+		scheduler.RegisterEndpointMetaCache,
+		scheduler.RegisterEndpointFetcher,
+		scheduler.RegisterEndpointProvider,
 
 		servergrpc.RegisterEndpointServer,
 		servergrpc.RegisterServerServer,
