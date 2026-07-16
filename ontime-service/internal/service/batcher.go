@@ -115,7 +115,7 @@ func (b *Batcher) resolveCache(ctx context.Context, keys []dto.BatchGetOntimeIte
 func (b *Batcher) fillMisses(ctx context.Context, missedKeys []dto.BatchGetOntimeItem, until time.Time) map[dto.BatchGetOntimeItem]float64 {
 
 	requests := lo.Map(missedKeys, func(key dto.BatchGetOntimeItem, _ int) ontimerepo.BatchGetOntimeRequest {
-		return ontimerepo.BatchGetOntimeRequest{ServerID: key.ServerID, Date: key.Date}
+		return ontimerepo.BatchGetOntimeRequest{EndpointID: key.EndpointID, Date: key.Date}
 	})
 
 	rows, err := b.ontineRepository.BatchGetOntime(ctx, requests)
@@ -124,13 +124,13 @@ func (b *Batcher) fillMisses(ctx context.Context, missedKeys []dto.BatchGetOntim
 		return make(map[dto.BatchGetOntimeItem]float64)
 	}
 
-	groups := lo.GroupBy(rows, func(row ontimerepo.RawEvent) serverDayKey {
-		return serverDayKey{ServerID: row.ServerID, Day: row.Day}
+	groups := lo.GroupBy(rows, func(row ontimerepo.RawEvent) endpointDayKey {
+		return endpointDayKey{EndpointID: row.EndpointID, Day: row.Day}
 	})
 
 	dayUntil := utils.TruncateDay(until)
 	toCache := lo.SliceToMap(missedKeys, func(key dto.BatchGetOntimeItem) (dto.BatchGetOntimeItem, float64) {
-		events := groups[serverDayKey{ServerID: key.ServerID, Day: key.Date}]
+		events := groups[endpointDayKey{EndpointID: key.EndpointID, Day: key.Date}]
 		return key, b.calculator.CalculateDayOntime(events, dayUntil, until)
 	})
 
@@ -140,23 +140,23 @@ func (b *Batcher) fillMisses(ctx context.Context, missedKeys []dto.BatchGetOntim
 func (b *Batcher) buildResponse(req []dto.BatchGetOntimeItem, resultMap map[dto.BatchGetOntimeItem]float64) []dto.BatchGetOntimeResponse {
 
 	groups := lo.GroupBy(req, func(item dto.BatchGetOntimeItem) uint {
-		return item.ServerID
+		return item.EndpointID
 	})
 
-	return lo.MapToSlice(groups, func(serverID uint, items []dto.BatchGetOntimeItem) dto.BatchGetOntimeResponse {
+	return lo.MapToSlice(groups, func(endpointID uint, items []dto.BatchGetOntimeItem) dto.BatchGetOntimeResponse {
 
 		result := lo.Map(items, func(item dto.BatchGetOntimeItem, _ int) dto.OntimeStats {
 			return dto.OntimeStats{Date: item.Date, Stats: resultMap[item]}
 		})
 
 		return dto.BatchGetOntimeResponse{
-			ServerID: serverID,
-			Result:   result,
+			EndpointID: endpointID,
+			Result:     result,
 		}
 	})
 }
 
-type serverDayKey struct {
-	ServerID uint
-	Day      time.Time
+type endpointDayKey struct {
+	EndpointID uint
+	Day        time.Time
 }

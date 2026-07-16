@@ -3,8 +3,8 @@ package dto
 import "time"
 
 type BatchGetOntimeItem struct {
-	ServerID uint
-	Date     time.Time
+	EndpointID uint
+	Date       time.Time
 }
 
 type OntimeStats struct {
@@ -13,8 +13,8 @@ type OntimeStats struct {
 }
 
 type BatchGetOntimeResponse struct {
-	ServerID uint
-	Result   []OntimeStats
+	EndpointID uint
+	Result     []OntimeStats
 }
 
 type ServerOntime struct {

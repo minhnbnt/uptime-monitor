@@ -32,14 +32,14 @@ func TestBuildResponse(t *testing.T) {
 
 	t.Run("groups stats by server", func(t *testing.T) {
 		req := []dto.BatchGetOntimeItem{
-			{ServerID: 1, Date: d1},
-			{ServerID: 1, Date: d2},
-			{ServerID: 2, Date: d1},
+			{EndpointID: 1, Date: d1},
+			{EndpointID: 1, Date: d2},
+			{EndpointID: 2, Date: d1},
 		}
 		resultMap := map[dto.BatchGetOntimeItem]float64{
-			{ServerID: 1, Date: d1}: 99.5,
-			{ServerID: 1, Date: d2}: 100.0,
-			{ServerID: 2, Date: d1}: 50.0,
+			{EndpointID: 1, Date: d1}: 99.5,
+			{EndpointID: 1, Date: d2}: 100.0,
+			{EndpointID: 2, Date: d1}: 50.0,
 		}
 
 		got := b.buildResponse(req, resultMap)
@@ -51,7 +51,7 @@ func TestBuildResponse(t *testing.T) {
 		// Build lookup to verify
 		s1Stats := map[uint][]dto.OntimeStats{}
 		for _, r := range got {
-			s1Stats[r.ServerID] = r.Result
+			s1Stats[r.EndpointID] = r.Result
 		}
 
 		if len(s1Stats[1]) != 2 {
@@ -81,7 +81,7 @@ func TestBuildResponse(t *testing.T) {
 
 	t.Run("missing key defaults to 0", func(t *testing.T) {
 		req := []dto.BatchGetOntimeItem{
-			{ServerID: 1, Date: d1},
+			{EndpointID: 1, Date: d1},
 		}
 		got := b.buildResponse(req, nil)
 		if len(got) != 1 {
@@ -105,14 +105,14 @@ func TestBuildOntimeLookup(t *testing.T) {
 	t.Run("converts response slice to lookup map", func(t *testing.T) {
 		results := []dto.BatchGetOntimeResponse{
 			{
-				ServerID: 1,
+				EndpointID: 1,
 				Result: []dto.OntimeStats{
 					{Date: d1, Stats: 99.5},
 					{Date: d2, Stats: 100.0},
 				},
 			},
 			{
-				ServerID: 2,
+				EndpointID: 2,
 				Result: []dto.OntimeStats{
 					{Date: d1, Stats: 50.0},
 				},
@@ -151,12 +151,12 @@ func TestResolveCache(t *testing.T) {
 
 	t.Run("returns cached values", func(t *testing.T) {
 		keys := []dto.BatchGetOntimeItem{
-			{ServerID: 1, Date: d1},
-			{ServerID: 1, Date: d2},
+			{EndpointID: 1, Date: d1},
+			{EndpointID: 1, Date: d2},
 		}
 		cached := map[dto.BatchGetOntimeItem]float64{
-			{ServerID: 1, Date: d1}: 99.0,
-			{ServerID: 1, Date: d2}: 100.0,
+			{EndpointID: 1, Date: d1}: 99.0,
+			{EndpointID: 1, Date: d2}: 100.0,
 		}
 
 		b := &Batcher{
@@ -180,7 +180,7 @@ func TestResolveCache(t *testing.T) {
 
 	t.Run("cache error returns empty map", func(t *testing.T) {
 		keys := []dto.BatchGetOntimeItem{
-			{ServerID: 1, Date: d1},
+			{EndpointID: 1, Date: d1},
 		}
 		log, capLog := logger.NewCapturingLogger()
 
@@ -228,9 +228,9 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 	until := oTm(2026, 6, 1, 14, 0) // fixed "now"
 
 	t.Run("all cached", func(t *testing.T) {
-		req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: d1}}
+		req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: d1}}
 		cacheResult := map[dto.BatchGetOntimeItem]float64{
-			{ServerID: 1, Date: d1}: 100.0,
+			{EndpointID: 1, Date: d1}: 100.0,
 		}
 		var dbCalled bool
 		var mSetCalled bool
@@ -273,7 +273,7 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 	})
 
 	t.Run("all miss - fills from DB", func(t *testing.T) {
-		req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: d1}}
+		req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: d1}}
 		var mSetCalled bool
 		var capturedItems map[dto.BatchGetOntimeItem]float64
 
@@ -281,7 +281,7 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 			ontineRepository: &mockOntineRepo{
 				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
 					return []ontimerepo.RawEvent{
-						{ServerID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)},
+						{EndpointID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)},
 					}, nil
 				},
 			},
@@ -314,7 +314,7 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 	})
 
 	t.Run("DB error logs warning", func(t *testing.T) {
-		req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: d1}}
+		req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: d1}}
 		log, capLog := logger.NewCapturingLogger()
 
 		b := &Batcher{
@@ -337,14 +337,14 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 	})
 
 	t.Run("MSet error logs warning", func(t *testing.T) {
-		req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: d1}}
+		req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: d1}}
 		log, capLog := logger.NewCapturingLogger()
 
 		b := &Batcher{
 			ontineRepository: &mockOntineRepo{
 				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
 					return []ontimerepo.RawEvent{
-						{ServerID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)},
+						{EndpointID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)},
 					}, nil
 				},
 			},
@@ -377,16 +377,16 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 	d3 := oDay(2026, 6, 3)
 
 	req := []dto.BatchGetOntimeItem{
-		{ServerID: 1, Date: d1},
-		{ServerID: 1, Date: d2},
-		{ServerID: 2, Date: d3},
+		{EndpointID: 1, Date: d1},
+		{EndpointID: 1, Date: d2},
+		{EndpointID: 2, Date: d3},
 	}
 
 	t.Run("all cached", func(t *testing.T) {
 		cacheResult := map[dto.BatchGetOntimeItem]float64{
-			{ServerID: 1, Date: d1}: 99.0,
-			{ServerID: 1, Date: d2}: 100.0,
-			{ServerID: 2, Date: d3}: 50.0,
+			{EndpointID: 1, Date: d1}: 99.0,
+			{EndpointID: 1, Date: d2}: 100.0,
+			{EndpointID: 2, Date: d3}: 50.0,
 		}
 
 		b := &Batcher{
@@ -413,7 +413,7 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 			for _, s := range r.Result {
 				mp[s.Date] = s.Stats
 			}
-			byServer[r.ServerID] = mp
+			byServer[r.EndpointID] = mp
 		}
 
 		if byServer[1][d1] != 99.0 {
@@ -429,7 +429,7 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 
 	t.Run("partially cached", func(t *testing.T) {
 		cacheResult := map[dto.BatchGetOntimeItem]float64{
-			{ServerID: 1, Date: d1}: 99.0,
+			{EndpointID: 1, Date: d1}: 99.0,
 		}
 
 		b := &Batcher{
@@ -438,15 +438,15 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 					// Only return events for the missing keys
 					events := []ontimerepo.RawEvent{}
 					for _, r := range req {
-						if r.ServerID == 1 && r.Date.Equal(d2) {
+						if r.EndpointID == 1 && r.Date.Equal(d2) {
 							events = append(events, ontimerepo.RawEvent{
-								ServerID: 1, Day: d2, Status: "ON",
+								EndpointID: 1, Day: d2, Status: "ON",
 								Time: d2.Add(6 * time.Hour),
 							})
 						}
-						if r.ServerID == 2 && r.Date.Equal(d3) {
+						if r.EndpointID == 2 && r.Date.Equal(d3) {
 							events = append(events, ontimerepo.RawEvent{
-								ServerID: 2, Day: d3, Status: "OFF",
+								EndpointID: 2, Day: d3, Status: "OFF",
 								Time: d3.Add(12 * time.Hour),
 							})
 						}
@@ -475,7 +475,7 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 
 		// Verify server 1 has d1=99 and d2>0
 		for _, r := range got {
-			if r.ServerID == 1 {
+			if r.EndpointID == 1 {
 				for _, s := range r.Result {
 					if s.Date.Equal(d1) && s.Stats != 99.0 {
 						t.Errorf("server 1, d1 = %f, want 99.0", s.Stats)
@@ -496,10 +496,10 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 				batchGetOntimeFn: func(_ context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
 					dbCalled = true
 					return []ontimerepo.RawEvent{
-						{ServerID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)},
-						{ServerID: 1, Day: d2, Status: "ON", Time: d2.Add(8 * time.Hour)},
-						{ServerID: 1, Day: d2, Status: "OFF", Time: d2.Add(12 * time.Hour)},
-						{ServerID: 2, Day: d3, Status: "ON", Time: d3.Add(8 * time.Hour)},
+						{EndpointID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)},
+						{EndpointID: 1, Day: d2, Status: "ON", Time: d2.Add(8 * time.Hour)},
+						{EndpointID: 1, Day: d2, Status: "OFF", Time: d2.Add(12 * time.Hour)},
+						{EndpointID: 2, Day: d3, Status: "ON", Time: d3.Add(8 * time.Hour)},
 					}, nil
 				},
 			},
@@ -530,7 +530,7 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 			for _, s := range r.Result {
 				if s.Stats <= 0 {
 					t.Errorf("server %d, date %v: stats = %f, want > 0",
-						r.ServerID, s.Date, s.Stats)
+						r.EndpointID, s.Date, s.Stats)
 				}
 			}
 		}
@@ -588,7 +588,7 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 			t.Fatal("expected non-nil result")
 		}
 		if got.ServerID != 1 {
-			t.Errorf("ServerID = %d, want 1", got.ServerID)
+			t.Errorf("EndpointID = %d, want 1", got.ServerID)
 		}
 		if len(got.OntimeStats) == 0 {
 			t.Errorf("expected ontime stats, got none")
