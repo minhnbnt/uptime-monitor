@@ -28,20 +28,6 @@ func RegisterEndpointClient(i do.Injector) {
 	})
 }
 
-func (c *EndpointClient) UpdateMonitorStatus(ctx context.Context, endpointID uint, status domain.ServerStatus) error {
-
-	_, err := c.client.UpdateMonitorStatus(ctx, &endpointv1.UpdateMonitorStatusRequest{
-		EndpointId: uint64(endpointID),
-		Status:     string(status),
-	})
-
-	if err != nil {
-		return fmt.Errorf("update monitor status: %w", err)
-	}
-
-	return nil
-}
-
 func (c *EndpointClient) GetBatch(ctx context.Context, ids []uint) (map[uint]*domain.Endpoint, error) {
 
 	endpointIDs := make([]uint64, len(ids))

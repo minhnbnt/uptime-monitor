@@ -23,14 +23,6 @@ message GetEndpointsResponse {
   repeated EndpointData endpoints = 1;
 }
 
-message UpdateMonitorStatusRequest {
-  uint64 endpoint_id = 1;
-  string status = 2;
-}
-
-message UpdateMonitorStatusResponse {}
-
 service EndpointService {
   rpc GetEndpoints(GetEndpointsRequest) returns (GetEndpointsResponse);
-  rpc UpdateMonitorStatus(UpdateMonitorStatusRequest) returns (UpdateMonitorStatusResponse);
 }

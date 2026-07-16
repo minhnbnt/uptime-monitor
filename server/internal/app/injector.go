@@ -16,6 +16,7 @@ import (
 	serverrepo "github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 	featservice "github.com/minhnbnt/uptime-monitor/internal/features/server/service"
 	servergrpc "github.com/minhnbnt/uptime-monitor/internal/grpc"
+	"github.com/minhnbnt/uptime-monitor/internal/grpcclient"
 	"github.com/minhnbnt/uptime-monitor/internal/server"
 )
 
@@ -26,6 +27,8 @@ func providersAfterConfig(dev bool) []func(do.Injector) {
 		config.RegisterGORMDB,
 		config.RegisterRedisClient,
 		config.RegisterTemporalClient,
+
+		grpcclient.RegisterEventClient,
 
 		serverrepo.RegisterServerRepository,
 		serverrepo.RegisterEndpointRepository,

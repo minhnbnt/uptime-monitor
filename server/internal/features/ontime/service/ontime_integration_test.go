@@ -63,12 +63,22 @@ func initTestDB(tb testing.TB) *gorm.DB {
 	})
 }
 
+type mockStatusClient struct{}
+
+func (m *mockStatusClient) GetCurrentStatuses(_ context.Context, _ []uint) (map[uint]domain.ServerStatus, error) {
+	return nil, nil
+}
+
+func (m *mockStatusClient) CountByStatus(_ context.Context, _ []uint) (int64, int64, error) {
+	return 0, 0, nil
+}
+
 func newServiceWithRedis(tb testing.TB) *OntimeService {
 	tb.Helper()
 	testcontainers.SkipIfShort(tb)
 
 	return &OntimeService{
-		serverRepository: serverrepo.NewServerRepository(testDB),
+		serverRepository: serverrepo.NewServerRepository(testDB, &mockStatusClient{}),
 		batcher: NewBatcher(
 			ontimerepo.NewOntineRepository(testDB),
 			ontimerepo.NewOntimeCacheRepository(testRedis),
@@ -82,7 +92,7 @@ func newService(tb testing.TB) *OntimeService {
 	testcontainers.SkipIfShort(tb)
 
 	return &OntimeService{
-		serverRepository: serverrepo.NewServerRepository(testDB),
+		serverRepository: serverrepo.NewServerRepository(testDB, &mockStatusClient{}),
 		batcher: &Batcher{
 			ontineRepository: ontimerepo.NewOntineRepository(testDB),
 			ontimeCacheRepository: &mockOntimeCacheRepo{

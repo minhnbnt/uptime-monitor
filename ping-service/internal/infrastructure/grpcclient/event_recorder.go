@@ -35,12 +35,15 @@ func (c *EventRecorderClient) Shutdown() error {
 }
 
 func (c *EventRecorderClient) RecordEvent(ctx context.Context, endpointID uint, status domain.ServerStatus) error {
+
 	_, err := c.client.RecordEvent(ctx, &eventv1.RecordEventRequest{
 		EndpointId: uint64(endpointID),
 		Status:     string(status),
 	})
+
 	if err != nil {
 		return fmt.Errorf("record event: %w", err)
 	}
+
 	return nil
 }

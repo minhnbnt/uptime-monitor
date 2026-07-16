@@ -11,6 +11,30 @@ message RecordEventRequest {
 
 message RecordEventResponse {}
 
+message GetCurrentStatusesRequest {
+  repeated uint64 endpoint_ids = 1;
+}
+
+message EndpointStatus {
+  uint64 endpoint_id = 1;
+  string status = 2;
+}
+
+message GetCurrentStatusesResponse {
+  repeated EndpointStatus statuses = 1;
+}
+
+message CountByStatusRequest {
+  repeated uint64 endpoint_ids = 1;
+}
+
+message CountByStatusResponse {
+  int64 online = 1;
+  int64 offline = 2;
+}
+
 service EventService {
   rpc RecordEvent(RecordEventRequest) returns (RecordEventResponse);
+  rpc GetCurrentStatuses(GetCurrentStatusesRequest) returns (GetCurrentStatusesResponse);
+  rpc CountByStatus(CountByStatusRequest) returns (CountByStatusResponse);
 }

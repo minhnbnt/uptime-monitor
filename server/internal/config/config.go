@@ -14,7 +14,8 @@ type Config struct {
 }
 
 type GRPCConfig struct {
-	Port string `mapstructure:"port"`
+	Port      string `mapstructure:"port"`
+	EventAddr string `mapstructure:"event_addr"`
 }
 
 type SchedulerCfg struct {

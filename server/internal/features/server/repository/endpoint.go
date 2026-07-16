@@ -10,7 +10,6 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
 )
 
 type EndpointRepository struct {
@@ -36,10 +35,13 @@ func (er *EndpointRepository) GetByIDs(ctx context.Context, ids []uint) ([]domai
 }
 
 func (er *EndpointRepository) GetByServerID(ctx context.Context, serverID uint) (*domain.Endpoint, error) {
+
 	endpoint, err := gorm.G[domain.Endpoint](er.db).Where("server_id = ?", serverID).First(ctx)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get endpoint: %w", err)
 	}
+
 	return &endpoint, nil
 }
 
@@ -52,6 +54,7 @@ func (er *EndpointRepository) DeleteByServerID(ctx context.Context, serverID uin
 }
 
 func (er *EndpointRepository) UpsertEndpoint(ctx context.Context, endpoint domain.Endpoint) error {
+
 	queryClause := clause.OnConflict{
 		Columns: []clause.Column{{Name: "server_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{
@@ -61,26 +64,17 @@ func (er *EndpointRepository) UpsertEndpoint(ctx context.Context, endpoint domai
 			"timeout",
 		}),
 	}
+
 	return gorm.G[domain.Endpoint](er.db, queryClause).Create(ctx, &endpoint)
 }
 
-func (er *EndpointRepository) UpdateMonitorStatus(ctx context.Context, endpointID uint, status domain.ServerStatus) error {
-	affected, err := gorm.G[domain.Endpoint](er.db).
-		Where("id = ?", endpointID).
-		Update(ctx, "monitor_status", status)
-	if err != nil {
-		return err
-	}
-	if affected == 0 {
-		return fmt.Errorf("endpoint %d: %w", endpointID, apperrors.ErrNotFound)
-	}
-	return nil
-}
-
 func (er *EndpointRepository) BatchCreateEndpoints(ctx context.Context, endpoints []domain.Endpoint) error {
+
 	result := er.db.WithContext(ctx).Create(endpoints)
+
 	if err := result.Error; err != nil {
 		return fmt.Errorf("failed to batch create endpoints: %w", err)
 	}
+
 	return nil
 }

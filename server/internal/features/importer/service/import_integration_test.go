@@ -60,13 +60,23 @@ func initTestDB(tb testing.TB) *gorm.DB {
 	})
 }
 
+type mockStatusClient struct{}
+
+func (m *mockStatusClient) GetCurrentStatuses(_ context.Context, _ []uint) (map[uint]domain.ServerStatus, error) {
+	return nil, nil
+}
+
+func (m *mockStatusClient) CountByStatus(_ context.Context, _ []uint) (int64, int64, error) {
+	return 0, 0, nil
+}
+
 func newImportIntegrationService(tb testing.TB, _ *redis.Client) *ImportService {
 	tb.Helper()
 
 	testcontainers.SkipIfShort(tb)
 
 	return &ImportService{
-		serverRepository:   serverrepo.NewServerRepository(testDB),
+		serverRepository:   serverrepo.NewServerRepository(testDB, &mockStatusClient{}),
 		endpointRepository: serverrepo.NewEndpointRepository(testDB),
 		excelExporter:      &infrastructure.ExcelExporter{},
 		excelParser:        &infrastructure.ExcelParser{},

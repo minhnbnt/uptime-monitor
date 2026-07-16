@@ -22,7 +22,6 @@ type EndpointRepository interface {
 	UpsertEndpoint(ctx context.Context, endpoint domain.Endpoint) error
 	DeleteByServerID(ctx context.Context, serverID uint) error
 	BatchCreateEndpoints(ctx context.Context, endpoints []domain.Endpoint) error
-	UpdateMonitorStatus(ctx context.Context, endpointID uint, status domain.ServerStatus) error
 }
 
 type ServerSearchRepository interface {

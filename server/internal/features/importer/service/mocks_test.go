@@ -54,7 +54,6 @@ type mockEndpointRepo struct {
 	upsertEndpointFn       func(ctx context.Context, endpoint domain.Endpoint) error
 	deleteByServerIDFn     func(ctx context.Context, serverID uint) error
 	batchCreateEndpointsFn func(ctx context.Context, endpoints []domain.Endpoint) error
-	updateMonitorStatusFn  func(ctx context.Context, endpointID uint, status domain.ServerStatus) error
 }
 
 func (m *mockEndpointRepo) UpsertEndpoint(ctx context.Context, endpoint domain.Endpoint) error {
@@ -70,13 +69,6 @@ func (m *mockEndpointRepo) DeleteByServerID(ctx context.Context, serverID uint) 
 
 func (m *mockEndpointRepo) BatchCreateEndpoints(ctx context.Context, endpoints []domain.Endpoint) error {
 	return m.batchCreateEndpointsFn(ctx, endpoints)
-}
-
-func (m *mockEndpointRepo) UpdateMonitorStatus(ctx context.Context, endpointID uint, status domain.ServerStatus) error {
-	if m.updateMonitorStatusFn == nil {
-		return nil
-	}
-	return m.updateMonitorStatusFn(ctx, endpointID, status)
 }
 
 var _ featservice.EndpointRepository = (*mockEndpointRepo)(nil)

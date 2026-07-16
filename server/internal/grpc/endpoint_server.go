@@ -10,35 +10,35 @@ import (
 	endpointv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/endpoint/v1"
 	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/server/v1"
 
-	"github.com/minhnbnt/uptime-monitor/internal/domain"
-	"github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
+	"github.com/minhnbnt/uptime-monitor/internal/features/ping/scheduler"
 	"github.com/samber/do/v2"
 )
 
 func RegisterEndpointServer(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointServer, error) {
 		return NewEndpointServer(
-			do.MustInvoke[*repository.EndpointRepository](i),
+			do.MustInvoke[*scheduler.EndpointProvider](i),
 		), nil
 	})
 }
 
 type EndpointServer struct {
 	endpointv1.UnimplementedEndpointServiceServer
-	endpointRepo *repository.EndpointRepository
+	endpointProvider *scheduler.EndpointProvider
 }
 
-func NewEndpointServer(endpointRepo *repository.EndpointRepository) *EndpointServer {
-	return &EndpointServer{endpointRepo: endpointRepo}
+func NewEndpointServer(endpointProvider *scheduler.EndpointProvider) *EndpointServer {
+	return &EndpointServer{endpointProvider: endpointProvider}
 }
 
 func (s *EndpointServer) GetEndpoints(ctx context.Context, req *endpointv1.GetEndpointsRequest) (*endpointv1.GetEndpointsResponse, error) {
+
 	ids := make([]uint, len(req.EndpointIds))
 	for i, id := range req.EndpointIds {
 		ids[i] = uint(id)
 	}
 
-	endpoints, err := s.endpointRepo.GetByIDs(ctx, ids)
+	endpoints, err := s.endpointProvider.GetBatch(ctx, ids)
 	if err != nil {
 		return nil, fmt.Errorf("get endpoints: %w", err)
 	}
@@ -63,15 +63,8 @@ func (s *EndpointServer) GetEndpoints(ctx context.Context, req *endpointv1.GetEn
 	return resp, nil
 }
 
-func (s *EndpointServer) UpdateMonitorStatus(ctx context.Context, req *endpointv1.UpdateMonitorStatusRequest) (*endpointv1.UpdateMonitorStatusResponse, error) {
-	if err := s.endpointRepo.UpdateMonitorStatus(ctx, uint(req.EndpointId), domain.ServerStatus(req.Status)); err != nil {
-		return nil, fmt.Errorf("update monitor status: %w", err)
-	}
-
-	return &endpointv1.UpdateMonitorStatusResponse{}, nil
-}
-
 func StartGRPCServer(ctx context.Context, addr string, endpointSrv *EndpointServer, serverSrv *ServerServer) error {
+
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)

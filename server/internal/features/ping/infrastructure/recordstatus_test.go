@@ -39,17 +39,6 @@ func (m *mockEventSaver) GetLatestStatus(ctx context.Context, endpointID uint) (
 	return "", nil
 }
 
-type mockEndpointStatusUpdater struct {
-	updateMonitorStatusFn func(ctx context.Context, endpointID uint, status domain.ServerStatus) error
-}
-
-func (m *mockEndpointStatusUpdater) UpdateMonitorStatus(ctx context.Context, endpointID uint, status domain.ServerStatus) error {
-	if m.updateMonitorStatusFn == nil {
-		return nil
-	}
-	return m.updateMonitorStatusFn(ctx, endpointID, status)
-}
-
 func event(endpointID uint, status domain.ServerStatus) *domain.ServerEvent {
 	return &domain.ServerEvent{
 		ID:         uuid.Must(uuid.NewV7()),
@@ -62,7 +51,7 @@ func TestRecordStatusWorker_Record(t *testing.T) {
 	t.Run("redis get fails -> log warning, return nil", func(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
 		w := &RecordStatusWorker{
-			endpointStatusUpdater: &mockEndpointStatusUpdater{},
+
 			statusStore: &mockStatusStore{
 				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
 					return "", errors.New("redis down")
@@ -84,7 +73,7 @@ func TestRecordStatusWorker_Record(t *testing.T) {
 		var saveCalled bool
 		var setCalled bool
 		w := &RecordStatusWorker{
-			endpointStatusUpdater: &mockEndpointStatusUpdater{},
+
 			statusStore: &mockStatusStore{
 				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
 					return domain.StatusOn, nil
@@ -120,7 +109,7 @@ func TestRecordStatusWorker_Record(t *testing.T) {
 		var setStatus domain.ServerStatus
 
 		w := &RecordStatusWorker{
-			endpointStatusUpdater: &mockEndpointStatusUpdater{},
+
 			statusStore: &mockStatusStore{
 				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
 					return domain.StatusOn, nil
@@ -160,7 +149,7 @@ func TestRecordStatusWorker_Record(t *testing.T) {
 
 	t.Run("db save error -> return error", func(t *testing.T) {
 		w := &RecordStatusWorker{
-			endpointStatusUpdater: &mockEndpointStatusUpdater{},
+
 			statusStore: &mockStatusStore{
 				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
 					return domain.StatusOn, nil
@@ -183,7 +172,7 @@ func TestRecordStatusWorker_Record(t *testing.T) {
 		var saveCalled bool
 		var setCalled bool
 		w := &RecordStatusWorker{
-			endpointStatusUpdater: &mockEndpointStatusUpdater{},
+
 			statusStore: &mockStatusStore{
 				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
 					return "", nil // cache expired
@@ -221,7 +210,7 @@ func TestRecordStatusWorker_Record(t *testing.T) {
 		var saveCalled bool
 		var setCalled bool
 		w := &RecordStatusWorker{
-			endpointStatusUpdater: &mockEndpointStatusUpdater{},
+
 			statusStore: &mockStatusStore{
 				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
 					return "", nil
@@ -258,7 +247,7 @@ func TestRecordStatusWorker_Record(t *testing.T) {
 	t.Run("cache miss -> no events in db -> save", func(t *testing.T) {
 		var saveCalled bool
 		w := &RecordStatusWorker{
-			endpointStatusUpdater: &mockEndpointStatusUpdater{},
+
 			statusStore: &mockStatusStore{
 				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
 					return "", nil
@@ -292,7 +281,7 @@ func TestRecordStatusWorker_Record(t *testing.T) {
 		var saveCalled bool
 		log, capLog := logger.NewCapturingLogger()
 		w := &RecordStatusWorker{
-			endpointStatusUpdater: &mockEndpointStatusUpdater{},
+
 			statusStore: &mockStatusStore{
 				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
 					return "", nil
@@ -327,7 +316,7 @@ func TestRecordStatusWorker_Record(t *testing.T) {
 
 	t.Run("redis set error -> return error", func(t *testing.T) {
 		w := &RecordStatusWorker{
-			endpointStatusUpdater: &mockEndpointStatusUpdater{},
+
 			statusStore: &mockStatusStore{
 				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
 					return domain.StatusOn, nil

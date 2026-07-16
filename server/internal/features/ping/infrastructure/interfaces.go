@@ -16,6 +16,4 @@ type StatusStore interface {
 	SetStatus(ctx context.Context, endpointID uint, status domain.ServerStatus) error
 }
 
-type EndpointStatusUpdater interface {
-	UpdateMonitorStatus(ctx context.Context, endpointID uint, status domain.ServerStatus) error
-}
+

@@ -11,20 +11,23 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor/internal/errors"
+	"github.com/minhnbnt/uptime-monitor/internal/grpcclient"
 )
 
 type ServerRepository struct {
-	db *gorm.DB
+	db          *gorm.DB
+	eventClient grpcclient.StatusClient
 }
 
-func NewServerRepository(db *gorm.DB) *ServerRepository {
-	return &ServerRepository{db: db}
+func NewServerRepository(db *gorm.DB, eventClient grpcclient.StatusClient) *ServerRepository {
+	return &ServerRepository{db: db, eventClient: eventClient}
 }
 
 func RegisterServerRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ServerRepository, error) {
 		dbWrapper := do.MustInvoke[*config.GORMWrapper](i)
-		return &ServerRepository{db: dbWrapper.GetDB()}, nil
+		eventClient := do.MustInvoke[grpcclient.StatusClient](i)
+		return &ServerRepository{db: dbWrapper.GetDB(), eventClient: eventClient}, nil
 	})
 }
 
@@ -97,24 +100,28 @@ func (sr *ServerRepository) Delete(ctx context.Context, id uint) error {
 
 func (sr *ServerRepository) CountByStatus(ctx context.Context, createdByID uint) (total, online, offline int64, err error) {
 
-	var row struct {
-		Total   int64
-		Online  int64
-		Offline int64
+	var endpointIDs []uint
+	result := sr.db.WithContext(ctx).
+		Table("endpoints e").
+		Joins("JOIN servers s ON s.id = e.server_id").
+		Where("s.created_by_id = ?", createdByID).
+		Pluck("e.id", &endpointIDs)
+
+	if err := result.Error; err != nil {
+		return 0, 0, 0, fmt.Errorf("get endpoint ids: %w", err)
 	}
 
-	result := sr.db.WithContext(ctx).
-		Select(`
-			COUNT(*) AS total,
-			SUM(CASE WHEN e.monitor_status = 'ON' THEN 1 ELSE 0 END) AS online,
-			SUM(CASE WHEN e.monitor_status = 'OFF' THEN 1 ELSE 0 END) AS offline
-		`).
-		Table("servers s").
-		Joins("JOIN endpoints e ON e.server_id = s.id").
-		Where("s.created_by_id = ?", createdByID).
-		Scan(&row)
+	total = int64(len(endpointIDs))
+	if total == 0 {
+		return 0, 0, 0, nil
+	}
 
-	return row.Total, row.Online, row.Offline, result.Error
+	online, offline, err = sr.eventClient.CountByStatus(ctx, endpointIDs)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	return total, online, offline, nil
 }
 
 func (sr *ServerRepository) BatchCreateServers(ctx context.Context, servers []domain.Server) error {

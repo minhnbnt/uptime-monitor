@@ -38,6 +38,10 @@ log:
 scheduler:
   backend: redis
 
+grpc:
+  port: "50051"
+  event_addr: ontime:50052
+
 mail:
   smtp_host: smtp.gmail.com
   smtp_port: 587

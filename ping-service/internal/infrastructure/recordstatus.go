@@ -13,19 +13,17 @@ import (
 )
 
 type RecordStatusWorker struct {
-	statusStore           StatusStore
-	eventRecorder         EventRecorder
-	endpointStatusUpdater EndpointStatusUpdater
-	logger                *slog.Logger
+	statusStore   StatusStore
+	eventRecorder EventRecorder
+	logger        *slog.Logger
 }
 
 func RegisterRecordStatusWorker(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*RecordStatusWorker, error) {
 		return &RecordStatusWorker{
-			statusStore:           do.MustInvoke[*monitorrepo.RedisServerEventRepository](i),
-			eventRecorder:         do.MustInvoke[*grpcclient.EventRecorderClient](i),
-			endpointStatusUpdater: do.MustInvoke[*grpcclient.EndpointClient](i),
-			logger:                do.MustInvoke[*slog.Logger](i),
+			statusStore:   do.MustInvoke[*monitorrepo.RedisServerEventRepository](i),
+			eventRecorder: do.MustInvoke[*grpcclient.EventRecorderClient](i),
+			logger:        do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
@@ -53,10 +51,6 @@ func (w *RecordStatusWorker) Record(ctx context.Context, event *domain.ServerEve
 	}
 
 	if err := w.statusStore.SetStatus(ctx, event.EndpointID, event.Status); err != nil {
-		return err
-	}
-
-	if err := w.endpointStatusUpdater.UpdateMonitorStatus(ctx, event.EndpointID, event.Status); err != nil {
 		return err
 	}
 
