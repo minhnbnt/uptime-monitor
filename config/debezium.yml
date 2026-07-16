@@ -16,7 +16,7 @@ debezium:
       port: 5432
       user: postgres
       password: postgres
-      dbname: uptime_monitor
+      dbname: server
 
     topic:
       prefix: uptime

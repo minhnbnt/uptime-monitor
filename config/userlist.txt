@@ -1,4 +1,5 @@
 "postgres" "postgres"
 "auth" "auth"
+"server" "server"
 "analytics" "analytics"
 "notification" "notification"
