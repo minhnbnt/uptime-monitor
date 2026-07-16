@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	eventv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/event/v1"
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
+	eventv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/event/v1"
 	"github.com/minhnbnt/uptime-monitor/internal/config"
 	"github.com/minhnbnt/uptime-monitor/internal/domain"
 )
@@ -21,7 +20,10 @@ type StatusClient interface {
 
 type EventClient struct {
 	client eventv1.EventServiceClient
-	conn   *grpc.ClientConn
+}
+
+func NewEventClient(cc *grpc.ClientConn) *EventClient {
+	return &EventClient{client: eventv1.NewEventServiceClient(cc)}
 }
 
 func RegisterEventClient(i do.Injector) {
@@ -32,26 +34,14 @@ func RegisterEventClient(i do.Injector) {
 		}
 		return client, nil
 	})
-
 	do.Provide(i, func(i do.Injector) (*EventClient, error) {
 		return newEventClient(i)
 	})
 }
 
 func newEventClient(i do.Injector) (*EventClient, error) {
-	cfg := do.MustInvoke[*config.Config](i)
-	conn, err := grpc.NewClient(cfg.GRPC.EventAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, fmt.Errorf("dial event grpc: %w", err)
-	}
-	return &EventClient{
-		client: eventv1.NewEventServiceClient(conn),
-		conn:   conn,
-	}, nil
-}
-
-func (c *EventClient) Shutdown() error {
-	return c.conn.Close()
+	wrapper := do.MustInvokeNamed[*config.GRPCClientWrapper](i, config.GRPCClientNameEvent)
+	return NewEventClient(wrapper.GetConn()), nil
 }
 
 func (c *EventClient) GetCurrentStatuses(ctx context.Context, endpointIDs []uint) (map[uint]domain.ServerStatus, error) {
@@ -65,11 +55,9 @@ func (c *EventClient) GetCurrentStatuses(ctx context.Context, endpointIDs []uint
 		return nil, fmt.Errorf("get current statuses: %w", err)
 	}
 
-	m := make(map[uint]domain.ServerStatus, len(resp.Statuses))
-	for _, s := range resp.Statuses {
-		m[uint(s.EndpointId)] = domain.ServerStatus(s.Status)
-	}
-	return m, nil
+	return lo.SliceToMap(resp.Statuses, func(status *eventv1.EndpointStatus) (uint, domain.ServerStatus) {
+		return uint(status.EndpointId), domain.ServerStatus(status.Status)
+	}), nil
 }
 
 func (c *EventClient) CountByStatus(ctx context.Context, endpointIDs []uint) (online, offline int64, err error) {

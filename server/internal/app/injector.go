@@ -28,6 +28,7 @@ func providersAfterConfig(dev bool) []func(do.Injector) {
 		config.RegisterRedisClient,
 		config.RegisterTemporalClient,
 
+		config.RegisterGRPCClients,
 		grpcclient.RegisterEventClient,
 
 		serverrepo.RegisterServerRepository,

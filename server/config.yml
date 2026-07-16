@@ -40,6 +40,7 @@ scheduler:
 
 grpc:
   port: "50051"
+  server_addr: "localhost:50051"
   event_addr: ontime:50052
 
 mail:
