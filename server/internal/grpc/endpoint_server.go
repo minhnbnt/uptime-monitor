@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/samber/do/v2"
 	"google.golang.org/grpc"
 
 	endpointv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/endpoint/v1"
 	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/server/v1"
-
 	"github.com/minhnbnt/uptime-monitor/internal/features/ping/scheduler"
-	"github.com/samber/do/v2"
 )
 
 func RegisterEndpointServer(i do.Injector) {
@@ -65,7 +64,8 @@ func (s *EndpointServer) GetEndpoints(ctx context.Context, req *endpointv1.GetEn
 
 func StartGRPCServer(ctx context.Context, addr string, endpointSrv *EndpointServer, serverSrv *ServerServer) error {
 
-	lis, err := net.Listen("tcp", addr)
+	var lc net.ListenConfig
+	lis, err := lc.Listen(ctx, "tcp", addr)
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}

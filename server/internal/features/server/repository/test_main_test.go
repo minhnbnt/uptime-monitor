@@ -6,7 +6,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor/internal/config"
@@ -15,7 +14,6 @@ import (
 )
 
 var testDB *gorm.DB
-var testRedis *redis.Client
 var testRedisAddr string
 var testDSN string
 
