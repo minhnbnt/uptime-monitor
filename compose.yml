@@ -123,7 +123,7 @@ services:
       traefik.enable: true
       traefik.http.routers.notification.rule: PathPrefix(`/api/v1/notifications`)
       traefik.http.routers.notification.service: notification-service
-      traefik.http.routers.notification.middlewares: cors
+      traefik.http.routers.notification.middlewares: cors, forward-auth
       traefik.http.services.notification-service.loadbalancer.server.port: 8085
 
   pgbouncer:
