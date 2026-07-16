@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/server/v1"
 	"github.com/samber/do/v2"
 
+	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/server/v1"
 	"github.com/minhnbnt/uptime-monitor/internal/features/server/repository"
 )
 
@@ -28,10 +28,12 @@ func RegisterServerServer(i do.Injector) {
 }
 
 func (s *ServerServer) GetServer(ctx context.Context, req *serverv1.GetServerRequest) (*serverv1.GetServerResponse, error) {
+
 	server, err := s.serverRepo.GetByID(ctx, uint(req.ServerId))
 	if err != nil {
 		return nil, fmt.Errorf("get server: %w", err)
 	}
+
 	if server.CreatedByID != uint(req.UserId) {
 		return nil, fmt.Errorf("server not found")
 	}
@@ -46,7 +48,9 @@ func (s *ServerServer) GetServer(ctx context.Context, req *serverv1.GetServerReq
 }
 
 func (s *ServerServer) ListServers(ctx context.Context, req *serverv1.ListServersRequest) (*serverv1.ListServersResponse, error) {
-	servers, err := s.serverRepo.List(ctx, uint(req.UserId), int(req.PerPage), int((req.Page-1)*req.PerPage))
+
+	limit, offset := int(req.PerPage), int((req.Page-1)*req.PerPage)
+	servers, err := s.serverRepo.List(ctx, uint(req.UserId), limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("list servers: %w", err)
 	}

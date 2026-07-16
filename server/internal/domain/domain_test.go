@@ -81,4 +81,3 @@ func TestServerEventFieldAccess(t *testing.T) {
 		t.Errorf("ServerEvent.Status = %q, want %q", se.Status, StatusOn)
 	}
 }
-

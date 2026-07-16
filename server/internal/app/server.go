@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/rs/cors"
 	"github.com/samber/do/v2"
 
 	apidocs "github.com/minhnbnt/uptime-monitor/api"
@@ -18,61 +17,61 @@ import (
 	"github.com/minhnbnt/uptime-monitor/internal/server"
 )
 
+func GetErrorHandler(log *slog.Logger) api.ErrorHandler {
+	return func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
+
+		log.Error("request failed", slog.Any("error", err))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+
+		_ = json.NewEncoder(w).Encode(api.ErrorResponse{
+			Error: api.ErrorResponseError{
+				Code:    "INTERNAL_ERROR",
+				Message: "internal server error",
+			},
+		})
+	}
+}
+
+func NewDevHandler(handler http.Handler, log *slog.Logger) http.Handler {
+
+	docsHandler, err := apidocs.GetHandler("Uptime Monitor API")
+	if err != nil {
+		log.Error("failed to get API docs", slog.Any("error", err))
+		panic(err)
+	}
+
+	mux := http.NewServeMux()
+
+	mux.Handle("/docs/", http.StripPrefix("/docs", docsHandler))
+	mux.Handle("/", handler)
+
+	return mux
+}
+
 func RunWebServer(ctx context.Context, i do.Injector, dev bool) {
 
 	log := do.MustInvoke[*slog.Logger](i)
 
-	errorHandler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
-
-		log.Error("request validation failed", slog.Any("error", err))
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-
-		_ = json.NewEncoder(w).Encode(api.ErrorResponse{
-			Error: api.ErrorResponseError{
-				Code:    "VALIDATION_ERROR",
-				Message: "invalid request",
-			},
-		})
-	}
-
+	errorHandler := GetErrorHandler(log)
 	compositeHandler := do.MustInvoke[*server.CompositeHandler](i)
 	authMiddleware := do.MustInvoke[*authclient.AuthMiddleware](i)
 
-	rawSrv, err := api.NewServer(
+	apiHandler, err := api.NewServer(
 		compositeHandler,
 		api.WithPathPrefix(""),
 		api.WithErrorHandler(errorHandler),
 	)
-
-	srv := authMiddleware.XUserIDMiddleware(rawSrv)
 
 	if err != nil {
 		log.Error("failed to create server", slog.Any("error", err))
 		panic(err)
 	}
 
-	corsMiddleware := cors.New(cors.Options{
-		AllowedOrigins: []string{"*"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"Content-Type", "Authorization"},
-	})
-
-	handler := corsMiddleware.Handler(srv)
-
+	handler := authMiddleware.XUserIDMiddleware(apiHandler)
 	if dev {
-
-		docsHandler, err := apidocs.GetHandler("Uptime Monitor API")
-		if err != nil {
-			log.Error("failed to get API docs", slog.Any("error", err))
-			panic(err)
-		}
-
-		mux := http.NewServeMux()
-		mux.Handle("/docs/", http.StripPrefix("/docs", docsHandler))
-		mux.Handle("/", handler)
-		handler = mux
+		handler = NewDevHandler(handler, log)
 	}
 
 	httpServer := http.Server{
@@ -102,11 +101,11 @@ func RunWebServer(ctx context.Context, i do.Injector, dev bool) {
 
 func RunGRPCServer(ctx context.Context, i do.Injector) {
 
-	log := do.MustInvoke[*slog.Logger](i)
-	cfg := do.MustInvoke[*config.Config](i)
-
 	endpointSrv := do.MustInvoke[*servergrpc.EndpointServer](i)
 	serverSrv := do.MustInvoke[*servergrpc.ServerServer](i)
+
+	cfg := do.MustInvoke[*config.Config](i)
+	log := do.MustInvoke[*slog.Logger](i)
 
 	addr := ":" + cfg.GRPC.Port
 	log.Info("gRPC server starting", slog.String("addr", addr))

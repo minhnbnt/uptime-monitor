@@ -24,11 +24,11 @@ type CompositeHandler struct {
 func RegisterCompositeHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*CompositeHandler, error) {
 		return &CompositeHandler{
-			ServerHandler:       do.MustInvoke[*serverhandler.ServerHandler](i),
-			EndpointHandler:     do.MustInvoke[*serverhandler.EndpointHandler](i),
-			ImportHandler:       do.MustInvoke[*importerhandler.ImportHandler](i),
-			OntimeHandler:       do.MustInvoke[*ontimehandler.OntimeHandler](i),
-			logger:              do.MustInvoke[*slog.Logger](i),
+			ServerHandler:   do.MustInvoke[*serverhandler.ServerHandler](i),
+			EndpointHandler: do.MustInvoke[*serverhandler.EndpointHandler](i),
+			ImportHandler:   do.MustInvoke[*importerhandler.ImportHandler](i),
+			OntimeHandler:   do.MustInvoke[*ontimehandler.OntimeHandler](i),
+			logger:          do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
