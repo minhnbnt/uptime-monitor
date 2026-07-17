@@ -118,6 +118,9 @@ services:
 
     command: ["--config=/config.yml"]
 
+    ports:
+      - 8084
+
     volumes:
       - ./config/ontime-service.yml:/config.yml
 
@@ -126,6 +129,13 @@ services:
         condition: service_started
       redis:
         condition: service_started
+
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.ontime.rule: PathPrefix(`/api/v1/servers/ontime`)
+      traefik.http.routers.ontime.service: ontime-service
+      traefik.http.services.ontime-service.loadbalancer.server.port: 8084
+      traefik.http.routers.ontime.middlewares: cors, forward-auth
 
   notification-service:
     build:
@@ -236,6 +246,20 @@ services:
 
     volumes:
       - pgadmin-data:/var/lib/pgadmin
+
+  mailpit:
+    image: ghcr.io/axllent/mailpit:v1.30.4
+
+    ports:
+      - 8025:8025
+
+    volumes:
+      - ./mailpit-data:/data
+
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MAIL_FROM_ADDRESS: no-reply@test.local
+      MAIL_FROM_NAME: My App
 
 volumes:
   postgres-data:
