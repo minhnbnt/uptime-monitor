@@ -18,12 +18,11 @@ func TestEndpointFromDomain(t *testing.T) {
 
 	t.Run("maps fields correctly", func(t *testing.T) {
 		ep := &domain.Endpoint{
-			URL:           "https://example.com",
-			MonitorStatus: domain.StatusOn,
-			Interval:      30 * time.Second,
-			Timeout:       10 * time.Second,
-			Method:        "GET",
-			ExpectedCode:  200,
+			URL:          "https://example.com",
+			Interval:     30 * time.Second,
+			Timeout:      10 * time.Second,
+			Method:       "GET",
+			ExpectedCode: 200,
 		}
 		got := EndpointFromDomain(ep)
 		if got == nil {
@@ -31,9 +30,6 @@ func TestEndpointFromDomain(t *testing.T) {
 		}
 		if got.URL != "https://example.com" {
 			t.Errorf("URL = %q, want %q", got.URL, "https://example.com")
-		}
-		if got.MonitorStatus != domain.StatusOn {
-			t.Errorf("MonitorStatus = %q, want %q", got.MonitorStatus, domain.StatusOn)
 		}
 		if got.Interval != 30*time.Second {
 			t.Errorf("Interval = %v, want %v", got.Interval, 30*time.Second)
@@ -62,12 +58,11 @@ func TestServerFromDomain(t *testing.T) {
 			},
 			Name: "Test Server",
 			Endpoint: &domain.Endpoint{
-				URL:           "https://example.com",
-				MonitorStatus: domain.StatusOn,
-				Interval:      30 * time.Second,
-				Timeout:       10 * time.Second,
-				Method:        "GET",
-				ExpectedCode:  200,
+				URL:          "https://example.com",
+				Interval:     30 * time.Second,
+				Timeout:      10 * time.Second,
+				Method:       "GET",
+				ExpectedCode: 200,
 			},
 			CreatedByID: 1,
 		}
@@ -78,9 +73,6 @@ func TestServerFromDomain(t *testing.T) {
 		}
 		if got.Name != "Test Server" {
 			t.Errorf("Name = %q, want %q", got.Name, "Test Server")
-		}
-		if got.MonitorStatus != domain.StatusOn {
-			t.Errorf("MonitorStatus = %q, want %q", got.MonitorStatus, domain.StatusOn)
 		}
 		if got.Endpoint == nil {
 			t.Fatal("expected non-nil Endpoint")
@@ -93,7 +85,7 @@ func TestServerFromDomain(t *testing.T) {
 		}
 	})
 
-	t.Run("server without endpoint defaults to OFF", func(t *testing.T) {
+	t.Run("server without endpoint", func(t *testing.T) {
 		srv := domain.Server{
 			Model: gorm.Model{
 				ID: 1,
@@ -102,9 +94,6 @@ func TestServerFromDomain(t *testing.T) {
 		}
 
 		got := ServerFromDomain(srv)
-		if got.MonitorStatus != domain.StatusOff {
-			t.Errorf("MonitorStatus = %q, want %q", got.MonitorStatus, domain.StatusOff)
-		}
 		if got.Endpoint != nil {
 			t.Errorf("expected nil Endpoint, got %+v", got.Endpoint)
 		}

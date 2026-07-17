@@ -65,6 +65,7 @@ services:
     labels:
       traefik.enable: "true"
       traefik.http.routers.server.rule: PathPrefix(`/api/v1/servers`) || PathPrefix(`/api/v1/test-endpoint`)
+      traefik.http.routers.server.priority: 10
       traefik.http.routers.server.service: server-service
       traefik.http.services.server-service.loadbalancer.server.port: 8080
       traefik.http.routers.server.middlewares: cors, forward-auth
@@ -91,6 +92,7 @@ services:
     labels:
       traefik.enable: "true"
       traefik.http.routers.importer.rule: PathPrefix(`/api/v1/servers/import`) || PathPrefix(`/api/v1/servers/export`)
+      traefik.http.routers.importer.priority: 30
       traefik.http.routers.importer.service: importer-service
       traefik.http.services.importer-service.loadbalancer.server.port: 8086
       traefik.http.routers.importer.middlewares: cors, forward-auth
@@ -133,6 +135,7 @@ services:
     labels:
       traefik.enable: "true"
       traefik.http.routers.ontime.rule: PathPrefix(`/api/v1/servers/ontime`)
+      traefik.http.routers.ontime.priority: 20
       traefik.http.routers.ontime.service: ontime-service
       traefik.http.services.ontime-service.loadbalancer.server.port: 8084
       traefik.http.routers.ontime.middlewares: cors, forward-auth

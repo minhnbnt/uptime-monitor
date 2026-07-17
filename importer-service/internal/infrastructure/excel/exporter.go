@@ -7,7 +7,6 @@ import (
 	"github.com/samber/do/v2"
 	"github.com/xuri/excelize/v2"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/domain"
 	serverdto "github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/dto"
 	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/utils"
 )
@@ -77,7 +76,6 @@ func fillExportFile(xl *excelize.File, servers []serverdto.Server) error {
 		"interval_sec",
 		"timeout_sec",
 		"expected_code",
-		"status",
 	}
 
 	if err := setHeader(xl, "Sheet1", headers); err != nil {
@@ -108,11 +106,6 @@ func fillExportFile(xl *excelize.File, servers []serverdto.Server) error {
 			}
 		}
 
-		monitorStatus := "offline"
-		if sv.MonitorStatus == domain.StatusOn {
-			monitorStatus = "online"
-		}
-
 		row := i + 2
 		values := map[string]string{
 			fmt.Sprintf("A%d", row): sv.Name,
@@ -121,7 +114,6 @@ func fillExportFile(xl *excelize.File, servers []serverdto.Server) error {
 			fmt.Sprintf("D%d", row): fmt.Sprintf("%d", interval),
 			fmt.Sprintf("E%d", row): fmt.Sprintf("%d", timeout),
 			fmt.Sprintf("F%d", row): fmt.Sprintf("%d", expectedCode),
-			fmt.Sprintf("G%d", row): monitorStatus,
 		}
 
 		for cell, value := range values {

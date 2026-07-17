@@ -10,7 +10,6 @@ import (
 
 	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/server/v1"
 	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/config"
-	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/dto"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/infrastructure/excel"
@@ -135,17 +134,15 @@ func protoToExportServers(in []*serverv1.ServerWithEndpoint) []dto.Server {
 	out := make([]dto.Server, len(in))
 	for i, p := range in {
 		out[i] = dto.Server{
-			ID:            uint(p.Id),
-			Name:          p.Name,
-			MonitorStatus: domain.ServerStatus(p.MonitorStatus),
+			ID:   uint(p.Id),
+			Name: p.Name,
 		}
 
 		if p.Url != "" {
 			out[i].Endpoint = &dto.Endpoint{
-				URL:           p.Url,
-				Method:        p.Method,
-				ExpectedCode:  int(p.ExpectedCode),
-				MonitorStatus: domain.ServerStatus(p.MonitorStatus),
+				URL:          p.Url,
+				Method:       p.Method,
+				ExpectedCode: int(p.ExpectedCode),
 			}
 		}
 	}

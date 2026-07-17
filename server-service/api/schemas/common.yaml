@@ -1,9 +1,3 @@
-MonitorStatus:
-  type: string
-  enum:
-    - online
-    - offline
-
 PaginationMeta:
   type: object
   properties:

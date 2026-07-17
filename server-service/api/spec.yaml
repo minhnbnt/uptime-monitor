@@ -38,8 +38,6 @@ paths:
 
 components:
   schemas:
-    MonitorStatus:
-      $ref: "./schemas/common.yaml#/MonitorStatus"
     PaginationMeta:
       $ref: "./schemas/common.yaml#/PaginationMeta"
     ErrorResponse:

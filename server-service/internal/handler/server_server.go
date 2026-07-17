@@ -173,11 +173,6 @@ func mapServerToProto(sv dto.Server) *serverv1.ServerWithEndpoint {
 		p.ExpectedCode = int32(sv.Endpoint.ExpectedCode)
 		p.IntervalMs = sv.Endpoint.Interval.Milliseconds()
 		p.TimeoutMs = sv.Endpoint.Timeout.Milliseconds()
-		p.MonitorStatus = string(sv.Endpoint.MonitorStatus)
-	}
-
-	if p.MonitorStatus == "" {
-		p.MonitorStatus = string(domain.StatusOff)
 	}
 
 	return p

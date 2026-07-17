@@ -46,14 +46,13 @@ func (c *EndpointClient) GetBatch(ctx context.Context, ids []uint) (map[uint]*do
 	result := make(map[uint]*domain.Endpoint, len(resp.Endpoints))
 	for _, ep := range resp.Endpoints {
 		result[uint(ep.Id)] = &domain.Endpoint{
-			Model:         gorm.Model{ID: uint(ep.Id)},
-			ServerID:      uint(ep.ServerId),
-			URL:           ep.Url,
-			Method:        ep.Method,
-			ExpectedCode:  int(ep.ExpectedCode),
-			Interval:      time.Duration(ep.IntervalMs) * time.Millisecond,
-			Timeout:       time.Duration(ep.TimeoutMs) * time.Millisecond,
-			MonitorStatus: domain.ServerStatus(ep.MonitorStatus),
+			Model:        gorm.Model{ID: uint(ep.Id)},
+			ServerID:     uint(ep.ServerId),
+			URL:          ep.Url,
+			Method:       ep.Method,
+			ExpectedCode: int(ep.ExpectedCode),
+			Interval:     time.Duration(ep.IntervalMs) * time.Millisecond,
+			Timeout:      time.Duration(ep.TimeoutMs) * time.Millisecond,
 		}
 	}
 

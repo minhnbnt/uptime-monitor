@@ -48,14 +48,13 @@ func (s *EndpointServer) GetEndpoints(ctx context.Context, req *endpointv1.GetEn
 
 	for _, ep := range endpoints {
 		resp.Endpoints = append(resp.Endpoints, &endpointv1.EndpointData{
-			Id:            uint64(ep.ID),
-			ServerId:      uint64(ep.ServerID),
-			Url:           ep.URL,
-			Method:        ep.Method,
-			ExpectedCode:  int32(ep.ExpectedCode),
-			IntervalMs:    ep.Interval.Milliseconds(),
-			TimeoutMs:     ep.Timeout.Milliseconds(),
-			MonitorStatus: string(ep.MonitorStatus),
+			Id:           uint64(ep.ID),
+			ServerId:     uint64(ep.ServerID),
+			Url:          ep.URL,
+			Method:       ep.Method,
+			ExpectedCode: int32(ep.ExpectedCode),
+			IntervalMs:   ep.Interval.Milliseconds(),
+			TimeoutMs:    ep.Timeout.Milliseconds(),
 		})
 	}
 

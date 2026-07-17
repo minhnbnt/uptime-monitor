@@ -37,8 +37,7 @@ message ServerWithEndpoint {
   int32 expected_code = 5;
   int64 interval_ms = 6;
   int64 timeout_ms = 7;
-  string monitor_status = 8;
-  int64 created_at = 9;
+  int64 created_at = 8;
 }
 
 message SearchServersRequest {
