@@ -29,7 +29,61 @@ message GetServerResponse {
   ServerBrief server = 1;
 }
 
+message ServerWithEndpoint {
+  uint64 id = 1;
+  string name = 2;
+  string url = 3;
+  string method = 4;
+  int32 expected_code = 5;
+  int64 interval_ms = 6;
+  int64 timeout_ms = 7;
+  string monitor_status = 8;
+  int64 created_at = 9;
+}
+
+message SearchServersRequest {
+  uint64 user_id = 1;
+  string q = 2;
+  int32 from = 3;
+  int32 to = 4;
+  string sort_by = 5;
+  string sort_order = 6;
+}
+
+message SearchServersResponse {
+  repeated ServerWithEndpoint servers = 1;
+}
+
+message ServerWithEndpointInput {
+  int32 row = 1;
+  string name = 2;
+  string url = 3;
+  string method = 4;
+  int32 expected_code = 5;
+  int64 interval_ms = 6;
+  int64 timeout_ms = 7;
+  uint64 user_id = 8;
+}
+
+message BatchCreateServerResult {
+  int32 row = 1;
+  string name = 2;
+  string url = 3;
+  uint64 server_id = 4;
+  string error = 5;
+}
+
+message BatchCreateServersRequest {
+  repeated ServerWithEndpointInput servers = 1;
+}
+
+message BatchCreateServersResponse {
+  repeated BatchCreateServerResult results = 1;
+}
+
 service ServerService {
   rpc ListServers(ListServersRequest) returns (ListServersResponse);
   rpc GetServer(GetServerRequest) returns (GetServerResponse);
+  rpc SearchServers(SearchServersRequest) returns (SearchServersResponse);
+  rpc BatchCreateServers(BatchCreateServersRequest) returns (BatchCreateServersResponse);
 }

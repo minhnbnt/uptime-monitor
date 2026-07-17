@@ -13,7 +13,6 @@ import (
 type CompositeHandler struct {
 	*ServerHandler
 	*EndpointHandler
-	*ImportHandler
 	logger *slog.Logger
 }
 
@@ -22,7 +21,6 @@ func RegisterCompositeHandler(i do.Injector) {
 		return &CompositeHandler{
 			ServerHandler:   do.MustInvoke[*ServerHandler](i),
 			EndpointHandler: do.MustInvoke[*EndpointHandler](i),
-			ImportHandler:   do.MustInvoke[*ImportHandler](i),
 			logger:          do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})

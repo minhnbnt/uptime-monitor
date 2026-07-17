@@ -3,31 +3,40 @@ package handler
 import (
 	"context"
 	"io"
+	"log/slog"
 
 	"github.com/samber/do/v2"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/server-service/generated/api"
 	"github.com/minhnbnt/uptime-monitor-microservices/common/authclient"
-	apperrors "github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/errors"
-	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/dto"
-	importer "github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/service"
+	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/generated/api"
+	apperrors "github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/errors"
+	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/dto"
+	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/service"
 )
 
 type ImportHandler struct {
 	importService ImportService
+	logger        *slog.Logger
 }
 
 type ImportService interface {
 	ImportServers(ctx context.Context, userID uint, file io.Reader) (*dto.ImportResult, error)
 	GenerateTemplate() (io.ReadCloser, error)
+	ExportServers(ctx context.Context, userID uint, q string, from, to int, sortBy, sortOrder string) (io.ReadCloser, error)
 }
 
 func RegisterImportHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ImportHandler, error) {
 		return &ImportHandler{
-			importService: do.MustInvoke[*importer.ImportService](i),
+			importService: do.MustInvoke[*service.ImportService](i),
+			logger:        do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
+}
+
+func (h *ImportHandler) NewError(_ context.Context, err error) *api.ErrorResponseStatusCode {
+	h.logger.Error("unhandled error", slog.Any("error", err))
+	return apperrors.ToAPIError(err)
 }
 
 func (h *ImportHandler) ImportServers(ctx context.Context, req *api.ImportServersReq) (*api.ImportServersResponse, error) {
@@ -72,7 +81,7 @@ func (h *ImportHandler) ImportServers(ctx context.Context, req *api.ImportServer
 	}, nil
 }
 
-var _ ImportService = (*importer.ImportService)(nil)
+var _ ImportService = (*service.ImportService)(nil)
 
 func (h *ImportHandler) DownloadImportTemplate(ctx context.Context) (api.DownloadImportTemplateOK, error) {
 
@@ -82,4 +91,26 @@ func (h *ImportHandler) DownloadImportTemplate(ctx context.Context) (api.Downloa
 	}
 
 	return api.DownloadImportTemplateOK{Data: reader}, nil
+}
+
+func (h *ImportHandler) ExportServers(ctx context.Context, params api.ExportServersParams) (*api.ExportServersOKHeaders, error) {
+
+	userID := authclient.GetUserID(ctx)
+
+	reader, err := h.importService.ExportServers(
+		ctx, userID,
+		params.Q.Or(""),
+		params.From.Or(0),
+		params.To.Or(100),
+		string(params.SortBy.Or(api.ExportServersSortByName)),
+		string(params.SortOrder.Or(api.ExportServersSortOrderAsc)),
+	)
+	if err != nil {
+		return nil, apperrors.ToAPIError(err)
+	}
+
+	return &api.ExportServersOKHeaders{
+		ContentDisposition: api.NewOptString(`attachment; filename="servers.xlsx"`),
+		Response:           api.ExportServersOK{Data: reader},
+	}, nil
 }

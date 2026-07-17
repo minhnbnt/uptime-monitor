@@ -12,8 +12,8 @@ import (
 	"github.com/samber/lo/it"
 	"github.com/xuri/excelize/v2"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/dto"
-	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/utils"
+	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/dto"
+	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/utils"
 )
 
 type ExcelParser struct{}

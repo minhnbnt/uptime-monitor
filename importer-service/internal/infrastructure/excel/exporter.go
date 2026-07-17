@@ -7,9 +7,9 @@ import (
 	"github.com/samber/do/v2"
 	"github.com/xuri/excelize/v2"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/domain"
-	serverdto "github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/dto"
-	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/utils"
+	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/domain"
+	serverdto "github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/dto"
+	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/utils"
 )
 
 type ExcelExporter struct{}

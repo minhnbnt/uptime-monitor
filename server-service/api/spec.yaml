@@ -17,8 +17,6 @@ tags:
     description: Server statistics
   - name: endpoints
     description: Endpoint configuration and testing
-  - name: import
-    description: Import and export server data
 paths:
   # ── Servers (CRUD) ───────────────────────
   /api/v1/servers:
@@ -36,11 +34,7 @@ paths:
   /api/v1/servers/{id}/check_method:
     $ref: "./paths/servers.yaml#/check-method"
 
-  # ── Import / Export ──────────────────────
-  /api/v1/servers/export:
-    $ref: "./paths/servers.yaml#/servers-export"
-  /api/v1/servers/import:
-    $ref: "./paths/servers.yaml#/import-servers"
+
 
 components:
   schemas:

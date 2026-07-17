@@ -1,0 +1,8 @@
+server:
+  port: 8086
+
+grpc:
+  server_addr: server:50051
+
+log:
+  level: info

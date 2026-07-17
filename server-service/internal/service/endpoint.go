@@ -74,11 +74,10 @@ func (es *EndpointService) TestEndpoint(ctx context.Context, req dto.TestEndpoin
 
 	statusCode, err := infrastructure.PingURL(pingCtx, req.Method, req.URL)
 	if err != nil {
-		errMsg := err.Error()
 		return &dto.TestEndpointResponse{
 			Success:    false,
 			StatusCode: 0,
-			Error:      &errMsg,
+			Error:      new(err.Error()),
 		}, nil
 	}
 

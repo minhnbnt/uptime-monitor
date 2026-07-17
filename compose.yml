@@ -71,6 +71,30 @@ services:
       traefik.http.middlewares.forward-auth.forwardauth.address: http://auth-service:8081/auth/verify
       traefik.http.middlewares.forward-auth.forwardauth.authResponseHeaders: X-User-ID
 
+  importer-service:
+    build:
+      context: .
+      dockerfile: importer-service/Dockerfile
+
+    ports:
+      - 8086
+
+    command: ["--dev", "--config=/app/config.yml"]
+
+    volumes:
+      - ./config/importer-service.yml:/app/config.yml
+
+    depends_on:
+      server-service:
+        condition: service_started
+
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.importer.rule: PathPrefix(`/api/v1/servers/import`) || PathPrefix(`/api/v1/servers/export`)
+      traefik.http.routers.importer.service: importer-service
+      traefik.http.services.importer-service.loadbalancer.server.port: 8086
+      traefik.http.routers.importer.middlewares: cors, forward-auth
+
   ping-service:
     build:
       context: .

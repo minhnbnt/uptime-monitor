@@ -28,22 +28,27 @@ func NewEventClient(cc grpc.ClientConnInterface) *EventClient {
 }
 
 func newEventClient(i do.Injector) (*EventClient, error) {
+
 	cfg := do.MustInvoke[*config.Config](i)
 	addr := cfg.GRPC.EventAddr
 	if addr == "" {
 		addr = "localhost:50052"
 	}
+
 	cc, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("event gRPC client: %w", err)
 	}
+
 	return NewEventClient(cc), nil
 }
 
 func RegisterEventClient(i do.Injector) {
+
 	do.Provide(i, func(i do.Injector) (StatusClient, error) {
 		return newEventClient(i)
 	})
+
 	do.Provide(i, func(i do.Injector) (*EventClient, error) {
 		return newEventClient(i)
 	})
@@ -66,6 +71,7 @@ func (c *EventClient) GetCurrentStatuses(ctx context.Context, endpointIDs []uint
 }
 
 func (c *EventClient) CountByStatus(ctx context.Context, endpointIDs []uint) (online, offline int64, err error) {
+
 	if len(endpointIDs) == 0 {
 		return 0, 0, nil
 	}

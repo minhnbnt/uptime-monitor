@@ -1,0 +1,26 @@
+openapi: "3.0.3"
+info:
+  title: Importer Service API
+  description: Import and export server data via Excel files
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8086
+    description: Development server
+
+tags:
+  - name: import
+    description: Import and export server data
+
+paths:
+  /api/v1/servers/export:
+    $ref: "./paths/import.yaml#/servers-export"
+  /api/v1/servers/import:
+    $ref: "./paths/import.yaml#/import-servers"
+
+components:
+  schemas:
+    ErrorResponse:
+      $ref: "./schemas/common.yaml#/ErrorResponse"
+    ImportServersResponse:
+      $ref: "./schemas/import.yaml#/ImportServersResponse"

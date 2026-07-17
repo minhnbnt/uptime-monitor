@@ -10,20 +10,17 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/common/authclient"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/dto"
-	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/infrastructure/excel"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/service"
 )
 
 type ServerHandler struct {
 	serverService ServerService
-	excelExporter *excel.ExcelExporter
 }
 
 func RegisterServerHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ServerHandler, error) {
 		return &ServerHandler{
 			serverService: do.MustInvoke[*service.ServerService](i),
-			excelExporter: do.MustInvoke[*excel.ExcelExporter](i),
 		}, nil
 	})
 }
@@ -124,33 +121,6 @@ func (h *ServerHandler) SearchServers(ctx context.Context, params api.SearchServ
 	return &api.ServerListResponse{
 		Meta: ToPaginationMeta(page, perPage, total),
 		Data: data,
-	}, nil
-}
-
-func (h *ServerHandler) ExportServers(ctx context.Context, params api.ExportServersParams) (*api.ExportServersOKHeaders, error) {
-
-	searchParams := dto.SearchParams{
-		Q:         params.Q.Or(""),
-		From:      params.From.Or(0),
-		To:        params.To.Or(100),
-		SortBy:    string(params.SortBy.Or(api.ExportServersSortByName)),
-		SortOrder: string(params.SortOrder.Or(api.ExportServersSortOrderAsc)),
-	}
-
-	userID := authclient.GetUserID(ctx)
-	result, _, err := h.serverService.SearchServers(ctx, searchParams, userID)
-	if err != nil {
-		return nil, apperrors.ToAPIError(err)
-	}
-
-	reader, err := h.excelExporter.GenerateExportFile(result)
-	if err != nil {
-		return nil, apperrors.ToAPIError(err)
-	}
-
-	return &api.ExportServersOKHeaders{
-		ContentDisposition: api.NewOptString(`attachment; filename="servers.xlsx"`),
-		Response:           api.ExportServersOK{Data: reader},
 	}, nil
 }
 
