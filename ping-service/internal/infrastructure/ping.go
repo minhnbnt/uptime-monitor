@@ -43,6 +43,6 @@ func (p *PingWorker) Ping(ctx context.Context, ep *domain.Endpoint) (statusCode 
 	}
 
 	_, _ = io.Copy(io.Discard, response.Body)
-	response.Body.Close()
+	_ = response.Body.Close()
 	return response.StatusCode, nil
 }

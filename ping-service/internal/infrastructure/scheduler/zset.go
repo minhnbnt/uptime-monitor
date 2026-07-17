@@ -3,7 +3,9 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -16,9 +18,19 @@ import (
 )
 
 const (
-	schedulerQueueKey = "scheduler:queue"
-	claimLock         = 10 * time.Second
+	schedulerQueuePrefix = "scheduler:queue"
+	claimLock            = 10 * time.Second
 )
+
+func schedulerShardKey(shardCount int, endpointID uint) string {
+	if shardCount <= 1 {
+		return schedulerQueuePrefix
+	}
+	h := fnv.New32a()
+	h.Write([]byte(strconv.FormatUint(uint64(endpointID), 10)))
+	shardID := h.Sum32() % uint32(shardCount)
+	return fmt.Sprintf("%s:%d", schedulerQueuePrefix, shardID)
+}
 
 type ScheduledTask struct {
 	EndpointID uint
@@ -26,17 +38,22 @@ type ScheduledTask struct {
 }
 
 type ZSetScheduleRepository struct {
-	client *redis.Client
+	client     *redis.Client
+	shardCount int
 }
 
-func NewZSetScheduleRepository(client *redis.Client) *ZSetScheduleRepository {
-	return &ZSetScheduleRepository{client: client}
+func NewZSetScheduleRepository(client *redis.Client, shardCount int) *ZSetScheduleRepository {
+	if shardCount < 1 {
+		shardCount = 1
+	}
+	return &ZSetScheduleRepository{client: client, shardCount: shardCount}
 }
 
 func RegisterZSetScheduleRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ZSetScheduleRepository, error) {
+		cfg := do.MustInvoke[*config.Config](i)
 		wrapper := do.MustInvoke[*config.RedisClientWrapper](i)
-		return NewZSetScheduleRepository(wrapper.GetClient()), nil
+		return NewZSetScheduleRepository(wrapper.GetClient(), cfg.Redis.SchedulerShards), nil
 	})
 }
 
@@ -45,46 +62,111 @@ func (r *ZSetScheduleRepository) Register(ctx context.Context, endpoint *domain.
 }
 
 func (r *ZSetScheduleRepository) RegisterBatch(ctx context.Context, endpoints []domain.Endpoint) error {
-
-	members := lo.Map(endpoints, func(endpoint domain.Endpoint, _ int) redis.Z {
-
-		idStr := fmt.Sprint(endpoint.ID)
-		offset := utils.GenerateOffset(idStr, endpoint.Interval)
-		score := offset.Milliseconds()
-
-		return redis.Z{Member: idStr, Score: float64(score)}
-	})
-
-	if len(members) == 0 {
+	if len(endpoints) == 0 {
 		return nil
 	}
 
-	_, err := r.client.ZAdd(ctx, schedulerQueueKey, members...).Result()
+	if r.shardCount <= 1 {
+		members := lo.Map(endpoints, func(endpoint domain.Endpoint, _ int) redis.Z {
+			idStr := fmt.Sprint(endpoint.ID)
+			offset := utils.GenerateOffset(idStr, endpoint.Interval)
+			score := offset.Milliseconds()
+			return redis.Z{Member: idStr, Score: float64(score)}
+		})
+		_, err := r.client.ZAdd(ctx, schedulerQueuePrefix, members...).Result()
+		return err
+	}
 
-	return err
+	type entry struct {
+		key    string
+		member redis.Z
+	}
+	entries := lo.Map(endpoints, func(endpoint domain.Endpoint, _ int) entry {
+		idStr := fmt.Sprint(endpoint.ID)
+		offset := utils.GenerateOffset(idStr, endpoint.Interval)
+		return entry{
+			key:    schedulerShardKey(r.shardCount, endpoint.ID),
+			member: redis.Z{Member: idStr, Score: float64(offset.Milliseconds())},
+		}
+	})
+
+	groups := make(map[string][]redis.Z)
+	for _, e := range entries {
+		groups[e.key] = append(groups[e.key], e.member)
+	}
+	for key, members := range groups {
+		if _, err := r.client.ZAdd(ctx, key, members...).Result(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *ZSetScheduleRepository) Unregister(ctx context.Context, endpointID uint) error {
-
-	return r.client.ZRem(ctx, schedulerQueueKey, fmt.Sprint(endpointID)).Err()
+	return r.client.ZRem(ctx, schedulerShardKey(r.shardCount, endpointID), fmt.Sprint(endpointID)).Err()
 }
 
 func (r *ZSetScheduleRepository) ClaimDueTasks(
 	ctx context.Context, limit int64,
 ) (due []ScheduledTask, next ScheduledTask, hasNext bool, err error) {
-
 	if limit <= 0 {
 		return nil, ScheduledTask{}, false, nil
 	}
 
-	cmd := claimScript.Run(
-		ctx, r.client, []string{schedulerQueueKey},
-		fmt.Sprint(time.Now().UnixMilli()),
-		fmt.Sprint(limit),
-		fmt.Sprint(claimLock.Milliseconds()),
-	)
+	if r.shardCount <= 1 {
+		cmd := claimScript.Run(
+			ctx, r.client, []string{schedulerQueuePrefix},
+			fmt.Sprint(time.Now().UnixMilli()),
+			fmt.Sprint(limit),
+			fmt.Sprint(claimLock.Milliseconds()),
+		)
+		return collectScheduledTask(cmd)
+	}
 
-	return collectScheduledTask(cmd)
+	now := time.Now().UnixMilli()
+	perShardLimit := limit/int64(r.shardCount) + 1
+	lockMs := claimLock.Milliseconds()
+
+	type shardResult struct {
+		due     []ScheduledTask
+		next    ScheduledTask
+		hasNext bool
+		err     error
+	}
+	results := make([]shardResult, r.shardCount)
+	var wg sync.WaitGroup
+	for i := range r.shardCount {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			key := fmt.Sprintf("%s:%d", schedulerQueuePrefix, idx)
+			cmd := claimScript.Run(ctx, r.client, []string{key},
+				fmt.Sprint(now), fmt.Sprint(perShardLimit), fmt.Sprint(lockMs))
+			d, n, h, e := collectScheduledTask(cmd)
+			results[idx] = shardResult{due: d, next: n, hasNext: h, err: e}
+		}(i)
+	}
+	wg.Wait()
+
+	var allDue []ScheduledTask
+	earliest := ScheduledTask{}
+	hasAnyNext := false
+	for _, res := range results {
+		if res.err != nil {
+			return nil, ScheduledTask{}, false, res.err
+		}
+		allDue = append(allDue, res.due...)
+		if res.hasNext && (!hasAnyNext || res.next.Score < earliest.Score) {
+			earliest = res.next
+			hasAnyNext = true
+		}
+	}
+
+	if int64(len(allDue)) > limit {
+		allDue = allDue[:limit]
+	}
+
+	return allDue, earliest, hasAnyNext, nil
 }
 
 // claimScript atomically claims at most N due tasks and peeks the next future task.

@@ -32,7 +32,7 @@ func RunHealthCheckServer(ctx context.Context, injector do.Injector) {
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, "OK")
+		_, _ = fmt.Fprintln(w, "OK")
 	})
 
 	srv := &http.Server{

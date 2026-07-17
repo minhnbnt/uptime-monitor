@@ -10,10 +10,6 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/grpcclient"
 )
 
-type endpointBatchProvider interface {
-	GetBatch(ctx context.Context, ids []uint) (map[uint]*domain.Endpoint, error)
-}
-
 type EndpointProvider struct {
 	client *grpcclient.EndpointClient
 }

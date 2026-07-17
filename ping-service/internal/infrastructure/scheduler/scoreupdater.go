@@ -11,13 +11,24 @@ import (
 )
 
 type ScoreUpdater struct {
-	client *redis.Client
+	client     *redis.Client
+	shardCount int
+}
+
+func NewScoreUpdater(client *redis.Client, shardCount int) *ScoreUpdater {
+
+	if shardCount < 1 {
+		shardCount = 1
+	}
+
+	return &ScoreUpdater{client: client, shardCount: shardCount}
 }
 
 func RegisterScoreUpdater(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ScoreUpdater, error) {
+		cfg := do.MustInvoke[*config.Config](i)
 		wrapper := do.MustInvoke[*config.RedisClientWrapper](i)
-		return &ScoreUpdater{client: wrapper.GetClient()}, nil
+		return NewScoreUpdater(wrapper.GetClient(), cfg.Redis.SchedulerShards), nil
 	})
 }
 
@@ -31,18 +42,24 @@ func (u *ScoreUpdater) UpdateBatch(ctx context.Context, items map[uint]int64) er
 		return nil
 	}
 
-	pipe := u.client.Pipeline()
-
+	pipes := make(map[string]redis.Pipeliner)
 	for id, score := range items {
-		pipe.ZAdd(ctx, schedulerQueueKey, redis.Z{
-			Score:  float64(score),
-			Member: fmt.Sprint(id),
-		})
+
+		key := schedulerShardKey(u.shardCount, id)
+		pipe, ok := pipes[key]
+
+		if !ok {
+			pipe = u.client.Pipeline()
+			pipes[key] = pipe
+		}
+
+		pipe.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: fmt.Sprint(id)})
 	}
 
-	_, err := pipe.Exec(ctx)
-	if err != nil {
-		return fmt.Errorf("pipeline zadd: %w", err)
+	for _, pipe := range pipes {
+		if _, err := pipe.Exec(ctx); err != nil {
+			return fmt.Errorf("pipeline zadd: %w", err)
+		}
 	}
 
 	return nil
