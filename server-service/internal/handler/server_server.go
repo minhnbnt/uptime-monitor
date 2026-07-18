@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -9,9 +10,8 @@ import (
 	"github.com/samber/lo"
 
 	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/server/v1"
-	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/dto"
-	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/infrastructure/repository"
+	apperrors "github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/service"
 )
 
@@ -19,15 +19,13 @@ type ServerServer struct {
 	serverv1.UnsafeServerServiceServer
 	serverService *service.ServerService
 	batchService  *service.ServerBatchService
-	serverRepo    *repository.ServerRepository
 	logger        *slog.Logger
 }
 
-func NewServerServer(serverService *service.ServerService, batchService *service.ServerBatchService, serverRepo *repository.ServerRepository, logger *slog.Logger) *ServerServer {
+func NewServerServer(serverService *service.ServerService, batchService *service.ServerBatchService, logger *slog.Logger) *ServerServer {
 	return &ServerServer{
 		serverService: serverService,
 		batchService:  batchService,
-		serverRepo:    serverRepo,
 		logger:        logger,
 	}
 }
@@ -37,7 +35,6 @@ func RegisterServerServer(i do.Injector) {
 		return NewServerServer(
 			do.MustInvoke[*service.ServerService](i),
 			do.MustInvoke[*service.ServerBatchService](i),
-			do.MustInvoke[*repository.ServerRepository](i),
 			do.MustInvoke[*slog.Logger](i),
 		), nil
 	})
@@ -48,7 +45,10 @@ func (s *ServerServer) GetServer(
 	req *serverv1.GetServerRequest,
 ) (*serverv1.GetServerResponse, error) {
 
-	server, err := s.serverRepo.GetByID(ctx, uint(req.ServerId))
+	server, err := s.serverService.GetServer(ctx, uint(req.ServerId))
+	if errors.Is(err, apperrors.ErrNotFound) {
+		return nil, fmt.Errorf("server not found")
+	}
 	if err != nil {
 		return nil, fmt.Errorf("get server: %w", err)
 	}
@@ -58,11 +58,7 @@ func (s *ServerServer) GetServer(
 	}
 
 	return &serverv1.GetServerResponse{
-		Server: &serverv1.ServerBrief{
-			Id:        uint64(server.ID),
-			Name:      server.Name,
-			CreatedAt: server.CreatedAt.UnixMilli(),
-		},
+		Server: serverBriefFromDTO(*server),
 	}, nil
 }
 
@@ -71,19 +67,14 @@ func (s *ServerServer) ListServers(
 	req *serverv1.ListServersRequest,
 ) (*serverv1.ListServersResponse, error) {
 
-	limit, offset := int(req.PerPage), int((req.Page-1)*req.PerPage)
-	servers, err := s.serverRepo.List(ctx, uint(req.UserId), limit, offset)
+	servers, _, err := s.serverService.ListServers(ctx, uint(req.UserId), int(req.Page), int(req.PerPage))
 	if err != nil {
 		return nil, fmt.Errorf("list servers: %w", err)
 	}
 
 	resp := &serverv1.ListServersResponse{}
-	resp.Servers = lo.Map(servers, func(sv domain.Server, _ int) *serverv1.ServerBrief {
-		return &serverv1.ServerBrief{
-			Id:        uint64(sv.ID),
-			Name:      sv.Name,
-			CreatedAt: sv.CreatedAt.UnixMilli(),
-		}
+	resp.Servers = lo.Map(servers, func(sv dto.Server, _ int) *serverv1.ServerBrief {
+		return serverBriefFromDTO(sv)
 	})
 
 	return resp, nil
@@ -127,6 +118,14 @@ func (s *ServerServer) BatchCreateServers(
 	}
 
 	return &serverv1.BatchCreateServersResponse{Results: results}, nil
+}
+
+func serverBriefFromDTO(sv dto.Server) *serverv1.ServerBrief {
+	return &serverv1.ServerBrief{
+		Id:        uint64(sv.ID),
+		Name:      sv.Name,
+		CreatedAt: sv.CreatedAt.UnixMilli(),
+	}
 }
 
 func mapServerToProto(sv dto.Server) *serverv1.ServerWithEndpoint {
