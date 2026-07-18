@@ -21,11 +21,11 @@ import (
 const batchChunkSize = 100
 
 type ServerServer struct {
-	serverv1.UnimplementedServerServiceServer
-	serverService    *service.ServerService
-	serverRepo       *repository.ServerRepository
-	endpointRepo     *repository.EndpointRepository
-	logger           *slog.Logger
+	serverv1.UnsafeServerServiceServer
+	serverService *service.ServerService
+	serverRepo    *repository.ServerRepository
+	endpointRepo  *repository.EndpointRepository
+	logger        *slog.Logger
 }
 
 func NewServerServer(serverService *service.ServerService, serverRepo *repository.ServerRepository, endpointRepo *repository.EndpointRepository, logger *slog.Logger) *ServerServer {
@@ -137,10 +137,10 @@ func (s *ServerServer) BatchCreateServers(ctx context.Context, req *serverv1.Bat
 
 		for i, sv := range servers {
 			results = append(results, &serverv1.BatchCreateServerResult{
-				Row:       chunk[i].Row,
-				Name:      sv.Name,
-				Url:       chunk[i].Url,
-				ServerId:  uint64(sv.ID),
+				Row:      chunk[i].Row,
+				Name:     sv.Name,
+				Url:      chunk[i].Url,
+				ServerId: uint64(sv.ID),
 			})
 		}
 

@@ -11,4 +11,5 @@ type GRPCConfig struct {
 	Port       string `mapstructure:"port"`
 	ServerAddr string `mapstructure:"server_addr"`
 	EventAddr  string `mapstructure:"event_addr"`
+	PingAddr   string `mapstructure:"ping_addr"`
 }

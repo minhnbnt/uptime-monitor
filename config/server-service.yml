@@ -38,6 +38,9 @@ log:
 scheduler:
   backend: redis
 
+grpc:
+  ping_addr: ping-service:50053
+
 mail:
   smtp_host: mailpit
   smtp_port: 1025

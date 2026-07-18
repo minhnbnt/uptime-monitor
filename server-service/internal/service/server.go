@@ -22,7 +22,7 @@ type ServerWriter interface {
 
 type ServerService struct {
 	*ServerReader
-	serverWriter      ServerWriter
+	serverWriter       ServerWriter
 	endpointRepository EndpointRepository
 }
 

@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 
 	"github.com/samber/do/v2"
 	"google.golang.org/grpc"
@@ -37,4 +38,22 @@ func (w *GRPCClientWrapper) Shutdown() error {
 
 func (w *GRPCClientWrapper) GetConn() *grpc.ClientConn {
 	return w.conn
+}
+
+func newGRPCServer(i do.Injector) (*grpc.Server, error) {
+	return grpc.NewServer(), nil
+}
+
+func newGRPCListener(i do.Injector) (net.Listener, error) {
+	cfg := do.MustInvoke[*Config](i)
+	port := cfg.GRPC.PingPort
+	if port == "" {
+		port = "50053"
+	}
+	return net.Listen("tcp", ":"+port)
+}
+
+func RegisterGRPC(i do.Injector) {
+	do.Provide(i, newGRPCServer)
+	do.Provide(i, newGRPCListener)
 }

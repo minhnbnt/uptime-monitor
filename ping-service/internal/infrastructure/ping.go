@@ -48,7 +48,7 @@ func (p *PingWorker) Ping(ctx context.Context, ep *domain.Endpoint) (*Response, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to do request: %w", err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 
 	bodyBytes, err := io.ReadAll(io.LimitReader(response.Body, maxBodyBytes))
 	if err != nil {

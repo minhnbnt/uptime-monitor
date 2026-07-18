@@ -7,12 +7,13 @@ import (
 )
 
 type Endpoint struct {
-	ID           uint
-	URL          string
-	Interval     time.Duration
-	Timeout      time.Duration
-	Method       string
-	ExpectedCode int
+	ID            uint
+	URL           string
+	Interval      time.Duration
+	Timeout       time.Duration
+	Method        string
+	ExpectedCode  int
+	BodyCheckExpr *string
 }
 
 func EndpointFromDomain(e *domain.Endpoint) *Endpoint {
@@ -22,23 +23,24 @@ func EndpointFromDomain(e *domain.Endpoint) *Endpoint {
 	}
 
 	return &Endpoint{
-		ID:           e.ID,
-		URL:          e.URL,
-		Interval:     e.Interval,
-		Timeout:      e.Timeout,
-		Method:       e.Method,
-		ExpectedCode: e.ExpectedCode,
+		ID:            e.ID,
+		URL:           e.URL,
+		Interval:      e.Interval,
+		Timeout:       e.Timeout,
+		Method:        e.Method,
+		ExpectedCode:  e.ExpectedCode,
+		BodyCheckExpr: e.BodyCheckExpr,
 	}
 }
 
 type Server struct {
-	ID           uint
-	Name         string
-	CreatedByID  uint
-	Endpoint     *Endpoint
+	ID            uint
+	Name          string
+	CreatedByID   uint
+	Endpoint      *Endpoint
 	MonitorStatus domain.ServerStatus
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 func ServerFromDomain(s domain.Server) Server {
@@ -68,19 +70,21 @@ type UpdateServerRequest struct {
 }
 
 type SetCheckMethodRequest struct {
-	URL          string
-	Method       CheckMethodType
-	HTTPMethod   string
-	Interval     time.Duration
-	Timeout      time.Duration
-	ExpectedCode int
+	URL           string
+	Method        CheckMethodType
+	HTTPMethod    string
+	Interval      time.Duration
+	Timeout       time.Duration
+	ExpectedCode  int
+	BodyCheckExpr *string
 }
 
 type TestEndpointRequest struct {
-	URL          string
-	Method       string
-	Timeout      time.Duration
-	ExpectedCode int
+	URL           string
+	Method        string
+	Timeout       time.Duration
+	ExpectedCode  int
+	BodyCheckExpr *string
 }
 
 type TestEndpointResponse struct {

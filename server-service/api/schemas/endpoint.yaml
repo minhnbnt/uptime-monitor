@@ -42,6 +42,9 @@ Endpoint:
       minimum: 100
       maximum: 599
       description: Expected HTTP status code (default 200)
+    body_check_expr:
+      type: string
+      description: Optional expr-lang expression evaluated against the response body (e.g. "body contains 'OK'")
 
 SetCheckMethodRequest:
   type: object
@@ -87,6 +90,9 @@ TestEndpointRequest:
       maximum: 599
       default: 200
       description: Expected HTTP status code (default 200)
+    body_check_expr:
+      type: string
+      description: Optional expr-lang expression evaluated against the response body
 
 TestEndpointResponse:
   type: object

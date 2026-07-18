@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package ping.v1;
+
+option go_package = "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/ping/v1;pingv1";
+
+message PingRequest {
+  string method = 1;
+  string url = 2;
+  int64 timeout_ms = 3;
+  int32 expected_code = 4;
+  string body_check_expr = 5;
+}
+
+message PingResponse {
+  int32 status_code = 1;
+  string error = 2;
+}
+
+service PingService {
+  rpc Ping(PingRequest) returns (PingResponse);
+}

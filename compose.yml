@@ -107,6 +107,9 @@ services:
     volumes:
       - ./config/ping-service.yml:/config.yml
 
+    ports:
+      - "50053:50053"
+
     depends_on:
       server-service:
         condition: service_started

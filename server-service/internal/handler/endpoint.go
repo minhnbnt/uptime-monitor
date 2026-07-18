@@ -7,10 +7,10 @@ import (
 
 	"github.com/samber/do/v2"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/server-service/generated/api"
 	"github.com/minhnbnt/uptime-monitor-microservices/common/authclient"
-	apperrors "github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/errors"
+	"github.com/minhnbnt/uptime-monitor-microservices/server-service/generated/api"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/dto"
+	apperrors "github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/service"
 )
 
@@ -68,7 +68,10 @@ func (h *EndpointHandler) SetCheckMethod(
 
 var _ EndpointService = (*service.EndpointService)(nil)
 
-func (h *EndpointHandler) TestEndpoint(ctx context.Context, req *api.TestEndpointRequest) (*api.TestEndpointResponse, error) {
+func (h *EndpointHandler) TestEndpoint(
+	ctx context.Context,
+	req *api.TestEndpointRequest,
+) (*api.TestEndpointResponse, error) {
 
 	timeout := req.Timeout.Or(10)
 	expectedCode := req.ExpectedCode.Or(200)
@@ -78,6 +81,10 @@ func (h *EndpointHandler) TestEndpoint(ctx context.Context, req *api.TestEndpoin
 		Method:       string(req.Method),
 		Timeout:      time.Duration(timeout) * time.Second,
 		ExpectedCode: expectedCode,
+	}
+	if v, ok := req.BodyCheckExpr.Get(); ok {
+		bodyExpr := v
+		dtoReq.BodyCheckExpr = &bodyExpr
 	}
 
 	result, err := h.endpointService.TestEndpoint(ctx, dtoReq)

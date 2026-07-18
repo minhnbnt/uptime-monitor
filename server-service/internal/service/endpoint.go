@@ -4,13 +4,15 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
+	"time"
 
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/domain"
-	apperrors "github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/dto"
-	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/infrastructure"
+	apperrors "github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/errors"
+	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/infrastructure/grpcclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/infrastructure/repository"
 )
 
@@ -22,6 +24,7 @@ type EndpointRepository interface {
 type EndpointService struct {
 	serverRepository   ServerRepository
 	endpointRepository EndpointRepository
+	pingClient         *grpcclient.PingClient
 	logger             *slog.Logger
 }
 
@@ -30,6 +33,7 @@ func RegisterEndpointService(i do.Injector) {
 		return &EndpointService{
 			serverRepository:   do.MustInvoke[*repository.ServerRepository](i),
 			endpointRepository: do.MustInvoke[*repository.EndpointRepository](i),
+			pingClient:         do.MustInvoke[*grpcclient.PingClient](i),
 			logger:             do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
@@ -37,12 +41,13 @@ func RegisterEndpointService(i do.Injector) {
 
 func toDomainEndpoint(serverID uint, req dto.SetCheckMethodRequest) domain.Endpoint {
 	return domain.Endpoint{
-		ServerID:     serverID,
-		URL:          req.URL,
-		Interval:     req.Interval,
-		Timeout:      req.Timeout,
-		Method:       req.HTTPMethod,
-		ExpectedCode: req.ExpectedCode,
+		ServerID:      serverID,
+		URL:           req.URL,
+		Interval:      req.Interval,
+		Timeout:       req.Timeout,
+		Method:        req.HTTPMethod,
+		ExpectedCode:  req.ExpectedCode,
+		BodyCheckExpr: req.BodyCheckExpr,
 	}
 }
 
@@ -76,12 +81,25 @@ func (es *EndpointService) TestEndpoint(ctx context.Context, req dto.TestEndpoin
 	pingCtx, cancel := context.WithTimeout(ctx, req.Timeout)
 	defer cancel()
 
-	statusCode, err := infrastructure.PingURL(pingCtx, req.Method, req.URL)
+	var bodyExpr string
+	if req.BodyCheckExpr != nil {
+		bodyExpr = *req.BodyCheckExpr
+	}
+
+	statusCode, err := es.pingClient.Ping(
+		pingCtx,
+		req.Method,
+		req.URL,
+		int64(req.Timeout/time.Millisecond),
+		int32(req.ExpectedCode),
+		bodyExpr,
+	)
+
 	if err != nil {
 		return &dto.TestEndpointResponse{
 			Success:    false,
-			StatusCode: 0,
-			Error:      new(err.Error()),
+			StatusCode: statusCode,
+			Error:      new(strings.TrimPrefix(err.Error(), "ping gRPC: ")),
 		}, nil
 	}
 
