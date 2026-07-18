@@ -6,32 +6,36 @@ import (
 
 	eventv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/event/v1"
 	"github.com/samber/do/v2"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 )
 
 type EventRecorderClient struct {
-	client eventv1.EventRecorderServiceClient
-	conn   *grpc.ClientConn
+	client  eventv1.EventRecorderServiceClient
+	wrapper *config.GRPCClientWrapper
+}
+
+func NewEventRecorderClient(wrapper *config.GRPCClientWrapper) *EventRecorderClient {
+	return &EventRecorderClient{
+		client:  eventv1.NewEventRecorderServiceClient(wrapper.GetConn()),
+		wrapper: wrapper,
+	}
 }
 
 func RegisterEventRecorderClient(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EventRecorderClient, error) {
 		cfg := do.MustInvoke[*config.Config](i)
-		conn, err := grpc.NewClient(cfg.GRPC.EventAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		wrapper, err := config.NewGRPCClientWrapper(cfg.GRPC.EventAddr)
 		if err != nil {
 			return nil, fmt.Errorf("dial event grpc: %w", err)
 		}
-		client := eventv1.NewEventRecorderServiceClient(conn)
-		return &EventRecorderClient{client: client, conn: conn}, nil
+		return NewEventRecorderClient(wrapper), nil
 	})
 }
 
 func (c *EventRecorderClient) Shutdown() error {
-	return c.conn.Close()
+	return c.wrapper.Shutdown()
 }
 
 func (c *EventRecorderClient) RecordEvent(ctx context.Context, endpointID uint, status domain.ServerStatus) error {
