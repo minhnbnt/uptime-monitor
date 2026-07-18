@@ -22,8 +22,8 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 		var recordedEvent *domain.ServerEvent
 		r := &ZSetWorkerRunner{
 			pingService: &mockPingService{
-				pingFn: func(_ context.Context, _ *domain.Endpoint) (int, error) {
-					return 200, nil
+				pingFn: func(_ context.Context, _ *domain.Endpoint) (bool, error) {
+					return true, nil
 				},
 				recordFn: func(_ context.Context, event *domain.ServerEvent) error {
 					recordedEvent = event
@@ -50,8 +50,8 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
 		r := &ZSetWorkerRunner{
 			pingService: &mockPingService{
-				pingFn: func(_ context.Context, _ *domain.Endpoint) (int, error) {
-					return 0, errors.New("connection refused")
+				pingFn: func(_ context.Context, _ *domain.Endpoint) (bool, error) {
+					return false, errors.New("connection refused")
 				},
 				recordFn: func(_ context.Context, event *domain.ServerEvent) error {
 					recordedEvent = event
@@ -77,8 +77,8 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 		var recordedEvent *domain.ServerEvent
 		r := &ZSetWorkerRunner{
 			pingService: &mockPingService{
-				pingFn: func(_ context.Context, _ *domain.Endpoint) (int, error) {
-					return 500, nil
+				pingFn: func(_ context.Context, _ *domain.Endpoint) (bool, error) {
+					return false, nil
 				},
 				recordFn: func(_ context.Context, event *domain.ServerEvent) error {
 					recordedEvent = event
@@ -101,8 +101,8 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
 		r := &ZSetWorkerRunner{
 			pingService: &mockPingService{
-				pingFn: func(_ context.Context, _ *domain.Endpoint) (int, error) {
-					return 200, nil
+				pingFn: func(_ context.Context, _ *domain.Endpoint) (bool, error) {
+					return true, nil
 				},
 				recordFn: func(_ context.Context, event *domain.ServerEvent) error {
 					return errors.New("grpc error")

@@ -30,7 +30,10 @@ func providers(dev bool) []func(do.Injector) {
 		pingsched.RegisterEndpointProvider,
 
 		pinginfra.RegisterPingWorker,
+		pinginfra.RegisterBodyChecker,
 		pinginfra.RegisterRecordStatusWorker,
+
+		pingservice.RegisterResponseChecker,
 
 		pingservice.RegisterPingService,
 		pingservice.RegisterLoopService,

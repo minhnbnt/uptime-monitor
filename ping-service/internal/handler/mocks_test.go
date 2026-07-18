@@ -7,13 +7,13 @@ import (
 )
 
 type mockPingService struct {
-	pingFn   func(ctx context.Context, ep *domain.Endpoint) (int, error)
+	pingFn   func(ctx context.Context, ep *domain.Endpoint) (bool, error)
 	recordFn func(ctx context.Context, event *domain.ServerEvent) error
 }
 
-func (m *mockPingService) Ping(ctx context.Context, ep *domain.Endpoint) (int, error) {
+func (m *mockPingService) Ping(ctx context.Context, ep *domain.Endpoint) (bool, error) {
 	if m.pingFn == nil {
-		return 0, nil
+		return false, nil
 	}
 	return m.pingFn(ctx, ep)
 }

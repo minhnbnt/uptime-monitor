@@ -12,6 +12,13 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 )
 
+const maxBodyBytes = 1 << 20 // 1MB
+
+type Response struct {
+	StatusCode int
+	Body       string
+}
+
 type PingWorker struct {
 	httpClient *http.Client
 }
@@ -22,7 +29,7 @@ func RegisterPingWorker(i do.Injector) {
 	})
 }
 
-func (p *PingWorker) Ping(ctx context.Context, ep *domain.Endpoint) (statusCode int, err error) {
+func (p *PingWorker) Ping(ctx context.Context, ep *domain.Endpoint) (*Response, error) {
 
 	timeout := ep.Timeout
 	if timeout <= 0 {
@@ -34,15 +41,19 @@ func (p *PingWorker) Ping(ctx context.Context, ep *domain.Endpoint) (statusCode 
 
 	request, err := http.NewRequestWithContext(ctx, ep.Method, ep.URL, nil)
 	if err != nil {
-		return 0, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	response, err := p.httpClient.Do(request)
 	if err != nil {
-		return 0, fmt.Errorf("failed to do request: %w", err)
+		return nil, fmt.Errorf("failed to do request: %w", err)
+	}
+	defer response.Body.Close()
+
+	bodyBytes, err := io.ReadAll(io.LimitReader(response.Body, maxBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read body: %w", err)
 	}
 
-	_, _ = io.Copy(io.Discard, response.Body)
-	_ = response.Body.Close()
-	return response.StatusCode, nil
+	return &Response{StatusCode: response.StatusCode, Body: string(bodyBytes)}, nil
 }

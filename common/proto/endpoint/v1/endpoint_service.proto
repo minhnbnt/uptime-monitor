@@ -12,6 +12,7 @@ message EndpointData {
   int32 expected_code = 5;
   int64 interval_ms = 6;
   int64 timeout_ms = 7;
+  string body_check_expr = 8;
 }
 
 message GetEndpointsRequest {

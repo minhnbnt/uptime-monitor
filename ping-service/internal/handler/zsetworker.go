@@ -14,7 +14,7 @@ import (
 )
 
 type PingService interface {
-	Ping(ctx context.Context, ep *domain.Endpoint) (int, error)
+	Ping(ctx context.Context, ep *domain.Endpoint) (bool, error)
 	Record(ctx context.Context, event *domain.ServerEvent) error
 }
 
@@ -55,14 +55,13 @@ func (r *ZSetWorkerRunner) RunZSetWorker(ctx context.Context) {
 
 func (r *ZSetWorkerRunner) pingAndRecordEndpoint(ctx context.Context, ep *domain.Endpoint) {
 
-	statusCode, pingErr := r.pingService.Ping(ctx, ep)
+	isUp, pingErr := r.pingService.Ping(ctx, ep)
 
 	if pingErr != nil {
 		r.logger.Warn(
 			"ping failed",
 			slog.String("url", ep.URL),
 			slog.String("method", ep.Method),
-			slog.Int("status_code", statusCode),
 			slog.Int("expected_code", ep.ExpectedCode),
 			slog.Int64("endpoint_id", int64(ep.ID)),
 			slog.Any("error", pingErr),
@@ -70,7 +69,7 @@ func (r *ZSetWorkerRunner) pingAndRecordEndpoint(ctx context.Context, ep *domain
 	}
 
 	status := domain.StatusOn
-	if pingErr != nil || statusCode != ep.ExpectedCode {
+	if pingErr != nil || !isUp {
 		status = domain.StatusOff
 	}
 
