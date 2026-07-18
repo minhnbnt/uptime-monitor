@@ -31,7 +31,9 @@ func RegisterParadeDBSearcher(i do.Injector) {
 }
 
 func (s *ParadeDBSearcher) Search(
-	ctx context.Context, params dto.SearchParams, createdByID uint,
+	ctx context.Context,
+	params dto.SearchParams,
+	createdByID uint,
 ) ([]domain.Server, int64, error) {
 
 	safeOrder, limit, offset := getQueryOptions(&params)

@@ -111,7 +111,11 @@ func (r *ServerReader) GetServer(ctx context.Context, id uint) (*dto.Server, err
 	return &result, nil
 }
 
-func (r *ServerReader) SearchServers(ctx context.Context, params dto.SearchParams, createdByID uint) ([]dto.Server, int64, error) {
+func (r *ServerReader) SearchServers(
+	ctx context.Context,
+	params dto.SearchParams,
+	createdByID uint,
+) ([]dto.Server, int64, error) {
 
 	servers, total, err := r.searchRepository.Search(ctx, params, createdByID)
 	if err != nil {

@@ -87,9 +87,7 @@ func (es *EndpointService) TestEndpoint(ctx context.Context, req dto.TestEndpoin
 	}
 
 	statusCode, err := es.pingClient.Ping(
-		pingCtx,
-		req.Method,
-		req.URL,
+		pingCtx, req.Method, req.URL,
 		int64(req.Timeout/time.Millisecond),
 		int32(req.ExpectedCode),
 		bodyExpr,

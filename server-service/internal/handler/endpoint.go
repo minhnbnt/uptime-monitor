@@ -54,7 +54,8 @@ func (h *EndpointHandler) SetCheckMethod(
 	}
 
 	userID := authclient.GetUserID(ctx)
-	if err := h.endpointService.SetCheckMethod(ctx, uint(params.ID), userID, dtoReq); err != nil {
+	err := h.endpointService.SetCheckMethod(ctx, uint(params.ID), userID, dtoReq)
+	if err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}
 
@@ -82,6 +83,7 @@ func (h *EndpointHandler) TestEndpoint(
 		Timeout:      time.Duration(timeout) * time.Second,
 		ExpectedCode: expectedCode,
 	}
+
 	if v, ok := req.BodyCheckExpr.Get(); ok {
 		bodyExpr := v
 		dtoReq.BodyCheckExpr = &bodyExpr

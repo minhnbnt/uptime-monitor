@@ -52,12 +52,16 @@ func RegisterStreamEventPublisher(i do.Injector) {
 	})
 }
 
-func (p *StreamEventPublisher) Publish(ctx context.Context, eventType string, ep *domain.Endpoint) error {
+func (p *StreamEventPublisher) Publish(
+	ctx context.Context,
+	eventType string,
+	ep *domain.Endpoint,
+) error {
+
 	event := endpointLifecycleEvent{
 		Type:     eventType,
 		Endpoint: streamEndpointFromDomain(ep),
 	}
-
 	payload, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("marshal event: %w", err)
@@ -65,6 +69,8 @@ func (p *StreamEventPublisher) Publish(ctx context.Context, eventType string, ep
 
 	return p.client.XAdd(ctx, &redis.XAddArgs{
 		Stream: streamKey,
-		Values: map[string]any{"payload": string(payload)},
+		Values: map[string]any{
+			"payload": string(payload),
+		},
 	}).Err()
 }

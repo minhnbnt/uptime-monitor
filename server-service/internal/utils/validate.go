@@ -18,27 +18,34 @@ var (
 )
 
 func ValidateServerName(name string) error {
+
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return ErrNameRequired
 	}
+
 	if len(name) > 255 {
 		return ErrNameTooLong
 	}
+
 	return nil
 }
 
 func ValidateURL(u string) error {
+
 	u = strings.TrimSpace(u)
 	if u == "" {
 		return nil
 	}
+
 	if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
 		return ErrURLInvalid
 	}
+
 	if _, err := url.Parse(u); err != nil {
 		return ErrURLParse
 	}
+
 	return nil
 }
 

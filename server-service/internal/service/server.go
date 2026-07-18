@@ -110,8 +110,12 @@ func (ss *ServerService) DeleteServer(ctx context.Context, id uint, userID uint)
 		return apperrors.ErrInternal
 	}
 
-	if err := ss.endpointRepository.DeleteByServerID(ctx, id); err != nil {
-		ss.logger.Error("failed to clean up endpoint resources", slog.Any("error", err))
+	err = ss.endpointRepository.DeleteByServerID(ctx, id)
+	if err != nil {
+		ss.logger.Error(
+			"failed to clean up endpoint resources",
+			slog.Any("error", err),
+		)
 		return apperrors.ErrInternal
 	}
 

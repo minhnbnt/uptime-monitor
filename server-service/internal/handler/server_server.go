@@ -22,7 +22,11 @@ type ServerServer struct {
 	logger        *slog.Logger
 }
 
-func NewServerServer(serverService *service.ServerService, batchService *service.ServerBatchService, logger *slog.Logger) *ServerServer {
+func NewServerServer(
+	serverService *service.ServerService,
+	batchService *service.ServerBatchService,
+	logger *slog.Logger,
+) *ServerServer {
 	return &ServerServer{
 		serverService: serverService,
 		batchService:  batchService,
@@ -67,7 +71,11 @@ func (s *ServerServer) ListServers(
 	req *serverv1.ListServersRequest,
 ) (*serverv1.ListServersResponse, error) {
 
-	servers, _, err := s.serverService.ListServers(ctx, uint(req.UserId), int(req.Page), int(req.PerPage))
+	servers, _, err := s.serverService.ListServers(
+		ctx, uint(req.UserId),
+		int(req.Page), int(req.PerPage),
+	)
+
 	if err != nil {
 		return nil, fmt.Errorf("list servers: %w", err)
 	}
@@ -100,9 +108,12 @@ func (s *ServerServer) SearchServers(
 	}
 
 	resp := &serverv1.SearchServersResponse{}
-	resp.Servers = lo.Map(servers, func(sv dto.Server, _ int) *serverv1.ServerWithEndpoint {
-		return mapServerToProto(sv)
-	})
+	resp.Servers = lo.Map(
+		servers,
+		func(sv dto.Server, _ int) *serverv1.ServerWithEndpoint {
+			return mapServerToProto(sv)
+		},
+	)
 
 	return resp, nil
 }

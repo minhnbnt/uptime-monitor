@@ -19,15 +19,23 @@ type ServerRepository struct {
 	eventClient grpcclient.StatusClient
 }
 
-func NewServerRepository(db *gorm.DB, eventClient grpcclient.StatusClient) *ServerRepository {
+func NewServerRepository(
+	db *gorm.DB,
+	eventClient grpcclient.StatusClient,
+) *ServerRepository {
 	return &ServerRepository{db: db, eventClient: eventClient}
 }
 
 func RegisterServerRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ServerRepository, error) {
+
 		dbWrapper := do.MustInvoke[*config.GORMWrapper](i)
 		eventClient := do.MustInvoke[grpcclient.StatusClient](i)
-		return &ServerRepository{db: dbWrapper.GetDB(), eventClient: eventClient}, nil
+
+		return &ServerRepository{
+			db:          dbWrapper.GetDB(),
+			eventClient: eventClient,
+		}, nil
 	})
 }
 
@@ -37,7 +45,11 @@ func (sr *ServerRepository) Count(ctx context.Context, createdByID uint) (int64,
 		Count(ctx, "id")
 }
 
-func (sr *ServerRepository) List(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error) {
+func (sr *ServerRepository) List(
+	ctx context.Context,
+	createdByID uint,
+	limit, offset int,
+) ([]domain.Server, error) {
 
 	servers, err := gorm.G[domain.Server](sr.db).
 		Where("created_by_id = ?", createdByID).
@@ -57,12 +69,19 @@ func (sr *ServerRepository) Create(ctx context.Context, s *domain.Server) error 
 	return gorm.G[domain.Server](sr.db).Create(ctx, s)
 }
 
-func (sr *ServerRepository) GetByID(ctx context.Context, id uint) (*domain.Server, error) {
+func (sr *ServerRepository) GetByID(
+	ctx context.Context, id uint,
+) (*domain.Server, error) {
 
-	server, err := gorm.G[domain.Server](sr.db).Preload("Endpoint", nil).Where("id = ?", id).First(ctx)
+	server, err := gorm.G[domain.Server](sr.db).
+		Preload("Endpoint", nil).
+		Where("id = ?", id).
+		First(ctx)
+
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, fmt.Errorf("server %d: %w", id, apperrors.ErrNotFound)
 	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get server: %w", err)
 	}
@@ -72,7 +91,10 @@ func (sr *ServerRepository) GetByID(ctx context.Context, id uint) (*domain.Serve
 
 func (sr *ServerRepository) Update(ctx context.Context, s *domain.Server) error {
 
-	rowAffected, err := gorm.G[domain.Server](sr.db).Where("id = ?", s.ID).Updates(ctx, *s)
+	rowAffected, err := gorm.G[domain.Server](sr.db).
+		Where("id = ?", s.ID).
+		Updates(ctx, *s)
+
 	if err != nil {
 		return err
 	}
@@ -98,9 +120,11 @@ func (sr *ServerRepository) Delete(ctx context.Context, id uint) error {
 	return nil
 }
 
-func (sr *ServerRepository) CountByStatus(ctx context.Context, createdByID uint) (total, online, offline int64, err error) {
+func (sr *ServerRepository) CountByStatus(
+	ctx context.Context, createdByID uint,
+) (total, online, offline int64, err error) {
 
-	var endpointIDs []uint
+	endpointIDs := []uint{}
 	result := sr.db.WithContext(ctx).
 		Table("endpoints e").
 		Joins("JOIN servers s ON s.id = e.server_id").
@@ -124,7 +148,10 @@ func (sr *ServerRepository) CountByStatus(ctx context.Context, createdByID uint)
 	return total, online, offline, nil
 }
 
-func (sr *ServerRepository) BatchCreateServers(ctx context.Context, servers []domain.Server) error {
+func (sr *ServerRepository) BatchCreateServers(
+	ctx context.Context,
+	servers []domain.Server,
+) error {
 
 	result := sr.db.WithContext(ctx).Create(&servers)
 

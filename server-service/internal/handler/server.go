@@ -25,7 +25,10 @@ func RegisterServerHandler(i do.Injector) {
 	})
 }
 
-func (h *ServerHandler) ListServers(ctx context.Context, params api.ListServersParams) (*api.ServerListResponse, error) {
+func (h *ServerHandler) ListServers(
+	ctx context.Context,
+	params api.ListServersParams,
+) (*api.ServerListResponse, error) {
 
 	page, perPage := params.Page.Or(1), params.PerPage.Or(20)
 
@@ -35,15 +38,20 @@ func (h *ServerHandler) ListServers(ctx context.Context, params api.ListServersP
 		return nil, apperrors.ToAPIError(err)
 	}
 
+	data := lo.Map(result, func(item dto.Server, _ int) api.ServerObject {
+		return ToAPIServer(&item)
+	})
+
 	return &api.ServerListResponse{
 		Meta: ToPaginationMeta(page, perPage, total),
-		Data: lo.Map(result, func(item dto.Server, _ int) api.ServerObject {
-			return ToAPIServer(&item)
-		}),
+		Data: data,
 	}, nil
 }
 
-func (h *ServerHandler) CreateServer(ctx context.Context, req *api.CreateServerRequest) (*api.ServerResponse, error) {
+func (h *ServerHandler) CreateServer(
+	ctx context.Context,
+	req *api.CreateServerRequest,
+) (*api.ServerResponse, error) {
 
 	dtoReq := dto.CreateServerRequest{Name: req.Name}
 
@@ -56,7 +64,11 @@ func (h *ServerHandler) CreateServer(ctx context.Context, req *api.CreateServerR
 	return &api.ServerResponse{Data: ToAPIServer(result)}, nil
 }
 
-func (h *ServerHandler) UpdateServer(ctx context.Context, req *api.UpdateServerRequest, params api.UpdateServerParams) (*api.ServerResponse, error) {
+func (h *ServerHandler) UpdateServer(
+	ctx context.Context,
+	req *api.UpdateServerRequest,
+	params api.UpdateServerParams,
+) (*api.ServerResponse, error) {
 
 	dtoReq := dto.UpdateServerRequest{}
 	if name, ok := req.Name.Get(); ok {
@@ -72,7 +84,10 @@ func (h *ServerHandler) UpdateServer(ctx context.Context, req *api.UpdateServerR
 	return &api.ServerResponse{Data: ToAPIServer(result)}, nil
 }
 
-func (h *ServerHandler) DeleteServer(ctx context.Context, params api.DeleteServerParams) error {
+func (h *ServerHandler) DeleteServer(
+	ctx context.Context,
+	params api.DeleteServerParams,
+) error {
 
 	userID := authclient.GetUserID(ctx)
 	if err := h.serverService.DeleteServer(ctx, uint(params.ID), userID); err != nil {
@@ -82,7 +97,11 @@ func (h *ServerHandler) DeleteServer(ctx context.Context, params api.DeleteServe
 	return nil
 }
 
-func (h *ServerHandler) GetServer(ctx context.Context, params api.GetServerParams) (*api.ServerResponse, error) {
+func (h *ServerHandler) GetServer(
+	ctx context.Context,
+	params api.GetServerParams,
+) (*api.ServerResponse, error) {
+
 	userID := authclient.GetUserID(ctx)
 	result, err := h.serverService.GetServer(ctx, uint(params.ID))
 	if err != nil {
@@ -96,7 +115,10 @@ func (h *ServerHandler) GetServer(ctx context.Context, params api.GetServerParam
 	return &api.ServerResponse{Data: ToAPIServer(result)}, nil
 }
 
-func (h *ServerHandler) SearchServers(ctx context.Context, params api.SearchServersParams) (*api.ServerListResponse, error) {
+func (h *ServerHandler) SearchServers(
+	ctx context.Context,
+	params api.SearchServersParams,
+) (*api.ServerListResponse, error) {
 
 	page, perPage := params.Page.Or(1), params.PerPage.Or(20)
 
@@ -124,6 +146,4 @@ func (h *ServerHandler) SearchServers(ctx context.Context, params api.SearchServ
 	}, nil
 }
 
-var (
-	_ ServerService = (*service.ServerService)(nil)
-)
+var _ ServerService = (*service.ServerService)(nil)
