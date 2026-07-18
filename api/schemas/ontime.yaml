@@ -6,19 +6,16 @@ OntimeStats:
   properties:
     date:
       type: string
-      format: date
+      format: date-time
     stats:
       type: number
       format: double
 
-ServerWithOntime:
+ServerOntime:
   type: object
-  required:
-    - server
-    - ontime_stats
   properties:
-    server:
-      $ref: "./server.yaml#/ServerObject"
+    server_id:
+      type: integer
     ontime_stats:
       type: array
       items:
@@ -26,19 +23,8 @@ ServerWithOntime:
 
 ServerOntimeListResponse:
   type: object
-  required:
-    - data
-    - meta
-    - online_count
-    - offline_count
   properties:
     data:
       type: array
       items:
-        $ref: "#/ServerWithOntime"
-    meta:
-      $ref: "./common.yaml#/PaginationMeta"
-    online_count:
-      type: integer
-    offline_count:
-      type: integer
+        $ref: "#/ServerOntime"

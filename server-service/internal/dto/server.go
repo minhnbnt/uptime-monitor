@@ -7,6 +7,7 @@ import (
 )
 
 type Endpoint struct {
+	ID           uint
 	URL          string
 	Interval     time.Duration
 	Timeout      time.Duration
@@ -15,10 +16,13 @@ type Endpoint struct {
 }
 
 func EndpointFromDomain(e *domain.Endpoint) *Endpoint {
+
 	if e == nil {
 		return nil
 	}
+
 	return &Endpoint{
+		ID:           e.ID,
 		URL:          e.URL,
 		Interval:     e.Interval,
 		Timeout:      e.Timeout,
@@ -28,12 +32,13 @@ func EndpointFromDomain(e *domain.Endpoint) *Endpoint {
 }
 
 type Server struct {
-	ID          uint
-	Name        string
-	CreatedByID uint
-	Endpoint    *Endpoint
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID           uint
+	Name         string
+	CreatedByID  uint
+	Endpoint     *Endpoint
+	MonitorStatus domain.ServerStatus
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 func ServerFromDomain(s domain.Server) Server {

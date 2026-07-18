@@ -50,22 +50,18 @@ func (s *EventService) GetCurrentStatuses(ctx context.Context, endpointIDs []uin
 		return nil, err
 	}
 
-	return lo.Map(rows, func(r eventrepo.CurrentStatus, _ int) dto.EndpointStatus {
+	results := lo.Map(rows, func(r eventrepo.CurrentStatus, _ int) dto.EndpointStatus {
 		return dto.EndpointStatus{
 			EndpointID: r.EndpointID,
 			Status:     dto.ServerStatus(r.Status),
 		}
-	}), nil
+	})
+
+	return results, nil
 }
 
-func (s *EventService) CountByStatus(ctx context.Context, endpointIDs []uint) (*dto.StatusCount, error) {
-
-	online, offline, err := s.repo.CountByStatus(ctx, endpointIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	return &dto.StatusCount{Online: online, Offline: offline}, nil
+func (s *EventService) CountByStatus(ctx context.Context, endpointIDs []uint) (online, offline int64, err error) {
+	return s.repo.CountByStatus(ctx, endpointIDs)
 }
 
 var (

@@ -3,7 +3,6 @@ ServerObject:
   required:
     - id
     - name
-    - monitor_status
     - created_at
     - updated_at
   properties:
@@ -13,14 +12,8 @@ ServerObject:
       type: string
       minLength: 1
       maxLength: 255
-    monitor_status:
-      $ref: "./common.yaml#/MonitorStatus"
     endpoint:
       $ref: "./endpoint.yaml#/Endpoint"
-    ontime_stats:
-      type: array
-      items:
-        $ref: "./ontime.yaml#/OntimeStats"
     created_at:
       type: string
       format: date-time

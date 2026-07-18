@@ -26,6 +26,7 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 
 		grpcclient.RegisterEventClient,
 
+		service.RegisterServerReader,
 		service.RegisterServerService,
 		service.RegisterEndpointService,
 

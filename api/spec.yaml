@@ -106,8 +106,8 @@ components:
 
     OntimeStats:
       $ref: "./schemas/ontime.yaml#/OntimeStats"
-    ServerWithOntime:
-      $ref: "./schemas/ontime.yaml#/ServerWithOntime"
+    ServerOntime:
+      $ref: "./schemas/ontime.yaml#/ServerOntime"
     ServerOntimeListResponse:
       $ref: "./schemas/ontime.yaml#/ServerOntimeListResponse"
 
