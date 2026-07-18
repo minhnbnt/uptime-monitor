@@ -13,8 +13,16 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/infrastructure/repository"
 )
 
+type ServerWriter interface {
+	Create(ctx context.Context, s *domain.Server) error
+	Update(ctx context.Context, s *domain.Server) error
+	Delete(ctx context.Context, id uint) error
+	GetByID(ctx context.Context, id uint) (*domain.Server, error)
+}
+
 type ServerService struct {
 	*ServerReader
+	serverWriter      ServerWriter
 	endpointRepository EndpointRepository
 }
 
@@ -23,6 +31,7 @@ func RegisterServerService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ServerService, error) {
 		return &ServerService{
 			ServerReader:       do.MustInvoke[*ServerReader](i),
+			serverWriter:       do.MustInvoke[*repository.ServerRepository](i),
 			endpointRepository: do.MustInvoke[*repository.EndpointRepository](i),
 		}, nil
 	})
@@ -35,7 +44,7 @@ func (ss *ServerService) CreateServer(ctx context.Context, req dto.CreateServerR
 		CreatedByID: createdByID,
 	}
 
-	if err := ss.serverRepository.Create(ctx, &server); err != nil {
+	if err := ss.serverWriter.Create(ctx, &server); err != nil {
 		ss.logger.Error("failed to create server", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
@@ -46,7 +55,7 @@ func (ss *ServerService) CreateServer(ctx context.Context, req dto.CreateServerR
 
 func (ss *ServerService) UpdateServer(ctx context.Context, id uint, userID uint, req dto.UpdateServerRequest) (*dto.Server, error) {
 
-	server, err := ss.serverRepository.GetByID(ctx, id)
+	server, err := ss.serverWriter.GetByID(ctx, id)
 	if errors.Is(err, apperrors.ErrNotFound) {
 		return nil, apperrors.ErrNotFound
 	}
@@ -63,7 +72,7 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uint, userID uint,
 		server.Name = *req.Name
 	}
 
-	updateErr := ss.serverRepository.Update(ctx, server)
+	updateErr := ss.serverWriter.Update(ctx, server)
 	if errors.Is(updateErr, apperrors.ErrNotFound) {
 		return nil, apperrors.ErrNotFound
 	}
@@ -79,7 +88,7 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uint, userID uint,
 
 func (ss *ServerService) DeleteServer(ctx context.Context, id uint, userID uint) error {
 
-	server, err := ss.serverRepository.GetByID(ctx, id)
+	server, err := ss.serverWriter.GetByID(ctx, id)
 	if errors.Is(err, apperrors.ErrNotFound) {
 		return apperrors.ErrNotFound
 	}
@@ -92,7 +101,7 @@ func (ss *ServerService) DeleteServer(ctx context.Context, id uint, userID uint)
 		return apperrors.ErrForbidden
 	}
 
-	err = ss.serverRepository.Delete(ctx, id)
+	err = ss.serverWriter.Delete(ctx, id)
 	if errors.Is(err, apperrors.ErrNotFound) {
 		return apperrors.ErrNotFound
 	}

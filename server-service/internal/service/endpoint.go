@@ -14,6 +14,11 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/infrastructure/repository"
 )
 
+type EndpointRepository interface {
+	UpsertEndpoint(ctx context.Context, endpoint domain.Endpoint) error
+	DeleteByServerID(ctx context.Context, serverID uint) error
+}
+
 type EndpointService struct {
 	serverRepository   ServerRepository
 	endpointRepository EndpointRepository

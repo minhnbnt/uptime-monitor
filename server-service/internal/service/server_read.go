@@ -20,6 +20,16 @@ type StatusClient interface {
 	CountByStatus(ctx context.Context, endpointIDs []uint) (online, offline int64, err error)
 }
 
+type ServerRepository interface {
+	List(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error)
+	Count(ctx context.Context, createdByID uint) (int64, error)
+	GetByID(ctx context.Context, id uint) (*domain.Server, error)
+}
+
+type ServerSearchRepository interface {
+	Search(ctx context.Context, params dto.SearchParams, createdByID uint) ([]domain.Server, int64, error)
+}
+
 type ServerReader struct {
 	serverRepository ServerRepository
 	searchRepository ServerSearchRepository
@@ -52,7 +62,11 @@ func RegisterServerReader(i do.Injector) {
 	})
 }
 
-func (r *ServerReader) ListServers(ctx context.Context, createdByID uint, page, perPage int) ([]dto.Server, int64, error) {
+func (r *ServerReader) ListServers(
+	ctx context.Context,
+	createdByID uint,
+	page, perPage int,
+) ([]dto.Server, int64, error) {
 
 	limit, offset := perPage, (page-1)*perPage
 	result, err := r.serverRepository.List(ctx, createdByID, limit, offset)
@@ -67,13 +81,17 @@ func (r *ServerReader) ListServers(ctx context.Context, createdByID uint, page, 
 		return nil, 0, apperrors.ErrInternal
 	}
 
-	servers := lo.Map(result, func(item domain.Server, _ int) dto.Server {
-		return dto.ServerFromDomain(item)
+	servers := lo.Map(result, func(item domain.Server, _ int) *dto.Server {
+		return new(dto.ServerFromDomain(item))
 	})
 
 	r.applyStatuses(ctx, servers)
 
-	return servers, total, nil
+	out := lo.Map(servers, func(s *dto.Server, _ int) dto.Server {
+		return *s
+	})
+
+	return out, total, nil
 }
 
 func (r *ServerReader) GetServer(ctx context.Context, id uint) (*dto.Server, error) {
@@ -88,7 +106,7 @@ func (r *ServerReader) GetServer(ctx context.Context, id uint) (*dto.Server, err
 	}
 
 	result := dto.ServerFromDomain(*server)
-	r.applyStatuses(ctx, []dto.Server{result})
+	r.applyStatuses(ctx, []*dto.Server{&result})
 
 	return &result, nil
 }
@@ -101,21 +119,25 @@ func (r *ServerReader) SearchServers(ctx context.Context, params dto.SearchParam
 		return nil, 0, apperrors.ErrInternal
 	}
 
-	result := lo.Map(servers, func(item domain.Server, _ int) dto.Server {
-		return dto.ServerFromDomain(item)
+	mapped := lo.Map(servers, func(item domain.Server, _ int) *dto.Server {
+		return new(dto.ServerFromDomain(item))
 	})
 
-	r.applyStatuses(ctx, result)
+	r.applyStatuses(ctx, mapped)
 
-	return result, total, nil
+	out := lo.Map(mapped, func(s *dto.Server, _ int) dto.Server {
+		return *s
+	})
+
+	return out, total, nil
 }
 
-func (r *ServerReader) applyStatuses(ctx context.Context, servers []dto.Server) {
+func (r *ServerReader) applyStatuses(ctx context.Context, servers []*dto.Server) {
 
 	serversMap := make(map[uint]*dto.Server, len(servers))
-	for i, server := range servers {
-		if server.Endpoint != nil {
-			serversMap[server.Endpoint.ID] = &servers[i]
+	for _, server := range servers {
+		if server != nil && server.Endpoint != nil {
+			serversMap[server.Endpoint.ID] = server
 		}
 	}
 
@@ -126,7 +148,10 @@ func (r *ServerReader) applyStatuses(ctx context.Context, servers []dto.Server) 
 
 	statuses, err := r.statusClient.GetCurrentStatuses(ctx, endpointIDs)
 	if err != nil {
-		r.logger.Warn("failed to get current statuses, returning without monitor_status", slog.Any("error", err))
+		r.logger.Warn(
+			"failed to get current statuses, returning without monitor_status",
+			slog.Any("error", err),
+		)
 		return
 	}
 

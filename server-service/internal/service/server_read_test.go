@@ -25,9 +25,9 @@ func (m *mockStatusClient) CountByStatus(_ context.Context, _ []uint) (int64, in
 
 func TestServerReader_applyStatuses(t *testing.T) {
 
-	withEndpoint := dto.Server{ID: 1, Endpoint: &dto.Endpoint{ID: 10}}
-	noEndpoint := dto.Server{ID: 2}
-	servers := []dto.Server{withEndpoint, noEndpoint}
+	withEndpoint := &dto.Server{ID: 1, Endpoint: &dto.Endpoint{ID: 10}}
+	noEndpoint := &dto.Server{ID: 2}
+	servers := []*dto.Server{withEndpoint, noEndpoint}
 
 	reader := &ServerReader{
 		statusClient: &mockStatusClient{statuses: map[uint]domain.ServerStatus{10: domain.StatusOn}},
@@ -46,7 +46,7 @@ func TestServerReader_applyStatuses(t *testing.T) {
 
 func TestServerReader_applyStatuses_errorIsBestEffort(t *testing.T) {
 
-	servers := []dto.Server{{ID: 1, Endpoint: &dto.Endpoint{ID: 10}}}
+	servers := []*dto.Server{{ID: 1, Endpoint: &dto.Endpoint{ID: 10}}}
 
 	reader := &ServerReader{
 		statusClient: &mockStatusClient{err: errors.New("boom")},
@@ -61,7 +61,7 @@ func TestServerReader_applyStatuses_errorIsBestEffort(t *testing.T) {
 
 func TestServerReader_applyStatuses_noEndpoint(t *testing.T) {
 
-	servers := []dto.Server{{ID: 1}}
+	servers := []*dto.Server{{ID: 1}}
 	reader := &ServerReader{
 		statusClient: &mockStatusClient{statuses: map[uint]domain.ServerStatus{10: domain.StatusOff}},
 		logger:       slog.Default(),
