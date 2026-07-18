@@ -4,7 +4,6 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/config"
-	ontimegrpc "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/grpc"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/handler"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/recorder"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
@@ -27,13 +26,16 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 
 		repository.RegisterOntineRepository,
 		repository.RegisterOntimeCacheRepository,
+		repository.RegisterEventRepository,
 		service.RegisterBatcher,
 		service.RegisterOntimeService,
+		service.RegisterEventService,
 
 		handler.RegisterOntimeHandler,
+		handler.RegisterEventRecorderServer,
+		handler.RegisterStatusServer,
 
 		recorder.RegisterDedupRecorder,
-		ontimegrpc.RegisterEventServer,
 	}
 
 	for _, p := range packages {

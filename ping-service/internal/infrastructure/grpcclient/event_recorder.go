@@ -14,7 +14,7 @@ import (
 )
 
 type EventRecorderClient struct {
-	client eventv1.EventServiceClient
+	client eventv1.EventRecorderServiceClient
 	conn   *grpc.ClientConn
 }
 
@@ -25,7 +25,7 @@ func RegisterEventRecorderClient(i do.Injector) {
 		if err != nil {
 			return nil, fmt.Errorf("dial event grpc: %w", err)
 		}
-		client := eventv1.NewEventServiceClient(conn)
+		client := eventv1.NewEventRecorderServiceClient(conn)
 		return &EventRecorderClient{client: client, conn: conn}, nil
 	})
 }

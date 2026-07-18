@@ -33,8 +33,11 @@ message CountByStatusResponse {
   int64 offline = 2;
 }
 
-service EventService {
+service EventRecorderService {
   rpc RecordEvent(RecordEventRequest) returns (RecordEventResponse);
+}
+
+service StatusService {
   rpc GetCurrentStatuses(GetCurrentStatusesRequest) returns (GetCurrentStatusesResponse);
   rpc CountByStatus(CountByStatusRequest) returns (CountByStatusResponse);
 }

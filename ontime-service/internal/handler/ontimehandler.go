@@ -6,12 +6,17 @@ import (
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 
+	"github.com/minhnbnt/uptime-monitor-microservices/common/authclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/generated/api"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/errors"
-	"github.com/minhnbnt/uptime-monitor-microservices/common/authclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/service"
 )
+
+type OntimeService interface {
+	ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]dto.ServerOntime, error)
+	GetServerWithOntime(ctx context.Context, serverID uint, userID uint) (*dto.ServerOntime, error)
+}
 
 type OntimeHandler struct {
 	ontimeService OntimeService

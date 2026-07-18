@@ -20,11 +20,11 @@ type StatusClient interface {
 }
 
 type EventClient struct {
-	client eventv1.EventServiceClient
+	client eventv1.StatusServiceClient
 }
 
 func NewEventClient(cc grpc.ClientConnInterface) *EventClient {
-	return &EventClient{client: eventv1.NewEventServiceClient(cc)}
+	return &EventClient{client: eventv1.NewStatusServiceClient(cc)}
 }
 
 func newEventClient(i do.Injector) (*EventClient, error) {

@@ -10,8 +10,9 @@ import (
 	"github.com/samber/do/v2"
 	"google.golang.org/grpc"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/generated/api"
 	"github.com/minhnbnt/uptime-monitor-microservices/common/authclient"
+	eventv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/event/v1"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/generated/api"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/handler"
 )
@@ -61,15 +62,22 @@ func RunWebServer(ctx context.Context, injector do.Injector) {
 
 func RunGRPCServer(ctx context.Context, injector do.Injector) {
 
-	listener := do.MustInvoke[net.Listener](injector)
-	grpcServer := do.MustInvoke[*grpc.Server](injector)
 	log := do.MustInvoke[*slog.Logger](injector)
+
+	grpcServer := do.MustInvoke[*grpc.Server](injector)
 
 	go func() {
 		<-ctx.Done()
 		grpcServer.GracefulStop()
 	}()
 
+	recoderService := do.MustInvoke[*handler.EventRecorderServer](injector)
+	eventv1.RegisterEventRecorderServiceServer(grpcServer, recoderService)
+
+	statusService := do.MustInvoke[*handler.StatusServer](injector)
+	eventv1.RegisterStatusServiceServer(grpcServer, statusService)
+
+	listener := do.MustInvoke[net.Listener](injector)
 	addr := listener.Addr().String()
 	log.Info("ontime gRPC server starting", slog.String("addr", addr))
 
@@ -77,6 +85,7 @@ func RunGRPCServer(ctx context.Context, injector do.Injector) {
 	if errors.Is(err, grpc.ErrServerStopped) {
 		return
 	}
+
 	if err != nil {
 		log.Error("gRPC server error", slog.Any("error", err))
 		panic(err)
