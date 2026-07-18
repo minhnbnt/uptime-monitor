@@ -8,9 +8,9 @@ type Config struct {
 }
 
 type GRPCConfig struct {
+	Port       string `mapstructure:"port"`
 	ServerAddr string `mapstructure:"server_addr"`
 	EventAddr  string `mapstructure:"event_addr"`
-	PingPort   string `mapstructure:"ping_port"`
 }
 
 type ServerCfg struct {

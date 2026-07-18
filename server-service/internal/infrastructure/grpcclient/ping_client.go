@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"github.com/samber/do/v2"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	pingv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/ping/v1"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/config"
@@ -16,24 +14,23 @@ type PingClient struct {
 	client pingv1.PingServiceClient
 }
 
-func NewPingClient(cc grpc.ClientConnInterface) *PingClient {
-	return &PingClient{client: pingv1.NewPingServiceClient(cc)}
+func NewPingClient(cc *config.GRPCClientWrapper) *PingClient {
+	return &PingClient{client: pingv1.NewPingServiceClient(cc.GetConn())}
 }
 
 func newPingClient(i do.Injector) (*PingClient, error) {
-
 	cfg := do.MustInvoke[*config.Config](i)
 	addr := cfg.GRPC.PingAddr
 	if addr == "" {
 		addr = "localhost:50053"
 	}
 
-	cc, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	wrapper, err := config.NewGRPCClientWrapper(addr)
 	if err != nil {
 		return nil, fmt.Errorf("ping gRPC client: %w", err)
 	}
 
-	return NewPingClient(cc), nil
+	return NewPingClient(wrapper), nil
 }
 
 func RegisterPingClient(i do.Injector) {

@@ -6,8 +6,6 @@ import (
 
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	eventv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/event/v1"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/config"
@@ -23,8 +21,8 @@ type EventClient struct {
 	client eventv1.StatusServiceClient
 }
 
-func NewEventClient(cc grpc.ClientConnInterface) *EventClient {
-	return &EventClient{client: eventv1.NewStatusServiceClient(cc)}
+func NewEventClient(cc *config.GRPCClientWrapper) *EventClient {
+	return &EventClient{client: eventv1.NewStatusServiceClient(cc.GetConn())}
 }
 
 func newEventClient(i do.Injector) (*EventClient, error) {
@@ -35,12 +33,12 @@ func newEventClient(i do.Injector) (*EventClient, error) {
 		addr = "localhost:50052"
 	}
 
-	cc, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	wrapper, err := config.NewGRPCClientWrapper(addr)
 	if err != nil {
 		return nil, fmt.Errorf("event gRPC client: %w", err)
 	}
 
-	return NewEventClient(cc), nil
+	return NewEventClient(wrapper), nil
 }
 
 func RegisterEventClient(i do.Injector) {

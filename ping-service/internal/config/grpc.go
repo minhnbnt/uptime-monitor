@@ -46,7 +46,7 @@ func newGRPCServer(i do.Injector) (*grpc.Server, error) {
 
 func newGRPCListener(i do.Injector) (net.Listener, error) {
 	cfg := do.MustInvoke[*Config](i)
-	port := cfg.GRPC.PingPort
+	port := cfg.GRPC.Port
 	if port == "" {
 		port = "50053"
 	}

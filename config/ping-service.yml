@@ -7,9 +7,9 @@ server:
   port: 8083
 
 grpc:
+  port: "50053"
   server_addr: server-service:50051
   event_addr: ontime-service:50052
-  ping_port: "50053"
 
 log:
   level: info
