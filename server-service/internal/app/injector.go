@@ -29,6 +29,7 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 
 		service.RegisterServerReader,
 		service.RegisterServerService,
+		service.RegisterServerBatchService,
 		service.RegisterEndpointService,
 
 		handler.RegisterServerHandler,
