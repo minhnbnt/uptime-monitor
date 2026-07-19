@@ -232,6 +232,27 @@ check-method:
             schema:
               $ref: "../schemas/common.yaml#/ErrorResponse"
 
+servers-count:
+  get:
+    summary: Count servers by status for the current user
+    operationId: CountServersByStatus
+    x-ogen-operation-group: Servers
+    tags:
+      - servers
+    responses:
+      "200":
+        description: Server counts by status
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/server.yaml#/ServerCountResponse"
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
 servers-search:
   get:
     summary: Search servers by name

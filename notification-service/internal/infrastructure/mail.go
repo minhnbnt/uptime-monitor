@@ -3,6 +3,7 @@ package infrastructure
 import (
 	"fmt"
 	"io"
+	"log/slog"
 
 	"github.com/samber/do/v2"
 	gomail "github.com/wneessen/go-mail"
@@ -14,6 +15,7 @@ import (
 type Mailer struct {
 	mailClient  *gomail.Client
 	fromAddress string
+	logger      *slog.Logger
 }
 
 func RegisterMailer(i do.Injector) {
@@ -25,11 +27,15 @@ func RegisterMailer(i do.Injector) {
 		return &Mailer{
 			mailClient:  mailClientWrapper.GetClient(),
 			fromAddress: cfg.Mail.FromAddress,
+			logger:      do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
 
 func (m *Mailer) Send(to, subject string, attachment io.Reader) error {
+
+	m.logger.Debug("mailer.Send: preparing email",
+		slog.String("to", to), slog.String("subject", subject))
 
 	msg := gomail.NewMsg()
 	if err := msg.From(m.fromAddress); err != nil {
@@ -45,8 +51,11 @@ func (m *Mailer) Send(to, subject string, attachment io.Reader) error {
 	}
 
 	if err := m.mailClient.DialAndSend(msg); err != nil {
+		m.logger.Error("mailer.Send: failed to send",
+			slog.String("to", to), slog.String("subject", subject), slog.Any("error", err))
 		return fmt.Errorf("failed to send mail: %w", err)
 	}
 
+	m.logger.Info("mailer.Send: email sent", slog.String("to", to), slog.String("subject", subject))
 	return nil
 }

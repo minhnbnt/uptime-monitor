@@ -13,12 +13,15 @@ func ToAPIServer(s *dto.Server) api.ServerObject {
 		return api.ServerObject{}
 	}
 
-	serverStatus := api.ServerObjectMonitorStatus(s.MonitorStatus)
+	monitorStatus := api.OptNilServerObjectMonitorStatus{}
+	if s.MonitorStatus != "" {
+		monitorStatus.SetTo(api.ServerObjectMonitorStatus(s.MonitorStatus))
+	}
 
 	return api.ServerObject{
 		ID:            int(s.ID),
 		Name:          s.Name,
-		MonitorStatus: api.NewOptNilServerObjectMonitorStatus(serverStatus),
+		MonitorStatus: monitorStatus,
 		Endpoint:      toAPIEndpoint(s.Endpoint),
 		CreatedAt:     s.CreatedAt,
 		UpdatedAt:     s.UpdatedAt,

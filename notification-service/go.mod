@@ -8,6 +8,7 @@ require (
 	github.com/go-faster/errors v0.7.1
 	github.com/go-faster/jx v1.2.0
 	github.com/minhnbnt/uptime-monitor-microservices/common/authclient v0.0.0-00010101000000-000000000000
+	github.com/minhnbnt/uptime-monitor-microservices/common/proto v0.0.0-00010101000000-000000000000
 	github.com/ogen-go/ogen v1.22.0
 	github.com/orandin/slog-gorm v1.4.0
 	github.com/samber/do/v2 v2.0.0
@@ -87,3 +88,5 @@ require (
 )
 
 replace github.com/minhnbnt/uptime-monitor-microservices/common/authclient => ../common/authclient
+
+replace github.com/minhnbnt/uptime-monitor-microservices/common/proto => ../common/proto

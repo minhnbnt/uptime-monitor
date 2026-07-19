@@ -80,9 +80,20 @@ message BatchCreateServersResponse {
   repeated BatchCreateServerResult results = 1;
 }
 
+message CountServersByStatusRequest {
+  uint64 user_id = 1;
+}
+
+message CountServersByStatusResponse {
+  int64 total = 1;
+  int64 online = 2;
+  int64 offline = 3;
+}
+
 service ServerService {
   rpc ListServers(ListServersRequest) returns (ListServersResponse);
   rpc GetServer(GetServerRequest) returns (GetServerResponse);
   rpc SearchServers(SearchServersRequest) returns (SearchServersResponse);
   rpc BatchCreateServers(BatchCreateServersRequest) returns (BatchCreateServersResponse);
+  rpc CountServersByStatus(CountServersByStatusRequest) returns (CountServersByStatusResponse);
 }

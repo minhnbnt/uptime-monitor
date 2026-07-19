@@ -9,6 +9,7 @@ type Config struct {
 	AuthService   ServiceAddr   `mapstructure:"auth_service"`
 	ServerService ServiceAddr   `mapstructure:"server_service"`
 	OntimeService ServiceAddr   `mapstructure:"ontime_service"`
+	GRPC          GRPCConfig    `mapstructure:"grpc"`
 }
 
 type ServerConfig struct {
@@ -44,4 +45,8 @@ type MailConfig struct {
 
 type ServiceAddr struct {
 	Addr string `mapstructure:"addr"`
+}
+
+type GRPCConfig struct {
+	ServerAddr string `mapstructure:"server_addr"`
 }

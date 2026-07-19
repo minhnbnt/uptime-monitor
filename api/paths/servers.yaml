@@ -58,6 +58,27 @@ servers:
             schema:
               $ref: "../schemas/common.yaml#/ErrorResponse"
 
+servers-count:
+  get:
+    summary: Count servers by status for the current user
+    operationId: CountServersByStatus
+    x-ogen-operation-group: Servers
+    tags:
+      - servers-stats
+    responses:
+      "200":
+        description: Server counts by status
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/server.yaml#/ServerCountResponse"
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
 servers-ontime:
   get:
     summary: List servers with ontime stats for the last 30 days

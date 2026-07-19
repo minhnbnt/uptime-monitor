@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/samber/do/v2"
 	"gorm.io/gorm"
@@ -13,13 +14,17 @@ import (
 )
 
 type NotificationConfigRepository struct {
-	db *gorm.DB
+	db     *gorm.DB
+	logger *slog.Logger
 }
 
 func RegisterNotificationConfigRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*NotificationConfigRepository, error) {
 		dbWrapper := do.MustInvoke[*config.GORMWrapper](i)
-		return &NotificationConfigRepository{db: dbWrapper.GetDB()}, nil
+		return &NotificationConfigRepository{
+			db:     dbWrapper.GetDB(),
+			logger: do.MustInvoke[*slog.Logger](i),
+		}, nil
 	})
 }
 
@@ -27,10 +32,13 @@ func (r *NotificationConfigRepository) GetByUserID(ctx context.Context, userID u
 
 	cfg, err := gorm.G[domain.NotificationConfig](r.db).Where("user_id = ?", userID).First(ctx)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
+		r.logger.Debug("NotificationConfigRepository.GetByUserID: no config found", slog.Uint64("user_id", uint64(userID)))
 		return nil, nil
 	}
 
 	if err != nil {
+		r.logger.Error("NotificationConfigRepository.GetByUserID: query failed",
+			slog.Uint64("user_id", uint64(userID)), slog.Any("error", err))
 		return nil, err
 	}
 

@@ -65,3 +65,17 @@ ServerListResponse:
         $ref: "#/ServerObject"
     meta:
       $ref: "./common.yaml#/PaginationMeta"
+
+ServerCountResponse:
+  type: object
+  required:
+    - total
+    - online
+    - offline
+  properties:
+    total:
+      type: integer
+    online:
+      type: integer
+    offline:
+      type: integer

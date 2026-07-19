@@ -2,12 +2,10 @@ package serverclient
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"time"
+	"log/slog"
 
+	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/server/v1"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/config"
@@ -15,87 +13,56 @@ import (
 )
 
 type Client struct {
-	baseURL string
-	client  *http.Client
+	client serverv1.ServerServiceClient
+	logger *slog.Logger
 }
 
 func RegisterClient(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*Client, error) {
-		cfg := do.MustInvoke[*config.Config](i)
+		wrapper := do.MustInvoke[*config.GRPCClientWrapper](i)
 		return &Client{
-			baseURL: cfg.ServerService.Addr,
-			client:  &http.Client{Timeout: 30 * time.Second},
+			client: serverv1.NewServerServiceClient(wrapper.GetConn()),
+			logger: do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
 
 func (a *Client) List(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error) {
 
-	url := fmt.Sprintf("%s/api/v1/servers?limit=%d&offset=%d", a.baseURL, limit, offset)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req := &serverv1.ListServersRequest{
+		UserId:  uint64(createdByID),
+		Page:    int32(offset/limit) + 1,
+		PerPage: int32(limit),
+	}
+	a.logger.Debug("serverclient.List: sending gRPC request",
+		slog.Uint64("user_id", uint64(createdByID)), slog.Int("limit", limit), slog.Int("offset", offset))
+
+	resp, err := a.client.ListServers(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
-	}
-	req.Header.Set("X-User-ID", fmt.Sprintf("%d", createdByID))
-
-	resp, err := a.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("do request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(body))
+		a.logger.Error("serverclient.List: gRPC call failed",
+			slog.Uint64("user_id", uint64(createdByID)), slog.Any("error", err))
+		return nil, fmt.Errorf("list servers: %w", err)
 	}
 
-	type serverResp struct {
-		ID   uint   `json:"id"`
-		Name string `json:"name"`
+	servers := make([]domain.Server, 0, len(resp.Servers))
+	for _, s := range resp.Servers {
+		servers = append(servers, domain.Server{ID: uint(s.Id), Name: s.Name})
 	}
-
-	var servers []serverResp
-	if err := json.NewDecoder(resp.Body).Decode(&servers); err != nil {
-		return nil, fmt.Errorf("decode response: %w", err)
-	}
-
-	result := make([]domain.Server, len(servers))
-	for i, s := range servers {
-		result[i] = domain.Server{ID: s.ID, Name: s.Name}
-	}
-	return result, nil
+	return servers, nil
 }
 
 func (a *Client) CountByStatus(ctx context.Context, createdByID uint) (total, online, offline int64, err error) {
 
-	url := fmt.Sprintf("%s/api/v1/servers/count", a.baseURL)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req := &serverv1.CountServersByStatusRequest{UserId: uint64(createdByID)}
+	a.logger.Debug("serverclient.CountByStatus: sending gRPC request",
+		slog.Uint64("user_id", uint64(createdByID)))
+
+	resp, err := a.client.CountServersByStatus(ctx, req)
 	if err != nil {
-		return 0, 0, 0, fmt.Errorf("create request: %w", err)
-	}
-	req.Header.Set("X-User-ID", fmt.Sprintf("%d", createdByID))
-
-	resp, err := a.client.Do(req)
-	if err != nil {
-		return 0, 0, 0, fmt.Errorf("do request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return 0, 0, 0, fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(body))
+		a.logger.Error("serverclient.CountByStatus: gRPC call failed",
+			slog.Uint64("user_id", uint64(createdByID)), slog.Any("error", err))
+		return 0, 0, 0, fmt.Errorf("count servers by status: %w", err)
 	}
 
-	type countResp struct {
-		Total   int64 `json:"total"`
-		Online  int64 `json:"online"`
-		Offline int64 `json:"offline"`
-	}
-
-	var c countResp
-	if err := json.NewDecoder(resp.Body).Decode(&c); err != nil {
-		return 0, 0, 0, fmt.Errorf("decode response: %w", err)
-	}
-
-	return c.Total, c.Online, c.Offline, nil
+	return resp.Total, resp.Online, resp.Offline, nil
 }

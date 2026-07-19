@@ -99,38 +99,44 @@ func RegisterDigestService(i do.Injector) {
 
 func (s *DigestService) SendUserDigest(ctx context.Context, userID uint) error {
 
+	s.logger.Info("SendUserDigest: start", slog.Uint64("user_id", uint64(userID)))
+
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
-		s.logger.Error("failed to find user", slog.Any("error", err))
+		s.logger.Error("SendUserDigest: failed to find user", slog.Uint64("user_id", uint64(userID)), slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 	if user == nil {
-		s.logger.Warn("user not found, skipping digest", slog.Int("user_id", int(userID)))
+		s.logger.Warn("SendUserDigest: user not found, skipping", slog.Uint64("user_id", uint64(userID)))
 		return nil
 	}
 
 	cfg, err := s.configRepo.GetByUserID(ctx, userID)
 	if err != nil {
-		s.logger.Error("failed to get notification config", slog.Any("error", err))
+		s.logger.Error("SendUserDigest: failed to get notification config", slog.Uint64("user_id", uint64(userID)), slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 
 	if cfg == nil || !cfg.Active {
-		return fmt.Errorf("no active config for user %d", userID)
+		s.logger.Info("SendUserDigest: no active config, skipping", slog.Uint64("user_id", uint64(userID)))
+		return nil
 	}
 
+	s.logger.Debug("SendUserDigest: config active", slog.Uint64("user_id", uint64(userID)), slog.String("from_date", cfg.FromDate.Format("2006-01-02")))
 	return s.SendReport(ctx, userID, cfg.FromDate)
 }
 
 func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.Time) error {
 
+	s.logger.Info("SendReport: start", slog.Uint64("user_id", uint64(userID)), slog.String("from_date", from.Format("2006-01-02")))
+
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
-		s.logger.Error("failed to find user", slog.Any("error", err))
+		s.logger.Error("SendReport: failed to find user", slog.Uint64("user_id", uint64(userID)), slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 	if user == nil {
-		s.logger.Error("user not found", slog.Int("user_id", int(userID)))
+		s.logger.Error("SendReport: user not found", slog.Uint64("user_id", uint64(userID)))
 		return fmt.Errorf("user %d: %w", userID, apperrors.ErrNotFound)
 	}
 
@@ -141,31 +147,36 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 	servers, err := s.serverRepo.List(ctx, userID, maxReportServers, 0)
 	if err != nil {
-		s.logger.Error("failed to list servers", slog.Any("error", err))
+		s.logger.Error("SendReport: failed to list servers", slog.Uint64("user_id", uint64(userID)), slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
+	s.logger.Debug("SendReport: listed servers", slog.Uint64("user_id", uint64(userID)), slog.Int("count", len(servers)))
 
 	dates := utils.BuildDateRange(from, now)
 
 	ontimeMap, err := s.ontimeSvc.GetServersOntimeForDates(ctx, servers, dates)
 	if err != nil {
-		s.logger.Error("failed to get ontime stats", slog.Any("error", err))
+		s.logger.Error("SendReport: failed to get ontime stats", slog.Uint64("user_id", uint64(userID)), slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
+	s.logger.Debug("SendReport: got ontime stats", slog.Uint64("user_id", uint64(userID)), slog.Int("servers_with_stats", len(ontimeMap)))
 
 	rows := s.buildReport(servers, ontimeMap)
 
 	total, online, offline, err := s.serverRepo.CountByStatus(ctx, userID)
 	if err != nil {
-		s.logger.Error("failed to count servers by status", slog.Any("error", err))
+		s.logger.Error("SendReport: failed to count servers by status", slog.Uint64("user_id", uint64(userID)), slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
+	s.logger.Debug("SendReport: server counts",
+		slog.Uint64("user_id", uint64(userID)),
+		slog.Int64("total", total), slog.Int64("online", online), slog.Int64("offline", offline))
 
 	summary := excelgen.ServerSummary{Total: total, Online: online, Offline: offline}
 
 	reader, err := excelgen.GenerateStatusReport(rows, &summary)
 	if err != nil {
-		s.logger.Error("failed to generate excel report", slog.Any("error", err))
+		s.logger.Error("SendReport: failed to generate excel report", slog.Uint64("user_id", uint64(userID)), slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 
@@ -173,9 +184,10 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 	subject := fmt.Sprintf("Uptime Monitor - Daily Digest - %s", now.Format("2006-01-02"))
 	if err := s.mailer.Send(user.Email, subject, reader); err != nil {
-		s.logger.Error("failed to send mail", slog.Any("error", err))
+		s.logger.Error("SendReport: failed to send mail", slog.Uint64("user_id", uint64(userID)), slog.String("email", user.Email), slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 
+	s.logger.Info("SendReport: digest sent", slog.Uint64("user_id", uint64(userID)), slog.String("email", user.Email))
 	return nil
 }

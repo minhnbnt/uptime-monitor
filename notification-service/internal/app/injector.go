@@ -21,6 +21,7 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 		config.RegisterGORMDB,
 		config.RegisterTemporalClient,
 		config.RegisterMailClient,
+		config.RegisterGRPCClient,
 
 		repository.RegisterNotificationConfigRepository,
 

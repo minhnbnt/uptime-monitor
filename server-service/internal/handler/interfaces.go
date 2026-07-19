@@ -13,6 +13,7 @@ type ServerService interface {
 	UpdateServer(ctx context.Context, id uint, userID uint, req dto.UpdateServerRequest) (*dto.Server, error)
 	DeleteServer(ctx context.Context, id uint, userID uint) error
 	SearchServers(ctx context.Context, params dto.SearchParams, createdByID uint) ([]dto.Server, int64, error)
+	CountByStatus(ctx context.Context, userID uint) (total, online, offline int64, err error)
 }
 
 type EndpointService interface {

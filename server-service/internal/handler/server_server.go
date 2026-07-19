@@ -118,6 +118,24 @@ func (s *ServerServer) SearchServers(
 	return resp, nil
 }
 
+func (s *ServerServer) CountServersByStatus(
+	ctx context.Context,
+	req *serverv1.CountServersByStatusRequest,
+) (*serverv1.CountServersByStatusResponse, error) {
+
+	total, online, offline, err := s.serverService.CountByStatus(ctx, uint(req.UserId))
+	if err != nil {
+		s.logger.Error("count servers by status failed", slog.Any("error", err))
+		return nil, fmt.Errorf("count servers by status: %w", err)
+	}
+
+	return &serverv1.CountServersByStatusResponse{
+		Total:   total,
+		Online:  online,
+		Offline: offline,
+	}, nil
+}
+
 func (s *ServerServer) BatchCreateServers(
 	ctx context.Context,
 	req *serverv1.BatchCreateServersRequest,

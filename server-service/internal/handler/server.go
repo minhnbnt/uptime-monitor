@@ -115,6 +115,23 @@ func (h *ServerHandler) GetServer(
 	return &api.ServerResponse{Data: ToAPIServer(result)}, nil
 }
 
+func (h *ServerHandler) CountServersByStatus(
+	ctx context.Context,
+) (*api.ServerCountResponse, error) {
+
+	userID := authclient.GetUserID(ctx)
+	total, online, offline, err := h.serverService.CountByStatus(ctx, userID)
+	if err != nil {
+		return nil, apperrors.ToAPIError(err)
+	}
+
+	return &api.ServerCountResponse{
+		Total:   int(total),
+		Online:  int(online),
+		Offline: int(offline),
+	}, nil
+}
+
 func (h *ServerHandler) SearchServers(
 	ctx context.Context,
 	params api.SearchServersParams,

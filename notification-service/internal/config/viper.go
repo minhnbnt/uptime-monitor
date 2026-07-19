@@ -67,6 +67,8 @@ func setDefaults(v *viper.Viper) {
 		"auth_service.addr":   "http://localhost:8081",
 		"server_service.addr": "http://localhost:8080",
 		"ontime_service.addr": "http://localhost:8084",
+
+		"grpc.server_addr": "localhost:50051",
 	}
 
 	for key, value := range defaults {
@@ -100,6 +102,8 @@ func bindEnvVars(v *viper.Viper) error {
 		"auth_service.addr":   "AUTH_SERVICE_ADDR",
 		"server_service.addr": "SERVER_SERVICE_ADDR",
 		"ontime_service.addr": "ONTIME_SERVICE_ADDR",
+
+		"grpc.server_addr": "GRPC_SERVER_ADDR",
 	}
 
 	for key, env := range envMap {

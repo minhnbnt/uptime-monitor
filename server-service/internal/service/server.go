@@ -24,6 +24,7 @@ type ServerService struct {
 	*ServerReader
 	serverWriter       ServerWriter
 	endpointRepository EndpointRepository
+	serverRepo         *repository.ServerRepository
 }
 
 func RegisterServerService(i do.Injector) {
@@ -33,11 +34,22 @@ func RegisterServerService(i do.Injector) {
 			ServerReader:       do.MustInvoke[*ServerReader](i),
 			serverWriter:       do.MustInvoke[*repository.ServerRepository](i),
 			endpointRepository: do.MustInvoke[*repository.EndpointRepository](i),
+			serverRepo:         do.MustInvoke[*repository.ServerRepository](i),
 		}, nil
 	})
 }
 
-func (ss *ServerService) CreateServer(ctx context.Context, req dto.CreateServerRequest, createdByID uint) (*dto.Server, error) {
+func (ss *ServerService) CountByStatus(
+	ctx context.Context, userID uint,
+) (total, online, offline int64, err error) {
+	return ss.serverRepo.CountByStatus(ctx, userID)
+}
+
+func (ss *ServerService) CreateServer(
+	ctx context.Context,
+	req dto.CreateServerRequest,
+	createdByID uint,
+) (*dto.Server, error) {
 
 	server := domain.Server{
 		Name:        req.Name,

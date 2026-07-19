@@ -46,6 +46,8 @@ paths:
     $ref: "./paths/servers.yaml#/servers-search"
 
   # ── Stats ────────────────────────────────
+  /api/v1/servers/count:
+    $ref: "./paths/servers.yaml#/servers-count"
   /api/v1/servers/ontime:
     $ref: "./paths/servers.yaml#/servers-ontime"
 
@@ -92,6 +94,8 @@ components:
       $ref: "./schemas/server.yaml#/ServerResponse"
     ServerListResponse:
       $ref: "./schemas/server.yaml#/ServerListResponse"
+    ServerCountResponse:
+      $ref: "./schemas/server.yaml#/ServerCountResponse"
 
     CheckMethodType:
       $ref: "./schemas/endpoint.yaml#/CheckMethodType"
