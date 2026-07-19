@@ -68,9 +68,14 @@ func (s *OntimeService) ListServersWithOntime(ctx context.Context, userID uint, 
 	return out, nil
 }
 
-func (s *OntimeService) GetServersOntime(ctx context.Context, userID uint) (map[uint][]dto.OntimeStats, error) {
+func (s *OntimeService) GetServersOntime(ctx context.Context, userID uint, maxRecords int) (map[uint][]dto.OntimeStats, error) {
 
-	servers, err := s.serverClient.ListServers(ctx, userID, 0, 0)
+	perPage := maxRecords
+	if perPage <= 0 {
+		perPage = 10000
+	}
+
+	servers, err := s.serverClient.ListServers(ctx, userID, 1, perPage)
 	if err != nil {
 		s.logger.Error("failed to list servers for ontime", slog.Uint64("user_id", uint64(userID)), slog.Any("error", err))
 		return nil, err

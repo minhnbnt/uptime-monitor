@@ -28,7 +28,7 @@ func (s *OntimeGRPCServer) GetServersOntime(
 	ctx context.Context, req *eventv1.GetServersOntimeRequest,
 ) (*eventv1.GetServersOntimeResponse, error) {
 
-	ontimeMap, err := s.ontimeService.GetServersOntime(ctx, uint(req.UserId))
+	ontimeMap, err := s.ontimeService.GetServersOntime(ctx, uint(req.UserId), int(req.MaxRecords))
 	if err != nil {
 		return nil, err
 	}

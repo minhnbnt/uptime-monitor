@@ -72,6 +72,8 @@ func setDefaults(v *viper.Viper) {
 
 		"grpc.server_addr": "localhost:50051",
 		"grpc.event_addr":  "localhost:50052",
+
+		"digest.max_records": 10000,
 	}
 
 	for key, value := range defaults {
@@ -110,6 +112,8 @@ func bindEnvVars(v *viper.Viper) error {
 
 		"grpc.server_addr": "GRPC_SERVER_ADDR",
 		"grpc.event_addr":  "GRPC_EVENT_ADDR",
+
+		"digest.max_records": "DIGEST_MAX_RECORDS",
 	}
 
 	for key, env := range envMap {

@@ -10,6 +10,7 @@ type Config struct {
 	ServerService ServiceAddr  `mapstructure:"server_service"`
 	OntimeService ServiceAddr  `mapstructure:"ontime_service"`
 	GRPC          GRPCConfig   `mapstructure:"grpc"`
+	Digest        DigestConfig `mapstructure:"digest"`
 }
 
 type ServerConfig struct {
@@ -52,4 +53,8 @@ type ServiceAddr struct {
 type GRPCConfig struct {
 	ServerAddr string `mapstructure:"server_addr"`
 	EventAddr  string `mapstructure:"event_addr"`
+}
+
+type DigestConfig struct {
+	MaxRecords int `mapstructure:"max_records"`
 }

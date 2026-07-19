@@ -14,27 +14,41 @@ import (
 )
 
 type Client struct {
-	client  eventv1.OntimeServiceClient
-	wrapper *config.GRPCOntimeClientWrapper
-	logger  *slog.Logger
+	client     eventv1.OntimeServiceClient
+	wrapper    *config.GRPCOntimeClientWrapper
+	logger     *slog.Logger
+	maxRecords int
 }
 
-func NewClient(wrapper *config.GRPCOntimeClientWrapper, logger *slog.Logger) *Client {
+func NewClient(
+	wrapper *config.GRPCOntimeClientWrapper,
+	logger *slog.Logger, maxRecords int,
+) *Client {
+
+	client := eventv1.NewOntimeServiceClient(wrapper.GetConn())
+
 	return &Client{
-		client:  eventv1.NewOntimeServiceClient(wrapper.GetConn()),
-		wrapper: wrapper,
-		logger:  logger,
+		client:     client,
+		logger:     logger,
+		wrapper:    wrapper,
+		maxRecords: maxRecords,
 	}
 }
 
 func RegisterClient(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*Client, error) {
+
 		cfg := do.MustInvoke[*config.Config](i)
 		wrapper, err := config.NewGRPCOntimeClientWrapper(cfg.GRPC.EventAddr)
 		if err != nil {
 			return nil, fmt.Errorf("dial ontime grpc: %w", err)
 		}
-		return NewClient(wrapper, do.MustInvoke[*slog.Logger](i)), nil
+
+		return NewClient(
+			wrapper,
+			do.MustInvoke[*slog.Logger](i),
+			cfg.Digest.MaxRecords,
+		), nil
 	})
 }
 
@@ -42,7 +56,10 @@ func (a *Client) Shutdown() error {
 	return a.wrapper.Shutdown()
 }
 
-func (a *Client) GetServersOntimeForDates(ctx context.Context, userID uint, servers []domain.Server, dates []time.Time) (map[uint][]domain.OntimeStats, error) {
+func (a *Client) GetServersOntimeForDates(
+	ctx context.Context, userID uint,
+	servers []domain.Server, dates []time.Time,
+) (map[uint][]domain.OntimeStats, error) {
 
 	a.logger.Debug(
 		"ontimeclient.GetServersOntimeForDates: sending gRPC request",
@@ -51,18 +68,25 @@ func (a *Client) GetServersOntimeForDates(ctx context.Context, userID uint, serv
 		slog.Int("dates", len(dates)),
 	)
 
-	resp, err := a.client.GetServersOntime(ctx, &eventv1.GetServersOntimeRequest{
-		UserId: uint64(userID),
-	})
+	request := eventv1.GetServersOntimeRequest{
+		UserId:     uint64(userID),
+		MaxRecords: int64(a.maxRecords),
+	}
+	resp, err := a.client.GetServersOntime(ctx, &request)
 	if err != nil {
-		a.logger.Error("ontimeclient.GetServersOntimeForDates: rpc failed",
-			slog.Uint64("user_id", uint64(userID)), slog.Any("error", err))
+		a.logger.Error(
+			"ontimeclient.GetServersOntimeForDates: rpc failed",
+			slog.Uint64("user_id", uint64(userID)),
+			slog.Any("error", err),
+		)
 		return nil, fmt.Errorf("get servers ontime: %w", err)
 	}
 
 	result := make(map[uint][]domain.OntimeStats, len(resp.Servers))
 	for _, sv := range resp.Servers {
+
 		stats := make([]domain.OntimeStats, 0, len(sv.OntimeStats))
+
 		for _, st := range sv.OntimeStats {
 			parsed, perr := time.Parse("2006-01-02", st.Date)
 			if perr != nil {
@@ -73,6 +97,7 @@ func (a *Client) GetServersOntimeForDates(ctx context.Context, userID uint, serv
 				Stats: st.Stats,
 			})
 		}
+
 		result[uint(sv.ServerId)] = stats
 	}
 

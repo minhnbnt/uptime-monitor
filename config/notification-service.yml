@@ -36,3 +36,6 @@ ontime_service:
 grpc:
   server_addr: "server-service:50051"
   event_addr: "ontime-service:50052"
+
+digest:
+  max_records: 10000
