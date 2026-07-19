@@ -40,6 +40,7 @@ scheduler:
 
 grpc:
   ping_addr: ping-service:50053
+  event_addr: ontime-service:50052
 
 mail:
   smtp_host: mailpit
