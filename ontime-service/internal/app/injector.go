@@ -34,6 +34,7 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 		handler.RegisterOntimeHandler,
 		handler.RegisterEventRecorderServer,
 		handler.RegisterStatusServer,
+		handler.RegisterOntimeGRPCServer,
 
 		recorder.RegisterDedupRecorder,
 	}

@@ -63,12 +63,15 @@ func setDefaults(v *viper.Viper) {
 		"mail.smtp_user":     "",
 		"mail.smtp_password": "",
 		"mail.from_address":  "noreply@uptime-monitor.local",
+		"mail.disable_security":       false,
+		"mail.tls_insecure_skip_verify": false,
 
 		"auth_service.addr":   "http://localhost:8081",
 		"server_service.addr": "http://localhost:8080",
 		"ontime_service.addr": "http://localhost:8084",
 
 		"grpc.server_addr": "localhost:50051",
+		"grpc.event_addr":  "localhost:50052",
 	}
 
 	for key, value := range defaults {
@@ -98,12 +101,15 @@ func bindEnvVars(v *viper.Viper) error {
 		"mail.smtp_user":     "SMTP_USER",
 		"mail.smtp_password": "SMTP_PASSWORD",
 		"mail.from_address":  "SMTP_FROM",
+		"mail.disable_security":        "MAIL_DISABLE_SECURITY",
+		"mail.tls_insecure_skip_verify": "MAIL_TLS_INSECURE_SKIP_VERIFY",
 
 		"auth_service.addr":   "AUTH_SERVICE_ADDR",
 		"server_service.addr": "SERVER_SERVICE_ADDR",
 		"ontime_service.addr": "ONTIME_SERVICE_ADDR",
 
 		"grpc.server_addr": "GRPC_SERVER_ADDR",
+		"grpc.event_addr":  "GRPC_EVENT_ADDR",
 	}
 
 	for key, env := range envMap {

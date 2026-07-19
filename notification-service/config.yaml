@@ -18,6 +18,8 @@ mail:
   username: ""
   password: ""
   from_address: noreply@uptime-monitor.local
+  disable_security: true
+  tls_insecure_skip_verify: false
 
 log:
   level: info
@@ -33,3 +35,4 @@ ontime_service:
 
 grpc:
   server_addr: "localhost:50051"
+  event_addr: "localhost:50052"

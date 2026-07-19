@@ -33,6 +33,24 @@ message CountByStatusResponse {
   int64 offline = 2;
 }
 
+message GetServersOntimeRequest {
+  uint64 user_id = 1;
+}
+
+message OntimeDayStat {
+  string date = 1;
+  double stats = 2;
+}
+
+message ServerOntimeStat {
+  uint64 server_id = 1;
+  repeated OntimeDayStat ontime_stats = 2;
+}
+
+message GetServersOntimeResponse {
+  repeated ServerOntimeStat servers = 1;
+}
+
 service EventRecorderService {
   rpc RecordEvent(RecordEventRequest) returns (RecordEventResponse);
 }
@@ -40,4 +58,8 @@ service EventRecorderService {
 service StatusService {
   rpc GetCurrentStatuses(GetCurrentStatusesRequest) returns (GetCurrentStatusesResponse);
   rpc CountByStatus(CountByStatusRequest) returns (CountByStatusResponse);
+}
+
+service OntimeService {
+  rpc GetServersOntime(GetServersOntimeRequest) returns (GetServersOntimeResponse);
 }

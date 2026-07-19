@@ -77,6 +77,9 @@ func RunGRPCServer(ctx context.Context, injector do.Injector) {
 	statusService := do.MustInvoke[*handler.StatusServer](injector)
 	eventv1.RegisterStatusServiceServer(grpcServer, statusService)
 
+	ontimeService := do.MustInvoke[*handler.OntimeGRPCServer](injector)
+	eventv1.RegisterOntimeServiceServer(grpcServer, ontimeService)
+
 	listener := do.MustInvoke[net.Listener](injector)
 	addr := listener.Addr().String()
 	log.Info("ontime gRPC server starting", slog.String("addr", addr))

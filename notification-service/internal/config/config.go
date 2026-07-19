@@ -36,11 +36,13 @@ type TemporalCfg struct {
 }
 
 type MailConfig struct {
-	SMTPHost     string `mapstructure:"smtp_host"`
-	SMTPPort     int    `mapstructure:"smtp_port"`
-	SMTPUser     string `mapstructure:"smtp_user"`
-	SMTPPassword string `mapstructure:"smtp_password"`
-	FromAddress  string `mapstructure:"from_address"`
+	SMTPHost            string `mapstructure:"smtp_host"`
+	SMTPPort            int    `mapstructure:"smtp_port"`
+	SMTPUser            string `mapstructure:"smtp_user"`
+	SMTPPassword        string `mapstructure:"smtp_password"`
+	FromAddress         string `mapstructure:"from_address"`
+	DisableSecurity     bool   `mapstructure:"disable_security"`
+	TLSInsecureSkipVerify bool `mapstructure:"tls_insecure_skip_verify"`
 }
 
 type ServiceAddr struct {
@@ -49,4 +51,5 @@ type ServiceAddr struct {
 
 type GRPCConfig struct {
 	ServerAddr string `mapstructure:"server_addr"`
+	EventAddr  string `mapstructure:"event_addr"`
 }

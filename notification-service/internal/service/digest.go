@@ -34,7 +34,7 @@ type ServerAdapter interface {
 }
 
 type OntimeAdapter interface {
-	GetServersOntimeForDates(ctx context.Context, servers []domain.Server, dates []time.Time) (map[uint][]domain.OntimeStats, error)
+	GetServersOntimeForDates(ctx context.Context, userID uint, servers []domain.Server, dates []time.Time) (map[uint][]domain.OntimeStats, error)
 }
 
 func (s *DigestService) buildReport(
@@ -154,7 +154,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 	dates := utils.BuildDateRange(from, now)
 
-	ontimeMap, err := s.ontimeSvc.GetServersOntimeForDates(ctx, servers, dates)
+	ontimeMap, err := s.ontimeSvc.GetServersOntimeForDates(ctx, userID, servers, dates)
 	if err != nil {
 		s.logger.Error("SendReport: failed to get ontime stats", slog.Uint64("user_id", uint64(userID)), slog.Any("error", err))
 		return apperrors.ErrInternal

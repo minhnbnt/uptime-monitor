@@ -20,9 +20,11 @@ mail:
   smtp_user: ""
   smtp_password: ""
   from_address: noreply@uptime-monitor.local
+  disable_security: true
+  tls_insecure_skip_verify: false
 
 log:
-  level: info
+  level: debug
 
 auth_service:
   addr: http://auth-service:8081
@@ -32,3 +34,7 @@ server_service:
 
 ontime_service:
   addr: http://ontime-service:8084
+
+grpc:
+  server_addr: "server-service:50051"
+  event_addr: "ontime-service:50052"

@@ -1,104 +1,79 @@
 package ontimeclient
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
+	"log/slog"
 	"time"
 
 	"github.com/samber/do/v2"
 
+	eventv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/event/v1"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/domain"
 )
 
 type Client struct {
-	baseURL string
-	client  *http.Client
+	client  eventv1.OntimeServiceClient
+	wrapper *config.GRPCOntimeClientWrapper
+	logger  *slog.Logger
+}
+
+func NewClient(wrapper *config.GRPCOntimeClientWrapper, logger *slog.Logger) *Client {
+	return &Client{
+		client:  eventv1.NewOntimeServiceClient(wrapper.GetConn()),
+		wrapper: wrapper,
+		logger:  logger,
+	}
 }
 
 func RegisterClient(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*Client, error) {
 		cfg := do.MustInvoke[*config.Config](i)
-		return &Client{
-			baseURL: cfg.OntimeService.Addr,
-			client:  &http.Client{Timeout: 30 * time.Second},
-		}, nil
+		wrapper, err := config.NewGRPCOntimeClientWrapper(cfg.GRPC.EventAddr)
+		if err != nil {
+			return nil, fmt.Errorf("dial ontime grpc: %w", err)
+		}
+		return NewClient(wrapper, do.MustInvoke[*slog.Logger](i)), nil
 	})
 }
 
-func (a *Client) GetServersOntimeForDates(ctx context.Context, servers []domain.Server, dates []time.Time) (map[uint][]domain.OntimeStats, error) {
+func (a *Client) Shutdown() error {
+	return a.wrapper.Shutdown()
+}
 
-	type item struct {
-		ServerID uint      `json:"server_id"`
-		Date     string    `json:"date"`
+func (a *Client) GetServersOntimeForDates(ctx context.Context, userID uint, servers []domain.Server, dates []time.Time) (map[uint][]domain.OntimeStats, error) {
+
+	a.logger.Debug(
+		"ontimeclient.GetServersOntimeForDates: sending gRPC request",
+		slog.Uint64("user_id", uint64(userID)),
+		slog.Int("servers", len(servers)),
+		slog.Int("dates", len(dates)),
+	)
+
+	resp, err := a.client.GetServersOntime(ctx, &eventv1.GetServersOntimeRequest{
+		UserId: uint64(userID),
+	})
+	if err != nil {
+		a.logger.Error("ontimeclient.GetServersOntimeForDates: rpc failed",
+			slog.Uint64("user_id", uint64(userID)), slog.Any("error", err))
+		return nil, fmt.Errorf("get servers ontime: %w", err)
 	}
 
-	type request struct {
-		Items []item `json:"items"`
-	}
-
-	reqBody := request{}
-	for _, sv := range servers {
-		for _, d := range dates {
-			reqBody.Items = append(reqBody.Items, item{
-				ServerID: sv.ID,
-				Date:     d.Format("2006-01-02"),
+	result := make(map[uint][]domain.OntimeStats, len(resp.Servers))
+	for _, sv := range resp.Servers {
+		stats := make([]domain.OntimeStats, 0, len(sv.OntimeStats))
+		for _, st := range sv.OntimeStats {
+			parsed, perr := time.Parse("2006-01-02", st.Date)
+			if perr != nil {
+				continue
+			}
+			stats = append(stats, domain.OntimeStats{
+				Date:  parsed,
+				Stats: st.Stats,
 			})
 		}
-	}
-
-	body, err := json.Marshal(reqBody)
-	if err != nil {
-		return nil, fmt.Errorf("marshal request: %w", err)
-	}
-
-	url := fmt.Sprintf("%s/api/v1/servers/ontime/batch", a.baseURL)
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
-	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	resp, err := a.client.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("do request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	type statsResponse struct {
-		ServerID uint    `json:"server_id"`
-		Date     string `json:"date"`
-		Stats    float64 `json:"stats"`
-	}
-
-	type batchResponse struct {
-		Results []statsResponse `json:"results"`
-	}
-
-	var batch batchResponse
-	if err := json.NewDecoder(resp.Body).Decode(&batch); err != nil {
-		return nil, fmt.Errorf("decode response: %w", err)
-	}
-
-	result := make(map[uint][]domain.OntimeStats)
-	for _, s := range batch.Results {
-		parsed, err := time.Parse("2006-01-02", s.Date)
-		if err != nil {
-			continue
-		}
-		result[s.ServerID] = append(result[s.ServerID], domain.OntimeStats{
-			Date:  parsed,
-			Stats: s.Stats,
-		})
+		result[uint(sv.ServerId)] = stats
 	}
 
 	return result, nil

@@ -68,6 +68,17 @@ func (s *OntimeService) ListServersWithOntime(ctx context.Context, userID uint, 
 	return out, nil
 }
 
+func (s *OntimeService) GetServersOntime(ctx context.Context, userID uint) (map[uint][]dto.OntimeStats, error) {
+
+	servers, err := s.serverClient.ListServers(ctx, userID, 0, 0)
+	if err != nil {
+		s.logger.Error("failed to list servers for ontime", slog.Uint64("user_id", uint64(userID)), slog.Any("error", err))
+		return nil, err
+	}
+
+	return s.getServersOntime(ctx, servers)
+}
+
 func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID, userID uint) (*dto.ServerOntime, error) {
 
 	server, err := s.serverClient.GetServer(ctx, serverID, userID)
