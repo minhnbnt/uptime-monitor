@@ -6,19 +6,19 @@ import (
 )
 
 func TestSchedulerShardKey(t *testing.T) {
-	t.Run("single shard returns prefix", func(t *testing.T) {
+	t.Run("single shard maps to shard 0 key", func(t *testing.T) {
 		key := schedulerShardKey(1, 42)
-		if key != schedulerQueuePrefix {
-			t.Errorf("got %q, want %q", key, schedulerQueuePrefix)
+		if key != schedulerQueuePrefix+":0" {
+			t.Errorf("got %q, want %q", key, schedulerQueuePrefix+":0")
 		}
 	})
 
 	t.Run("zero or negative treated as single", func(t *testing.T) {
-		if k := schedulerShardKey(0, 1); k != schedulerQueuePrefix {
-			t.Errorf("shardCount=0 got %q, want %q", k, schedulerQueuePrefix)
+		if k := schedulerShardKey(0, 1); k != schedulerQueuePrefix+":0" {
+			t.Errorf("shardCount=0 got %q, want %q", k, schedulerQueuePrefix+":0")
 		}
-		if k := schedulerShardKey(-1, 1); k != schedulerQueuePrefix {
-			t.Errorf("shardCount=-1 got %q, want %q", k, schedulerQueuePrefix)
+		if k := schedulerShardKey(-1, 1); k != schedulerQueuePrefix+":0" {
+			t.Errorf("shardCount=-1 got %q, want %q", k, schedulerQueuePrefix+":0")
 		}
 	})
 
@@ -110,10 +110,10 @@ func TestGetScheduledTask(t *testing.T) {
 	})
 }
 
-func TestClaimDueTasksZeroLimit(t *testing.T) {
+func TestClaimDueTasksForShardZeroLimit(t *testing.T) {
 	t.Run("zero limit returns nil due", func(t *testing.T) {
 		r := &ZSetScheduleRepository{}
-		due, next, hasNext, err := r.ClaimDueTasks(t.Context(), 0)
+		due, next, hasNext, err := r.ClaimDueTasksForShard(t.Context(), 0, 0)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}

@@ -18,10 +18,11 @@ func (r *RedisClientWrapper) Shutdown() error {
 }
 
 type RedisConfig struct {
-	Addr            string `mapstructure:"addr"`
-	Password        string `mapstructure:"password"`
-	DB              int    `mapstructure:"db"`
-	SchedulerShards int    `mapstructure:"scheduler_shards"`
+	Addr                string `mapstructure:"addr"`
+	Password            string `mapstructure:"password"`
+	DB                  int    `mapstructure:"db"`
+	SchedulerShards     int    `mapstructure:"scheduler_shards"`
+	SchedulerClaimLimit int    `mapstructure:"scheduler_claim_limit"`
 }
 
 func RegisterRedisClient(i do.Injector) {

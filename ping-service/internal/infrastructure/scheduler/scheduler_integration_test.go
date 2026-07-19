@@ -67,7 +67,7 @@ func TestRegisterBatch(t *testing.T) {
 
 	// Verify members are in the ZSET
 	client := repo.client
-	count, err := client.ZCard(ctx, schedulerQueuePrefix).Result()
+	count, err := client.ZCard(ctx, shardKey(0)).Result()
 	if err != nil {
 		t.Fatalf("ZCard: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestRegisterUnregister(t *testing.T) {
 	}
 
 	// Verify registered
-	exists, err := repo.client.ZScore(ctx, schedulerQueuePrefix, "10").Result()
+	exists, err := repo.client.ZScore(ctx, shardKey(0), "10").Result()
 	if err != nil {
 		t.Fatalf("ZScore after register: %v", err)
 	}
@@ -104,7 +104,7 @@ func TestRegisterUnregister(t *testing.T) {
 	}
 
 	// Verify gone
-	_, err = repo.client.ZScore(ctx, schedulerQueuePrefix, "10").Result()
+	_, err = repo.client.ZScore(ctx, shardKey(0), "10").Result()
 	if err != redis.Nil {
 		t.Errorf("expected redis.Nil after unregister, got %v", err)
 	}
@@ -120,14 +120,14 @@ func TestClaimDueTasks(t *testing.T) {
 
 	// Manually insert endpoints with known scores
 	client := repo.client
-	client.ZAdd(ctx, schedulerQueuePrefix,
+	client.ZAdd(ctx, shardKey(0),
 		redis.Z{Member: "1", Score: float64(pastScore)},
 		redis.Z{Member: "2", Score: float64(pastScore)},
 		redis.Z{Member: "3", Score: float64(futureScore)},
 	)
 
 	t.Run("claims due tasks and bumps scores", func(t *testing.T) {
-		due, next, hasNext, err := repo.ClaimDueTasks(ctx, 10)
+		due, next, hasNext, err := repo.ClaimDueTasksForShard(ctx, 0, 10)
 		if err != nil {
 			t.Fatalf("ClaimDueTasks: %v", err)
 		}
@@ -146,7 +146,7 @@ func TestClaimDueTasks(t *testing.T) {
 			}
 			// ZSET should have the bumped (locked) score, not the original
 			member := fmt.Sprint(task.EndpointID)
-			zsetScore, err := client.ZScore(ctx, schedulerQueuePrefix, member).Result()
+			zsetScore, err := client.ZScore(ctx, shardKey(0), member).Result()
 			if err != nil {
 				t.Fatalf("ZScore for %s: %v", member, err)
 			}
@@ -172,7 +172,7 @@ func TestClaimDueTasksEmptyQueue(t *testing.T) {
 	repo := newRepo(t)
 	ctx := context.Background()
 
-	due, next, hasNext, err := repo.ClaimDueTasks(ctx, 10)
+	due, next, hasNext, err := repo.ClaimDueTasksForShard(ctx, 0, 10)
 	if err != nil {
 		t.Fatalf("ClaimDueTasks on empty: %v", err)
 	}
@@ -193,9 +193,9 @@ func TestClaimDueTasksNoDue(t *testing.T) {
 
 	client := repo.client
 	futureScore := time.Now().Add(time.Hour).UnixMilli()
-	client.ZAdd(ctx, schedulerQueuePrefix, redis.Z{Member: "1", Score: float64(futureScore)})
+	client.ZAdd(ctx, shardKey(0), redis.Z{Member: "1", Score: float64(futureScore)})
 
-	due, next, hasNext, err := repo.ClaimDueTasks(ctx, 10)
+	due, next, hasNext, err := repo.ClaimDueTasksForShard(ctx, 0, 10)
 	if err != nil {
 		t.Fatalf("ClaimDueTasks: %v", err)
 	}
@@ -218,14 +218,14 @@ func TestClaimDueTasksPartialClaim(t *testing.T) {
 	now := time.Now()
 	pastScore := now.Add(-time.Hour).UnixMilli()
 
-	client.ZAdd(ctx, schedulerQueuePrefix,
+	client.ZAdd(ctx, shardKey(0),
 		redis.Z{Member: "1", Score: float64(pastScore)},
 		redis.Z{Member: "2", Score: float64(pastScore)},
 		redis.Z{Member: "3", Score: float64(pastScore)},
 	)
 
 	// Claim only 2 out of 3
-	due, _, _, err := repo.ClaimDueTasks(ctx, 2)
+	due, _, _, err := repo.ClaimDueTasksForShard(ctx, 0, 2)
 	if err != nil {
 		t.Fatalf("ClaimDueTasks: %v", err)
 	}
@@ -234,7 +234,7 @@ func TestClaimDueTasksPartialClaim(t *testing.T) {
 	}
 
 	// Claim the last one
-	due, _, _, err = repo.ClaimDueTasks(ctx, 10)
+	due, _, _, err = repo.ClaimDueTasksForShard(ctx, 0, 10)
 	if err != nil {
 		t.Fatalf("ClaimDueTasks second round: %v", err)
 	}
@@ -256,7 +256,7 @@ func TestScoreUpdaterUpdateBatch(t *testing.T) {
 	now := time.Now()
 	pastScore := now.Add(-time.Hour).UnixMilli()
 
-	client.ZAdd(ctx, schedulerQueuePrefix,
+	client.ZAdd(ctx, shardKey(0),
 		redis.Z{Member: "1", Score: float64(pastScore)},
 	)
 
@@ -268,7 +268,7 @@ func TestScoreUpdaterUpdateBatch(t *testing.T) {
 	}
 
 	// Verify score was updated
-	score, err := client.ZScore(ctx, schedulerQueuePrefix, "1").Result()
+	score, err := client.ZScore(ctx, shardKey(0), "1").Result()
 	if err != nil {
 		t.Fatalf("ZScore after update: %v", err)
 	}
@@ -277,7 +277,7 @@ func TestScoreUpdaterUpdateBatch(t *testing.T) {
 	}
 
 	// ClaimDueTasks should not return it (it's in the future)
-	due, _, _, err := repo.ClaimDueTasks(ctx, 10)
+	due, _, _, err := repo.ClaimDueTasksForShard(ctx, 0, 10)
 	if err != nil {
 		t.Fatalf("ClaimDueTasks: %v", err)
 	}
@@ -293,10 +293,10 @@ func TestClaimDueTasksLockPreventsReclaim(t *testing.T) {
 	now := time.Now()
 	pastScore := now.Add(-time.Hour).UnixMilli()
 
-	repo.client.ZAdd(ctx, schedulerQueuePrefix, redis.Z{Member: "1", Score: float64(pastScore)})
+	repo.client.ZAdd(ctx, shardKey(0), redis.Z{Member: "1", Score: float64(pastScore)})
 
 	// First claim
-	due, _, _, err := repo.ClaimDueTasks(ctx, 10)
+	due, _, _, err := repo.ClaimDueTasksForShard(ctx, 0, 10)
 	if err != nil {
 		t.Fatalf("first ClaimDueTasks: %v", err)
 	}
@@ -305,7 +305,7 @@ func TestClaimDueTasksLockPreventsReclaim(t *testing.T) {
 	}
 
 	// Second claim — should NOT return it (locked)
-	due, _, _, err = repo.ClaimDueTasks(ctx, 10)
+	due, _, _, err = repo.ClaimDueTasksForShard(ctx, 0, 10)
 	if err != nil {
 		t.Fatalf("second ClaimDueTasks: %v", err)
 	}
@@ -360,6 +360,47 @@ func TestRegisterBatchWithSharding(t *testing.T) {
 	}
 }
 
+func TestClaimDueTasksForShardIsolatesShards(t *testing.T) {
+	repo := newShardedRepo(t, 3)
+	ctx := context.Background()
+
+	now := time.Now()
+	past := now.Add(-time.Hour).UnixMilli()
+
+	// Put a due task on shard 1 and a due task on shard 2.
+	repo.client.ZAdd(ctx, schedulerQueuePrefix+":1",
+		redis.Z{Member: "11", Score: float64(past)})
+	repo.client.ZAdd(ctx, schedulerQueuePrefix+":2",
+		redis.Z{Member: "22", Score: float64(past)})
+
+	// Claiming shard 0 must return nothing.
+	due0, _, _, err := repo.ClaimDueTasksForShard(ctx, 0, 10)
+	if err != nil {
+		t.Fatalf("ClaimDueTasksForShard shard 0: %v", err)
+	}
+	if len(due0) != 0 {
+		t.Errorf("shard 0 claimed %d tasks, want 0 (isolated)", len(due0))
+	}
+
+	// Claiming shard 1 must return only shard 1's task.
+	due1, _, _, err := repo.ClaimDueTasksForShard(ctx, 1, 10)
+	if err != nil {
+		t.Fatalf("ClaimDueTasksForShard shard 1: %v", err)
+	}
+	if len(due1) != 1 || due1[0].EndpointID != 11 {
+		t.Errorf("shard 1 claimed %+v, want endpoint 11 only", due1)
+	}
+
+	// Shard 2 still holds its own task.
+	due2, _, _, err := repo.ClaimDueTasksForShard(ctx, 2, 10)
+	if err != nil {
+		t.Fatalf("ClaimDueTasksForShard shard 2: %v", err)
+	}
+	if len(due2) != 1 || due2[0].EndpointID != 22 {
+		t.Errorf("shard 2 claimed %+v, want endpoint 22 only", due2)
+	}
+}
+
 func TestUnregisterWithSharding(t *testing.T) {
 	repo := newShardedRepo(t, 3)
 	ctx := context.Background()
@@ -398,114 +439,6 @@ func TestUnregisterWithSharding(t *testing.T) {
 	// Endpoint 20 should still exist in its shard
 	if _, err := repo.client.ZScore(ctx, key20, "20").Result(); err != nil {
 		t.Errorf("endpoint 20 should still exist: %v", err)
-	}
-}
-
-func TestClaimDueTasksMergesAcrossShards(t *testing.T) {
-	repo := newShardedRepo(t, 3)
-	ctx := context.Background()
-
-	now := time.Now()
-	past := now.Add(-time.Hour).UnixMilli()
-	future := now.Add(time.Hour).UnixMilli()
-
-	// Insert past-due tasks into each shard
-	for i := 0; i < 3; i++ {
-		key := fmt.Sprintf("%s:%d", schedulerQueuePrefix, i)
-		for j := 0; j < 2; j++ {
-			id := uint(i*100 + j + 1)
-			repo.client.ZAdd(ctx, key, redis.Z{Member: fmt.Sprint(id), Score: float64(past)})
-		}
-		// Add a future task for "next" peek
-		futureID := uint(i*100 + 99)
-		repo.client.ZAdd(ctx, key, redis.Z{Member: fmt.Sprint(futureID), Score: float64(future + int64(i))})
-	}
-
-	due, next, hasNext, err := repo.ClaimDueTasks(ctx, 4)
-	if err != nil {
-		t.Fatalf("ClaimDueTasks: %v", err)
-	}
-
-	// Should get up to 4 due tasks (capped) across all 3 shards
-	if len(due) != 4 {
-		t.Errorf("expected 4 due tasks (capped at limit), got %d", len(due))
-	}
-
-	// All due tasks should have unique endpoint IDs (no duplicates)
-	seen := make(map[uint]bool)
-	for _, task := range due {
-		if seen[task.EndpointID] {
-			t.Errorf("duplicate endpoint %d in due results", task.EndpointID)
-		}
-		seen[task.EndpointID] = true
-	}
-
-	// Should have a next task — the earliest future one
-	if !hasNext {
-		t.Error("expected hasNext=true")
-	} else if next.EndpointID%100 != 99 {
-		t.Errorf("expected a future endpoint (ID %% 100 == 99), got %d", next.EndpointID)
-	}
-}
-
-func TestClaimDueTasksCappedAtLimit(t *testing.T) {
-	repo := newShardedRepo(t, 4)
-	ctx := context.Background()
-
-	now := time.Now()
-	past := now.Add(-time.Hour).UnixMilli()
-
-	// Insert 2 past-due tasks into each of 4 shards (total 8)
-	for i := 0; i < 4; i++ {
-		key := fmt.Sprintf("%s:%d", schedulerQueuePrefix, i)
-		for j := 0; j < 2; j++ {
-			id := uint(i*100 + j + 1)
-			repo.client.ZAdd(ctx, key, redis.Z{Member: fmt.Sprint(id), Score: float64(past)})
-		}
-	}
-
-	due, _, _, err := repo.ClaimDueTasks(ctx, 3)
-	if err != nil {
-		t.Fatalf("ClaimDueTasks: %v", err)
-	}
-	if len(due) != 3 {
-		t.Errorf("expected 3 due tasks (capped at limit=3), got %d", len(due))
-	}
-}
-
-func TestClaimDueTasksEarliestNextAcrossShards(t *testing.T) {
-	repo := newShardedRepo(t, 3)
-	ctx := context.Background()
-
-	now := time.Now()
-	past := now.Add(-time.Hour).UnixMilli()
-
-	// Past-due on shard 0
-	repo.client.ZAdd(ctx, schedulerQueuePrefix+":0",
-		redis.Z{Member: "1", Score: float64(past)})
-
-	// Future tasks at different times on each shard
-	repo.client.ZAdd(ctx, schedulerQueuePrefix+":0",
-		redis.Z{Member: "99", Score: float64(now.Add(100 * time.Millisecond).UnixMilli())})
-	repo.client.ZAdd(ctx, schedulerQueuePrefix+":1",
-		redis.Z{Member: "199", Score: float64(now.Add(50 * time.Millisecond).UnixMilli())})
-	repo.client.ZAdd(ctx, schedulerQueuePrefix+":2",
-		redis.Z{Member: "299", Score: float64(now.Add(200 * time.Millisecond).UnixMilli())})
-
-	due, next, hasNext, err := repo.ClaimDueTasks(ctx, 10)
-	if err != nil {
-		t.Fatalf("ClaimDueTasks: %v", err)
-	}
-
-	if len(due) != 1 {
-		t.Errorf("expected 1 due task, got %d", len(due))
-	}
-
-	if !hasNext {
-		t.Fatal("expected hasNext=true")
-	}
-	if next.EndpointID != 199 {
-		t.Errorf("expected earliest next endpoint 199 (T+50ms), got %d", next.EndpointID)
 	}
 }
 
@@ -549,7 +482,7 @@ func TestScoreUpdaterUpdateBatchWithSharding(t *testing.T) {
 }
 
 func TestSingleShardBehaviorIsUnchanged(t *testing.T) {
-	// Verify that with shardCount=1, all ops use "scheduler:queue" key
+	// Verify that with shardCount=1, all ops use the "scheduler:queue:0" key
 	repo := newRepo(t)
 	ctx := context.Background()
 
@@ -560,13 +493,13 @@ func TestSingleShardBehaviorIsUnchanged(t *testing.T) {
 		t.Fatalf("RegisterBatch: %v", err)
 	}
 
-	// Must be in the original single key
-	if _, err := repo.client.ZScore(ctx, schedulerQueuePrefix, "1").Result(); err != nil {
-		t.Errorf("endpoint 1 not in %q: %v", schedulerQueuePrefix, err)
+	// Must be in the shard 0 key
+	if _, err := repo.client.ZScore(ctx, shardKey(0), "1").Result(); err != nil {
+		t.Errorf("endpoint 1 not in %q: %v", shardKey(0), err)
 	}
 
-	// ClaimDueTasks only runs on the single key
-	due, _, hasNext, err := repo.ClaimDueTasks(ctx, 10)
+	// ClaimDueTasks only runs on the shard 0 key
+	due, _, hasNext, err := repo.ClaimDueTasksForShard(ctx, 0, 10)
 	if err != nil {
 		t.Fatalf("ClaimDueTasks: %v", err)
 	}

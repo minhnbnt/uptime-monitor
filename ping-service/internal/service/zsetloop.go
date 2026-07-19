@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	defaultClaimLimit    = 50
 	defaultSleepDuration = 5 * time.Second
 )
 
@@ -121,11 +120,11 @@ func (s *LoopService) runIteration(ctx context.Context, due []scheduler.Schedule
 	return nil
 }
 
-func (s *LoopService) Run(ctx context.Context, dueHandler DueHandler) {
+func (s *LoopService) Run(ctx context.Context, shardID uint, claimLimit int64, dueHandler DueHandler) {
 
 	for ctx.Err() == nil {
 
-		due, next, hasNext, err := s.schedulerStorage.ClaimDueTasks(ctx, defaultClaimLimit)
+		due, next, hasNext, err := s.schedulerStorage.ClaimDueTasksForShard(ctx, shardID, claimLimit)
 		if err != nil {
 			s.logger.Error("failed to claim due tasks", slog.Any("error", err))
 			sleepCtx(ctx, defaultSleepDuration)
@@ -139,7 +138,7 @@ func (s *LoopService) Run(ctx context.Context, dueHandler DueHandler) {
 			continue
 		}
 
-		if len(due) != defaultClaimLimit {
+		if len(due) != int(claimLimit) {
 			sleepCtx(ctx, getSleepDuration(next, hasNext))
 		}
 	}

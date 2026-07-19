@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/service"
 )
@@ -19,13 +20,14 @@ type PingService interface {
 }
 
 type LoopRunner interface {
-	Run(ctx context.Context, dueHandler service.DueHandler)
+	Run(ctx context.Context, shardID uint, claimLimit int64, dueHandler service.DueHandler)
 }
 
 type ZSetWorkerRunner struct {
 	loopService LoopRunner
 	pingService PingService
 	logger      *slog.Logger
+	config      *config.Config
 }
 
 func RegisterZSetWorkerRunner(i do.Injector) {
@@ -34,6 +36,7 @@ func RegisterZSetWorkerRunner(i do.Injector) {
 			loopService: do.MustInvoke[*service.LoopService](i),
 			pingService: do.MustInvoke[*service.PingService](i),
 			logger:      do.MustInvoke[*slog.Logger](i),
+			config:      do.MustInvoke[*config.Config](i),
 		}, nil
 	})
 }
@@ -50,7 +53,23 @@ func (r *ZSetWorkerRunner) RunZSetWorker(ctx context.Context) {
 		}
 	}
 
-	r.loopService.Run(ctx, handler)
+	claimLimit := int64(r.config.Redis.SchedulerClaimLimit)
+	if claimLimit < 1 {
+		claimLimit = 10
+	}
+
+	waitgroup := sync.WaitGroup{}
+	defer waitgroup.Done()
+
+	shardCount := max(r.config.Redis.SchedulerShards, 1)
+	for shardID := range shardCount {
+		waitgroup.Go(func() {
+			r.loopService.Run(
+				ctx, uint(shardID),
+				claimLimit, handler,
+			)
+		})
+	}
 }
 
 func (r *ZSetWorkerRunner) pingAndRecordEndpoint(ctx context.Context, ep *domain.Endpoint) {
@@ -83,13 +102,13 @@ func (r *ZSetWorkerRunner) pingAndRecordEndpoint(ctx context.Context, ep *domain
 		return
 	}
 
-	event := &domain.ServerEvent{
+	event := domain.ServerEvent{
 		ID:         id,
 		EndpointID: ep.ID,
 		Status:     status,
 	}
 
-	if err := r.pingService.Record(ctx, event); err != nil {
+	if err := r.pingService.Record(ctx, &event); err != nil {
 		r.logger.Error(
 			"record event",
 			slog.Int64("endpoint", int64(ep.ID)),
