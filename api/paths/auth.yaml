@@ -103,3 +103,58 @@ logout:
           application/json:
             schema:
               $ref: "../schemas/common.yaml#/ErrorResponse"
+
+get-user:
+  get:
+    summary: Get user by ID
+    operationId: GetUser
+    x-ogen-operation-group: Auth
+    tags:
+      - auth
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    responses:
+      "200":
+        description: User found
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/auth.yaml#/UserProfile"
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+validate:
+  get:
+    summary: Validate access token
+    operationId: ValidateToken
+    x-ogen-operation-group: Auth
+    tags:
+      - auth
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: Token is valid
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user_id
+              properties:
+                user_id:
+                  type: integer
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"

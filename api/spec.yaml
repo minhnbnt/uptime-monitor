@@ -57,9 +57,9 @@ paths:
 
   # ── Import / Export ──────────────────────
   /api/v1/servers/export:
-    $ref: "./paths/servers.yaml#/servers-export"
+    $ref: "./paths/import.yaml#/servers-export"
   /api/v1/servers/import:
-    $ref: "./paths/servers.yaml#/import-servers"
+    $ref: "./paths/import.yaml#import-servers"
 
   # ── Notifications ────────────────────────
   /api/v1/notifications/config:

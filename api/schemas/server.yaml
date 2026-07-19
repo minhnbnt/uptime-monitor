@@ -12,6 +12,12 @@ ServerObject:
       type: string
       minLength: 1
       maxLength: 255
+    monitor_status:
+      type: string
+      enum:
+        - "ON"
+        - "OFF"
+      nullable: true
     endpoint:
       $ref: "./endpoint.yaml#/Endpoint"
     created_at:

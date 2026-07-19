@@ -5,8 +5,6 @@ servers:
     x-ogen-operation-group: Servers
     tags:
       - servers
-    security:
-      - BearerAuth: []
     requestBody:
       required: true
       content:
@@ -32,8 +30,6 @@ servers:
     x-ogen-operation-group: Servers
     tags:
       - servers
-    security:
-      - BearerAuth: []
     parameters:
       - name: page
         in: query
@@ -69,8 +65,6 @@ servers-ontime:
     x-ogen-operation-group: Servers
     tags:
       - servers-stats
-    security:
-      - BearerAuth: []
     parameters:
       - name: page
         in: query
@@ -106,8 +100,6 @@ servers-id:
     x-ogen-operation-group: Servers
     tags:
       - servers
-    security:
-      - BearerAuth: []
     parameters:
       - name: id
         in: path
@@ -133,8 +125,6 @@ servers-id:
     x-ogen-operation-group: Servers
     tags:
       - servers
-    security:
-      - BearerAuth: []
     parameters:
       - name: id
         in: path
@@ -166,8 +156,6 @@ servers-id:
     x-ogen-operation-group: Servers
     tags:
       - servers
-    security:
-      - BearerAuth: []
     parameters:
       - name: id
         in: path
@@ -191,8 +179,6 @@ test-endpoint:
     x-ogen-operation-group: Endpoint
     tags:
       - endpoints
-    security:
-      - BearerAuth: []
     requestBody:
       required: true
       content:
@@ -220,8 +206,6 @@ check-method:
     x-ogen-operation-group: Endpoint
     tags:
       - endpoints
-    security:
-      - BearerAuth: []
     parameters:
       - name: id
         in: path
@@ -255,8 +239,6 @@ servers-search:
     x-ogen-operation-group: Servers
     tags:
       - servers-search
-    security:
-      - BearerAuth: []
     parameters:
       - name: q
         in: query
@@ -296,122 +278,6 @@ servers-search:
           application/json:
             schema:
               $ref: "../schemas/server.yaml#/ServerListResponse"
-      default:
-        description: Error response
-        content:
-          application/json:
-            schema:
-              $ref: "../schemas/common.yaml#/ErrorResponse"
-
-servers-export:
-  get:
-    summary: Export servers to Excel file
-    operationId: ExportServers
-    x-ogen-operation-group: Servers
-    tags:
-      - import
-    security:
-      - BearerAuth: []
-    parameters:
-      - name: q
-        in: query
-        schema:
-          type: string
-      - name: from
-        in: query
-        schema:
-          type: integer
-          default: 0
-          minimum: 0
-      - name: to
-        in: query
-        schema:
-          type: integer
-          default: 100
-          minimum: 1
-          maximum: 10000
-      - name: sort_by
-        in: query
-        schema:
-          type: string
-          enum: [name, created_at]
-          default: name
-      - name: sort_order
-        in: query
-        schema:
-          type: string
-          enum: [asc, desc]
-          default: asc
-    responses:
-      "200":
-        description: Excel file with exported servers
-        headers:
-          Content-Disposition:
-            schema:
-              type: string
-              default: 'attachment; filename="servers.xlsx"'
-        content:
-          application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
-            schema:
-              type: string
-              format: binary
-      default:
-        description: Error response
-        content:
-          application/json:
-            schema:
-              $ref: "../schemas/common.yaml#/ErrorResponse"
-
-import-servers:
-  post:
-    summary: Import servers from Excel file
-    operationId: ImportServers
-    x-ogen-operation-group: Import
-    tags:
-      - import
-    security:
-      - BearerAuth: []
-    requestBody:
-      required: true
-      content:
-        multipart/form-data:
-          schema:
-            type: object
-            required:
-              - file
-            properties:
-              file:
-                type: string
-                format: binary
-    responses:
-      "200":
-        description: Import result
-        content:
-          application/json:
-            schema:
-              $ref: "../schemas/import.yaml#/ImportServersResponse"
-      default:
-        description: Error response
-        content:
-          application/json:
-            schema:
-              $ref: "../schemas/common.yaml#/ErrorResponse"
-  get:
-    summary: Download Excel import template
-    operationId: DownloadImportTemplate
-    x-ogen-operation-group: Import
-    tags:
-      - import
-    security:
-      - BearerAuth: []
-    responses:
-      "200":
-        description: Excel template file
-        content:
-          application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
-            schema:
-              type: string
-              format: binary
       default:
         description: Error response
         content:
