@@ -5,9 +5,10 @@ import (
 	"errors"
 	"testing"
 
+	"gorm.io/gorm"
+
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/logger"
-	"gorm.io/gorm"
 )
 
 func TestPingAndRecordEndpoint(t *testing.T) {
@@ -104,7 +105,7 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 				pingFn: func(_ context.Context, _ *domain.Endpoint) (bool, error) {
 					return true, nil
 				},
-				recordFn: func(_ context.Context, event *domain.ServerEvent) error {
+				recordFn: func(_ context.Context, _ *domain.ServerEvent) error {
 					return errors.New("grpc error")
 				},
 			},

@@ -19,8 +19,6 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/logger"
 )
 
-var testDB *gorm.DB
-var testRedis *redis.Client
 var testRedisAddr string
 var testDSN string
 

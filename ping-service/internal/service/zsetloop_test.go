@@ -7,22 +7,23 @@ import (
 	"testing"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/logger"
-	"gorm.io/gorm"
 )
 
 func TestSleepCtx(t *testing.T) {
-	t.Run("zero duration returns immediately", func(t *testing.T) {
+	t.Run("zero duration returns immediately", func(_ *testing.T) {
 		sleepCtx(context.Background(), 0)
 	})
 
-	t.Run("negative duration returns immediately", func(t *testing.T) {
+	t.Run("negative duration returns immediately", func(_ *testing.T) {
 		sleepCtx(context.Background(), -1*time.Second)
 	})
 
-	t.Run("cancelled context returns immediately", func(t *testing.T) {
+	t.Run("cancelled context returns immediately", func(_ *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 		sleepCtx(ctx, time.Hour)
@@ -94,7 +95,7 @@ func TestRunIteration(t *testing.T) {
 			schedulerStorage: nil,
 			scoreUpdater:     &mockScoreUpdater{},
 			endpointProvider: &mockEndpointProvider{
-				getBatchFn: func(_ context.Context, ids []uint) (map[uint]*domain.Endpoint, error) {
+				getBatchFn: func(_ context.Context, _ []uint) (map[uint]*domain.Endpoint, error) {
 					getBatchCalled = true
 					return make(map[uint]*domain.Endpoint), nil
 				},
@@ -121,13 +122,13 @@ func TestRunIteration(t *testing.T) {
 		s := &LoopService{
 			logger: logger.NewMockLogger(),
 			scoreUpdater: &mockScoreUpdater{
-				updateBatchFn: func(_ context.Context, items map[uint]int64) error {
-					gotUpdateItems = items
+				updateBatchFn: func(_ context.Context, batchItems map[uint]int64) error {
+					gotUpdateItems = batchItems
 					return nil
 				},
 			},
 			endpointProvider: &mockEndpointProvider{
-				getBatchFn: func(_ context.Context, ids []uint) (map[uint]*domain.Endpoint, error) {
+				getBatchFn: func(_ context.Context, _ []uint) (map[uint]*domain.Endpoint, error) {
 					return map[uint]*domain.Endpoint{1: ep}, nil
 				},
 			},
@@ -161,13 +162,13 @@ func TestRunIteration(t *testing.T) {
 		s := &LoopService{
 			logger: logger.NewMockLogger(),
 			scoreUpdater: &mockScoreUpdater{
-				updateBatchFn: func(_ context.Context, items map[uint]int64) error {
+				updateBatchFn: func(_ context.Context, _ map[uint]int64) error {
 					updateCalled = true
 					return nil
 				},
 			},
 			endpointProvider: &mockEndpointProvider{
-				getBatchFn: func(_ context.Context, ids []uint) (map[uint]*domain.Endpoint, error) {
+				getBatchFn: func(_ context.Context, _ []uint) (map[uint]*domain.Endpoint, error) {
 					return map[uint]*domain.Endpoint{}, nil
 				},
 			},
@@ -191,7 +192,7 @@ func TestRunIteration(t *testing.T) {
 		s := &LoopService{
 			logger: logger.NewMockLogger(),
 			endpointProvider: &mockEndpointProvider{
-				getBatchFn: func(_ context.Context, ids []uint) (map[uint]*domain.Endpoint, error) {
+				getBatchFn: func(_ context.Context, _ []uint) (map[uint]*domain.Endpoint, error) {
 					return nil, wantErr
 				},
 			},
@@ -208,12 +209,12 @@ func TestRunIteration(t *testing.T) {
 		s := &LoopService{
 			logger: logger.NewMockLogger(),
 			scoreUpdater: &mockScoreUpdater{
-				updateBatchFn: func(_ context.Context, items map[uint]int64) error {
+				updateBatchFn: func(_ context.Context, _ map[uint]int64) error {
 					return wantErr
 				},
 			},
 			endpointProvider: &mockEndpointProvider{
-				getBatchFn: func(_ context.Context, ids []uint) (map[uint]*domain.Endpoint, error) {
+				getBatchFn: func(_ context.Context, _ []uint) (map[uint]*domain.Endpoint, error) {
 					return map[uint]*domain.Endpoint{1: ep}, nil
 				},
 			},

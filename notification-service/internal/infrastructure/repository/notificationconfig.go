@@ -45,7 +45,7 @@ func (r *NotificationConfigRepository) GetByUserID(ctx context.Context, userID u
 	return &cfg, nil
 }
 
-func (r *NotificationConfigRepository) Upsert(ctx context.Context, cfg *domain.NotificationConfig) error {
+func (r *NotificationConfigRepository) Upsert(_ context.Context, cfg *domain.NotificationConfig) error {
 
 	queryClause := clause.OnConflict{
 		Columns: []clause.Column{{Name: "user_id"}},

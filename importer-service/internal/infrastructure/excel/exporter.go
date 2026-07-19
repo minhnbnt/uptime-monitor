@@ -11,11 +11,11 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/utils"
 )
 
-type ExcelExporter struct{}
+type Exporter struct{}
 
-func RegisterExcelExporter(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (*ExcelExporter, error) {
-		return &ExcelExporter{}, nil
+func RegisterExporter(i do.Injector) {
+	do.Provide(i, func(_ do.Injector) (*Exporter, error) {
+		return &Exporter{}, nil
 	})
 }
 
@@ -43,7 +43,7 @@ func fillTemplate(xl *excelize.File) error {
 	return nil
 }
 
-func (g *ExcelExporter) GenerateTemplate() (io.ReadCloser, error) {
+func (g *Exporter) GenerateTemplate() (io.ReadCloser, error) {
 
 	xl := excelize.NewFile()
 
@@ -126,7 +126,7 @@ func fillExportFile(xl *excelize.File, servers []serverdto.Server) error {
 	return nil
 }
 
-func (g *ExcelExporter) GenerateExportFile(
+func (g *Exporter) GenerateExportFile(
 	servers []serverdto.Server,
 ) (io.ReadCloser, error) {
 

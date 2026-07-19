@@ -29,7 +29,7 @@ func (j *Provider) ParseWithIssuer(token string, expectedIssuer string) (*Token,
 }
 
 func (j *Provider) parseWithOptions(token string, extraOpts ...jwt.ParserOption) (*Token, error) {
-	keyFunc := func(t *jwt.Token) (any, error) {
+	keyFunc := func(_ *jwt.Token) (any, error) {
 		return j.config.GetValidateKey(), nil
 	}
 

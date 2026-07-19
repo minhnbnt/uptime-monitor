@@ -6,10 +6,10 @@ import (
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
-	eventrepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
-	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/recorder"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/domain"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/recorder"
+	eventrepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
 )
 
 type EventRecorder interface {

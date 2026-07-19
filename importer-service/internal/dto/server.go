@@ -13,9 +13,9 @@ type Endpoint struct {
 }
 
 type Server struct {
-	ID       uint
-	Name     string
-	Endpoint *Endpoint
+	ID        uint
+	Name      string
+	Endpoint  *Endpoint
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

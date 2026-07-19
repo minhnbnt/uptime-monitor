@@ -81,7 +81,7 @@ func (ds *DigestStarter) UpsertSchedule(ctx context.Context, userID uint, fromDa
 	}
 
 	return handle.Update(ctx, temporalclient.ScheduleUpdateOptions{
-		DoUpdate: func(input temporalclient.ScheduleUpdateInput) (*temporalclient.ScheduleUpdate, error) {
+		DoUpdate: func(_ temporalclient.ScheduleUpdateInput) (*temporalclient.ScheduleUpdate, error) {
 			return &temporalclient.ScheduleUpdate{
 				Schedule: &temporalclient.Schedule{
 					Spec: &spec, Action: action,

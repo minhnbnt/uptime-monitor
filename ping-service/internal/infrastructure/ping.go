@@ -24,7 +24,7 @@ type PingWorker struct {
 }
 
 func RegisterPingWorker(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (*PingWorker, error) {
+	do.Provide(i, func(_ do.Injector) (*PingWorker, error) {
 		return &PingWorker{httpClient: &http.Client{Timeout: 30 * time.Second}}, nil
 	})
 }

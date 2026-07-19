@@ -12,31 +12,31 @@ func NewMockLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
-type captureHandler struct {
+type CaptureHandler struct {
 	mu      sync.RWMutex
 	records []slog.Record
 }
 
-func (h *captureHandler) Enabled(context.Context, slog.Level) bool {
+func (h *CaptureHandler) Enabled(context.Context, slog.Level) bool {
 	return true
 }
 
-func (h *captureHandler) Handle(_ context.Context, r slog.Record) error {
+func (h *CaptureHandler) Handle(_ context.Context, r slog.Record) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.records = append(h.records, r.Clone())
 	return nil
 }
 
-func (h *captureHandler) WithAttrs([]slog.Attr) slog.Handler {
+func (h *CaptureHandler) WithAttrs([]slog.Attr) slog.Handler {
 	return h
 }
 
-func (h *captureHandler) WithGroup(string) slog.Handler {
+func (h *CaptureHandler) WithGroup(string) slog.Handler {
 	return h
 }
 
-func (h *captureHandler) Has(level slog.Level) bool {
+func (h *CaptureHandler) Has(level slog.Level) bool {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	return slices.ContainsFunc(h.records, func(record slog.Record) bool {
@@ -44,15 +44,15 @@ func (h *captureHandler) Has(level slog.Level) bool {
 	})
 }
 
-func (h *captureHandler) HasWarn() bool {
+func (h *CaptureHandler) HasWarn() bool {
 	return h.Has(slog.LevelWarn)
 }
 
-func (h *captureHandler) HasError() bool {
+func (h *CaptureHandler) HasError() bool {
 	return h.Has(slog.LevelError)
 }
 
-func NewCapturingLogger() (*slog.Logger, *captureHandler) {
-	h := &captureHandler{}
+func NewCapturingLogger() (*slog.Logger, *CaptureHandler) {
+	h := &CaptureHandler{}
 	return slog.New(h), h
 }

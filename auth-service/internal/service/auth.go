@@ -7,10 +7,10 @@ import (
 
 	"github.com/samber/do/v2"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/argon2"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/dto"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/errors"
+	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/argon2"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/token"
 )
@@ -29,8 +29,8 @@ type PasswordEncoder interface {
 type AuthService struct {
 	userRepository         UserRepository
 	passwordEncoder        PasswordEncoder
-	tokenGenerator         token.TokenGenerator
-	tokenValidator         *token.TokenValidator
+	tokenGenerator         token.Generator
+	tokenValidator         *token.Validator
 	revokedTokenRepository token.RevokedTokenRepository
 	logger                 *slog.Logger
 }
@@ -39,9 +39,9 @@ func RegisterAuthService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*AuthService, error) {
 		return &AuthService{
 			userRepository:         do.MustInvoke[*repository.UserRepository](i),
-			passwordEncoder:        do.MustInvoke[*argon2.Argon2PasswordEncoder](i),
-			tokenGenerator:         do.MustInvoke[token.TokenGenerator](i),
-			tokenValidator:         do.MustInvoke[*token.TokenValidator](i),
+			passwordEncoder:        do.MustInvoke[*argon2.PasswordEncoder](i),
+			tokenGenerator:         do.MustInvoke[token.Generator](i),
+			tokenValidator:         do.MustInvoke[*token.Validator](i),
 			revokedTokenRepository: do.MustInvoke[*repository.RedisRevokedTokenRepository](i),
 			logger:                 do.MustInvoke[*slog.Logger](i),
 		}, nil

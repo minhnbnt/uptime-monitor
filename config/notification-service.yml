@@ -17,8 +17,6 @@ temporal:
 mail:
   smtp_host: mailpit
   smtp_port: 1025
-  smtp_user: ""
-  smtp_password: ""
   from_address: noreply@uptime-monitor.local
   disable_security: true
   tls_insecure_skip_verify: false

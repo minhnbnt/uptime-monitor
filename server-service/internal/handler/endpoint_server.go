@@ -3,14 +3,11 @@ package handler
 import (
 	"context"
 	"fmt"
-	"net"
 
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
-	"google.golang.org/grpc"
 
 	endpointv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/endpoint/v1"
-	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/server/v1"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/infrastructure/repository"
 )
@@ -60,28 +57,4 @@ func (s *EndpointServer) GetEndpoints(ctx context.Context, req *endpointv1.GetEn
 	)
 
 	return resp, nil
-}
-
-func StartGRPCServer(
-	ctx context.Context, addr string,
-	endpointSrv *EndpointServer,
-	serverSrv *ServerServer,
-) error {
-
-	lc := net.ListenConfig{}
-	lis, err := lc.Listen(ctx, "tcp", addr)
-	if err != nil {
-		return fmt.Errorf("listen: %w", err)
-	}
-
-	srv := grpc.NewServer()
-	endpointv1.RegisterEndpointServiceServer(srv, endpointSrv)
-	serverv1.RegisterServerServiceServer(srv, serverSrv)
-
-	go func() {
-		<-ctx.Done()
-		srv.GracefulStop()
-	}()
-
-	return srv.Serve(lis)
 }

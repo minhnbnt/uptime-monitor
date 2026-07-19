@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/generated/api"
-	apperrors "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/errors"
 	ontimedto "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
+	apperrors "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/errors"
 )
 
 func TestGetServerOntime(t *testing.T) {

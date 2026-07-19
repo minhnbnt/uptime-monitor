@@ -10,7 +10,7 @@ import (
 type BodyChecker struct{}
 
 func RegisterBodyChecker(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (*BodyChecker, error) {
+	do.Provide(i, func(_ do.Injector) (*BodyChecker, error) {
 		return &BodyChecker{}, nil
 	})
 }

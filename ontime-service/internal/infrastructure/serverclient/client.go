@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/server/v1"
 	"github.com/samber/do/v2"
 
+	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/server/v1"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/config"
 )
 
@@ -35,8 +35,8 @@ func (c *Client) GetServer(
 ) (*ServerBrief, error) {
 
 	request := serverv1.GetServerRequest{
-		UserId:   uint64(userID),
 		ServerId: uint64(serverID),
+		UserId:   uint64(userID),
 	}
 
 	resp, err := c.client.GetServer(ctx, &request)
@@ -45,9 +45,9 @@ func (c *Client) GetServer(
 	}
 
 	return &ServerBrief{
+		CreatedAt: time.UnixMilli(resp.Server.CreatedAt),
 		ID:        uint(resp.Server.Id),
 		Name:      resp.Server.Name,
-		CreatedAt: time.UnixMilli(resp.Server.CreatedAt),
 	}, nil
 }
 
@@ -58,9 +58,9 @@ func (c *Client) ListServers(
 ) ([]ServerBrief, error) {
 
 	request := serverv1.ListServersRequest{
-		UserId:  uint64(userID),
 		Page:    int32(page),
 		PerPage: int32(perPage),
+		UserId:  uint64(userID),
 	}
 
 	resp, err := c.client.ListServers(ctx, &request)

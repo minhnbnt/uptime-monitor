@@ -84,7 +84,7 @@ func TestResolveDeletedID(t *testing.T) {
 func xmessage(id, value string) redis.XMessage {
 	return redis.XMessage{
 		ID: id,
-		Values: map[string]interface{}{
+		Values: map[string]any{
 			"value": value,
 		},
 	}
@@ -97,7 +97,7 @@ func TestProcessMessage(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
 		p := &messageProcessor{logger: log}
 
-		msg := redis.XMessage{ID: "1-0", Values: map[string]interface{}{}}
+		msg := redis.XMessage{ID: "1-0", Values: map[string]any{}}
 		canAck := p.ProcessMessage(ctx, msg)
 		if canAck {
 			t.Error("expected canAck=false")
@@ -111,7 +111,7 @@ func TestProcessMessage(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
 		p := &messageProcessor{logger: log}
 
-		msg := redis.XMessage{ID: "1-0", Values: map[string]interface{}{"value": 42}}
+		msg := redis.XMessage{ID: "1-0", Values: map[string]any{"value": 42}}
 		canAck := p.ProcessMessage(ctx, msg)
 		if canAck {
 			t.Error("expected canAck=false")
@@ -151,8 +151,8 @@ func TestProcessMessage(t *testing.T) {
 		var created domain.Endpoint
 		p := &messageProcessor{
 			handler: &mockEndpointEventHandler{
-				onCreateFn: func(_ context.Context, ep domain.Endpoint) error {
-					created = ep
+				onCreateFn: func(_ context.Context, inEp domain.Endpoint) error {
+					created = inEp
 					return nil
 				},
 			},
@@ -172,7 +172,7 @@ func TestProcessMessage(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
 		p := &messageProcessor{
 			handler: &mockEndpointEventHandler{
-				onCreateFn: func(_ context.Context, ep domain.Endpoint) error {
+				onCreateFn: func(_ context.Context, _ domain.Endpoint) error {
 					return errors.New("handler error")
 				},
 			},
@@ -192,8 +192,8 @@ func TestProcessMessage(t *testing.T) {
 		var updated domain.Endpoint
 		p := &messageProcessor{
 			handler: &mockEndpointEventHandler{
-				onUpdateFn: func(_ context.Context, ep domain.Endpoint) error {
-					updated = ep
+				onUpdateFn: func(_ context.Context, inEp domain.Endpoint) error {
+					updated = inEp
 					return nil
 				},
 			},
@@ -297,13 +297,12 @@ func TestProcessMessage(t *testing.T) {
 func TestOnCreateUpdateDelete(t *testing.T) {
 	ctx := context.Background()
 
-
 	t.Run("onCreate delegates", func(t *testing.T) {
 		var got domain.Endpoint
 		p := &messageProcessor{
 			handler: &mockEndpointEventHandler{
-				onCreateFn: func(_ context.Context, e domain.Endpoint) error {
-					got = e
+				onCreateFn: func(_ context.Context, inE domain.Endpoint) error {
+					got = inE
 					return nil
 				},
 			},
@@ -321,7 +320,7 @@ func TestOnCreateUpdateDelete(t *testing.T) {
 		var handlerCalled bool
 		p := &messageProcessor{
 			handler: &mockEndpointEventHandler{
-				onCreateFn: func(_ context.Context, e domain.Endpoint) error {
+				onCreateFn: func(_ context.Context, _ domain.Endpoint) error {
 					handlerCalled = true
 					return nil
 				},
@@ -340,8 +339,8 @@ func TestOnCreateUpdateDelete(t *testing.T) {
 		var got domain.Endpoint
 		p := &messageProcessor{
 			handler: &mockEndpointEventHandler{
-				onUpdateFn: func(_ context.Context, e domain.Endpoint) error {
-					got = e
+				onUpdateFn: func(_ context.Context, inE domain.Endpoint) error {
+					got = inE
 					return nil
 				},
 			},
@@ -359,7 +358,7 @@ func TestOnCreateUpdateDelete(t *testing.T) {
 		var handlerCalled bool
 		p := &messageProcessor{
 			handler: &mockEndpointEventHandler{
-				onUpdateFn: func(_ context.Context, e domain.Endpoint) error {
+				onUpdateFn: func(_ context.Context, _ domain.Endpoint) error {
 					handlerCalled = true
 					return nil
 				},

@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/samber/do/v2"
 	"gorm.io/gorm"
 
 	endpointv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/endpoint/v1"
-	"github.com/samber/do/v2"
-
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 )
@@ -53,13 +52,13 @@ func (c *EndpointClient) GetBatch(ctx context.Context, ids []uint) (map[uint]*do
 		}
 
 		result[uint(ep.Id)] = &domain.Endpoint{
-			Model:        gorm.Model{ID: uint(ep.Id)},
-			ServerID:     uint(ep.ServerId),
-			URL:          ep.Url,
-			Method:       ep.Method,
-			ExpectedCode: int(ep.ExpectedCode),
-			Interval:     time.Duration(ep.IntervalMs) * time.Millisecond,
-			Timeout:      time.Duration(ep.TimeoutMs) * time.Millisecond,
+			Model:         gorm.Model{ID: uint(ep.Id)},
+			ServerID:      uint(ep.ServerId),
+			URL:           ep.Url,
+			Method:        ep.Method,
+			ExpectedCode:  int(ep.ExpectedCode),
+			Interval:      time.Duration(ep.IntervalMs) * time.Millisecond,
+			Timeout:       time.Duration(ep.TimeoutMs) * time.Millisecond,
 			BodyCheckExpr: bodyCheckExpr,
 		}
 	}

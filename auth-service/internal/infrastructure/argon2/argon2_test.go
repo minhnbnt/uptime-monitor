@@ -7,8 +7,8 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/config"
 )
 
-func testEncoder() *Argon2PasswordEncoder {
-	return &Argon2PasswordEncoder{
+func testEncoder() *PasswordEncoder {
+	return &PasswordEncoder{
 		config: config.NewArgon2Config(64*1024, 2, 1, 16, 32),
 	}
 }

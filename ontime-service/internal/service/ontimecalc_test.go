@@ -15,8 +15,8 @@ func day(y, m, d int) time.Time {
 	return time.Date(y, time.Month(m), d, 0, 0, 0, 0, time.UTC)
 }
 
-func tm(y, m, d, h, min int) time.Time {
-	return time.Date(y, time.Month(m), d, h, min, 0, 0, time.UTC)
+func tm(y, m, d, h, mn int) time.Time {
+	return time.Date(y, time.Month(m), d, h, mn, 0, 0, time.UTC)
 }
 
 func TestCalculateDayOntime(t *testing.T) {

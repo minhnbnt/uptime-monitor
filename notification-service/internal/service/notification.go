@@ -8,8 +8,8 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/domain"
-	apperrors "github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/dto"
+	apperrors "github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/repository"
 )
 

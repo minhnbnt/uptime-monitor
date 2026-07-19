@@ -41,9 +41,9 @@ func InitConfig(configPath string) (*Config, error) {
 
 func setDefaults(v *viper.Viper) {
 	defaults := map[string]any{
-		"server.port":       "8086",
-		"grpc.server_addr":  "localhost:50051",
-		"log.level":         "info",
+		"server.port":      "8086",
+		"grpc.server_addr": "localhost:50051",
+		"log.level":        "info",
 	}
 
 	for key, value := range defaults {
@@ -69,7 +69,7 @@ func bindEnvVars(v *viper.Viper) error {
 
 func RegisterConfigPath(configPath string) func(do.Injector) {
 	return func(i do.Injector) {
-		do.Provide(i, func(i do.Injector) (*Config, error) {
+		do.Provide(i, func(_ do.Injector) (*Config, error) {
 			return InitConfig(configPath)
 		})
 	}

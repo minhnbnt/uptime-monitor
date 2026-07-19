@@ -6,11 +6,12 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/samber/do/v2"
+
 	"github.com/minhnbnt/uptime-monitor-microservices/common/authclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/generated/api"
 	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/handler"
-	"github.com/samber/do/v2"
 )
 
 func RunWebServer(ctx context.Context, injector do.Injector) {

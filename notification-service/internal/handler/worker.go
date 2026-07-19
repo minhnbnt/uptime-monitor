@@ -9,8 +9,8 @@ import (
 	temporalworkflow "go.temporal.io/sdk/workflow"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/config"
-	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/service"
 	digestworkflow "github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/workflow"
+	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/service"
 )
 
 type DigestWorkerRunner struct {

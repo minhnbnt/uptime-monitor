@@ -6,17 +6,18 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/token"
 	"github.com/samber/do/v2"
+
+	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/token"
 )
 
 type ForwardAuthHandler struct {
-	validator *token.TokenValidator
+	validator *token.Validator
 }
 
 func RegisterForwardAuthHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ForwardAuthHandler, error) {
-		validator := do.MustInvoke[*token.TokenValidator](i)
+		validator := do.MustInvoke[*token.Validator](i)
 		return &ForwardAuthHandler{validator: validator}, nil
 	})
 }

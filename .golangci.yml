@@ -1,0 +1,56 @@
+version: "2"
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    - bidichk
+    - bodyclose
+    - errcheck
+    - govet
+    - ineffassign
+    - misspell
+    - noctx
+    - revive
+    - staticcheck
+    - unused
+
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+      - generated
+
+formatters:
+  enable:
+    - gofmt
+    - gci
+
+  settings:
+    gofmt:
+      rewrite-rules:
+        - pattern: interface{}
+          replacement: any
+
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/minhnbnt/uptime-monitor-microservices)
+      custom-order: true
+
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+      - generated

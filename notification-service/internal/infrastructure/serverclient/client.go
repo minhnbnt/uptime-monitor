@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/server/v1"
 	"github.com/samber/do/v2"
 
+	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/server/v1"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/domain"
 )

@@ -8,8 +8,8 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/generated/api"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/dto"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/errors"
-	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/service"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/token"
+	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/service"
 )
 
 type userIDKey struct{}
@@ -27,7 +27,7 @@ func RegisterAuthHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*AuthHandler, error) {
 		return &AuthHandler{
 			authService:    do.MustInvoke[*service.AuthService](i),
-			tokenValidator: do.MustInvoke[*token.TokenValidator](i),
+			tokenValidator: do.MustInvoke[*token.Validator](i),
 		}, nil
 	})
 }

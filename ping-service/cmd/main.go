@@ -25,7 +25,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
 	defer stop()
 
-	waitgroup := &sync.WaitGroup{}
+	waitgroup := sync.WaitGroup{}
 	defer waitgroup.Wait()
 
 	waitgroup.Go(func() { _, _ = injector.ShutdownOnSignalsWithContext(ctx) })

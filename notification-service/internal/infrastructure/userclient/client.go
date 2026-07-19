@@ -26,7 +26,7 @@ func RegisterClient(i do.Injector) {
 		cfg := do.MustInvoke[*config.Config](i)
 		return &Client{
 			baseURL: cfg.AuthService.Addr,
-			client: &http.Client{Timeout: 10 * time.Second},
+			client:  &http.Client{Timeout: 10 * time.Second},
 			logger:  do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})

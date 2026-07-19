@@ -55,5 +55,3 @@ func (r *RedisServerEventRepository) SetStatus(ctx context.Context, endpointID u
 
 	return err
 }
-
-

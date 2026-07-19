@@ -1,15 +1,15 @@
 package config
 
 type Config struct {
-	DB            DBConfig      `mapstructure:"db"`
-	Temporal      TemporalCfg   `mapstructure:"temporal"`
-	Mail          MailConfig    `mapstructure:"mail"`
-	Log           LogConfig     `mapstructure:"log"`
-	Server        ServerConfig  `mapstructure:"server"`
-	AuthService   ServiceAddr   `mapstructure:"auth_service"`
-	ServerService ServiceAddr   `mapstructure:"server_service"`
-	OntimeService ServiceAddr   `mapstructure:"ontime_service"`
-	GRPC          GRPCConfig    `mapstructure:"grpc"`
+	DB            DBConfig     `mapstructure:"db"`
+	Temporal      TemporalCfg  `mapstructure:"temporal"`
+	Mail          MailConfig   `mapstructure:"mail"`
+	Log           LogConfig    `mapstructure:"log"`
+	Server        ServerConfig `mapstructure:"server"`
+	AuthService   ServiceAddr  `mapstructure:"auth_service"`
+	ServerService ServiceAddr  `mapstructure:"server_service"`
+	OntimeService ServiceAddr  `mapstructure:"ontime_service"`
+	GRPC          GRPCConfig   `mapstructure:"grpc"`
 }
 
 type ServerConfig struct {
@@ -36,13 +36,13 @@ type TemporalCfg struct {
 }
 
 type MailConfig struct {
-	SMTPHost            string `mapstructure:"smtp_host"`
-	SMTPPort            int    `mapstructure:"smtp_port"`
-	SMTPUser            string `mapstructure:"smtp_user"`
-	SMTPPassword        string `mapstructure:"smtp_password"`
-	FromAddress         string `mapstructure:"from_address"`
-	DisableSecurity     bool   `mapstructure:"disable_security"`
-	TLSInsecureSkipVerify bool `mapstructure:"tls_insecure_skip_verify"`
+	SMTPHost              string `mapstructure:"smtp_host"`
+	SMTPPort              int    `mapstructure:"smtp_port"`
+	SMTPUser              string `mapstructure:"smtp_user"`
+	SMTPPassword          string `mapstructure:"smtp_password"`
+	FromAddress           string `mapstructure:"from_address"`
+	DisableSecurity       bool   `mapstructure:"disable_security"`
+	TLSInsecureSkipVerify bool   `mapstructure:"tls_insecure_skip_verify"`
 }
 
 type ServiceAddr struct {

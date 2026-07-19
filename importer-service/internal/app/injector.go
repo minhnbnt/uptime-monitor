@@ -17,8 +17,8 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 		config.RegisterLogger(dev),
 		config.RegisterServerClient,
 
-		excel.RegisterExcelExporter,
-		excel.RegisterExcelParser,
+		excel.RegisterExporter,
+		excel.RegisterParser,
 
 		service.RegisterImportService,
 

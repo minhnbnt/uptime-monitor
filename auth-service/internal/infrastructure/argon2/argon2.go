@@ -14,18 +14,18 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/config"
 )
 
-type Argon2PasswordEncoder struct {
+type PasswordEncoder struct {
 	config *config.Argon2Config
 }
 
-func RegisterArgon2PasswordEncoder(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (*Argon2PasswordEncoder, error) {
+func RegisterPasswordEncoder(i do.Injector) {
+	do.Provide(i, func(i do.Injector) (*PasswordEncoder, error) {
 		config := do.MustInvoke[*config.Argon2Config](i)
-		return &Argon2PasswordEncoder{config: config}, nil
+		return &PasswordEncoder{config: config}, nil
 	})
 }
 
-func (e *Argon2PasswordEncoder) Encode(password string) (string, error) {
+func (e *PasswordEncoder) Encode(password string) (string, error) {
 
 	salt := make([]byte, e.config.GetSaltLength())
 	if _, err := rand.Read(salt); err != nil {
@@ -56,7 +56,7 @@ func (e *Argon2PasswordEncoder) Encode(password string) (string, error) {
 	return encodedHash, nil
 }
 
-func (e *Argon2PasswordEncoder) Verify(password, encodedHash string) (bool, error) {
+func (e *PasswordEncoder) Verify(password, encodedHash string) (bool, error) {
 
 	p, salt, hash, err := decodeArgon2Hash(encodedHash)
 	if err != nil {

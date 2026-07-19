@@ -17,8 +17,8 @@ type tokenGenerator struct {
 	tokenConfig *config.TokenConfig
 }
 
-func RegisterTokenGenerator(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (TokenGenerator, error) {
+func RegisterGenerator(i do.Injector) {
+	do.Provide(i, func(i do.Injector) (Generator, error) {
 		return &tokenGenerator{
 			provider:    do.MustInvoke[*jwt.Provider](i),
 			tokenConfig: do.MustInvoke[*config.TokenConfig](i),

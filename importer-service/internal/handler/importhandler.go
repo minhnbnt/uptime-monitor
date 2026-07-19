@@ -9,8 +9,8 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor-microservices/common/authclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/generated/api"
-	apperrors "github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/dto"
+	apperrors "github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/service"
 )
 
@@ -83,7 +83,7 @@ func (h *ImportHandler) ImportServers(ctx context.Context, req *api.ImportServer
 
 var _ ImportService = (*service.ImportService)(nil)
 
-func (h *ImportHandler) DownloadImportTemplate(ctx context.Context) (api.DownloadImportTemplateOK, error) {
+func (h *ImportHandler) DownloadImportTemplate(_ context.Context) (api.DownloadImportTemplateOK, error) {
 
 	reader, err := h.importService.GenerateTemplate()
 	if err != nil {

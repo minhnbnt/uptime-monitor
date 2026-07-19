@@ -42,10 +42,10 @@ func (s *PingServer) Ping(ctx context.Context, req *pingv1.PingRequest) (*pingv1
 	}
 
 	endpoint := &domain.Endpoint{
-		URL:          req.Url,
-		Method:       req.Method,
-		Timeout:      timeout,
-		ExpectedCode: int(req.ExpectedCode),
+		URL:           req.Url,
+		Method:        req.Method,
+		Timeout:       timeout,
+		ExpectedCode:  int(req.ExpectedCode),
 		BodyCheckExpr: bodyExprPtr,
 	}
 

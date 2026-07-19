@@ -3,13 +3,13 @@ package app
 import (
 	"github.com/samber/do/v2"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/argon2"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/handler"
+	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/argon2"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/jwt"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/repository"
-	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/service"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/token"
+	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/service"
 )
 
 func RegisterPackages(injector do.Injector, configPath string, dev bool) {
@@ -28,9 +28,9 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 		repository.RegisterRedisRevokedTokenRepository,
 
 		jwt.RegisterProvider,
-		argon2.RegisterArgon2PasswordEncoder,
-		token.RegisterTokenGenerator,
-		token.RegisterTokenValidator,
+		argon2.RegisterPasswordEncoder,
+		token.RegisterGenerator,
+		token.RegisterValidator,
 
 		service.RegisterAuthService,
 

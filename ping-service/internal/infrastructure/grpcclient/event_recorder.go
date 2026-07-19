@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	eventv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/event/v1"
 	"github.com/samber/do/v2"
 
+	eventv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/event/v1"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 )

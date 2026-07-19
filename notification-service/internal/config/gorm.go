@@ -6,12 +6,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/domain"
 	sloggorm "github.com/orandin/slog-gorm"
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+
+	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/domain"
 )
 
 func newPostgresDriver(cfg *Config) (gorm.Dialector, error) {

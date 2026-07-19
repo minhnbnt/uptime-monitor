@@ -7,7 +7,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/jwt"
 )
 
-type TokenGenerator interface {
+type Generator interface {
 	GenerateAccessToken(user *domain.User) (string, error)
 	GenerateRefreshToken(user *domain.User) (string, error)
 }

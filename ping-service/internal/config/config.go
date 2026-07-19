@@ -1,7 +1,7 @@
 package config
 
 type Config struct {
-	Redis  RedisConfig  `mapstructure:"redis"`
+	Redis  RedisConfig `mapstructure:"redis"`
 	Server ServerCfg   `mapstructure:"server"`
 	Log    LogConfig   `mapstructure:"log"`
 	GRPC   GRPCConfig  `mapstructure:"grpc"`

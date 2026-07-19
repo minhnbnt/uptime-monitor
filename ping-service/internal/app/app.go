@@ -6,22 +6,21 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
 	pinghandler "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/handler"
 	pinginfra "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/grpcclient"
 	pinggrpcserver "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/grpcserver"
 	pingredis "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis"
 	pingrepo "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/repository"
 	pingsched "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
 	pingservice "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/service"
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/grpcclient"
 )
 
 func providers(dev bool) []func(do.Injector) {
+
 	return []func(do.Injector){
 
 		config.RegisterLogger(dev),
-		config.RegisterGORMDB,
 		config.RegisterRedisClient,
 		config.RegisterGRPCClient,
-		config.RegisterGRPC,
 
 		pingrepo.RegisterRedisServerEventRepository,
 		grpcclient.RegisterEndpointClient,
@@ -31,11 +30,11 @@ func providers(dev bool) []func(do.Injector) {
 		pingsched.RegisterScoreUpdater,
 		pingsched.RegisterEndpointProvider,
 
-	pinginfra.RegisterPingWorker,
-	pinginfra.RegisterBodyChecker,
-	pinginfra.RegisterRecordStatusWorker,
+		pinginfra.RegisterPingWorker,
+		pinginfra.RegisterBodyChecker,
+		pinginfra.RegisterRecordStatusWorker,
 
-	pinggrpcserver.RegisterPingServer,
+		pinggrpcserver.RegisterPingServer,
 
 		pingservice.RegisterResponseChecker,
 

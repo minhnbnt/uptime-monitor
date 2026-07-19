@@ -16,6 +16,7 @@ import (
 )
 
 func main() {
+
 	configPath := flag.String("config", "", "path to config file")
 	dev := flag.Bool("dev", false, "enable dev features")
 	flag.Parse()

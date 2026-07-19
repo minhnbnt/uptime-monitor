@@ -13,16 +13,16 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/repository"
 )
 
-type TokenValidator struct {
+type Validator struct {
 	provider         *jwt.Provider
 	tokenConfig      *config.TokenConfig
 	revokedTokenRepo RevokedTokenRepository
 	logger           *slog.Logger
 }
 
-func RegisterTokenValidator(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (*TokenValidator, error) {
-		return NewTokenValidator(
+func RegisterValidator(i do.Injector) {
+	do.Provide(i, func(i do.Injector) (*Validator, error) {
+		return NewValidator(
 			do.MustInvoke[*jwt.Provider](i),
 			do.MustInvoke[*config.TokenConfig](i),
 			do.MustInvoke[*repository.RedisRevokedTokenRepository](i),
@@ -31,13 +31,13 @@ func RegisterTokenValidator(i do.Injector) {
 	})
 }
 
-func NewTokenValidator(
+func NewValidator(
 	provider *jwt.Provider,
 	tokenConfig *config.TokenConfig,
 	revokedTokenRepo RevokedTokenRepository,
 	logger *slog.Logger,
-) *TokenValidator {
-	return &TokenValidator{
+) *Validator {
+	return &Validator{
 		logger:           logger,
 		provider:         provider,
 		tokenConfig:      tokenConfig,
@@ -45,7 +45,7 @@ func NewTokenValidator(
 	}
 }
 
-func (tv *TokenValidator) ValidateAccessToken(tokenStr string) (uint, error) {
+func (tv *Validator) ValidateAccessToken(tokenStr string) (uint, error) {
 
 	expectedIssuer := tv.tokenConfig.GetAccessTokenIssuer()
 	token, err := tv.provider.ParseWithIssuer(tokenStr, expectedIssuer)
@@ -69,7 +69,7 @@ func (tv *TokenValidator) ValidateAccessToken(tokenStr string) (uint, error) {
 	return uint(userID), nil
 }
 
-func (tv *TokenValidator) ValidateRefreshToken(ctx context.Context, tokenStr string) (uint, string, error) {
+func (tv *Validator) ValidateRefreshToken(ctx context.Context, tokenStr string) (uint, string, error) {
 
 	expectedIssuer := tv.tokenConfig.GetRefreshTokenIssuer()
 	token, err := tv.provider.ParseWithIssuer(tokenStr, expectedIssuer)
@@ -108,7 +108,7 @@ func (tv *TokenValidator) ValidateRefreshToken(ctx context.Context, tokenStr str
 	return uint(userID), jti, nil
 }
 
-func (tv *TokenValidator) ParseRefreshToken(tokenStr string) (*jwt.Token, error) {
+func (tv *Validator) ParseRefreshToken(tokenStr string) (*jwt.Token, error) {
 	expectedIssuer := tv.tokenConfig.GetRefreshTokenIssuer()
 	return tv.provider.ParseWithIssuer(tokenStr, expectedIssuer)
 }

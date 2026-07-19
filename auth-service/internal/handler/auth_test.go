@@ -17,7 +17,7 @@ func TestAuthHandler_Register(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		h := &AuthHandler{
 			authService: &mockAuthService{
-				registerFn: func(_ context.Context, req dto.RegisterRequest) (*dto.AuthResponse, error) {
+				registerFn: func(_ context.Context, _ dto.RegisterRequest) (*dto.AuthResponse, error) {
 					return &dto.AuthResponse{AccessToken: "jwt", User: validUser}, nil
 				},
 			},

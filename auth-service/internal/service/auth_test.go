@@ -13,8 +13,8 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/dto"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/jwt"
-	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/logger"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/token"
+	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/logger"
 )
 
 func testConfig() *config.Config {
@@ -65,13 +65,13 @@ func TestAuthService_Register(t *testing.T) {
 				},
 			},
 			tokenGenerator: &mockTokenGenerator{
-				generateAccessTokenFn: func(user *domain.User) (string, error) {
-					if user.ID != 10 {
+				generateAccessTokenFn: func(inUser *domain.User) (string, error) {
+					if inUser.ID != 10 {
 						t.Error("wrong user id")
 					}
 					return "access-token", nil
 				},
-				generateRefreshTokenFn: func(user *domain.User) (string, error) {
+				generateRefreshTokenFn: func(_ *domain.User) (string, error) {
 					return "refresh-token", nil
 				},
 			},
@@ -203,7 +203,7 @@ func TestAuthService_Logout(t *testing.T) {
 
 		svc := &AuthService{
 			logger:         logger.NewMockLogger(),
-			tokenValidator: token.NewTokenValidator(p, tc, nil, nil),
+			tokenValidator: token.NewValidator(p, tc, nil, nil),
 			revokedTokenRepository: &mockRevokedTokenRepo{
 				revokeFn: func(_ context.Context, _ *jwt.Token) error {
 					return nil
@@ -222,7 +222,7 @@ func TestAuthService_Logout(t *testing.T) {
 
 		svc := &AuthService{
 			logger:         logger.NewMockLogger(),
-			tokenValidator: token.NewTokenValidator(p, tc, nil, nil),
+			tokenValidator: token.NewValidator(p, tc, nil, nil),
 		}
 
 		err := svc.Logout(t.Context(), "invalid-token")
@@ -237,7 +237,7 @@ func TestAuthService_Logout(t *testing.T) {
 
 		svc := &AuthService{
 			logger:         logger.NewMockLogger(),
-			tokenValidator: token.NewTokenValidator(p, tc, nil, nil),
+			tokenValidator: token.NewValidator(p, tc, nil, nil),
 			revokedTokenRepository: &mockRevokedTokenRepo{
 				revokeFn: func(_ context.Context, _ *jwt.Token) error {
 					return errors.New("redis down")
@@ -261,7 +261,7 @@ func TestAuthService_Refresh(t *testing.T) {
 
 		svc := &AuthService{
 			logger:         logger.NewMockLogger(),
-			tokenValidator: token.NewTokenValidator(p, tc, &mockRevokedTokenRepo{}, logger.NewMockLogger()),
+			tokenValidator: token.NewValidator(p, tc, &mockRevokedTokenRepo{}, logger.NewMockLogger()),
 			userRepository: &mockUserRepo{
 				findByIDFn: func(_ context.Context, _ uint) (*domain.User, error) {
 					return &validUser, nil
@@ -297,7 +297,7 @@ func TestAuthService_Refresh(t *testing.T) {
 
 		svc := &AuthService{
 			logger:         logger.NewMockLogger(),
-			tokenValidator: token.NewTokenValidator(p, tc, &mockRevokedTokenRepo{}, logger.NewMockLogger()),
+			tokenValidator: token.NewValidator(p, tc, &mockRevokedTokenRepo{}, logger.NewMockLogger()),
 		}
 
 		_, err := svc.Refresh(t.Context(), dto.RefreshRequest{RefreshToken: "invalid"})
@@ -312,7 +312,7 @@ func TestAuthService_Refresh(t *testing.T) {
 
 		svc := &AuthService{
 			logger:         logger.NewMockLogger(),
-			tokenValidator: token.NewTokenValidator(p, tc, &mockRevokedTokenRepo{}, logger.NewMockLogger()),
+			tokenValidator: token.NewValidator(p, tc, &mockRevokedTokenRepo{}, logger.NewMockLogger()),
 			userRepository: &mockUserRepo{
 				findByIDFn: func(_ context.Context, _ uint) (*domain.User, error) {
 					return nil, nil
@@ -332,7 +332,7 @@ func TestAuthService_Refresh(t *testing.T) {
 
 		svc := &AuthService{
 			logger:         logger.NewMockLogger(),
-			tokenValidator: token.NewTokenValidator(p, tc, &mockRevokedTokenRepo{}, logger.NewMockLogger()),
+			tokenValidator: token.NewValidator(p, tc, &mockRevokedTokenRepo{}, logger.NewMockLogger()),
 			userRepository: &mockUserRepo{
 				findByIDFn: func(_ context.Context, _ uint) (*domain.User, error) {
 					return nil, errors.New("db error")
@@ -352,7 +352,7 @@ func TestAuthService_Refresh(t *testing.T) {
 
 		svc := &AuthService{
 			logger:         logger.NewMockLogger(),
-			tokenValidator: token.NewTokenValidator(p, tc, &mockRevokedTokenRepo{}, logger.NewMockLogger()),
+			tokenValidator: token.NewValidator(p, tc, &mockRevokedTokenRepo{}, logger.NewMockLogger()),
 			userRepository: &mockUserRepo{
 				findByIDFn: func(_ context.Context, _ uint) (*domain.User, error) {
 					return &validUser, nil

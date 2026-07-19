@@ -9,17 +9,17 @@ import (
 
 	"github.com/samber/do/v2"
 
+	"github.com/minhnbnt/uptime-monitor-microservices/common/authclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/generated/api"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/handler"
-	"github.com/minhnbnt/uptime-monitor-microservices/common/authclient"
 )
 
 func RunWebServer(ctx context.Context, i do.Injector) {
 
 	log := do.MustInvoke[*slog.Logger](i)
 
-	errorHandler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
+	errorHandler := func(_ context.Context, w http.ResponseWriter, _ *http.Request, err error) {
 
 		log.Error("request validation failed", slog.Any("error", err))
 		w.Header().Set("Content-Type", "application/json")

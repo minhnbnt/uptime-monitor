@@ -53,20 +53,3 @@ func RunWebServer(ctx context.Context, injector do.Injector) {
 		panic(err)
 	}
 }
-
-func RunGRPCServer(ctx context.Context, injector do.Injector) {
-
-	endpointSrv := do.MustInvoke[*handler.EndpointServer](injector)
-	serverSrv := do.MustInvoke[*handler.ServerServer](injector)
-
-	cfg := do.MustInvoke[*config.Config](injector)
-	log := do.MustInvoke[*slog.Logger](injector)
-
-	addr := ":" + cfg.GRPC.Port
-	log.Info("gRPC server starting", slog.String("addr", addr))
-
-	if err := handler.StartGRPCServer(ctx, addr, endpointSrv, serverSrv); err != nil {
-		log.Error("gRPC server error", slog.Any("error", err))
-		panic(err)
-	}
-}

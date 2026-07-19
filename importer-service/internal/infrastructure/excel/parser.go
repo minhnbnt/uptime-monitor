@@ -16,15 +16,15 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/utils"
 )
 
-type ExcelParser struct{}
+type Parser struct{}
 
-func RegisterExcelParser(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (*ExcelParser, error) {
-		return &ExcelParser{}, nil
+func RegisterParser(i do.Injector) {
+	do.Provide(i, func(_ do.Injector) (*Parser, error) {
+		return &Parser{}, nil
 	})
 }
 
-func (p *ExcelParser) ParseImportFile(file io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error) {
+func (p *Parser) ParseImportFile(file io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error) {
 
 	xl, err := excelize.OpenReader(file)
 	if err != nil {

@@ -43,12 +43,12 @@ func initConfig(configPath string) (*Config, error) {
 func setDefaults(v *viper.Viper) {
 
 	defaults := map[string]any{
-		"log.level":                "info",
-		"redis.db":                 0,
-		"redis.scheduler_shards":   1,
-		"server.port":              "8083",
-		"grpc.server_addr":         "server:50051",
-		"grpc.event_addr":          "ontime:50052",
+		"log.level":              "info",
+		"redis.db":               0,
+		"redis.scheduler_shards": 1,
+		"server.port":            "8083",
+		"grpc.server_addr":       "server:50051",
+		"grpc.event_addr":        "ontime:50052",
 	}
 
 	for key, value := range defaults {
@@ -87,7 +87,7 @@ func RegisterConfig(cfg *Config) func(do.Injector) {
 
 func RegisterConfigPath(configPath string) func(do.Injector) {
 	return func(i do.Injector) {
-		do.Provide(i, func(i do.Injector) (*Config, error) {
+		do.Provide(i, func(_ do.Injector) (*Config, error) {
 			return initConfig(configPath)
 		})
 	}

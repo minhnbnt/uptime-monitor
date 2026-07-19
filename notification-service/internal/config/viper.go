@@ -58,12 +58,12 @@ func setDefaults(v *viper.Viper) {
 
 		"server.port": "8085",
 
-		"mail.smtp_host":     "localhost",
-		"mail.smtp_port":     1025,
-		"mail.smtp_user":     "",
-		"mail.smtp_password": "",
-		"mail.from_address":  "noreply@uptime-monitor.local",
-		"mail.disable_security":       false,
+		"mail.smtp_host":                "localhost",
+		"mail.smtp_port":                1025,
+		"mail.smtp_user":                "",
+		"mail.smtp_password":            "",
+		"mail.from_address":             "noreply@uptime-monitor.local",
+		"mail.disable_security":         false,
 		"mail.tls_insecure_skip_verify": false,
 
 		"auth_service.addr":   "http://localhost:8081",
@@ -96,12 +96,12 @@ func bindEnvVars(v *viper.Viper) error {
 		"temporal.workflow_name":     "TEMPORAL_WORKFLOW_NAME",
 		"temporal.digest_task_queue": "TEMPORAL_DIGEST_TASK_QUEUE",
 
-		"mail.smtp_host":     "SMTP_HOST",
-		"mail.smtp_port":     "SMTP_PORT",
-		"mail.smtp_user":     "SMTP_USER",
-		"mail.smtp_password": "SMTP_PASSWORD",
-		"mail.from_address":  "SMTP_FROM",
-		"mail.disable_security":        "MAIL_DISABLE_SECURITY",
+		"mail.smtp_host":                "SMTP_HOST",
+		"mail.smtp_port":                "SMTP_PORT",
+		"mail.smtp_user":                "SMTP_USER",
+		"mail.smtp_password":            "SMTP_PASSWORD",
+		"mail.from_address":             "SMTP_FROM",
+		"mail.disable_security":         "MAIL_DISABLE_SECURITY",
 		"mail.tls_insecure_skip_verify": "MAIL_TLS_INSECURE_SKIP_VERIFY",
 
 		"auth_service.addr":   "AUTH_SERVICE_ADDR",
@@ -127,7 +127,7 @@ func RegisterConfig(cfg *Config) func(do.Injector) {
 
 func RegisterConfigPath(configPath string) func(do.Injector) {
 	return func(i do.Injector) {
-		do.Provide(i, func(i do.Injector) (*Config, error) {
+		do.Provide(i, func(_ do.Injector) (*Config, error) {
 			return initConfig(configPath)
 		})
 	}

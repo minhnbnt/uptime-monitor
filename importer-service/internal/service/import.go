@@ -17,12 +17,12 @@ import (
 
 type ImportService struct {
 	serverClient  *config.ServerClient
-	excelExporter *excel.ExcelExporter
-	excelParser   ExcelParser
+	excelExporter *excel.Exporter
+	excelParser   Parser
 	logger        *slog.Logger
 }
 
-type ExcelParser interface {
+type Parser interface {
 	ParseImportFile(file io.Reader) ([]dto.ImportRow, []dto.ImportRowError, error)
 }
 
@@ -30,8 +30,8 @@ func RegisterImportService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ImportService, error) {
 		return &ImportService{
 			serverClient:  do.MustInvoke[*config.ServerClient](i),
-			excelExporter: do.MustInvoke[*excel.ExcelExporter](i),
-			excelParser:   do.MustInvoke[*excel.ExcelParser](i),
+			excelExporter: do.MustInvoke[*excel.Exporter](i),
+			excelParser:   do.MustInvoke[*excel.Parser](i),
 			logger:        do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
@@ -95,7 +95,7 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 	}, nil
 }
 
-var _ ExcelParser = (*excel.ExcelParser)(nil)
+var _ Parser = (*excel.Parser)(nil)
 
 func (s *ImportService) GenerateTemplate() (io.ReadCloser, error) {
 
