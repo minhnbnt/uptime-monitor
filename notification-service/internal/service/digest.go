@@ -11,13 +11,13 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/domain"
-	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/excelgen"
-	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/repository"
-	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/userclient"
-	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/serverclient"
-	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/ontimeclient"
-	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/utils"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/errors"
+	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/excelgen"
+	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/ontimeclient"
+	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/repository"
+	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/serverclient"
+	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/userclient"
+	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/utils"
 )
 
 type MailSender interface {
@@ -37,7 +37,11 @@ type OntimeAdapter interface {
 	GetServersOntimeForDates(ctx context.Context, servers []domain.Server, dates []time.Time) (map[uint][]domain.OntimeStats, error)
 }
 
-func (s *DigestService) buildReport(servers []domain.Server, ontimeMap map[uint][]domain.OntimeStats) []excelgen.ServerRow {
+func (s *DigestService) buildReport(
+	servers []domain.Server,
+	ontimeMap map[uint][]domain.OntimeStats,
+) []excelgen.ServerRow {
+
 	slices.SortFunc(servers, func(a, b domain.Server) int {
 		if a.Name < b.Name {
 			return -1
@@ -94,6 +98,7 @@ func RegisterDigestService(i do.Injector) {
 }
 
 func (s *DigestService) SendUserDigest(ctx context.Context, userID uint) error {
+
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
 		s.logger.Error("failed to find user", slog.Any("error", err))
@@ -118,6 +123,7 @@ func (s *DigestService) SendUserDigest(ctx context.Context, userID uint) error {
 }
 
 func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.Time) error {
+
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
 		s.logger.Error("failed to find user", slog.Any("error", err))

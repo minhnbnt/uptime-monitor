@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	statusKey  = "endpoint:status"
-	statusTTL  = 7 * 24 * time.Hour
+	statusKey = "endpoint:status"
+	statusTTL = 7 * 24 * time.Hour
 )
 
 type DedupRecorder struct {
@@ -40,6 +40,7 @@ func RegisterDedupRecorder(i do.Injector) {
 }
 
 func (r *DedupRecorder) RecordEvent(ctx context.Context, endpointID uint, status domain.ServerStatus) error {
+
 	lastStatus, err := r.rdb.HGet(ctx, statusKey, fmt.Sprint(endpointID)).Result()
 	if err != nil && err != redis.Nil {
 		return fmt.Errorf("get status from redis: %w", err)
@@ -56,11 +57,13 @@ func (r *DedupRecorder) RecordEvent(ctx context.Context, endpointID uint, status
 		Time:       time.Now(),
 	}
 
-	if err := r.db.WithContext(ctx).Create(event).Error; err != nil {
+	result := r.db.WithContext(ctx).Create(event)
+	if err := result.Error; err != nil {
 		return fmt.Errorf("save event: %w", err)
 	}
 
-	if err := r.rdb.HSet(ctx, statusKey, fmt.Sprint(endpointID), string(status)).Err(); err != nil {
+	cmd := r.rdb.HSet(ctx, statusKey, fmt.Sprint(endpointID), string(status))
+	if err := cmd.Err(); err != nil {
 		return fmt.Errorf("set status in redis: %w", err)
 	}
 

@@ -16,7 +16,7 @@ import (
 )
 
 type ImportService struct {
-	serverClient *config.ServerClient
+	serverClient  *config.ServerClient
 	excelExporter *excel.ExcelExporter
 	excelParser   ExcelParser
 	logger        *slog.Logger
@@ -63,7 +63,8 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 		}
 	}
 
-	resp, err := s.serverClient.BatchCreateServers(ctx, &serverv1.BatchCreateServersRequest{Servers: protoInputs})
+	request := serverv1.BatchCreateServersRequest{Servers: protoInputs}
+	resp, err := s.serverClient.BatchCreateServers(ctx, &request)
 	if err != nil {
 		s.logger.Error("batch create servers failed", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
@@ -87,7 +88,11 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 		}
 	}
 
-	return &dto.ImportResult{Successes: successes, RowErrors: rowErrors, BatchErrors: batchErrors}, nil
+	return &dto.ImportResult{
+		Successes:   successes,
+		RowErrors:   rowErrors,
+		BatchErrors: batchErrors,
+	}, nil
 }
 
 var _ ExcelParser = (*excel.ExcelParser)(nil)
@@ -106,21 +111,22 @@ func (s *ImportService) GenerateTemplate() (io.ReadCloser, error) {
 
 func (s *ImportService) ExportServers(ctx context.Context, userID uint, q string, from, to int, sortBy, sortOrder string) (io.ReadCloser, error) {
 
-	searchResp, err := s.serverClient.SearchServers(ctx, &serverv1.SearchServersRequest{
+	request := serverv1.SearchServersRequest{
 		UserId:    uint64(userID),
 		Q:         q,
 		From:      int32(from),
 		To:        int32(to),
 		SortBy:    sortBy,
 		SortOrder: sortOrder,
-	})
+	}
+
+	searchResp, err := s.serverClient.SearchServers(ctx, &request)
 	if err != nil {
 		s.logger.Error("search servers failed", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
 	servers := protoToExportServers(searchResp.Servers)
-
 	reader, err := s.excelExporter.GenerateExportFile(servers)
 	if err != nil {
 		s.logger.Error("failed to generate export file", slog.Any("error", err))
@@ -131,7 +137,9 @@ func (s *ImportService) ExportServers(ctx context.Context, userID uint, q string
 }
 
 func protoToExportServers(in []*serverv1.ServerWithEndpoint) []dto.Server {
+
 	out := make([]dto.Server, len(in))
+
 	for i, p := range in {
 		out[i] = dto.Server{
 			ID:   uint(p.Id),
@@ -146,5 +154,6 @@ func protoToExportServers(in []*serverv1.ServerWithEndpoint) []dto.Server {
 			}
 		}
 	}
+
 	return out
 }

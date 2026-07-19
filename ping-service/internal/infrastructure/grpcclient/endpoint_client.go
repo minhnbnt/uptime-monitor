@@ -45,11 +45,13 @@ func (c *EndpointClient) GetBatch(ctx context.Context, ids []uint) (map[uint]*do
 
 	result := make(map[uint]*domain.Endpoint, len(resp.Endpoints))
 	for _, ep := range resp.Endpoints {
+
 		var bodyCheckExpr *string
 		if ep.BodyCheckExpr != "" {
 			s := ep.BodyCheckExpr
 			bodyCheckExpr = &s
 		}
+
 		result[uint(ep.Id)] = &domain.Endpoint{
 			Model:        gorm.Model{ID: uint(ep.Id)},
 			ServerID:     uint(ep.ServerId),

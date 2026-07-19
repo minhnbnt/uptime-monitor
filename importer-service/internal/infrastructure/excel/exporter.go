@@ -126,7 +126,9 @@ func fillExportFile(xl *excelize.File, servers []serverdto.Server) error {
 	return nil
 }
 
-func (g *ExcelExporter) GenerateExportFile(servers []serverdto.Server) (io.ReadCloser, error) {
+func (g *ExcelExporter) GenerateExportFile(
+	servers []serverdto.Server,
+) (io.ReadCloser, error) {
 
 	xl := excelize.NewFile()
 

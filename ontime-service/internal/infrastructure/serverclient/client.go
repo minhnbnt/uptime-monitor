@@ -29,11 +29,17 @@ func RegisterClient(i do.Injector) {
 	})
 }
 
-func (c *Client) GetServer(ctx context.Context, serverID, userID uint) (*ServerBrief, error) {
-	resp, err := c.client.GetServer(ctx, &serverv1.GetServerRequest{
+func (c *Client) GetServer(
+	ctx context.Context,
+	serverID, userID uint,
+) (*ServerBrief, error) {
+
+	request := serverv1.GetServerRequest{
 		UserId:   uint64(userID),
 		ServerId: uint64(serverID),
-	})
+	}
+
+	resp, err := c.client.GetServer(ctx, &request)
 	if err != nil {
 		return nil, fmt.Errorf("get server: %w", err)
 	}
@@ -45,12 +51,19 @@ func (c *Client) GetServer(ctx context.Context, serverID, userID uint) (*ServerB
 	}, nil
 }
 
-func (c *Client) ListServers(ctx context.Context, userID uint, page, perPage int) ([]ServerBrief, error) {
-	resp, err := c.client.ListServers(ctx, &serverv1.ListServersRequest{
+func (c *Client) ListServers(
+	ctx context.Context,
+	userID uint,
+	page, perPage int,
+) ([]ServerBrief, error) {
+
+	request := serverv1.ListServersRequest{
 		UserId:  uint64(userID),
 		Page:    int32(page),
 		PerPage: int32(perPage),
-	})
+	}
+
+	resp, err := c.client.ListServers(ctx, &request)
 	if err != nil {
 		return nil, fmt.Errorf("list servers: %w", err)
 	}
