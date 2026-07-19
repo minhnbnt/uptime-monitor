@@ -260,7 +260,7 @@ services:
       - 8025:8025
 
     volumes:
-      - ./mailpit-data:/data
+      - mailpit-data:/data
 
     environment:
       MP_DATABASE: /data/mailpit.db
@@ -273,3 +273,4 @@ volumes:
   redis_data:
   temporal-data:
   debezium-data:
+  mailpit-data:
