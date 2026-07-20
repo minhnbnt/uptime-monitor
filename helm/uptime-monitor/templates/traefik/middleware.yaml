@@ -1,0 +1,23 @@
+{{- if .Values.traefik.enabled }}
+{{- $ns := include "uptime-monitor.namespace" . -}}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: cors
+  namespace: {{ $ns }}
+spec:
+  headers:
+    accessControlAllowOriginList:
+      - "*"
+    accessControlAllowMethods:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+      - OPTIONS
+    accessControlAllowHeaders:
+      - "*"
+    accessControlMaxAge: 86400
+    accessControlAllowCredentials: false
+{{- end }}

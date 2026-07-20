@@ -1,0 +1,73 @@
+# Infra for the uptime-monitor Kubernetes deployment.
+# Run this OUTSIDE the cluster (e.g. on the Docker host) so the in-cluster
+# ExternalName services (postgres/redis/temporal/mailpit/pgbouncer) can reach it
+# via global.externalHost (default: host.docker.internal).
+#
+#   docker compose -f compose.infra.yml up -d
+#
+# App services themselves run in Kubernetes via:
+#   helm install uptime-monitor helm/uptime-monitor
+
+services:
+  postgres:
+    image: paradedb/paradedb:pg18
+    command: postgres -c wal_level=logical
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/
+      - ./config/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.25.1-p0
+    ports:
+      - 6432:6432
+    volumes:
+      - ./config/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./config/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  redis:
+    image: ghcr.io/valkey-io/valkey:9-alpine
+    ports:
+      - 6379:6379
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  temporal:
+    image: temporalio/temporal:1.7.2
+    ports:
+      - 7233:7233
+      - 8233:8233
+    volumes:
+      - temporal-data:/home/temporal
+    command: server start-dev --ip 0.0.0.0 --db-filename /home/temporal/temporal.db
+
+  mailpit:
+    image: ghcr.io/axllent/mailpit:v1.30.4
+    ports:
+      - 1025:1025
+      - 8025:8025
+    volumes:
+      - mailpit-data:/data
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MAIL_FROM_ADDRESS: no-reply@test.local
+      MAIL_FROM_NAME: My App
+
+volumes:
+  postgres-data:
+  redis_data:
+  temporal-data:
+  mailpit-data:

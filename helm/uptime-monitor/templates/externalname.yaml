@@ -1,0 +1,41 @@
+{{- $ns := include "uptime-monitor.namespace" . -}}
+{{- range $name, $cfg := .Values.infra }}
+{{- if $cfg.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: uptime-monitor
+    app.kubernetes.io/name: {{ $name }}
+spec:
+  # Headless (clusterIP: None) so CoreDNS publishes an A record directly to the
+  # external host IP (via EndpointSlice). A regular ClusterIP would make kube-proxy
+  # try to DNAT to an out-of-cluster IP, which fails.
+  clusterIP: None
+  type: ClusterIP
+  ports:
+    - name: {{ $name }}
+      port: {{ $cfg.port }}
+      targetPort: {{ $cfg.port }}
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: {{ $name }}
+  namespace: {{ $ns }}
+  labels:
+    kubernetes.io/service-name: {{ $name }}
+    app.kubernetes.io/part-of: uptime-monitor
+addressType: IPv4
+ports:
+  - name: {{ $name }}
+    protocol: TCP
+    port: {{ $cfg.port }}
+endpoints:
+  - addresses:
+      - {{ $cfg.address }}
+{{- end }}
+{{- end }}

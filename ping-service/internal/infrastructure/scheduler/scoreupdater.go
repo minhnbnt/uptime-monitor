@@ -42,25 +42,22 @@ func (u *ScoreUpdater) UpdateBatch(ctx context.Context, items map[uint]int64) er
 		return nil
 	}
 
-	pipes := make(map[string]redis.Pipeliner)
+	scores := make(map[string][]redis.Z)
 	for id, score := range items {
 
 		key := schedulerShardKey(u.shardCount, id)
-		pipe, ok := pipes[key]
 
-		if !ok {
-			pipe = u.client.Pipeline()
-			pipes[key] = pipe
-		}
-
-		pipe.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: fmt.Sprint(id)})
+		score := redis.Z{Score: float64(score), Member: fmt.Sprint(id)}
+		scores[key] = append(scores[key], score)
 	}
 
-	for _, pipe := range pipes {
-		if _, err := pipe.Exec(ctx); err != nil {
-			return fmt.Errorf("pipeline zadd: %w", err)
-		}
+	pipe := u.client.Pipeline()
+
+	for key, scores := range scores {
+		pipe.ZAdd(ctx, key, scores...)
 	}
 
-	return nil
+	_, err := pipe.Exec(ctx)
+
+	return err
 }

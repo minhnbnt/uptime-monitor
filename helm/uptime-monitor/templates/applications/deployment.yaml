@@ -1,0 +1,56 @@
+{{- $ns := include "uptime-monitor.namespace" . -}}
+{{- range $name, $app := .Values.apps }}
+{{- if $app.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  namespace: {{ $ns }}
+  labels:
+    {{- include "uptime-monitor.labels" (dict "name" $name) | nindent 4 }}
+spec:
+  replicas: {{ $app.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+  template:
+    metadata:
+      labels:
+        {{- include "uptime-monitor.labels" (dict "name" $name) | nindent 8 }}
+    spec:
+      # Disable K8s auto-injected service env vars (e.g. PING_SERVICE_PORT) that
+      # would otherwise clobber our config keys like server.port.
+      enableServiceLinks: false
+      containers:
+        - name: {{ $name }}
+          image: {{ include "uptime-monitor.image" (dict "name" $name "root" $) }}
+          imagePullPolicy: {{ $.Values.global.image.pullPolicy }}
+          args: ["--config=/app/config.yml"]
+          ports:
+            - name: http
+              containerPort: {{ $app.port }}
+            {{- if $app.grpcPort }}
+            - name: grpc
+              containerPort: {{ $app.grpcPort }}
+            {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/config.yml
+              subPath: config.yml
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+      volumes:
+        - name: config
+          configMap:
+            name: {{ $name }}-config
+{{- end }}
+{{- end }}

@@ -1,0 +1,57 @@
+{{- if .Values.traefik.enabled }}
+{{- $ns := include "uptime-monitor.namespace" . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traefik
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/part-of: uptime-monitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: traefik
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: traefik
+        app.kubernetes.io/part-of: uptime-monitor
+    spec:
+      serviceAccountName: traefik
+      containers:
+        - name: traefik
+          image: {{ .Values.traefik.image }}
+          args:
+            - --api.insecure=true
+            - --providers.kubernetescrd
+            - --entrypoints.web.address=:{{ .Values.traefik.httpPort }}
+            - --entrypoints.traefik.address=:{{ .Values.traefik.adminPort }}
+          ports:
+            - name: web
+              containerPort: {{ .Values.traefik.httpPort }}
+            - name: admin
+              containerPort: {{ .Values.traefik.adminPort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/name: traefik
+spec:
+  type: {{ .Values.traefik.serviceType }}
+  selector:
+    app.kubernetes.io/name: traefik
+  ports:
+    - name: web
+      port: {{ .Values.traefik.httpPort }}
+      targetPort: web
+      nodePort: 30080
+    - name: admin
+      port: {{ .Values.traefik.adminPort }}
+      targetPort: admin
+      nodePort: 30081
+{{- end }}
