@@ -1,3 +1,11 @@
+FROM bufbuild/buf:1.71 as buf
+
+COPY common/proto /proto
+WORKDIR /proto
+
+RUN buf generate
+
+
 FROM golang:1.26-alpine AS builder
 
 ENV CGO_ENABLED=0 \
@@ -8,6 +16,7 @@ WORKDIR /app
 
 COPY notification-service/ ./
 COPY common/ ../common/
+COPY --from=buf /proto/generated ../common/proto/generated
 
 RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
     --mount=type=cache,id=go-build,target=/root/.cache/go-build \
