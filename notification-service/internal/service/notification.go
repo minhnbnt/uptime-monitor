@@ -105,6 +105,7 @@ func (s *NotificationService) UpdateNotificationConfig(ctx context.Context, user
 }
 
 func (s *NotificationService) SendReport(ctx context.Context, userID uint) error {
+
 	if err := s.digestStarter.StartDigest(ctx, userID); err != nil {
 		s.logger.Error("failed to start digest workflow", slog.Any("error", err))
 		return apperrors.ErrInternal

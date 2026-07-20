@@ -34,8 +34,11 @@ func RegisterMailer(i do.Injector) {
 
 func (m *Mailer) Send(to, subject string, attachment io.Reader) error {
 
-	m.logger.Debug("mailer.Send: preparing email",
-		slog.String("to", to), slog.String("subject", subject))
+	m.logger.Debug(
+		"mailer.Send: preparing email",
+		slog.String("to", to),
+		slog.String("subject", subject),
+	)
 
 	msg := gomail.NewMsg()
 	if err := msg.From(m.fromAddress); err != nil {
@@ -51,11 +54,22 @@ func (m *Mailer) Send(to, subject string, attachment io.Reader) error {
 	}
 
 	if err := m.mailClient.DialAndSend(msg); err != nil {
-		m.logger.Error("mailer.Send: failed to send",
-			slog.String("to", to), slog.String("subject", subject), slog.Any("error", err))
+
+		m.logger.Error(
+			"mailer.Send: failed to send",
+			slog.String("to", to),
+			slog.String("subject", subject),
+			slog.Any("error", err),
+		)
+
 		return fmt.Errorf("failed to send mail: %w", err)
 	}
 
-	m.logger.Info("mailer.Send: email sent", slog.String("to", to), slog.String("subject", subject))
+	m.logger.Info(
+		"mailer.Send: email sent",
+		slog.String("to", to),
+		slog.String("subject", subject),
+	)
+
 	return nil
 }
