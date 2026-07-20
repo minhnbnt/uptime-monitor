@@ -6,7 +6,7 @@ ENV CGO_ENABLED=0 \
 
 WORKDIR /app/auth-service
 
-COPY . ./
+COPY auth-service/ ./
 
 RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
     --mount=type=cache,id=go-build,target=/root/.cache/go-build \
