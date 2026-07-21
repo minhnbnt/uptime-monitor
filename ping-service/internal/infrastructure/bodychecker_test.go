@@ -12,12 +12,13 @@ func TestBodyChecker_Check(t *testing.T) {
 		wantOK     bool
 		wantErr    bool
 	}{
-		{"contains true", `{"status":"ok"}`, `body contains "ok"`, true, false},
-		{"contains false", `{"status":"fail"}`, `body contains "ok"`, false, false},
-		{"matches true", "hello world", `body matches "world"`, true, false},
-		{"matches false", "hello", `body matches "world"`, false, false},
-		{"invalid syntax", "anything", `body contains`, false, true},
-		{"runtime error", "x", `body + 1`, false, true},
+		{"contains true", `{"status":"ok"}`, `status matches "ok"`, true, false},
+		{"contains false", `{"status":"fail"}`, `status matches "ok"`, false, false},
+		{"matches true", `{"value":"hello world"}`, `value matches "hello.*"`, true, false},
+		{"matches false", `{"value":"hello"}`, `value matches "world"`, false, false},
+		{"invalid json", "anything", `true`, false, true},
+		{"invalid syntax", `{"x":"y"}`, `invalid[`, false, true},
+		{"runtime error", `{"x":"y"}`, `nonexistent(x)`, false, true},
 	}
 
 	for _, tt := range tests {
