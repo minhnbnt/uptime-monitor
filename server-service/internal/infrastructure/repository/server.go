@@ -124,23 +124,16 @@ func (sr *ServerRepository) CountByStatus(
 	ctx context.Context, createdByID uint,
 ) (total, online, offline int64, err error) {
 
-	endpointIDs := []uint{}
-	result := sr.db.WithContext(ctx).
-		Table("endpoints e").
-		Joins("JOIN servers s ON s.id = e.server_id").
-		Where("s.created_by_id = ?", createdByID).
-		Pluck("e.id", &endpointIDs)
-
-	if err := result.Error; err != nil {
-		return 0, 0, 0, fmt.Errorf("get endpoint ids: %w", err)
+	total, err = sr.Count(ctx, createdByID)
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("count servers: %w", err)
 	}
 
-	total = int64(len(endpointIDs))
 	if total == 0 {
 		return 0, 0, 0, nil
 	}
 
-	online, offline, err = sr.eventClient.CountByStatus(ctx, endpointIDs)
+	online, offline, err = sr.eventClient.CountByStatus(ctx, createdByID)
 	if err != nil {
 		return 0, 0, 0, err
 	}

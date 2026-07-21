@@ -5,6 +5,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/handler"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/consumer"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/recorder"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/serverclient"
@@ -36,6 +37,11 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 		handler.RegisterOntimeGRPCServer,
 
 		recorder.RegisterDedupRecorder,
+
+		consumer.RegisterOwnershipConsumer,
+		repository.RegisterServerOwnerRepository,
+		service.RegisterOwnershipService,
+		handler.RegisterOwnershipWorker,
 	}
 
 	for _, p := range packages {

@@ -31,6 +31,7 @@ func main() {
 	defer waitgroup.Wait()
 
 	waitgroup.Go(func() { _, _ = injector.ShutdownOnSignalsWithContext(ctx) })
+	waitgroup.Go(func() { app.RunOwnershipConsumer(ctx, injector) })
 	waitgroup.Go(func() { app.RunWebServer(ctx, injector) })
 	waitgroup.Go(func() { app.RunGRPCServer(ctx, injector) })
 }

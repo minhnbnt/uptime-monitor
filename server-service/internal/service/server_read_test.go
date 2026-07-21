@@ -19,7 +19,7 @@ func (m *mockStatusClient) GetCurrentStatuses(_ context.Context, _ []uint) (map[
 	return m.statuses, m.err
 }
 
-func (m *mockStatusClient) CountByStatus(_ context.Context, _ []uint) (int64, int64, error) {
+func (m *mockStatusClient) CountByStatus(_ context.Context, _ uint) (int64, int64, error) {
 	return 0, 0, nil
 }
 

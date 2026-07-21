@@ -25,7 +25,7 @@ message GetCurrentStatusesResponse {
 }
 
 message CountByStatusRequest {
-  repeated uint64 endpoint_ids = 1;
+  uint64 user_id = 1;
 }
 
 message CountByStatusResponse {

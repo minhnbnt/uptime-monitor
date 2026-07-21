@@ -19,6 +19,7 @@ type EventRecorder interface {
 type EventRepository interface {
 	GetCurrentStatuses(ctx context.Context, endpointIDs []uint) ([]eventrepo.CurrentStatus, error)
 	CountByStatus(ctx context.Context, endpointIDs []uint) (online, offline int64, err error)
+	CountByStatusByUserID(ctx context.Context, userID uint) (online, offline int64, err error)
 }
 
 type EventService struct {
@@ -62,6 +63,10 @@ func (s *EventService) GetCurrentStatuses(ctx context.Context, endpointIDs []uin
 
 func (s *EventService) CountByStatus(ctx context.Context, endpointIDs []uint) (online, offline int64, err error) {
 	return s.repo.CountByStatus(ctx, endpointIDs)
+}
+
+func (s *EventService) CountByStatusByUserID(ctx context.Context, userID uint) (online, offline int64, err error) {
+	return s.repo.CountByStatusByUserID(ctx, userID)
 }
 
 var (

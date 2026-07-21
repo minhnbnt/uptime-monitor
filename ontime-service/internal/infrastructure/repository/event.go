@@ -88,3 +88,34 @@ func (r *EventRepository) CountByStatus(
 
 	return c.Online, c.Offline, nil
 }
+
+func (r *EventRepository) CountByStatusByUserID(
+	ctx context.Context, userID uint,
+) (online, offline int64, err error) {
+
+	type counts struct {
+		Online  int64 `gorm:"column:online"`
+		Offline int64 `gorm:"column:offline"`
+	}
+
+	c := counts{}
+	err = gorm.G[counts](r.db).
+		Select(`
+			COUNT(*) FILTER (WHERE latest.status = 'ON') AS online,
+			COUNT(*) FILTER (WHERE latest.status = 'OFF') AS offline
+		`).
+		Table(`(
+			SELECT DISTINCT ON (se.endpoint_id) se.endpoint_id, se.status
+			FROM server_events se
+			JOIN server_owners so ON so.server_id = se.endpoint_id
+			WHERE so.user_id = ? AND so.deleted_at IS NULL
+			ORDER BY se.endpoint_id, se.time DESC
+		) AS latest`, userID).
+		Scan(ctx, &c)
+
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return c.Online, c.Offline, nil
+}

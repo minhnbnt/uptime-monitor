@@ -16,7 +16,7 @@ type StatusClient interface {
 	GetCurrentStatuses(ctx context.Context, endpointIDs []uint) (
 		map[uint]domain.ServerStatus, error,
 	)
-	CountByStatus(ctx context.Context, endpointIDs []uint) (
+	CountByStatus(ctx context.Context, userID uint) (
 		online, offline int64, err error,
 	)
 }
@@ -80,14 +80,9 @@ func (c *EventClient) GetCurrentStatuses(
 	), nil
 }
 
-func (c *EventClient) CountByStatus(ctx context.Context, endpointIDs []uint) (online, offline int64, err error) {
+func (c *EventClient) CountByStatus(ctx context.Context, userID uint) (online, offline int64, err error) {
 
-	if len(endpointIDs) == 0 {
-		return 0, 0, nil
-	}
-
-	ids := lo.Map(endpointIDs, func(id uint, _ int) uint64 { return uint64(id) })
-	request := eventv1.CountByStatusRequest{EndpointIds: ids}
+	request := eventv1.CountByStatusRequest{UserId: uint64(userID)}
 	resp, err := c.client.CountByStatus(ctx, &request)
 	if err != nil {
 		return 0, 0, fmt.Errorf("count by status: %w", err)

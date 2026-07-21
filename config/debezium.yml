@@ -23,7 +23,7 @@ debezium:
 
     table:
       include:
-        list: public.endpoints
+        list: public.endpoints, public.servers
 
     plugin:
       name: pgoutput

@@ -21,7 +21,10 @@ services:
       traefik.http.middlewares.cors.headers.accessControlMaxAge: 86400
 
   auth-service:
-    build: ./auth-service
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
+
     ports:
       - 8081:8081
 
@@ -47,9 +50,6 @@ services:
     build:
       context: .
       dockerfile: server-service/Dockerfile
-
-    ports:
-      - 8080
 
     command: ["--dev", "--config=/app/config.yml"]
 

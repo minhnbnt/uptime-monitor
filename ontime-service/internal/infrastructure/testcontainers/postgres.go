@@ -87,7 +87,7 @@ func CreateTestDB(tb testing.TB, dsn string) *gorm.DB {
 		tb.Fatalf("connect to test db %s: %v", dbName, err)
 	}
 
-	if err := testDB.AutoMigrate(&domain.ServerEvent{}); err != nil {
+	if err := testDB.AutoMigrate(&domain.ServerEvent{}, &domain.ServerOwner{}); err != nil {
 		tb.Fatalf("auto migrate: %v", err)
 	}
 

@@ -14,6 +14,11 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/handler"
 )
 
+func RunOwnershipConsumer(ctx context.Context, i do.Injector) {
+	worker := do.MustInvoke[*handler.OwnershipWorker](i)
+	worker.Run(ctx)
+}
+
 func RunWebServer(ctx context.Context, injector do.Injector) {
 
 	ontimeHandler := do.MustInvoke[*handler.OntimeHandler](injector)
