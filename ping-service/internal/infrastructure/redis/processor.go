@@ -119,7 +119,7 @@ func (p *messageProcessor) ProcessMessage(ctx context.Context, msg redis.XMessag
 	}
 
 	switch event.Op {
-	case "c":
+	case "c", "r":
 		if err := p.onCreate(ctx, event); err != nil {
 			p.logger.Error("handle endpoint",
 				slog.Uint64("endpoint_id", uint64(event.After.ID)),
