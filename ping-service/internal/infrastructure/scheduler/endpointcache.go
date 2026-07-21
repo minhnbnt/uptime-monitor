@@ -6,11 +6,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	"github.com/redis/go-redis/v9"
 	"github.com/samber/do/v2"
 	"gorm.io/gorm"
+
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 )
 
 const (
