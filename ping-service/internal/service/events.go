@@ -12,6 +12,7 @@ import (
 
 type EndpointEventHandler struct {
 	scheduler *scheduler.ZSetScheduleRepository
+	cache     *scheduler.EndpointMetaCache
 }
 
 func (e *EndpointEventHandler) OnCreate(ctx context.Context, endpoint domain.Endpoint) error {
@@ -19,10 +20,22 @@ func (e *EndpointEventHandler) OnCreate(ctx context.Context, endpoint domain.End
 }
 
 func (e *EndpointEventHandler) OnUpdate(ctx context.Context, endpoint domain.Endpoint) error {
+
+	err := e.cache.Delete(ctx, endpoint.ID)
+	if err != nil {
+		return err
+	}
+
 	return e.scheduler.Register(ctx, &endpoint)
 }
 
 func (e *EndpointEventHandler) OnDelete(ctx context.Context, id uint) error {
+
+	err := e.cache.Delete(ctx, id)
+	if err != nil {
+		return err
+	}
+
 	return e.scheduler.Unregister(ctx, id)
 }
 
@@ -34,8 +47,12 @@ type EndpointEventService struct {
 func RegisterEventService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointEventService, error) {
 
-		scheduler := do.MustInvoke[*scheduler.ZSetScheduleRepository](i)
-		eventHandler := &EndpointEventHandler{scheduler: scheduler}
+		sched := do.MustInvoke[*scheduler.ZSetScheduleRepository](i)
+		cache := do.MustInvoke[*scheduler.EndpointMetaCache](i)
+		eventHandler := &EndpointEventHandler{
+			scheduler: sched,
+			cache:     cache,
+		}
 
 		consumer := do.MustInvoke[*redis.StreamEventConsumer](i)
 

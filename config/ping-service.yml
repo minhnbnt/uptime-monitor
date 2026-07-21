@@ -3,6 +3,9 @@ redis:
   password: ""
   db: 0
 
+  scheduler_shards: 10
+  scheduler_claim_limit: 50
+
 server:
   port: 8083
 

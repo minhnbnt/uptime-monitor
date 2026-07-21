@@ -28,6 +28,7 @@ func providers(dev bool) []func(do.Injector) {
 
 		pingsched.RegisterZSetScheduleRepository,
 		pingsched.RegisterScoreUpdater,
+		pingsched.RegisterEndpointMetaCache,
 		pingsched.RegisterEndpointProvider,
 
 		pinginfra.RegisterPingWorker,
