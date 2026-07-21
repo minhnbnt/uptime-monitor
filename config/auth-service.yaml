@@ -10,7 +10,7 @@ db:
 
 redis:
   addr: redis:6379
-  db: 1
+  db: 0
 
 jwt:
   key: change-me-in-production
