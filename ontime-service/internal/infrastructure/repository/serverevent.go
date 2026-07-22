@@ -33,7 +33,7 @@ func RegisterServerEventRepository(i do.Injector) {
 func (r *ServerEventRepository) Save(ctx context.Context, event *domain.ServerEvent) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 
-		latestEvent, err := gorm.G[domain.ServerEvent](r.db).
+		latestEvent, err := gorm.G[domain.ServerEvent](tx).
 			Where("endpoint_id = ?", event.EndpointID).
 			Order("time DESC").
 			First(ctx)
@@ -46,7 +46,7 @@ func (r *ServerEventRepository) Save(ctx context.Context, event *domain.ServerEv
 			r.logger.Error("failed to get latest status", slog.Any("err", err))
 			// ignore error, continue with saving the event
 			// calculator can handle duplicate events
-			return gorm.G[domain.ServerEvent](r.db).Create(ctx, event)
+			return gorm.G[domain.ServerEvent](tx).Create(ctx, event)
 		}
 
 		if latestEvent.Status == event.Status {
@@ -54,6 +54,6 @@ func (r *ServerEventRepository) Save(ctx context.Context, event *domain.ServerEv
 			return nil
 		}
 
-		return gorm.G[domain.ServerEvent](r.db).Create(ctx, event)
+		return gorm.G[domain.ServerEvent](tx).Create(ctx, event)
 	})
 }
