@@ -10,17 +10,16 @@ import (
 	temporalclient "go.temporal.io/sdk/client"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/config"
-	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/service"
 )
 
-type DigestStarter struct {
+type TemporalDigestStarter struct {
 	scheduleClient temporalclient.ScheduleClient
 	client         temporalclient.Client
 	taskQueue      string
 }
 
 func RegisterDigestStarter(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (service.DigestStarter, error) {
+	do.Provide(i, func(i do.Injector) (*TemporalDigestStarter, error) {
 
 		clientWrapper := do.MustInvoke[*config.TemporalClientWrapper](i)
 		cfg := do.MustInvoke[*config.Config](i)
@@ -28,7 +27,7 @@ func RegisterDigestStarter(i do.Injector) {
 		client := clientWrapper.GetClient()
 		scheduleClient := client.ScheduleClient()
 
-		return &DigestStarter{
+		return &TemporalDigestStarter{
 			client:         client,
 			scheduleClient: scheduleClient,
 			taskQueue:      cfg.Temporal.DigestTaskQueue,
@@ -36,7 +35,7 @@ func RegisterDigestStarter(i do.Injector) {
 	})
 }
 
-func (ds *DigestStarter) StartDigest(ctx context.Context, userID uint) error {
+func (ds *TemporalDigestStarter) StartDigest(ctx context.Context, userID uint) error {
 
 	_, err := ds.client.ExecuteWorkflow(
 		ctx,
@@ -48,12 +47,19 @@ func (ds *DigestStarter) StartDigest(ctx context.Context, userID uint) error {
 	return err
 }
 
-func (ds *DigestStarter) UpsertSchedule(ctx context.Context, userID uint, fromDate, toDate time.Time, digestTime string) error {
+func (ds *TemporalDigestStarter) UpsertSchedule(ctx context.Context, userID uint, fromDate, toDate time.Time, digestTime string) error {
 
 	scheduleID := fmt.Sprintf("digest-user-%d", userID)
 
-	hour, _ := strconv.Atoi(digestTime[:2])
-	minute, _ := strconv.Atoi(digestTime[3:])
+	hour, err := strconv.Atoi(digestTime[:2])
+	if err != nil {
+		return err
+	}
+
+	minute, err := strconv.Atoi(digestTime[3:])
+	if err != nil {
+		return err
+	}
 
 	spec := temporalclient.ScheduleSpec{
 		StartAt: fromDate, EndAt: toDate,
@@ -70,8 +76,7 @@ func (ds *DigestStarter) UpsertSchedule(ctx context.Context, userID uint, fromDa
 	}
 
 	handle := ds.scheduleClient.GetHandle(ctx, scheduleID)
-	_, err := handle.Describe(ctx)
-	if err != nil {
+	if _, err := handle.Describe(ctx); err != nil {
 		_, err = ds.scheduleClient.Create(ctx, temporalclient.ScheduleOptions{
 			ID:     scheduleID,
 			Spec:   spec,
@@ -93,7 +98,7 @@ func (ds *DigestStarter) UpsertSchedule(ctx context.Context, userID uint, fromDa
 	})
 }
 
-func (ds *DigestStarter) DeleteSchedule(ctx context.Context, userID uint) error {
+func (ds *TemporalDigestStarter) DeleteSchedule(ctx context.Context, userID uint) error {
 
 	scheduleID := fmt.Sprintf("digest-user-%d", userID)
 	handle := ds.scheduleClient.GetHandle(ctx, scheduleID)

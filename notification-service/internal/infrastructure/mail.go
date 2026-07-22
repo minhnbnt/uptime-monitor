@@ -9,7 +9,6 @@ import (
 	gomail "github.com/wneessen/go-mail"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/config"
-	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/service"
 )
 
 type Mailer struct {
@@ -19,7 +18,7 @@ type Mailer struct {
 }
 
 func RegisterMailer(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (service.MailSender, error) {
+	do.Provide(i, func(i do.Injector) (*Mailer, error) {
 
 		cfg := do.MustInvoke[*config.Config](i)
 		mailClientWrapper := do.MustInvoke[*config.MailClientWrapper](i)

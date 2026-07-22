@@ -12,6 +12,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/errors"
+	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/excelgen"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/ontimeclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/repository"
@@ -37,10 +38,7 @@ type OntimeAdapter interface {
 	GetServersOntimeForDates(ctx context.Context, userID uint, servers []domain.Server, dates []time.Time) (map[uint][]domain.OntimeStats, error)
 }
 
-func (s *DigestService) buildReport(
-	servers []domain.Server,
-	ontimeMap map[uint][]domain.OntimeStats,
-) []excelgen.ServerRow {
+func (s *DigestService) buildReport(servers []domain.Server, ontimeMap map[uint][]domain.OntimeStats) []excelgen.ServerRow {
 
 	slices.SortFunc(servers, func(a, b domain.Server) int {
 		if a.Name < b.Name {
@@ -93,7 +91,7 @@ func RegisterDigestService(i do.Injector) {
 			serverRepo: do.MustInvoke[*serverclient.Client](i),
 			userRepo:   do.MustInvoke[*userclient.Client](i),
 			ontimeSvc:  do.MustInvoke[*ontimeclient.Client](i),
-			mailer:     do.MustInvoke[MailSender](i),
+			mailer:     do.MustInvoke[*infrastructure.Mailer](i),
 			logger:     do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})

@@ -10,6 +10,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/dto"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/errors"
+	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/repository"
 )
 
@@ -36,13 +37,14 @@ func RegisterNotificationService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*NotificationService, error) {
 		return &NotificationService{
 			configRepo:    do.MustInvoke[*repository.NotificationConfigRepository](i),
-			digestStarter: do.MustInvoke[DigestStarter](i),
+			digestStarter: do.MustInvoke[*infrastructure.TemporalDigestStarter](i),
 			logger:        do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
 
 func (s *NotificationService) GetNotificationConfig(ctx context.Context, userID uint) (*dto.NotificationConfigResponse, error) {
+
 	cfg, err := s.configRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		s.logger.Error("failed to get notification config", slog.Any("error", err))
@@ -63,6 +65,7 @@ func (s *NotificationService) GetNotificationConfig(ctx context.Context, userID 
 }
 
 func (s *NotificationService) UpdateNotificationConfig(ctx context.Context, userID uint, req *dto.NotificationConfigRequest) error {
+
 	cfg := &domain.NotificationConfig{
 		UserID:     userID,
 		Active:     req.FromDate != "" && req.ToDate != "",
