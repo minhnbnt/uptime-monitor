@@ -1,0 +1,232 @@
+global:
+  externalHost: 172.27.102.17
+  image:
+    registry: ghcr.io/minhnbnt/uptime-monitor
+    tag: latest
+    pullPolicy: IfNotPresent
+
+namespace: uptime-monitor
+
+traefik:
+  enabled: true
+  image: ghcr.io/traefik/traefik:3.7
+  httpPort: 8080
+  adminPort: 8081
+  serviceType: NodePort
+
+infra:
+  postgres:
+    enabled: true
+    address: 172.27.102.17
+    port: 5432
+  pgbouncer:
+    enabled: true
+    address: 172.27.102.17
+    port: 6432
+  redis:
+    enabled: true
+    address: 172.27.102.17
+    port: 6379
+  temporal:
+    enabled: true
+    address: 172.27.102.17
+    port: 7233
+  mailpit:
+    enabled: true
+    address: 172.27.102.17
+    port: 1025
+
+apps:
+  auth-service:
+    enabled: true
+    port: 8081
+    grpcPort:
+    replicas: 1
+    ingress:
+      - /auth
+    config:
+      server:
+        port: 8081
+      db:
+        host: pgbouncer.uptime-monitor.svc.cluster.local
+        port: 6432
+        user: auth
+        password: auth
+        dbname: auth
+      redis:
+        addr: redis.uptime-monitor.svc.cluster.local:6379
+        db: 0
+      jwt:
+        key: change-me-in-production
+      token:
+        access_ttl: 15m
+        refresh_ttl: 168h
+        access_issuer: uptime-monitor
+        refresh_issuer: uptime-monitor-refresh
+      argon2:
+        memory: 16384
+        iterations: 2
+        parallelism: 1
+        salt_length: 16
+        key_length: 32
+      log:
+        level: info
+
+  server-service:
+    enabled: true
+    port: 8082
+    grpcPort: 50051
+    replicas: 1
+    ingress:
+      - /api
+      - /ws
+    config:
+      server:
+        port: 8082
+        bodyLimit: 10MB
+      db:
+        host: pgbouncer.uptime-monitor.svc.cluster.local
+        port: 6432
+        user: server
+        password: server
+        dbname: server
+      redis:
+        addr: redis.uptime-monitor.svc.cluster.local:6379
+        db: 0
+        password: ""
+      jwt:
+        key: your-secret-key-here
+      token:
+        access_ttl: 15m
+        refresh_ttl: 168h
+        access_issuer: uptime-monitor
+        refresh_issuer: uptime-monitor-refresh
+      argon2:
+        memory: 16384
+        iterations: 2
+        parallelism: 1
+        salt_length: 16
+        key_length: 32
+      temporal:
+        host: temporal.uptime-monitor.svc.cluster.local:7233
+        task_queue: ping-task-queue
+        workflow_name: ping-workflow
+        digest_task_queue: digest-task-queue
+      grpc:
+        ping_addr: ping-service.uptime-monitor.svc.cluster.local:50053
+        event_addr: ontime-service.uptime-monitor.svc.cluster.local:50052
+      mail:
+        smtp_host: mailpit.uptime-monitor.svc.cluster.local
+        smtp_port: 1025
+        from_address: noreply@uptime.local
+      scheduler:
+        backend: redis
+      log:
+        level: info
+
+  ping-service:
+    enabled: true
+    port: 8083
+    grpcPort: 50053
+    replicas: 2
+    ingress:
+      - /ping
+    config:
+      server:
+        port: 8083
+      grpc:
+        port: "50053"
+        server_addr: server-service.uptime-monitor.svc.cluster.local:50051
+        event_addr: ontime-service.uptime-monitor.svc.cluster.local:50052
+      redis:
+        addr: redis.uptime-monitor.svc.cluster.local:6379
+        db: 0
+        password: ""
+        scheduler_shards: 10
+        scheduler_claim_limit: 50
+      scheduler:
+        backend: redis
+      log:
+        level: info
+
+  ontime-service:
+    enabled: true
+    port: 8084
+    grpcPort: 50052
+    replicas: 1
+    ingress:
+      - /ontime
+    config:
+      server:
+        port: 8084
+      grpc:
+        port: 50052
+        server_addr: server-service.uptime-monitor.svc.cluster.local:50051
+      db:
+        host: pgbouncer.uptime-monitor.svc.cluster.local
+        port: 6432
+        user: analytics
+        password: analytics
+        dbname: analytics
+      redis:
+        addr: redis.uptime-monitor.svc.cluster.local:6379
+        db: 0
+        password: ""
+      log:
+        level: info
+
+  importer-service:
+    enabled: true
+    port: 8086
+    grpcPort:
+    replicas: 1
+    ingress:
+      - /importer
+    config:
+      server:
+        port: 8086
+      grpc:
+        server_addr: server-service.uptime-monitor.svc.cluster.local:50051
+      log:
+        level: info
+
+  notification-service:
+    enabled: true
+    port: 8085
+    grpcPort: 50056
+    replicas: 1
+    ingress:
+      - /notification
+    config:
+      server:
+        port: 8085
+      grpc:
+        server_addr: server-service.uptime-monitor.svc.cluster.local:50051
+        event_addr: ontime-service.uptime-monitor.svc.cluster.local:50052
+      db:
+        host: pgbouncer.uptime-monitor.svc.cluster.local
+        port: 6432
+        user: notification
+        password: notification
+        dbname: notification
+      temporal:
+        host: temporal.uptime-monitor.svc.cluster.local:7233
+        task_queue: digest-task-queue
+        workflow_name: send-report
+        digest_task_queue: digest-task-queue
+      mail:
+        smtp_host: mailpit.uptime-monitor.svc.cluster.local
+        smtp_port: 1025
+        from_address: noreply@uptime-monitor.local
+        disable_security: true
+        tls_insecure_skip_verify: false
+      auth_service:
+        addr: http://auth-service.uptime-monitor.svc.cluster.local:8081
+      server_service:
+        addr: http://server-service.uptime-monitor.svc.cluster.local:8082
+      ontime_service:
+        addr: http://ontime-service.uptime-monitor.svc.cluster.local:8084
+      digest:
+        max_records: 10000
+      log:
+        level: debug

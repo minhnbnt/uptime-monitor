@@ -23,4 +23,7 @@ go.work.sum
 
 generated/
 
+# Helm: values.yaml is per-environment, values.example.yaml is the source of truth
+helm/uptime-monitor/values.yaml
+
 tmp/
