@@ -32,19 +32,19 @@ func TestResponseChecker_CheckResponse(t *testing.T) {
 		},
 		{
 			name:    "status ok expr true",
-			ep:      domain.Endpoint{ExpectedCode: 200, BodyCheckExpr: strptr(`body contains "ok"`)},
+			ep:      domain.Endpoint{ExpectedCode: 200, BodyCheckExpr: strptr(`status == "ok"`)},
 			resp:    infra.Response{StatusCode: 200, Body: `{"status":"ok"}`},
 			wantErr: false,
 		},
 		{
 			name:    "status ok expr false",
-			ep:      domain.Endpoint{ExpectedCode: 200, BodyCheckExpr: strptr(`body contains "ok"`)},
+			ep:      domain.Endpoint{ExpectedCode: 200, BodyCheckExpr: strptr(`status == "ok"`)},
 			resp:    infra.Response{StatusCode: 200, Body: `{"status":"fail"}`},
 			wantErr: true,
 		},
 		{
 			name:    "expr error is fail-safe",
-			ep:      domain.Endpoint{ExpectedCode: 200, BodyCheckExpr: strptr(`body contains`)},
+			ep:      domain.Endpoint{ExpectedCode: 200, BodyCheckExpr: strptr(`status =`)},
 			resp:    infra.Response{StatusCode: 200, Body: "x"},
 			wantErr: true,
 		},
