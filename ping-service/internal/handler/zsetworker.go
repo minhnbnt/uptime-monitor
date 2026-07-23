@@ -43,13 +43,12 @@ func RegisterZSetWorkerRunner(i do.Injector) {
 
 func (r *ZSetWorkerRunner) RunZSetWorker(ctx context.Context) {
 
+	channel := make(chan *domain.Endpoint, 20)
+	defer close(channel)
+
 	handler := func(ctx context.Context, endpoints iter.Seq[*domain.Endpoint]) {
-
-		waitGroup := sync.WaitGroup{}
-		defer waitGroup.Wait()
-
 		for ep := range endpoints {
-			waitGroup.Go(func() { r.pingAndRecordEndpoint(ctx, ep) })
+			channel <- ep
 		}
 	}
 
@@ -61,6 +60,10 @@ func (r *ZSetWorkerRunner) RunZSetWorker(ctx context.Context) {
 	waitgroup := sync.WaitGroup{}
 	defer waitgroup.Done()
 
+	for range 10 {
+		waitgroup.Go(func() { r.runWorkerLoop(ctx, channel) })
+	}
+
 	shardCount := max(r.config.Redis.SchedulerShards, 1)
 	for shardID := range shardCount {
 		waitgroup.Go(func() {
@@ -69,6 +72,23 @@ func (r *ZSetWorkerRunner) RunZSetWorker(ctx context.Context) {
 				claimLimit, handler,
 			)
 		})
+	}
+}
+
+func (r *ZSetWorkerRunner) runWorkerLoop(ctx context.Context, channel <-chan *domain.Endpoint) {
+
+	for {
+		select {
+		case ep, ok := <-channel:
+			if !ok {
+				return
+			}
+
+			r.pingAndRecordEndpoint(ctx, ep)
+
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 
