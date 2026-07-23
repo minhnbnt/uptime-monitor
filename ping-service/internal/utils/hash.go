@@ -27,6 +27,18 @@ func GenerateOffset(id any, interval time.Duration) (time.Duration, error) {
 	return time.Duration(hash % uint64(interval)), nil
 }
 
+func NextExecutionTimeByPrev(prev time.Time, interval time.Duration) time.Time {
+
+	next := prev
+	now := time.Now()
+	if next.Before(now) {
+		missed := now.Sub(next)/interval + 1
+		next = next.Add(missed * interval)
+	}
+
+	return next
+}
+
 func NextExecutionTime(id any, interval time.Duration) (time.Time, error) {
 
 	offset, err := GenerateOffset(id, interval)
@@ -34,13 +46,6 @@ func NextExecutionTime(id any, interval time.Duration) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	now := time.Now()
-	epoch := time.Unix(0, 0)
-	next := epoch.Add(offset)
-	if next.Before(now) {
-		missed := now.Sub(next)/interval + 1
-		next = next.Add(missed * interval)
-	}
-
-	return next, nil
+	prev := time.Unix(0, 0).Add(offset)
+	return NextExecutionTimeByPrev(prev, interval), nil
 }

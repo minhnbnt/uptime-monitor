@@ -63,7 +63,8 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		s.pingAndRecordEndpoint(t.Context(), ep)
+		task := PingTask{Endpoint: ep}
+		s.pingAndRecordEndpoint(t.Context(), task)
 		if recordedEvent == nil {
 			t.Fatal("expected event to be recorded")
 		}
@@ -100,7 +101,7 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 			logger: log,
 		}
 
-		s.pingAndRecordEndpoint(t.Context(), ep)
+		s.pingAndRecordEndpoint(t.Context(), PingTask{Endpoint: ep})
 		if recordedEvent == nil {
 			t.Fatal("expected event to be recorded")
 		}
@@ -133,7 +134,7 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		s.pingAndRecordEndpoint(t.Context(), ep)
+		s.pingAndRecordEndpoint(t.Context(), PingTask{Endpoint: ep})
 		if recordedEvent == nil {
 			t.Fatal("expected event to be recorded")
 		}
@@ -162,7 +163,7 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 			logger: log,
 		}
 
-		s.pingAndRecordEndpoint(t.Context(), ep)
+		s.pingAndRecordEndpoint(t.Context(), PingTask{Endpoint: ep})
 		if !capLog.HasError() {
 			t.Error("expected error log for record failure")
 		}
@@ -188,7 +189,7 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 			logger: log,
 		}
 
-		s.pingAndRecordEndpoint(t.Context(), ep)
+		s.pingAndRecordEndpoint(t.Context(), PingTask{Endpoint: ep})
 		if !capLog.HasError() {
 			t.Error("expected error log for score update failure")
 		}

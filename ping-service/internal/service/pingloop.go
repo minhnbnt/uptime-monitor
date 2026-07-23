@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/samber/do/v2"
@@ -45,7 +46,9 @@ func RegisterPingService(i do.Injector) {
 	})
 }
 
-func (s *PingLoopService) pingAndRecordEndpoint(ctx context.Context, ep *domain.Endpoint) {
+func (s *PingLoopService) pingAndRecordEndpoint(ctx context.Context, task PingTask) {
+
+	ep := task.Endpoint
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -95,15 +98,7 @@ func (s *PingLoopService) pingAndRecordEndpoint(ctx context.Context, ep *domain.
 		)
 	}
 
-	nextScore, err := utils.NextExecutionTime(ep.ID, ep.Interval)
-	if err != nil {
-		s.logger.Error(
-			"compute next execution time",
-			slog.Int64("endpoint", int64(ep.ID)),
-			slog.Any("error", err),
-		)
-		return
-	}
+	nextScore := utils.NextExecutionTimeByPrev(time.UnixMilli(task.PrevScore), ep.Interval)
 
 	if err := s.scoreUpdater.Update(ctx, ep.ID, nextScore.UnixMilli()); err != nil {
 		s.logger.Error(
@@ -132,20 +127,20 @@ func (s *PingLoopService) Record(ctx context.Context, event *domain.ServerEvent)
 	return s.recordStatusWorker.Record(ctx, event)
 }
 
-func (s *PingLoopService) Run(ctx context.Context, channel <-chan *domain.Endpoint) {
+func (s *PingLoopService) Run(ctx context.Context, channel <-chan PingTask) {
 
 	for {
 		select {
-		case ep, ok := <-channel:
+		case task, ok := <-channel:
 			if !ok {
 				return
 			}
 
-			if ep == nil {
+			if task.Endpoint == nil {
 				continue
 			}
 
-			s.pingAndRecordEndpoint(ctx, ep)
+			s.pingAndRecordEndpoint(ctx, task)
 
 		case <-ctx.Done():
 			return

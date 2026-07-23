@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"iter"
 	"testing"
 	"time"
 
@@ -65,7 +64,7 @@ func TestRunIteration(t *testing.T) {
 		Interval:     30 * time.Second,
 	}
 
-	t.Run("empty due list calls handler with empty seq", func(t *testing.T) {
+	t.Run("empty due list calls handler with empty tasks", func(t *testing.T) {
 		var handlerCalled bool
 		s := &ZsetLoopService{
 			logger:           logger.NewMockLogger(),
@@ -76,7 +75,7 @@ func TestRunIteration(t *testing.T) {
 				},
 			},
 		}
-		err := s.runIteration(t.Context(), nil, func(_ context.Context, _ iter.Seq[*domain.Endpoint]) {
+		err := s.runIteration(t.Context(), nil, func(_ context.Context, _ []PingTask) {
 			handlerCalled = true
 		})
 		if err != nil {
@@ -103,9 +102,9 @@ func TestRunIteration(t *testing.T) {
 			{EndpointID: 1},
 		}
 
-		err := s.runIteration(t.Context(), due, func(_ context.Context, endpoints iter.Seq[*domain.Endpoint]) {
-			for e := range endpoints {
-				gotEndpoints = append(gotEndpoints, e)
+		err := s.runIteration(t.Context(), due, func(_ context.Context, tasks []PingTask) {
+			for _, t := range tasks {
+				gotEndpoints = append(gotEndpoints, t.Endpoint)
 			}
 		})
 		if err != nil {
@@ -130,7 +129,7 @@ func TestRunIteration(t *testing.T) {
 			},
 		}
 
-		err := s.runIteration(t.Context(), []scheduler.ScheduledTask{{EndpointID: 1}}, func(_ context.Context, _ iter.Seq[*domain.Endpoint]) {})
+		err := s.runIteration(t.Context(), []scheduler.ScheduledTask{{EndpointID: 1}}, func(_ context.Context, _ []PingTask) {})
 		if err != wantErr {
 			t.Errorf("got %v, want %v", err, wantErr)
 		}

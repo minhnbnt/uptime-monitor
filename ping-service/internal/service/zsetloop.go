@@ -2,9 +2,7 @@ package service
 
 import (
 	"context"
-	"iter"
 	"log/slog"
-	"maps"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -18,7 +16,7 @@ const (
 	defaultSleepDuration = 5 * time.Second
 )
 
-type DueHandler func(ctx context.Context, tasks iter.Seq[*domain.Endpoint])
+type DueHandler func(ctx context.Context, tasks []PingTask)
 
 type endpointProvider interface {
 	GetBatch(ctx context.Context, ids []uint) (map[uint]*domain.Endpoint, error)
@@ -74,8 +72,23 @@ func (s *ZsetLoopService) runIteration(ctx context.Context, due []scheduler.Sche
 		return err
 	}
 
-	endpoints := maps.Values(endpointMap)
-	dueHandler(ctx, endpoints)
+	tasks := make([]PingTask, 0, len(due))
+	for _, task := range due {
+
+		ep, ok := endpointMap[task.EndpointID]
+		if !ok {
+			continue
+		}
+
+		task := PingTask{
+			Endpoint:  ep,
+			PrevScore: task.Score,
+		}
+
+		tasks = append(tasks, task)
+	}
+
+	dueHandler(ctx, tasks)
 
 	return nil
 }
