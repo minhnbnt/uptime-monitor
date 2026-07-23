@@ -66,13 +66,10 @@ apps:
         host: pgbouncer.uptime-monitor.svc.cluster.local
         port: 6432
         user: auth
-        password: auth
         dbname: auth
       redis:
         addr: redis.uptime-monitor.svc.cluster.local:6379
         db: 0
-      jwt:
-        key: change-me-in-production
       token:
         access_ttl: 15m
         refresh_ttl: 168h
@@ -100,14 +97,10 @@ apps:
         host: pgbouncer.uptime-monitor.svc.cluster.local
         port: 6432
         user: server
-        password: server
         dbname: server
       redis:
         addr: redis.uptime-monitor.svc.cluster.local:6379
         db: 0
-        password: ""
-      jwt:
-        key: your-secret-key-here
       token:
         access_ttl: 15m
         refresh_ttl: 168h
@@ -152,7 +145,6 @@ apps:
       redis:
         addr: redis.uptime-monitor.svc.cluster.local:6379
         db: 0
-        password: ""
         scheduler_shards: 10
         scheduler_claim_limit: 50
       scheduler:
@@ -177,7 +169,6 @@ apps:
         host: pgbouncer.uptime-monitor.svc.cluster.local
         port: 6432
         user: analytics
-        password: analytics
         dbname: analytics
       redis:
         addr: redis.uptime-monitor.svc.cluster.local:6379
@@ -219,7 +210,6 @@ apps:
         host: pgbouncer.uptime-monitor.svc.cluster.local
         port: 6432
         user: notification
-        password: notification
         dbname: notification
       temporal:
         host: temporal.uptime-monitor.svc.cluster.local:7233
