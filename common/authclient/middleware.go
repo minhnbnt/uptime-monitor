@@ -32,17 +32,18 @@ func (am *AuthMiddleware) XUserIDMiddleware(next http.Handler) http.Handler {
 		uid = strings.TrimSpace(uid)
 
 		if uid == "" {
-			next.ServeHTTP(w, r)
+			http.Error(w, `{"error":{"code":"UNAUTHORIZED","message":"missing X-User-ID header"}}`, http.StatusUnauthorized)
 			return
 		}
 
 		id, err := strconv.ParseUint(uid, 10, 64)
-		if err != nil {
+		if err != nil || id == 0 {
 			am.log.Warn("invalid X-User-ID", slog.String("value", uid))
-		} else {
-			r = r.WithContext(context.WithValue(r.Context(), userIDKey{}, uint(id)))
+			http.Error(w, `{"error":{"code":"UNAUTHORIZED","message":"invalid X-User-ID"}}`, http.StatusUnauthorized)
+			return
 		}
 
+		r = r.WithContext(context.WithValue(r.Context(), userIDKey{}, uint(id)))
 		next.ServeHTTP(w, r)
 	})
 }
