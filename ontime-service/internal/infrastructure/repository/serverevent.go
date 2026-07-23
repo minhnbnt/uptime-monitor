@@ -17,13 +17,14 @@ type ServerEventRepository struct {
 	logger *slog.Logger
 }
 
-func NewServerEventRepository(db *gorm.DB) *ServerEventRepository {
-	return &ServerEventRepository{db: db}
+func NewServerEventRepository(db *gorm.DB, logger *slog.Logger) *ServerEventRepository {
+	return &ServerEventRepository{db: db, logger: logger}
 }
 
 func newServerEventRepository(i do.Injector) (*ServerEventRepository, error) {
 	dbWrapper := do.MustInvoke[*config.GORMWrapper](i)
-	return NewServerEventRepository(dbWrapper.GetDB()), nil
+	logger := do.MustInvoke[*slog.Logger](i)
+	return NewServerEventRepository(dbWrapper.GetDB(), logger), nil
 }
 
 func RegisterServerEventRepository(i do.Injector) {
@@ -43,7 +44,11 @@ func (r *ServerEventRepository) Save(ctx context.Context, event *domain.ServerEv
 		}
 
 		if err != nil {
-			r.logger.Error("failed to get latest status", slog.Any("err", err))
+
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				r.logger.Error("failed to get latest status", slog.Any("err", err))
+			}
+
 			// ignore error, continue with saving the event
 			// calculator can handle duplicate events
 			return gorm.G[domain.ServerEvent](tx).Create(ctx, event)
