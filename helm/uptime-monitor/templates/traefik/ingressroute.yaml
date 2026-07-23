@@ -24,6 +24,9 @@ spec:
           port: {{ $app.port }}
       middlewares:
         - name: cors
+{{- if ne $name "auth-service" }}
+        - name: forward-auth
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

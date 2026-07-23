@@ -21,4 +21,15 @@ spec:
 {{- end }}
     accessControlMaxAge: {{ .Values.cors.maxAge }}
     accessControlAllowCredentials: {{ .Values.cors.allowCredentials }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: forward-auth
+  namespace: {{ $ns }}
+spec:
+  forwardAuth:
+    address: http://auth-service:8081/auth/verify
+    authResponseHeaders:
+      - X-User-ID
 {{- end }}

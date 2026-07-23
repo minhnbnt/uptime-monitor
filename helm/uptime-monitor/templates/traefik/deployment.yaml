@@ -23,6 +23,7 @@ spec:
       containers:
         - name: traefik
           image: {{ .Values.traefik.image }}
+          imagePullPolicy: {{ .Values.traefik.pullPolicy | default "Always" }}
           args:
             - --api.insecure=true
             - --providers.kubernetescrd

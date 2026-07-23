@@ -3,13 +3,14 @@ global:
   image:
     registry: ghcr.io/minhnbnt/uptime-monitor
     tag: latest
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
 
 namespace: uptime-monitor
 
 traefik:
   enabled: true
   image: ghcr.io/traefik/traefik:3.7
+  pullPolicy: Always
   httpPort: 8080
   adminPort: 8081
   serviceType: NodePort
