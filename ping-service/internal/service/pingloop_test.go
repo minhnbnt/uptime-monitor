@@ -29,28 +29,6 @@ func (m *mockRecordWorker) Record(ctx context.Context, event *domain.ServerEvent
 	return m.recordFn(ctx, event)
 }
 
-func TestCalculateNextScore(t *testing.T) {
-	t.Run("future score stays unchanged", func(t *testing.T) {
-		score := time.Now().Add(time.Hour).UnixMilli()
-		got := calculateNextScore(score, 30*time.Second)
-		if got != score {
-			t.Errorf("got %d, want %d", got, score)
-		}
-	})
-
-	t.Run("past score catches up", func(t *testing.T) {
-		score := int64(0)
-		interval := 30 * time.Second
-		got := calculateNextScore(score, interval)
-		if got <= 0 {
-			t.Errorf("got %d, want positive", got)
-		}
-		if got%(interval.Milliseconds()) != 0 {
-			t.Errorf("got %d, want multiple of %dms interval", got, interval.Milliseconds())
-		}
-	})
-}
-
 func TestPingAndRecordEndpoint(t *testing.T) {
 	ep := &domain.Endpoint{
 		Model:        gorm.Model{ID: 1},
@@ -85,7 +63,7 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		s.pingAndRecordEndpoint(t.Context(), ep, 1000)
+		s.pingAndRecordEndpoint(t.Context(), ep)
 		if recordedEvent == nil {
 			t.Fatal("expected event to be recorded")
 		}
@@ -122,7 +100,7 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 			logger: log,
 		}
 
-		s.pingAndRecordEndpoint(t.Context(), ep, 1000)
+		s.pingAndRecordEndpoint(t.Context(), ep)
 		if recordedEvent == nil {
 			t.Fatal("expected event to be recorded")
 		}
@@ -155,7 +133,7 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		s.pingAndRecordEndpoint(t.Context(), ep, 1000)
+		s.pingAndRecordEndpoint(t.Context(), ep)
 		if recordedEvent == nil {
 			t.Fatal("expected event to be recorded")
 		}
@@ -184,7 +162,7 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 			logger: log,
 		}
 
-		s.pingAndRecordEndpoint(t.Context(), ep, 1000)
+		s.pingAndRecordEndpoint(t.Context(), ep)
 		if !capLog.HasError() {
 			t.Error("expected error log for record failure")
 		}
@@ -210,7 +188,7 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 			logger: log,
 		}
 
-		s.pingAndRecordEndpoint(t.Context(), ep, 1000)
+		s.pingAndRecordEndpoint(t.Context(), ep)
 		if !capLog.HasError() {
 			t.Error("expected error log for score update failure")
 		}

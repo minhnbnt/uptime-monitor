@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"log/slog"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/samber/do/v2"
@@ -11,6 +10,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	infra "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure"
 	scheduler "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/utils"
 )
 
 type pingWorker interface {
@@ -45,21 +45,7 @@ func RegisterPingService(i do.Injector) {
 	})
 }
 
-func calculateNextScore(score int64, interval time.Duration) int64 {
-
-	nowUnixMilli := time.Now().UnixMilli()
-	intervalMilliseconds := interval.Milliseconds()
-
-	next := score
-	if next <= nowUnixMilli {
-		missed := (nowUnixMilli-next)/intervalMilliseconds + 1
-		next += missed * intervalMilliseconds
-	}
-
-	return next
-}
-
-func (s *PingLoopService) pingAndRecordEndpoint(ctx context.Context, ep *domain.Endpoint, score int64) {
+func (s *PingLoopService) pingAndRecordEndpoint(ctx context.Context, ep *domain.Endpoint) {
 
 	isUp, pingErr := s.Ping(ctx, ep)
 
@@ -103,8 +89,17 @@ func (s *PingLoopService) pingAndRecordEndpoint(ctx context.Context, ep *domain.
 		)
 	}
 
-	nextScore := calculateNextScore(score, ep.Interval)
-	if err := s.scoreUpdater.Update(ctx, ep.ID, nextScore); err != nil {
+	nextScore, err := utils.NextExecutionTime(ep.ID, ep.Interval)
+	if err != nil {
+		s.logger.Error(
+			"compute next execution time",
+			slog.Int64("endpoint", int64(ep.ID)),
+			slog.Any("error", err),
+		)
+		return
+	}
+
+	if err := s.scoreUpdater.Update(ctx, ep.ID, nextScore.UnixMilli()); err != nil {
 		s.logger.Error(
 			"update score",
 			slog.Int64("endpoint", int64(ep.ID)),
@@ -131,20 +126,20 @@ func (s *PingLoopService) Record(ctx context.Context, event *domain.ServerEvent)
 	return s.recordStatusWorker.Record(ctx, event)
 }
 
-func (s *PingLoopService) Run(ctx context.Context, channel <-chan *PingTask) {
+func (s *PingLoopService) Run(ctx context.Context, channel <-chan *domain.Endpoint) {
 
 	for {
 		select {
-		case task, ok := <-channel:
+		case ep, ok := <-channel:
 			if !ok {
 				return
 			}
 
-			if task.Endpoint == nil {
+			if ep == nil {
 				continue
 			}
 
-			s.pingAndRecordEndpoint(ctx, task.Endpoint, task.Score)
+			s.pingAndRecordEndpoint(ctx, ep)
 
 		case <-ctx.Done():
 			return

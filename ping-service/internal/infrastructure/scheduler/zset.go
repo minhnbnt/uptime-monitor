@@ -129,6 +129,41 @@ func (r *ZSetScheduleRepository) Unregister(ctx context.Context, endpointID uint
 	return cmd.Err()
 }
 
+func (r *ZSetScheduleRepository) MoveIfWrongShard(
+	ctx context.Context, shardID uint, due []ScheduledTask,
+) ([]ScheduledTask, error) {
+
+	filtered := make([]ScheduledTask, 0, len(due))
+	claimedKey := shardKey(shardID)
+
+	for _, task := range due {
+
+		correctKey := schedulerShardKey(r.shardCount, task.EndpointID)
+		if correctKey == claimedKey {
+			filtered = append(filtered, task)
+			continue
+		}
+
+		_, err := r.client.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+
+			pipe.ZAdd(ctx, correctKey, redis.Z{
+				Member: fmt.Sprint(task.EndpointID),
+				Score:  float64(time.Now().UnixMilli()),
+			})
+
+			pipe.ZRem(ctx, claimedKey, fmt.Sprint(task.EndpointID))
+
+			return nil
+		})
+
+		if err != nil {
+			return nil, fmt.Errorf("move task %d to correct shard: %w", task.EndpointID, err)
+		}
+	}
+
+	return filtered, nil
+}
+
 func (r *ZSetScheduleRepository) ClaimDueTasksForShard(
 	ctx context.Context, shardID uint, limit int64,
 ) (due []ScheduledTask, next ScheduledTask, hasNext bool, err error) {

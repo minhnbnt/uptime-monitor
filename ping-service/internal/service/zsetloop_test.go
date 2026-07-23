@@ -76,7 +76,7 @@ func TestRunIteration(t *testing.T) {
 				},
 			},
 		}
-		err := s.runIteration(t.Context(), nil, func(_ context.Context, _ iter.Seq[*PingTask]) {
+		err := s.runIteration(t.Context(), nil, func(_ context.Context, _ iter.Seq[*domain.Endpoint]) {
 			handlerCalled = true
 		})
 		if err != nil {
@@ -88,7 +88,7 @@ func TestRunIteration(t *testing.T) {
 	})
 
 	t.Run("happy path", func(t *testing.T) {
-		var gotTasks []*PingTask
+		var gotEndpoints []*domain.Endpoint
 
 		s := &ZsetLoopService{
 			logger: logger.NewMockLogger(),
@@ -100,56 +100,22 @@ func TestRunIteration(t *testing.T) {
 		}
 
 		due := []scheduler.ScheduledTask{
-			{EndpointID: 1, Score: 1000},
+			{EndpointID: 1},
 		}
 
-		err := s.runIteration(t.Context(), due, func(_ context.Context, tasks iter.Seq[*PingTask]) {
-			for task := range tasks {
-				gotTasks = append(gotTasks, task)
+		err := s.runIteration(t.Context(), due, func(_ context.Context, endpoints iter.Seq[*domain.Endpoint]) {
+			for e := range endpoints {
+				gotEndpoints = append(gotEndpoints, e)
 			}
 		})
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
-		if len(gotTasks) != 1 {
-			t.Errorf("got %d tasks, want 1", len(gotTasks))
+		if len(gotEndpoints) != 1 {
+			t.Errorf("got %d endpoints, want 1", len(gotEndpoints))
 		}
-		if gotTasks[0].Endpoint.ID != 1 {
-			t.Errorf("got endpoint %d, want 1", gotTasks[0].Endpoint.ID)
-		}
-		if gotTasks[0].Score != 1000 {
-			t.Errorf("got score %d, want 1000", gotTasks[0].Score)
-		}
-	})
-
-	t.Run("missing endpoint in batch sets nil", func(t *testing.T) {
-		var gotTasks []*PingTask
-		s := &ZsetLoopService{
-			logger: logger.NewMockLogger(),
-			endpointProvider: &mockEndpointProvider{
-				getBatchFn: func(_ context.Context, _ []uint) (map[uint]*domain.Endpoint, error) {
-					return map[uint]*domain.Endpoint{}, nil
-				},
-			},
-		}
-
-		due := []scheduler.ScheduledTask{
-			{EndpointID: 1, Score: 1000},
-		}
-
-		err := s.runIteration(t.Context(), due, func(_ context.Context, tasks iter.Seq[*PingTask]) {
-			for task := range tasks {
-				gotTasks = append(gotTasks, task)
-			}
-		})
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-		if gotTasks[0].Endpoint != nil {
-			t.Error("expected nil endpoint for missing batch entry")
-		}
-		if gotTasks[0].Score != 1000 {
-			t.Errorf("got score %d, want 1000", gotTasks[0].Score)
+		if gotEndpoints[0].ID != 1 {
+			t.Errorf("got endpoint %d, want 1", gotEndpoints[0].ID)
 		}
 	})
 
@@ -164,7 +130,7 @@ func TestRunIteration(t *testing.T) {
 			},
 		}
 
-		err := s.runIteration(t.Context(), []scheduler.ScheduledTask{{EndpointID: 1}}, func(_ context.Context, _ iter.Seq[*PingTask]) {})
+		err := s.runIteration(t.Context(), []scheduler.ScheduledTask{{EndpointID: 1}}, func(_ context.Context, _ iter.Seq[*domain.Endpoint]) {})
 		if err != wantErr {
 			t.Errorf("got %v, want %v", err, wantErr)
 		}

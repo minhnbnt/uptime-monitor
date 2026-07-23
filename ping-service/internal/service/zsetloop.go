@@ -4,7 +4,7 @@ import (
 	"context"
 	"iter"
 	"log/slog"
-	"slices"
+	"maps"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -18,7 +18,7 @@ const (
 	defaultSleepDuration = 5 * time.Second
 )
 
-type DueHandler func(ctx context.Context, tasks iter.Seq[*PingTask])
+type DueHandler func(ctx context.Context, tasks iter.Seq[*domain.Endpoint])
 
 type endpointProvider interface {
 	GetBatch(ctx context.Context, ids []uint) (map[uint]*domain.Endpoint, error)
@@ -74,21 +74,9 @@ func (s *ZsetLoopService) runIteration(ctx context.Context, due []scheduler.Sche
 		return err
 	}
 
-	tasks := lo.Map(due, func(task scheduler.ScheduledTask, _ int) *PingTask {
+	endpoints := maps.Values(endpointMap)
+	dueHandler(ctx, endpoints)
 
-		ep := endpointMap[task.EndpointID]
-
-		if ep == nil {
-			s.logger.Warn(
-				"endpoint not found in batch",
-				slog.Int("endpoint_id", int(task.EndpointID)),
-			)
-		}
-
-		return &PingTask{Endpoint: ep, Score: task.Score}
-	})
-
-	dueHandler(ctx, slices.Values(tasks))
 	return nil
 }
 
@@ -99,6 +87,13 @@ func (s *ZsetLoopService) Run(ctx context.Context, shardID uint, claimLimit int6
 		due, next, hasNext, err := s.schedulerStorage.ClaimDueTasksForShard(ctx, shardID, claimLimit)
 		if err != nil {
 			s.logger.Error("failed to claim due tasks", slog.Any("error", err))
+			sleepCtx(ctx, defaultSleepDuration)
+			continue
+		}
+
+		due, err = s.schedulerStorage.MoveIfWrongShard(ctx, shardID, due)
+		if err != nil {
+			s.logger.Error("failed to move wrong-shard tasks", slog.Any("error", err))
 			sleepCtx(ctx, defaultSleepDuration)
 			continue
 		}
