@@ -47,6 +47,12 @@ func RegisterPingService(i do.Injector) {
 
 func (s *PingLoopService) pingAndRecordEndpoint(ctx context.Context, ep *domain.Endpoint) {
 
+	defer func() {
+		if r := recover(); r != nil {
+			s.logger.Error("panic recovered", slog.Any("error", r))
+		}
+	}()
+
 	isUp, pingErr := s.Ping(ctx, ep)
 
 	if pingErr != nil {
