@@ -14,6 +14,21 @@ traefik:
   adminPort: 8081
   serviceType: NodePort
 
+cors:
+  allowOrigins:
+    - http://localhost:5173
+  allowMethods:
+    - GET
+    - POST
+    - PUT
+    - PATCH
+    - DELETE
+    - OPTIONS
+  allowHeaders:
+    - "*"
+  maxAge: 86400
+  allowCredentials: true
+
 infra:
   postgres:
     enabled: true
@@ -43,7 +58,7 @@ apps:
     grpcPort:
     replicas: 1
     ingress:
-      - /auth
+      - /api/v1/auth
     config:
       server:
         port: 8081
@@ -74,16 +89,13 @@ apps:
 
   server-service:
     enabled: true
-    port: 8082
+    port: 8080
     grpcPort: 50051
     replicas: 1
     ingress:
-      - /api
-      - /ws
+      - /api/v1/servers
+      - /api/v1/test-endpoint
     config:
-      server:
-        port: 8082
-        bodyLimit: 10MB
       db:
         host: pgbouncer.uptime-monitor.svc.cluster.local
         port: 6432
@@ -113,8 +125,8 @@ apps:
         workflow_name: ping-workflow
         digest_task_queue: digest-task-queue
       grpc:
-        ping_addr: ping-service.uptime-monitor.svc.cluster.local:50053
-        event_addr: ontime-service.uptime-monitor.svc.cluster.local:50052
+        ping_addr: ping-service-grpc.uptime-monitor.svc.cluster.local:50053
+        event_addr: ontime-service-grpc.uptime-monitor.svc.cluster.local:50052
       mail:
         smtp_host: mailpit.uptime-monitor.svc.cluster.local
         smtp_port: 1025
@@ -129,15 +141,14 @@ apps:
     port: 8083
     grpcPort: 50053
     replicas: 2
-    ingress:
-      - /ping
+    ingress: []
     config:
       server:
         port: 8083
       grpc:
         port: "50053"
-        server_addr: server-service.uptime-monitor.svc.cluster.local:50051
-        event_addr: ontime-service.uptime-monitor.svc.cluster.local:50052
+        server_addr: server-service-grpc.uptime-monitor.svc.cluster.local:50051
+        event_addr: ontime-service-grpc.uptime-monitor.svc.cluster.local:50052
       redis:
         addr: redis.uptime-monitor.svc.cluster.local:6379
         db: 0
@@ -155,13 +166,13 @@ apps:
     grpcPort: 50052
     replicas: 1
     ingress:
-      - /ontime
+      - /api/v1/servers/ontime
     config:
       server:
         port: 8084
       grpc:
         port: 50052
-        server_addr: server-service.uptime-monitor.svc.cluster.local:50051
+        server_addr: server-service-grpc.uptime-monitor.svc.cluster.local:50051
       db:
         host: pgbouncer.uptime-monitor.svc.cluster.local
         port: 6432
@@ -181,12 +192,13 @@ apps:
     grpcPort:
     replicas: 1
     ingress:
-      - /importer
+      - /api/v1/servers/import
+      - /api/v1/servers/export
     config:
       server:
         port: 8086
       grpc:
-        server_addr: server-service.uptime-monitor.svc.cluster.local:50051
+        server_addr: server-service-grpc.uptime-monitor.svc.cluster.local:50051
       log:
         level: info
 
@@ -196,13 +208,13 @@ apps:
     grpcPort: 50056
     replicas: 1
     ingress:
-      - /notification
+      - /api/v1/notifications
     config:
       server:
         port: 8085
       grpc:
-        server_addr: server-service.uptime-monitor.svc.cluster.local:50051
-        event_addr: ontime-service.uptime-monitor.svc.cluster.local:50052
+        server_addr: server-service-grpc.uptime-monitor.svc.cluster.local:50051
+        event_addr: ontime-service-grpc.uptime-monitor.svc.cluster.local:50052
       db:
         host: pgbouncer.uptime-monitor.svc.cluster.local
         port: 6432
@@ -223,7 +235,7 @@ apps:
       auth_service:
         addr: http://auth-service.uptime-monitor.svc.cluster.local:8081
       server_service:
-        addr: http://server-service.uptime-monitor.svc.cluster.local:8082
+        addr: http://server-service.uptime-monitor.svc.cluster.local:8080
       ontime_service:
         addr: http://ontime-service.uptime-monitor.svc.cluster.local:8084
       digest:

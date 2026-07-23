@@ -8,16 +8,17 @@ metadata:
 spec:
   headers:
     accessControlAllowOriginList:
-      - "*"
+{{- range .Values.cors.allowOrigins }}
+      - {{ . | quote }}
+{{- end }}
     accessControlAllowMethods:
-      - GET
-      - POST
-      - PUT
-      - PATCH
-      - DELETE
-      - OPTIONS
+{{- range .Values.cors.allowMethods }}
+      - {{ . | quote }}
+{{- end }}
     accessControlAllowHeaders:
-      - "*"
-    accessControlMaxAge: 86400
-    accessControlAllowCredentials: false
+{{- range .Values.cors.allowHeaders }}
+      - {{ . | quote }}
+{{- end }}
+    accessControlMaxAge: {{ .Values.cors.maxAge }}
+    accessControlAllowCredentials: {{ .Values.cors.allowCredentials }}
 {{- end }}
