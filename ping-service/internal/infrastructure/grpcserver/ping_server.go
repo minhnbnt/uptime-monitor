@@ -15,14 +15,14 @@ import (
 
 type PingServer struct {
 	pingv1.UnimplementedPingServiceServer
-	pingWorker      *pinginfra.PingWorker
+	pingWorker      *pinginfra.PingClient
 	responseChecker *service.ResponseChecker
 }
 
 func RegisterPingServer(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*PingServer, error) {
 		return &PingServer{
-			pingWorker:      do.MustInvoke[*pinginfra.PingWorker](i),
+			pingWorker:      do.MustInvoke[*pinginfra.PingClient](i),
 			responseChecker: do.MustInvoke[*service.ResponseChecker](i),
 		}, nil
 	})

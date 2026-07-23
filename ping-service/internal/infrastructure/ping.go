@@ -19,17 +19,17 @@ type Response struct {
 	Body       string
 }
 
-type PingWorker struct {
+type PingClient struct {
 	httpClient *http.Client
 }
 
 func RegisterPingWorker(i do.Injector) {
-	do.Provide(i, func(_ do.Injector) (*PingWorker, error) {
-		return &PingWorker{httpClient: &http.Client{Timeout: 30 * time.Second}}, nil
+	do.Provide(i, func(_ do.Injector) (*PingClient, error) {
+		return &PingClient{httpClient: &http.Client{Timeout: 30 * time.Second}}, nil
 	})
 }
 
-func (p *PingWorker) Ping(ctx context.Context, ep *domain.Endpoint) (*Response, error) {
+func (p *PingClient) Ping(ctx context.Context, ep *domain.Endpoint) (*Response, error) {
 
 	timeout := ep.Timeout
 	if timeout <= 0 {
@@ -48,6 +48,7 @@ func (p *PingWorker) Ping(ctx context.Context, ep *domain.Endpoint) (*Response, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to do request: %w", err)
 	}
+
 	defer func() { _ = response.Body.Close() }()
 
 	bodyBytes, err := io.ReadAll(io.LimitReader(response.Body, maxBodyBytes))

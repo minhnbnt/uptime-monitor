@@ -90,7 +90,7 @@ func TestRunIteration(t *testing.T) {
 	t.Run("empty due list calls GetBatch and handler with empty seq", func(t *testing.T) {
 		var getBatchCalled bool
 		var handlerCalled bool
-		s := &LoopService{
+		s := &ZsetLoopService{
 			logger:           logger.NewMockLogger(),
 			schedulerStorage: nil,
 			scoreUpdater:     &mockScoreUpdater{},
@@ -119,7 +119,7 @@ func TestRunIteration(t *testing.T) {
 		var gotHandlerEndpoints []*domain.Endpoint
 		var gotUpdateItems map[uint]int64
 
-		s := &LoopService{
+		s := &ZsetLoopService{
 			logger: logger.NewMockLogger(),
 			scoreUpdater: &mockScoreUpdater{
 				updateBatchFn: func(_ context.Context, batchItems map[uint]int64) error {
@@ -159,7 +159,7 @@ func TestRunIteration(t *testing.T) {
 
 	t.Run("missing endpoint in batch skips reschedule", func(t *testing.T) {
 		var updateCalled bool
-		s := &LoopService{
+		s := &ZsetLoopService{
 			logger: logger.NewMockLogger(),
 			scoreUpdater: &mockScoreUpdater{
 				updateBatchFn: func(_ context.Context, _ map[uint]int64) error {
@@ -189,7 +189,7 @@ func TestRunIteration(t *testing.T) {
 
 	t.Run("provider error", func(t *testing.T) {
 		wantErr := errors.New("provider error")
-		s := &LoopService{
+		s := &ZsetLoopService{
 			logger: logger.NewMockLogger(),
 			endpointProvider: &mockEndpointProvider{
 				getBatchFn: func(_ context.Context, _ []uint) (map[uint]*domain.Endpoint, error) {
@@ -206,7 +206,7 @@ func TestRunIteration(t *testing.T) {
 
 	t.Run("score updater error", func(t *testing.T) {
 		wantErr := errors.New("updater error")
-		s := &LoopService{
+		s := &ZsetLoopService{
 			logger: logger.NewMockLogger(),
 			scoreUpdater: &mockScoreUpdater{
 				updateBatchFn: func(_ context.Context, _ map[uint]int64) error {

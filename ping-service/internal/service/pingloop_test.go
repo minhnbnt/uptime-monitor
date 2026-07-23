@@ -1,4 +1,4 @@
-package handler
+package service
 
 import (
 	"context"
@@ -8,8 +8,25 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
+	infra "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/logger"
 )
+
+type mockPingWorker struct {
+	pingFn func(ctx context.Context, ep *domain.Endpoint) (*infra.Response, error)
+}
+
+func (m *mockPingWorker) Ping(ctx context.Context, ep *domain.Endpoint) (*infra.Response, error) {
+	return m.pingFn(ctx, ep)
+}
+
+type mockRecordWorker struct {
+	recordFn func(ctx context.Context, event *domain.ServerEvent) error
+}
+
+func (m *mockRecordWorker) Record(ctx context.Context, event *domain.ServerEvent) error {
+	return m.recordFn(ctx, event)
+}
 
 func TestPingAndRecordEndpoint(t *testing.T) {
 	ep := &domain.Endpoint{
@@ -21,11 +38,14 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 
 	t.Run("successful ping with expected code sets StatusOn", func(t *testing.T) {
 		var recordedEvent *domain.ServerEvent
-		r := &ZSetWorkerRunner{
-			pingService: &mockPingService{
-				pingFn: func(_ context.Context, _ *domain.Endpoint) (bool, error) {
-					return true, nil
+		s := &PingLoopService{
+			pingWorker: &mockPingWorker{
+				pingFn: func(_ context.Context, _ *domain.Endpoint) (*infra.Response, error) {
+					return &infra.Response{StatusCode: 200}, nil
 				},
+			},
+			responseChecker: &ResponseChecker{bodyChecker: &infra.BodyChecker{}},
+			recordStatusWorker: &mockRecordWorker{
 				recordFn: func(_ context.Context, event *domain.ServerEvent) error {
 					recordedEvent = event
 					return nil
@@ -34,7 +54,7 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		r.pingAndRecordEndpoint(context.Background(), ep)
+		s.pingAndRecordEndpoint(context.Background(), ep)
 		if recordedEvent == nil {
 			t.Fatal("expected event to be recorded")
 		}
@@ -49,11 +69,14 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 	t.Run("ping error sets StatusOff", func(t *testing.T) {
 		var recordedEvent *domain.ServerEvent
 		log, capLog := logger.NewCapturingLogger()
-		r := &ZSetWorkerRunner{
-			pingService: &mockPingService{
-				pingFn: func(_ context.Context, _ *domain.Endpoint) (bool, error) {
-					return false, errors.New("connection refused")
+		s := &PingLoopService{
+			pingWorker: &mockPingWorker{
+				pingFn: func(_ context.Context, _ *domain.Endpoint) (*infra.Response, error) {
+					return nil, errors.New("connection refused")
 				},
+			},
+			responseChecker: &ResponseChecker{bodyChecker: &infra.BodyChecker{}},
+			recordStatusWorker: &mockRecordWorker{
 				recordFn: func(_ context.Context, event *domain.ServerEvent) error {
 					recordedEvent = event
 					return nil
@@ -62,7 +85,7 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 			logger: log,
 		}
 
-		r.pingAndRecordEndpoint(context.Background(), ep)
+		s.pingAndRecordEndpoint(context.Background(), ep)
 		if recordedEvent == nil {
 			t.Fatal("expected event to be recorded")
 		}
@@ -76,11 +99,14 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 
 	t.Run("status code mismatch sets StatusOff", func(t *testing.T) {
 		var recordedEvent *domain.ServerEvent
-		r := &ZSetWorkerRunner{
-			pingService: &mockPingService{
-				pingFn: func(_ context.Context, _ *domain.Endpoint) (bool, error) {
-					return false, nil
+		s := &PingLoopService{
+			pingWorker: &mockPingWorker{
+				pingFn: func(_ context.Context, _ *domain.Endpoint) (*infra.Response, error) {
+					return &infra.Response{StatusCode: 500}, nil
 				},
+			},
+			responseChecker: &ResponseChecker{bodyChecker: &infra.BodyChecker{}},
+			recordStatusWorker: &mockRecordWorker{
 				recordFn: func(_ context.Context, event *domain.ServerEvent) error {
 					recordedEvent = event
 					return nil
@@ -89,7 +115,7 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		r.pingAndRecordEndpoint(context.Background(), ep)
+		s.pingAndRecordEndpoint(context.Background(), ep)
 		if recordedEvent == nil {
 			t.Fatal("expected event to be recorded")
 		}
@@ -100,11 +126,14 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 
 	t.Run("record error is logged but not returned", func(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
-		r := &ZSetWorkerRunner{
-			pingService: &mockPingService{
-				pingFn: func(_ context.Context, _ *domain.Endpoint) (bool, error) {
-					return true, nil
+		s := &PingLoopService{
+			pingWorker: &mockPingWorker{
+				pingFn: func(_ context.Context, _ *domain.Endpoint) (*infra.Response, error) {
+					return &infra.Response{StatusCode: 200}, nil
 				},
+			},
+			responseChecker: &ResponseChecker{bodyChecker: &infra.BodyChecker{}},
+			recordStatusWorker: &mockRecordWorker{
 				recordFn: func(_ context.Context, _ *domain.ServerEvent) error {
 					return errors.New("grpc error")
 				},
@@ -112,7 +141,7 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 			logger: log,
 		}
 
-		r.pingAndRecordEndpoint(context.Background(), ep)
+		s.pingAndRecordEndpoint(context.Background(), ep)
 		if !capLog.HasError() {
 			t.Error("expected error log for record failure")
 		}

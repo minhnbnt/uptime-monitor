@@ -28,7 +28,7 @@ type scoreUpdater interface {
 	UpdateBatch(ctx context.Context, items map[uint]int64) error
 }
 
-type LoopService struct {
+type ZsetLoopService struct {
 	logger           *slog.Logger
 	schedulerStorage *scheduler.ZSetScheduleRepository
 	scoreUpdater     scoreUpdater
@@ -36,8 +36,8 @@ type LoopService struct {
 }
 
 func RegisterLoopService(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (*LoopService, error) {
-		return &LoopService{
+	do.Provide(i, func(i do.Injector) (*ZsetLoopService, error) {
+		return &ZsetLoopService{
 			logger:           do.MustInvoke[*slog.Logger](i),
 			schedulerStorage: do.MustInvoke[*scheduler.ZSetScheduleRepository](i),
 			scoreUpdater:     do.MustInvoke[*scheduler.ScoreUpdater](i),
@@ -86,7 +86,7 @@ func calculateNextScore(score int64, interval time.Duration) int64 {
 	return next
 }
 
-func (s *LoopService) runIteration(ctx context.Context, due []scheduler.ScheduledTask, dueHandler DueHandler) error {
+func (s *ZsetLoopService) runIteration(ctx context.Context, due []scheduler.ScheduledTask, dueHandler DueHandler) error {
 
 	ids := lo.Map(due, func(task scheduler.ScheduledTask, _ int) uint { return task.EndpointID })
 	endpointMap, err := s.endpointProvider.GetBatch(ctx, ids)
@@ -120,7 +120,7 @@ func (s *LoopService) runIteration(ctx context.Context, due []scheduler.Schedule
 	return nil
 }
 
-func (s *LoopService) Run(ctx context.Context, shardID uint, claimLimit int64, dueHandler DueHandler) {
+func (s *ZsetLoopService) Run(ctx context.Context, shardID uint, claimLimit int64, dueHandler DueHandler) {
 
 	for ctx.Err() == nil {
 

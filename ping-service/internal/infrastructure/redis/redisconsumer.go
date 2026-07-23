@@ -81,6 +81,7 @@ func (c *StreamEventConsumer) Run(ctx context.Context, handler EndpointEventHand
 
 		for _, stream := range streams {
 			for _, msg := range stream.Messages {
+
 				canAck := processor.ProcessMessage(ctx, msg)
 
 				if canAck {
