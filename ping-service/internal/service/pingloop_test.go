@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -28,16 +29,40 @@ func (m *mockRecordWorker) Record(ctx context.Context, event *domain.ServerEvent
 	return m.recordFn(ctx, event)
 }
 
+func TestCalculateNextScore(t *testing.T) {
+	t.Run("future score stays unchanged", func(t *testing.T) {
+		score := time.Now().Add(time.Hour).UnixMilli()
+		got := calculateNextScore(score, 30*time.Second)
+		if got != score {
+			t.Errorf("got %d, want %d", got, score)
+		}
+	})
+
+	t.Run("past score catches up", func(t *testing.T) {
+		score := int64(0)
+		interval := 30 * time.Second
+		got := calculateNextScore(score, interval)
+		if got <= 0 {
+			t.Errorf("got %d, want positive", got)
+		}
+		if got%(interval.Milliseconds()) != 0 {
+			t.Errorf("got %d, want multiple of %dms interval", got, interval.Milliseconds())
+		}
+	})
+}
+
 func TestPingAndRecordEndpoint(t *testing.T) {
 	ep := &domain.Endpoint{
 		Model:        gorm.Model{ID: 1},
 		URL:          "https://example.com",
 		Method:       "GET",
 		ExpectedCode: 200,
+		Interval:     30 * time.Second,
 	}
 
-	t.Run("successful ping with expected code sets StatusOn", func(t *testing.T) {
+	t.Run("successful ping with expected code sets StatusOn and updates score", func(t *testing.T) {
 		var recordedEvent *domain.ServerEvent
+		var updatedScore int64
 		s := &PingLoopService{
 			pingWorker: &mockPingWorker{
 				pingFn: func(_ context.Context, _ *domain.Endpoint) (*infra.Response, error) {
@@ -51,10 +76,16 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 					return nil
 				},
 			},
+			scoreUpdater: &mockScoreUpdater{
+				updateFn: func(_ context.Context, _ uint, nextScore int64) error {
+					updatedScore = nextScore
+					return nil
+				},
+			},
 			logger: logger.NewMockLogger(),
 		}
 
-		s.pingAndRecordEndpoint(context.Background(), ep)
+		s.pingAndRecordEndpoint(t.Context(), ep, 1000)
 		if recordedEvent == nil {
 			t.Fatal("expected event to be recorded")
 		}
@@ -63,6 +94,9 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 		}
 		if recordedEvent.EndpointID != 1 {
 			t.Errorf("endpointID = %d, want 1", recordedEvent.EndpointID)
+		}
+		if updatedScore <= 0 {
+			t.Errorf("expected positive updated score, got %d", updatedScore)
 		}
 	})
 
@@ -82,10 +116,13 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 					return nil
 				},
 			},
+			scoreUpdater: &mockScoreUpdater{
+				updateFn: func(_ context.Context, _ uint, _ int64) error { return nil },
+			},
 			logger: log,
 		}
 
-		s.pingAndRecordEndpoint(context.Background(), ep)
+		s.pingAndRecordEndpoint(t.Context(), ep, 1000)
 		if recordedEvent == nil {
 			t.Fatal("expected event to be recorded")
 		}
@@ -112,10 +149,13 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 					return nil
 				},
 			},
+			scoreUpdater: &mockScoreUpdater{
+				updateFn: func(_ context.Context, _ uint, _ int64) error { return nil },
+			},
 			logger: logger.NewMockLogger(),
 		}
 
-		s.pingAndRecordEndpoint(context.Background(), ep)
+		s.pingAndRecordEndpoint(t.Context(), ep, 1000)
 		if recordedEvent == nil {
 			t.Fatal("expected event to be recorded")
 		}
@@ -138,12 +178,41 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 					return errors.New("grpc error")
 				},
 			},
+			scoreUpdater: &mockScoreUpdater{
+				updateFn: func(_ context.Context, _ uint, _ int64) error { return nil },
+			},
 			logger: log,
 		}
 
-		s.pingAndRecordEndpoint(context.Background(), ep)
+		s.pingAndRecordEndpoint(t.Context(), ep, 1000)
 		if !capLog.HasError() {
 			t.Error("expected error log for record failure")
+		}
+	})
+
+	t.Run("score update error is logged but not returned", func(t *testing.T) {
+		log, capLog := logger.NewCapturingLogger()
+		s := &PingLoopService{
+			pingWorker: &mockPingWorker{
+				pingFn: func(_ context.Context, _ *domain.Endpoint) (*infra.Response, error) {
+					return &infra.Response{StatusCode: 200}, nil
+				},
+			},
+			responseChecker: &ResponseChecker{bodyChecker: &infra.BodyChecker{}},
+			recordStatusWorker: &mockRecordWorker{
+				recordFn: func(_ context.Context, _ *domain.ServerEvent) error { return nil },
+			},
+			scoreUpdater: &mockScoreUpdater{
+				updateFn: func(_ context.Context, _ uint, _ int64) error {
+					return errors.New("redis error")
+				},
+			},
+			logger: log,
+		}
+
+		s.pingAndRecordEndpoint(t.Context(), ep, 1000)
+		if !capLog.HasError() {
+			t.Error("expected error log for score update failure")
 		}
 	})
 }

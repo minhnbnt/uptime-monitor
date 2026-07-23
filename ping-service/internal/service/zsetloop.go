@@ -4,7 +4,7 @@ import (
 	"context"
 	"iter"
 	"log/slog"
-	"maps"
+	"slices"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -18,20 +18,15 @@ const (
 	defaultSleepDuration = 5 * time.Second
 )
 
-type DueHandler func(ctx context.Context, tasks iter.Seq[*domain.Endpoint])
+type DueHandler func(ctx context.Context, tasks iter.Seq[*PingTask])
 
 type endpointProvider interface {
 	GetBatch(ctx context.Context, ids []uint) (map[uint]*domain.Endpoint, error)
 }
 
-type scoreUpdater interface {
-	UpdateBatch(ctx context.Context, items map[uint]int64) error
-}
-
 type ZsetLoopService struct {
 	logger           *slog.Logger
 	schedulerStorage *scheduler.ZSetScheduleRepository
-	scoreUpdater     scoreUpdater
 	endpointProvider endpointProvider
 }
 
@@ -40,7 +35,6 @@ func RegisterLoopService(i do.Injector) {
 		return &ZsetLoopService{
 			logger:           do.MustInvoke[*slog.Logger](i),
 			schedulerStorage: do.MustInvoke[*scheduler.ZSetScheduleRepository](i),
-			scoreUpdater:     do.MustInvoke[*scheduler.ScoreUpdater](i),
 			endpointProvider: do.MustInvoke[*scheduler.EndpointProvider](i),
 		}, nil
 	})
@@ -72,20 +66,6 @@ func getSleepDuration(next scheduler.ScheduledTask, hasNext bool) time.Duration 
 	return time.Until(nextTime)
 }
 
-func calculateNextScore(score int64, interval time.Duration) int64 {
-
-	nowUnixMilli := time.Now().UnixMilli()
-	intervalMilliseconds := interval.Milliseconds()
-
-	next := score
-	if next <= nowUnixMilli {
-		missed := (nowUnixMilli-next)/intervalMilliseconds + 1
-		next += missed * intervalMilliseconds
-	}
-
-	return next
-}
-
 func (s *ZsetLoopService) runIteration(ctx context.Context, due []scheduler.ScheduledTask, dueHandler DueHandler) error {
 
 	ids := lo.Map(due, func(task scheduler.ScheduledTask, _ int) uint { return task.EndpointID })
@@ -94,29 +74,21 @@ func (s *ZsetLoopService) runIteration(ctx context.Context, due []scheduler.Sche
 		return err
 	}
 
-	endpoints := maps.Values(endpointMap)
-	dueHandler(ctx, endpoints)
+	tasks := lo.Map(due, func(task scheduler.ScheduledTask, _ int) *PingTask {
 
-	updates := make(map[uint]int64, len(due))
-	for _, task := range due {
+		ep := endpointMap[task.EndpointID]
 
-		ep, ok := endpointMap[task.EndpointID]
-
-		if !ok {
+		if ep == nil {
 			s.logger.Warn(
-				"endpoint not found in batch, skipping reschedule",
+				"endpoint not found in batch",
 				slog.Int("endpoint_id", int(task.EndpointID)),
 			)
-			continue
 		}
 
-		updates[task.EndpointID] = calculateNextScore(task.Score, ep.Interval)
-	}
+		return &PingTask{Endpoint: ep, Score: task.Score}
+	})
 
-	if len(updates) > 0 {
-		return s.scoreUpdater.UpdateBatch(ctx, updates)
-	}
-
+	dueHandler(ctx, slices.Values(tasks))
 	return nil
 }
 

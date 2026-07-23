@@ -3,12 +3,14 @@ package service
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	infra "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure"
+	scheduler "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
 )
 
 type pingWorker interface {
@@ -19,10 +21,15 @@ type recordWorker interface {
 	Record(ctx context.Context, event *domain.ServerEvent) error
 }
 
+type scoreUpdater interface {
+	Update(ctx context.Context, endpointID uint, nextScore int64) error
+}
+
 type PingLoopService struct {
 	pingWorker         pingWorker
 	responseChecker    *ResponseChecker
 	recordStatusWorker recordWorker
+	scoreUpdater       scoreUpdater
 	logger             *slog.Logger
 }
 
@@ -32,12 +39,27 @@ func RegisterPingService(i do.Injector) {
 			pingWorker:         do.MustInvoke[*infra.PingClient](i),
 			responseChecker:    do.MustInvoke[*ResponseChecker](i),
 			recordStatusWorker: do.MustInvoke[*infra.RecordStatusWorker](i),
+			scoreUpdater:       do.MustInvoke[*scheduler.ScoreUpdater](i),
 			logger:             do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
 
-func (s *PingLoopService) pingAndRecordEndpoint(ctx context.Context, ep *domain.Endpoint) {
+func calculateNextScore(score int64, interval time.Duration) int64 {
+
+	nowUnixMilli := time.Now().UnixMilli()
+	intervalMilliseconds := interval.Milliseconds()
+
+	next := score
+	if next <= nowUnixMilli {
+		missed := (nowUnixMilli-next)/intervalMilliseconds + 1
+		next += missed * intervalMilliseconds
+	}
+
+	return next
+}
+
+func (s *PingLoopService) pingAndRecordEndpoint(ctx context.Context, ep *domain.Endpoint, score int64) {
 
 	isUp, pingErr := s.Ping(ctx, ep)
 
@@ -80,6 +102,15 @@ func (s *PingLoopService) pingAndRecordEndpoint(ctx context.Context, ep *domain.
 			slog.Any("error", err),
 		)
 	}
+
+	nextScore := calculateNextScore(score, ep.Interval)
+	if err := s.scoreUpdater.Update(ctx, ep.ID, nextScore); err != nil {
+		s.logger.Error(
+			"update score",
+			slog.Int64("endpoint", int64(ep.ID)),
+			slog.Any("error", err),
+		)
+	}
 }
 
 func (s *PingLoopService) Ping(ctx context.Context, ep *domain.Endpoint) (bool, error) {
@@ -100,16 +131,20 @@ func (s *PingLoopService) Record(ctx context.Context, event *domain.ServerEvent)
 	return s.recordStatusWorker.Record(ctx, event)
 }
 
-func (s *PingLoopService) Run(ctx context.Context, channel <-chan *domain.Endpoint) {
+func (s *PingLoopService) Run(ctx context.Context, channel <-chan *PingTask) {
 
 	for {
 		select {
-		case ep, ok := <-channel:
+		case task, ok := <-channel:
 			if !ok {
 				return
 			}
 
-			s.pingAndRecordEndpoint(ctx, ep)
+			if task.Endpoint == nil {
+				continue
+			}
+
+			s.pingAndRecordEndpoint(ctx, task.Endpoint, task.Score)
 
 		case <-ctx.Done():
 			return

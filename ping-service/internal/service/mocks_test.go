@@ -15,14 +15,14 @@ func (m *mockEndpointProvider) GetBatch(ctx context.Context, ids []uint) (map[ui
 }
 
 type mockScoreUpdater struct {
-	updateBatchFn func(ctx context.Context, items map[uint]int64) error
+	updateFn func(ctx context.Context, endpointID uint, nextScore int64) error
 }
 
-func (m *mockScoreUpdater) UpdateBatch(ctx context.Context, items map[uint]int64) error {
-	if m.updateBatchFn == nil {
+func (m *mockScoreUpdater) Update(ctx context.Context, endpointID uint, nextScore int64) error {
+	if m.updateFn == nil {
 		return nil
 	}
-	return m.updateBatchFn(ctx, items)
+	return m.updateFn(ctx, endpointID, nextScore)
 }
 
 var _ endpointProvider = (*mockEndpointProvider)(nil)
