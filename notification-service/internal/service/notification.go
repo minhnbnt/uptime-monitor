@@ -45,6 +45,10 @@ func RegisterNotificationService(i do.Injector) {
 
 func (s *NotificationService) GetNotificationConfig(ctx context.Context, userID uint) (*dto.NotificationConfigResponse, error) {
 
+	if userID == 0 {
+		return nil, apperrors.ErrBadRequest
+	}
+
 	cfg, err := s.configRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		s.logger.Error("failed to get notification config", slog.Any("error", err))
@@ -65,6 +69,10 @@ func (s *NotificationService) GetNotificationConfig(ctx context.Context, userID 
 }
 
 func (s *NotificationService) UpdateNotificationConfig(ctx context.Context, userID uint, req *dto.NotificationConfigRequest) error {
+
+	if userID == 0 {
+		return apperrors.ErrBadRequest
+	}
 
 	cfg := &domain.NotificationConfig{
 		UserID:     userID,
@@ -108,6 +116,10 @@ func (s *NotificationService) UpdateNotificationConfig(ctx context.Context, user
 }
 
 func (s *NotificationService) SendReport(ctx context.Context, userID uint) error {
+
+	if userID == 0 {
+		return apperrors.ErrBadRequest
+	}
 
 	if err := s.digestStarter.StartDigest(ctx, userID); err != nil {
 		s.logger.Error("failed to start digest workflow", slog.Any("error", err))
