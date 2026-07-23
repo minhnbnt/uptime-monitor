@@ -27,6 +27,7 @@ func providers(dev bool) []func(do.Injector) {
 		grpcclient.RegisterEventRecorderClient,
 
 		pingsched.RegisterZSetScheduleRepository,
+		pingsched.RegisterZSetTaskClaimer,
 		pingsched.RegisterScoreUpdater,
 		pingsched.RegisterEndpointMetaCache,
 		pingsched.RegisterEndpointProvider,

@@ -38,7 +38,9 @@ func newRepo(tb testing.TB, shardCount ...int) *ZSetScheduleRepository {
 	if len(shardCount) > 0 {
 		sc = shardCount[0]
 	}
-	return NewZSetScheduleRepository(client, sc)
+	updater := NewScoreUpdater(client, sc)
+	claimer := NewZSetTaskClaimer(client)
+	return NewZSetScheduleRepository(client, updater, claimer, sc)
 }
 
 func newScoreUpdater(tb testing.TB, client *redis.Client, shardCount ...int) *ScoreUpdater {
@@ -249,8 +251,9 @@ func TestClaimDueTasksPartialClaim(t *testing.T) {
 func TestScoreUpdaterUpdateBatch(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	client := testcontainers.NewTestRedis(t, testRedisAddr)
-	repo := NewZSetScheduleRepository(client, 1)
 	updater := newScoreUpdater(t, client)
+	claimer := NewZSetTaskClaimer(client)
+	repo := NewZSetScheduleRepository(client, updater, claimer, 1)
 	ctx := context.Background()
 
 	now := time.Now()
@@ -320,7 +323,9 @@ func newShardedRepo(tb testing.TB, shardCount int) *ZSetScheduleRepository {
 	tb.Helper()
 	testcontainers.SkipIfShort(tb)
 	client := testcontainers.NewTestRedis(tb, testRedisAddr)
-	return NewZSetScheduleRepository(client, shardCount)
+	updater := NewScoreUpdater(client, shardCount)
+	claimer := NewZSetTaskClaimer(client)
+	return NewZSetScheduleRepository(client, updater, claimer, shardCount)
 }
 
 func TestRegisterBatchWithSharding(t *testing.T) {
@@ -339,7 +344,7 @@ func TestRegisterBatchWithSharding(t *testing.T) {
 	}
 
 	for _, ep := range endpoints {
-		key := schedulerShardKey(3, ep.ID)
+		key, _ := schedulerShardKey(3, ep.ID)
 		score, err := repo.client.ZScore(ctx, key, fmt.Sprint(ep.ID)).Result()
 		if err != nil {
 			t.Errorf("endpoint %d not found in shard key %q: %v", ep.ID, key, err)
@@ -413,8 +418,8 @@ func TestUnregisterWithSharding(t *testing.T) {
 		t.Fatalf("RegisterBatch: %v", err)
 	}
 
-	key10 := schedulerShardKey(3, 10)
-	key20 := schedulerShardKey(3, 20)
+	key10, _ := schedulerShardKey(3, 10)
+	key20, _ := schedulerShardKey(3, 20)
 
 	// Confirm both are in the correct shards
 	if _, err := repo.client.ZScore(ctx, key10, "10").Result(); err != nil {
@@ -453,7 +458,7 @@ func TestScoreUpdaterUpdateBatchWithSharding(t *testing.T) {
 
 	// Seed endpoints in their respective shards
 	for _, id := range []uint{1, 2, 3} {
-		key := schedulerShardKey(3, id)
+		key, _ := schedulerShardKey(3, id)
 		client.ZAdd(ctx, key, redis.Z{Member: fmt.Sprint(id), Score: float64(past)})
 	}
 
@@ -469,7 +474,7 @@ func TestScoreUpdaterUpdateBatchWithSharding(t *testing.T) {
 	}
 
 	for id, expectedScore := range newScores {
-		key := schedulerShardKey(3, id)
+		key, _ := schedulerShardKey(3, id)
 		score, err := client.ZScore(ctx, key, fmt.Sprint(id)).Result()
 		if err != nil {
 			t.Errorf("endpoint %d not found in shard %q: %v", id, key, err)
@@ -493,9 +498,13 @@ func TestSingleShardBehaviorIsUnchanged(t *testing.T) {
 		t.Fatalf("RegisterBatch: %v", err)
 	}
 
-	// Must be in the shard 0 key
-	if _, err := repo.client.ZScore(ctx, shardKey(0), "1").Result(); err != nil {
+	// Must be in the shard 0 key with a future score
+	score, err := repo.client.ZScore(ctx, shardKey(0), "1").Result()
+	if err != nil {
 		t.Errorf("endpoint 1 not in %q: %v", shardKey(0), err)
+	}
+	if score <= float64(time.Now().UnixMilli()) {
+		t.Errorf("expected future score, got %f", score)
 	}
 
 	// ClaimDueTasks only runs on the shard 0 key
@@ -503,10 +512,10 @@ func TestSingleShardBehaviorIsUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ClaimDueTasks: %v", err)
 	}
-	if len(due) != 1 {
-		t.Errorf("expected 1 due task, got %d", len(due))
+	if len(due) != 0 {
+		t.Errorf("expected 0 due tasks (future score), got %d", len(due))
 	}
-	if hasNext {
-		t.Error("expected hasNext=false (no future tasks)")
+	if !hasNext {
+		t.Error("expected hasNext=true (future task exists)")
 	}
 }

@@ -34,10 +34,13 @@ func NextExecutionTime(id any, interval time.Duration) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	nowMs := time.Now().UnixMilli()
-	offsetMs := offset.Milliseconds()
-	intervalMs := interval.Milliseconds()
+	now := time.Now()
+	epoch := time.Unix(0, 0)
+	next := epoch.Add(offset)
+	if next.Before(now) {
+		missed := now.Sub(next)/interval + 1
+		next = next.Add(missed * interval)
+	}
 
-	periods := (nowMs - offsetMs + intervalMs - 1) / intervalMs
-	return time.UnixMilli(offsetMs + periods*intervalMs), nil
+	return next, nil
 }

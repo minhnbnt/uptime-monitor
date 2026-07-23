@@ -1,0 +1,157 @@
+package scheduler
+
+import (
+	"context"
+	"fmt"
+	"strconv"
+	"time"
+
+	"github.com/redis/go-redis/v9"
+	"github.com/samber/do/v2"
+
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
+)
+
+type ZSetTaskClaimer struct {
+	client *redis.Client
+}
+
+func NewZSetTaskClaimer(client *redis.Client) *ZSetTaskClaimer {
+	return &ZSetTaskClaimer{client: client}
+}
+
+func RegisterZSetTaskClaimer(i do.Injector) {
+	do.Provide(i, func(i do.Injector) (*ZSetTaskClaimer, error) {
+		wrapper := do.MustInvoke[*config.RedisClientWrapper](i)
+		return NewZSetTaskClaimer(wrapper.GetClient()), nil
+	})
+}
+
+func (r *ZSetTaskClaimer) ClaimDueTasksForShard(
+	ctx context.Context, shardID uint, limit int64,
+) (due []ScheduledTask, next ScheduledTask, hasNext bool, err error) {
+
+	if limit <= 0 {
+		return nil, ScheduledTask{}, false, nil
+	}
+
+	now := time.Now().UnixMilli()
+	lockMs := claimLock.Milliseconds()
+
+	cmd := claimScript.Run(
+		ctx, r.client,
+		[]string{shardKey(shardID)},
+		fmt.Sprint(now),
+		fmt.Sprint(limit),
+		fmt.Sprint(lockMs),
+	)
+
+	return collectScheduledTask(cmd)
+}
+
+func collectScheduledTask(cmd *redis.Cmd) (due []ScheduledTask, next ScheduledTask, hasNext bool, err error) {
+
+	result, err := cmd.Result()
+	if err != nil {
+		return nil, ScheduledTask{}, false, fmt.Errorf("claim due tasks: %w", err)
+	}
+
+	vals, ok := result.([]any)
+	if !ok {
+		return nil, ScheduledTask{}, false, fmt.Errorf("unexpected script result type: %T", result)
+	}
+
+	if len(vals) != 2 {
+		return nil, ScheduledTask{}, false, fmt.Errorf("unexpected script result length: %d", len(vals))
+	}
+
+	dueRaw, ok := vals[0].([]any)
+	if !ok {
+		return nil, ScheduledTask{}, false, fmt.Errorf("invalid dueRaw type: %T", vals[0])
+	}
+
+	nextRaw, ok := vals[1].([]any)
+	if !ok {
+		return nil, ScheduledTask{}, false, fmt.Errorf("invalid nextRaw type: %T", vals[1])
+	}
+
+	for i := 0; i+1 < len(dueRaw); i += 2 {
+
+		task, err := getScheduledTask(dueRaw[i], dueRaw[i+1])
+		if err != nil {
+			return nil, ScheduledTask{}, false, fmt.Errorf("parse due task at index %d: %w", i, err)
+		}
+
+		due = append(due, *task)
+	}
+
+	if len(nextRaw) >= 2 {
+
+		task, err := getScheduledTask(nextRaw[0], nextRaw[1])
+		if err != nil {
+			return due, ScheduledTask{}, false, fmt.Errorf("parse next task: %w", err)
+		}
+
+		hasNext = true
+		next = *task
+	}
+
+	return due, next, hasNext, nil
+}
+
+func getScheduledTask(member, scoreStr any) (*ScheduledTask, error) {
+
+	memberStr, ok := member.(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid member type: %T", member)
+	}
+
+	scoreStrStr, ok := scoreStr.(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid score type: %T", scoreStr)
+	}
+
+	id, err := strconv.ParseUint(memberStr, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("parse endpoint id: %w", err)
+	}
+
+	score, err := strconv.ParseInt(scoreStrStr, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("parse score: %w", err)
+	}
+
+	return &ScheduledTask{
+		EndpointID: uint(id),
+		Score:      score,
+	}, nil
+}
+
+// claimScript atomically claims at most N due tasks and peeks the next future task.
+//
+// KEYS[1] = scheduler:queue:<shardID>
+// ARGV[1] = now in UnixMilliseconds
+// ARGV[2] = max number of due tasks to claim
+// ARGV[3] = claim lock duration in milliseconds
+// Returns: {due_array, next_array}
+//
+//	due_array:  [member1, score1, member2, score2, ...] — scores bumped to now+lockMs
+//	next_array: [member, score] — stays in ZSET, or [] if none
+var claimScript = redis.NewScript(`
+	local due = redis.call("ZRANGEBYSCORE", KEYS[1], "-inf", ARGV[1], "WITHSCORES", "LIMIT", "0", ARGV[2])
+	local next = redis.call("ZRANGEBYSCORE", KEYS[1], "(" .. ARGV[1], "+inf", "WITHSCORES", "LIMIT", "0", "1")
+
+	local lockScore = tonumber(ARGV[1]) + tonumber(ARGV[3])
+
+	local zaddArgs = {KEYS[1]}
+	for i = 1, #due, 2 do
+		table.insert(zaddArgs, lockScore)
+		table.insert(zaddArgs, due[i])
+	end
+
+	if #zaddArgs > 1 then
+		redis.call("ZADD", unpack(zaddArgs))
+	end
+
+	return {due, next}
+`)

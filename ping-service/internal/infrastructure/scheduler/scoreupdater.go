@@ -8,7 +8,24 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/utils"
 )
+
+func schedulerShardKey(shardCount int, endpointID uint) (string, error) {
+
+	if shardCount < 1 {
+		shardCount = 1
+	}
+
+	hash, err := utils.Hash(endpointID)
+	if err != nil {
+		return "", err
+	}
+
+	shardID := hash % uint64(shardCount)
+
+	return shardKey(uint(shardID)), nil
+}
 
 type ScoreUpdater struct {
 	client     *redis.Client
@@ -26,8 +43,10 @@ func NewScoreUpdater(client *redis.Client, shardCount int) *ScoreUpdater {
 
 func RegisterScoreUpdater(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ScoreUpdater, error) {
+
 		cfg := do.MustInvoke[*config.Config](i)
 		wrapper := do.MustInvoke[*config.RedisClientWrapper](i)
+
 		return NewScoreUpdater(wrapper.GetClient(), cfg.Redis.SchedulerShards), nil
 	})
 }
@@ -45,9 +64,16 @@ func (u *ScoreUpdater) UpdateBatch(ctx context.Context, items map[uint]int64) er
 	scores := make(map[string][]redis.Z)
 	for id, score := range items {
 
-		key := schedulerShardKey(u.shardCount, id)
+		key, err := schedulerShardKey(u.shardCount, id)
+		if err != nil {
+			return fmt.Errorf("failed to get shard key: %w", err)
+		}
 
-		score := redis.Z{Score: float64(score), Member: fmt.Sprint(id)}
+		score := redis.Z{
+			Member: fmt.Sprint(id),
+			Score:  float64(score),
+		}
+
 		scores[key] = append(scores[key], score)
 	}
 
