@@ -35,7 +35,7 @@ func TestSchedulerShardKey(t *testing.T) {
 
 	t.Run("shard ID is within range", func(t *testing.T) {
 		const shards = 8
-		for id := uint(0); id < 100; id++ {
+		for id := range uint(100) {
 			key, _ := schedulerShardKey(shards, id)
 			suffix := key[len(schedulerQueuePrefix)+1:]
 			shardID := 0

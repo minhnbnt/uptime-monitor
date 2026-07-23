@@ -54,7 +54,7 @@ func (r *ZSetWorkerRunner) RunZSetWorker(ctx context.Context) {
 	}
 
 	waitgroup := sync.WaitGroup{}
-	defer waitgroup.Done()
+	defer waitgroup.Wait()
 
 	for range 10 {
 		waitgroup.Go(func() { r.pingService.Run(ctx, channel) })
