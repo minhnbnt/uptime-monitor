@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"log/slog"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/samber/do/v2"
@@ -98,7 +97,15 @@ func (s *PingLoopService) pingAndRecordEndpoint(ctx context.Context, task PingTa
 		)
 	}
 
-	nextScore := utils.NextExecutionTimeByPrev(time.UnixMilli(task.PrevScore), ep.Interval)
+	nextScore, err := utils.NextExecutionTime(ep.ID, ep.Interval)
+	if err != nil {
+		s.logger.Error(
+			"calculate next score",
+			slog.Int64("endpoint", int64(ep.ID)),
+			slog.Any("error", err),
+		)
+		return
+	}
 
 	if err := s.scoreUpdater.Update(ctx, ep.ID, nextScore.UnixMilli()); err != nil {
 		s.logger.Error(
