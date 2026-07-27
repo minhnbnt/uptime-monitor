@@ -48,12 +48,13 @@ func (ds *TemporalDigestStarter) StartDigest(ctx context.Context, userID uint) e
 
 	from := time.Now().Add(-30 * 24 * time.Hour)
 
+	options := temporalclient.StartWorkflowOptions{
+		TaskQueue: ds.taskQueue,
+	}
+
 	_, err := ds.client.ExecuteWorkflow(
-		ctx,
-		temporalclient.StartWorkflowOptions{TaskQueue: ds.taskQueue},
-		ds.workflowName,
-		userID,
-		from,
+		ctx, options, ds.workflowName,
+		userID, from,
 	)
 
 	return err
