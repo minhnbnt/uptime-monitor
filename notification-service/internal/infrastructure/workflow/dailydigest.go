@@ -8,6 +8,10 @@ import (
 
 func SendReportWorkflow(ctx workflow.Context, userID uint, fromDate time.Time) error {
 
+	if fromDate.IsZero() {
+		fromDate = workflow.Now(ctx).Add(-30 * 24 * time.Hour)
+	}
+
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		StartToCloseTimeout: 10 * time.Minute,
 	})

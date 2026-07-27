@@ -4,3 +4,4 @@ metadata:
   name: {{ include "uptime-monitor.namespace" . }}
   labels:
     app.kubernetes.io/part-of: uptime-monitor
+    app.kubernetes.io/managed-by: Helm

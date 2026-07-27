@@ -1,13 +1,6 @@
 server:
   port: 8085
 
-db:
-  host: pgbouncer
-  port: 6432
-  user: notification
-  password: notification
-  dbname: notification
-
 temporal:
   host: temporal:7233
   workflow_name: send-report

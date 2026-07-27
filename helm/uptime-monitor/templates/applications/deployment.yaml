@@ -22,8 +22,20 @@ spec:
       # Disable K8s auto-injected service env vars (e.g. PING_SERVICE_PORT) that
       # would otherwise clobber our config keys like server.port.
       enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: {{ $name }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
           image: {{ include "uptime-monitor.image" (dict "name" $name "root" $) }}
           imagePullPolicy: {{ $.Values.global.image.pullPolicy }}
           args: ["--config=/app/config.yml"]

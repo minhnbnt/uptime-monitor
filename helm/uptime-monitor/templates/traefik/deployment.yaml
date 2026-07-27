@@ -20,8 +20,19 @@ spec:
         app.kubernetes.io/part-of: uptime-monitor
     spec:
       serviceAccountName: traefik
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: traefik
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           image: {{ .Values.traefik.image }}
           imagePullPolicy: {{ .Values.traefik.pullPolicy | default "Always" }}
           args:
