@@ -132,9 +132,21 @@ func TestSendReport(t *testing.T) {
 	mockS := &mockDigestStarter{}
 	svc := newTestService(mockS)
 
+	mockS.On("DescribeSchedule", mock.Anything, uint(1)).Return(&domain.ScheduleInfo{Exists: true}, nil)
 	mockS.On("StartDigest", mock.Anything, uint(1)).Return(nil)
 
 	err := svc.SendReport(t.Context(), 1)
 	require.NoError(t, err)
+	mockS.AssertExpectations(t)
+}
+
+func TestSendReport_NoConfig(t *testing.T) {
+	mockS := &mockDigestStarter{}
+	svc := newTestService(mockS)
+
+	mockS.On("DescribeSchedule", mock.Anything, uint(2)).Return(&domain.ScheduleInfo{}, nil)
+
+	err := svc.SendReport(t.Context(), 2)
+	require.ErrorIs(t, err, apperrors.ErrNotFound)
 	mockS.AssertExpectations(t)
 }

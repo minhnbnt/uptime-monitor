@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -41,11 +42,11 @@ func (s *NotificationService) GetNotificationConfig(ctx context.Context, userID 
 	info, err := s.digestStarter.DescribeSchedule(ctx, userID)
 	if err != nil {
 		s.logger.Error("failed to describe schedule", slog.Any("error", err))
-		return nil, apperrors.ErrInternal
+		return nil, fmt.Errorf("describe schedule: %w", apperrors.ErrInternal)
 	}
 
 	if !info.Exists {
-		return nil, apperrors.ErrNotFound
+		return nil, fmt.Errorf("notification config not found: %w", apperrors.ErrNotFound)
 	}
 
 	resp := &dto.NotificationConfigResponse{
@@ -69,12 +70,12 @@ func (s *NotificationService) UpdateNotificationConfig(ctx context.Context, user
 	if active {
 		fromDate, err := time.Parse(dateLayout, req.FromDate)
 		if err != nil {
-			return apperrors.ErrBadRequest
+			return fmt.Errorf("parse from_date: %w", apperrors.ErrBadRequest)
 		}
 
 		toDate, err := time.Parse(dateLayout, req.ToDate)
 		if err != nil {
-			return apperrors.ErrBadRequest
+			return fmt.Errorf("parse to_date: %w", apperrors.ErrBadRequest)
 		}
 
 		config := domain.ScheduleConfig{
@@ -85,13 +86,13 @@ func (s *NotificationService) UpdateNotificationConfig(ctx context.Context, user
 
 		if err := s.digestStarter.UpsertSchedule(ctx, userID, config); err != nil {
 			s.logger.Error("failed to upsert digest schedule", slog.Any("error", err))
-			return apperrors.ErrInternal
+			return fmt.Errorf("upsert schedule: %w", apperrors.ErrInternal)
 		}
 
 	} else {
 		if err := s.digestStarter.DeleteSchedule(ctx, userID); err != nil {
 			s.logger.Error("failed to delete digest schedule", slog.Any("error", err))
-			return apperrors.ErrInternal
+			return fmt.Errorf("delete schedule: %w", apperrors.ErrInternal)
 		}
 	}
 
@@ -100,9 +101,18 @@ func (s *NotificationService) UpdateNotificationConfig(ctx context.Context, user
 
 func (s *NotificationService) SendReport(ctx context.Context, userID uint) error {
 
+	info, err := s.digestStarter.DescribeSchedule(ctx, userID)
+	if err != nil {
+		s.logger.Error("failed to describe schedule", slog.Any("error", err))
+		return fmt.Errorf("describe schedule: %w", apperrors.ErrInternal)
+	}
+	if !info.Exists {
+		return fmt.Errorf("notification config not found: %w", apperrors.ErrNotFound)
+	}
+
 	if err := s.digestStarter.StartDigest(ctx, userID); err != nil {
 		s.logger.Error("failed to start digest workflow", slog.Any("error", err))
-		return apperrors.ErrInternal
+		return fmt.Errorf("start digest: %w", apperrors.ErrInternal)
 	}
 
 	return nil

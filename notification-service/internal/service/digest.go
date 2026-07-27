@@ -121,7 +121,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 			slog.Any("error", err),
 		)
 
-		return apperrors.ErrInternal
+		return fmt.Errorf("find user: %w", apperrors.ErrInternal)
 	}
 	if user == nil {
 
@@ -147,7 +147,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 			slog.Any("error", err),
 		)
 
-		return apperrors.ErrInternal
+		return fmt.Errorf("list servers: %w", apperrors.ErrInternal)
 	}
 
 	s.logger.Debug(
@@ -167,7 +167,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 			slog.Any("error", err),
 		)
 
-		return apperrors.ErrInternal
+		return fmt.Errorf("get ontime stats: %w", apperrors.ErrInternal)
 	}
 
 	s.logger.Debug(
@@ -187,7 +187,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 			slog.Any("error", err),
 		)
 
-		return apperrors.ErrInternal
+		return fmt.Errorf("count servers: %w", apperrors.ErrInternal)
 	}
 
 	s.logger.Debug(
@@ -209,7 +209,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 			slog.Any("error", err),
 		)
 
-		return apperrors.ErrInternal
+		return fmt.Errorf("generate excel: %w", apperrors.ErrInternal)
 	}
 
 	defer reader.Close()
@@ -224,7 +224,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 			slog.Any("error", err),
 		)
 
-		return apperrors.ErrInternal
+		return fmt.Errorf("send mail: %w", apperrors.ErrInternal)
 	}
 
 	s.logger.Info(
