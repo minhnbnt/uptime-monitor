@@ -10,7 +10,6 @@ db:
 
 temporal:
   host: temporal:7233
-  task_queue: digest-task-queue
   workflow_name: send-report
   digest_task_queue: digest-task-queue
 
@@ -26,12 +25,6 @@ log:
 
 auth_service:
   addr: http://auth-service:8081
-
-server_service:
-  addr: http://server:8080
-
-ontime_service:
-  addr: http://ontime-service:8084
 
 grpc:
   server_addr: "server-service:50051"

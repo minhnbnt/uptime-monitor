@@ -49,7 +49,6 @@ func setDefaults(v *viper.Viper) {
 		"log.level": "info",
 
 		"temporal.host":              "localhost:7233",
-		"temporal.task_queue":        "digest-task-queue",
 		"temporal.workflow_name":     "send-report",
 		"temporal.digest_task_queue": "digest-task-queue",
 
@@ -66,9 +65,7 @@ func setDefaults(v *viper.Viper) {
 		"mail.disable_security":         false,
 		"mail.tls_insecure_skip_verify": false,
 
-		"auth_service.addr":   "http://localhost:8081",
-		"server_service.addr": "http://localhost:8080",
-		"ontime_service.addr": "http://localhost:8084",
+		"auth_service.addr": "http://localhost:8081",
 
 		"grpc.server_addr": "localhost:50051",
 		"grpc.event_addr":  "localhost:50052",
@@ -94,7 +91,6 @@ func bindEnvVars(v *viper.Viper) error {
 		"log.level": "LOG_LEVEL",
 
 		"temporal.host":              "TEMPORAL_HOST",
-		"temporal.task_queue":        "TEMPORAL_TASK_QUEUE",
 		"temporal.workflow_name":     "TEMPORAL_WORKFLOW_NAME",
 		"temporal.digest_task_queue": "TEMPORAL_DIGEST_TASK_QUEUE",
 
@@ -106,9 +102,7 @@ func bindEnvVars(v *viper.Viper) error {
 		"mail.disable_security":         "MAIL_DISABLE_SECURITY",
 		"mail.tls_insecure_skip_verify": "MAIL_TLS_INSECURE_SKIP_VERIFY",
 
-		"auth_service.addr":   "AUTH_SERVICE_ADDR",
-		"server_service.addr": "SERVER_SERVICE_ADDR",
-		"ontime_service.addr": "ONTIME_SERVICE_ADDR",
+		"auth_service.addr": "AUTH_SERVICE_ADDR",
 
 		"grpc.server_addr": "GRPC_SERVER_ADDR",
 		"grpc.event_addr":  "GRPC_EVENT_ADDR",

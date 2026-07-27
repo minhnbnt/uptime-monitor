@@ -17,6 +17,7 @@ type DigestWorkerRunner struct {
 	worker        temporalworker.Worker
 	digestService *service.DigestService
 	logger        *slog.Logger
+	workflowName  string
 }
 
 func RegisterDigestWorkerRunner(i do.Injector) {
@@ -39,6 +40,7 @@ func RegisterDigestWorkerRunner(i do.Injector) {
 			worker:        worker,
 			digestService: digestService,
 			logger:        logger,
+			workflowName:  cfg.Temporal.WorkflowName,
 		}, nil
 	})
 }
@@ -49,7 +51,7 @@ func (wr *DigestWorkerRunner) RunDigestWorker(ctx context.Context) error {
 
 	worker.RegisterWorkflowWithOptions(
 		digestworkflow.SendReportWorkflow,
-		temporalworkflow.RegisterOptions{Name: "send-report"},
+		temporalworkflow.RegisterOptions{Name: wr.workflowName},
 	)
 
 	worker.RegisterActivity(wr.digestService.SendUserDigest)

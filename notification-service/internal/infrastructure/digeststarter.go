@@ -16,6 +16,7 @@ type TemporalDigestStarter struct {
 	scheduleClient temporalclient.ScheduleClient
 	client         temporalclient.Client
 	taskQueue      string
+	workflowName   string
 }
 
 func RegisterDigestStarter(i do.Injector) {
@@ -31,6 +32,7 @@ func RegisterDigestStarter(i do.Injector) {
 			client:         client,
 			scheduleClient: scheduleClient,
 			taskQueue:      cfg.Temporal.DigestTaskQueue,
+			workflowName:   cfg.Temporal.WorkflowName,
 		}, nil
 	})
 }
@@ -40,7 +42,7 @@ func (ds *TemporalDigestStarter) StartDigest(ctx context.Context, userID uint) e
 	_, err := ds.client.ExecuteWorkflow(
 		ctx,
 		temporalclient.StartWorkflowOptions{TaskQueue: ds.taskQueue},
-		"send-report",
+		ds.workflowName,
 		userID,
 	)
 
@@ -70,7 +72,7 @@ func (ds *TemporalDigestStarter) UpsertSchedule(ctx context.Context, userID uint
 	}
 
 	action := &temporalclient.ScheduleWorkflowAction{
-		Workflow:  "send-report",
+		Workflow:  ds.workflowName,
 		TaskQueue: ds.taskQueue,
 		Args:      []any{userID},
 	}

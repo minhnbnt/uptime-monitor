@@ -1,16 +1,14 @@
 package config
 
 type Config struct {
-	DB            DBConfig     `mapstructure:"db"`
-	Temporal      TemporalCfg  `mapstructure:"temporal"`
-	Mail          MailConfig   `mapstructure:"mail"`
-	Log           LogConfig    `mapstructure:"log"`
-	Server        ServerConfig `mapstructure:"server"`
-	AuthService   ServiceAddr  `mapstructure:"auth_service"`
-	ServerService ServiceAddr  `mapstructure:"server_service"`
-	OntimeService ServiceAddr  `mapstructure:"ontime_service"`
-	GRPC          GRPCConfig   `mapstructure:"grpc"`
-	Digest        DigestConfig `mapstructure:"digest"`
+	DB          DBConfig     `mapstructure:"db"`
+	Temporal    TemporalCfg  `mapstructure:"temporal"`
+	Mail        MailConfig   `mapstructure:"mail"`
+	Log         LogConfig    `mapstructure:"log"`
+	Server      ServerConfig `mapstructure:"server"`
+	AuthService ServiceAddr  `mapstructure:"auth_service"`
+	GRPC        GRPCConfig   `mapstructure:"grpc"`
+	Digest      DigestConfig `mapstructure:"digest"`
 }
 
 type ServerConfig struct {
@@ -31,7 +29,6 @@ type LogConfig struct {
 
 type TemporalCfg struct {
 	Host            string `mapstructure:"host"`
-	TaskQueue       string `mapstructure:"task_queue"`
 	WorkflowName    string `mapstructure:"workflow_name"`
 	DigestTaskQueue string `mapstructure:"digest_task_queue"`
 }
