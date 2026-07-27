@@ -11,24 +11,18 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/dto"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure"
-	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/repository"
 )
 
 const dateLayout = "2006-01-02"
 
-type NotificationConfigRepository interface {
-	GetByUserID(ctx context.Context, userID uint) (*domain.NotificationConfig, error)
-	Upsert(ctx context.Context, cfg *domain.NotificationConfig) error
-}
-
 type DigestStarter interface {
 	StartDigest(ctx context.Context, userID uint) error
-	UpsertSchedule(ctx context.Context, userID uint, fromDate, toDate time.Time, digestTime string) error
+	UpsertSchedule(ctx context.Context, userID uint, cfg domain.ScheduleConfig) error
 	DeleteSchedule(ctx context.Context, userID uint) error
+	DescribeSchedule(ctx context.Context, userID uint) (*domain.ScheduleInfo, error)
 }
 
 type NotificationService struct {
-	configRepo    NotificationConfigRepository
 	digestStarter DigestStarter
 	logger        *slog.Logger
 }
@@ -36,7 +30,6 @@ type NotificationService struct {
 func RegisterNotificationService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*NotificationService, error) {
 		return &NotificationService{
-			configRepo:    do.MustInvoke[*repository.NotificationConfigRepository](i),
 			digestStarter: do.MustInvoke[*infrastructure.TemporalDigestStarter](i),
 			logger:        do.MustInvoke[*slog.Logger](i),
 		}, nil
@@ -45,62 +38,60 @@ func RegisterNotificationService(i do.Injector) {
 
 func (s *NotificationService) GetNotificationConfig(ctx context.Context, userID uint) (*dto.NotificationConfigResponse, error) {
 
-	cfg, err := s.configRepo.GetByUserID(ctx, userID)
+	info, err := s.digestStarter.DescribeSchedule(ctx, userID)
 	if err != nil {
-		s.logger.Error("failed to get notification config", slog.Any("error", err))
+		s.logger.Error("failed to describe schedule", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
-	if cfg == nil {
-		return &dto.NotificationConfigResponse{
-			DigestTime: "08:00",
-		}, nil
+	if !info.Exists {
+		return nil, apperrors.ErrNotFound
 	}
 
-	return &dto.NotificationConfigResponse{
-		FromDate:   cfg.FromDate.Format(dateLayout),
-		ToDate:     cfg.ToDate.Format(dateLayout),
-		DigestTime: cfg.DigestTime,
-	}, nil
+	resp := &dto.NotificationConfigResponse{
+		DigestTime: info.DigestTime,
+	}
+
+	if !info.FromDate.IsZero() {
+		resp.FromDate = info.FromDate.Format(dateLayout)
+	}
+	if !info.ToDate.IsZero() {
+		resp.ToDate = info.ToDate.Format(dateLayout)
+	}
+
+	return resp, nil
 }
 
 func (s *NotificationService) UpdateNotificationConfig(ctx context.Context, userID uint, req *dto.NotificationConfigRequest) error {
 
-	cfg := &domain.NotificationConfig{
-		UserID:     userID,
-		Active:     req.FromDate != "" && req.ToDate != "",
-		DigestTime: req.DigestTime,
-	}
+	active := req.FromDate != "" && req.ToDate != ""
 
-	if req.FromDate != "" {
+	if active {
 		fromDate, err := time.Parse(dateLayout, req.FromDate)
 		if err != nil {
 			return apperrors.ErrBadRequest
 		}
-		cfg.FromDate = fromDate
-	}
 
-	if req.ToDate != "" {
 		toDate, err := time.Parse(dateLayout, req.ToDate)
 		if err != nil {
 			return apperrors.ErrBadRequest
 		}
-		cfg.ToDate = toDate
-	}
 
-	if err := s.configRepo.Upsert(ctx, cfg); err != nil {
-		s.logger.Error("failed to update notification config", slog.Any("error", err))
-		return apperrors.ErrInternal
-	}
+		config := domain.ScheduleConfig{
+			FromDate:   fromDate,
+			ToDate:     toDate,
+			DigestTime: req.DigestTime,
+		}
 
-	if cfg.Active {
-		if err := s.digestStarter.UpsertSchedule(ctx, userID, cfg.FromDate, cfg.ToDate, cfg.DigestTime); err != nil {
+		if err := s.digestStarter.UpsertSchedule(ctx, userID, config); err != nil {
 			s.logger.Error("failed to upsert digest schedule", slog.Any("error", err))
 			return apperrors.ErrInternal
 		}
+
 	} else {
 		if err := s.digestStarter.DeleteSchedule(ctx, userID); err != nil {
 			s.logger.Error("failed to delete digest schedule", slog.Any("error", err))
+			return apperrors.ErrInternal
 		}
 	}
 

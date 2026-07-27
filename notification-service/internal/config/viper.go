@@ -52,9 +52,6 @@ func setDefaults(v *viper.Viper) {
 		"temporal.workflow_name":     "send-report",
 		"temporal.digest_task_queue": "digest-task-queue",
 
-		"db.host": "localhost",
-		"db.port": "5432",
-
 		"server.port": "8085",
 
 		"mail.smtp_host":                "localhost",
@@ -81,12 +78,6 @@ func setDefaults(v *viper.Viper) {
 func bindEnvVars(v *viper.Viper) error {
 
 	envMap := map[string]string{
-
-		"db.host":     "DB_HOST",
-		"db.port":     "DB_PORT",
-		"db.user":     "DB_USER",
-		"db.password": "DB_PASSWORD",
-		"db.dbname":   "DB_NAME",
 
 		"log.level": "LOG_LEVEL",
 

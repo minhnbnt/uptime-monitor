@@ -15,7 +15,6 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/excelgen"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/ontimeclient"
-	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/serverclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/userclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/utils"
@@ -76,7 +75,6 @@ const (
 )
 
 type DigestService struct {
-	configRepo NotificationConfigRepository
 	userRepo   UserAdapter
 	serverRepo ServerAdapter
 	ontimeSvc  OntimeAdapter
@@ -87,7 +85,6 @@ type DigestService struct {
 func RegisterDigestService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*DigestService, error) {
 		return &DigestService{
-			configRepo: do.MustInvoke[*repository.NotificationConfigRepository](i),
 			serverRepo: do.MustInvoke[*serverclient.Client](i),
 			userRepo:   do.MustInvoke[*userclient.Client](i),
 			ontimeSvc:  do.MustInvoke[*ontimeclient.Client](i),
@@ -97,60 +94,14 @@ func RegisterDigestService(i do.Injector) {
 	})
 }
 
-func (s *DigestService) SendUserDigest(ctx context.Context, userID uint) error {
+func (s *DigestService) SendUserDigest(ctx context.Context, userID uint, from time.Time) error {
 
-	s.logger.Info("SendUserDigest: start", slog.Uint64("user_id", uint64(userID)))
-
-	user, err := s.userRepo.FindByID(ctx, userID)
-	if err != nil {
-
-		s.logger.Error(
-			"SendUserDigest: failed to find user",
-			slog.Uint64("user_id", uint64(userID)),
-			slog.Any("error", err),
-		)
-
-		return apperrors.ErrInternal
-	}
-	if user == nil {
-
-		s.logger.Warn(
-			"SendUserDigest: user not found, skipping",
-			slog.Uint64("user_id", uint64(userID)),
-		)
-
-		return nil
-	}
-
-	cfg, err := s.configRepo.GetByUserID(ctx, userID)
-	if err != nil {
-
-		s.logger.Error(
-			"SendUserDigest: failed to get notification config",
-			slog.Uint64("user_id", uint64(userID)),
-			slog.Any("error", err),
-		)
-
-		return apperrors.ErrInternal
-	}
-
-	if cfg == nil || !cfg.Active {
-
-		s.logger.Info(
-			"SendUserDigest: no active config, skipping",
-			slog.Uint64("user_id", uint64(userID)),
-		)
-
-		return nil
-	}
-
-	s.logger.Debug(
-		"SendUserDigest: config active",
+	s.logger.Info("SendUserDigest: start",
 		slog.Uint64("user_id", uint64(userID)),
-		slog.String("from_date", cfg.FromDate.Format("2006-01-02")),
+		slog.String("from_date", from.Format("2006-01-02")),
 	)
 
-	return s.SendReport(ctx, userID, cfg.FromDate)
+	return s.SendReport(ctx, userID, from)
 }
 
 func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.Time) error {

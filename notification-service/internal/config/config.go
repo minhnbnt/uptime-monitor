@@ -1,7 +1,6 @@
 package config
 
 type Config struct {
-	DB          DBConfig     `mapstructure:"db"`
 	Temporal    TemporalCfg  `mapstructure:"temporal"`
 	Mail        MailConfig   `mapstructure:"mail"`
 	Log         LogConfig    `mapstructure:"log"`
@@ -13,14 +12,6 @@ type Config struct {
 
 type ServerConfig struct {
 	Port string `mapstructure:"port"`
-}
-
-type DBConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     string `mapstructure:"port"`
-	User     string `mapstructure:"user"`
-	Password string `mapstructure:"password"`
-	DBName   string `mapstructure:"dbname"`
 }
 
 type LogConfig struct {

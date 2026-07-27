@@ -7,7 +7,6 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/handler"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/ontimeclient"
-	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/serverclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/infrastructure/userclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/service"
@@ -18,13 +17,10 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 	packages := []func(do.Injector){
 		config.RegisterConfigPath(configPath),
 		config.RegisterLogger(dev),
-		config.RegisterGORMDB,
 		config.RegisterTemporalClient,
 		config.RegisterMailClient,
 		config.RegisterGRPCClient,
 		config.RegisterGRPCOntimeClient,
-
-		repository.RegisterNotificationConfigRepository,
 
 		userclient.RegisterClient,
 		serverclient.RegisterClient,

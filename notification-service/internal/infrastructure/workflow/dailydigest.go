@@ -6,11 +6,11 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-func SendReportWorkflow(ctx workflow.Context, userID uint) error {
+func SendReportWorkflow(ctx workflow.Context, userID uint, fromDate time.Time) error {
 
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		StartToCloseTimeout: 10 * time.Minute,
 	})
 
-	return workflow.ExecuteActivity(ctx, "SendUserDigest", userID).Get(ctx, nil)
+	return workflow.ExecuteActivity(ctx, "SendUserDigest", userID, fromDate).Get(ctx, nil)
 }
