@@ -199,39 +199,6 @@ test-endpoint:
             schema:
               $ref: "../schemas/common.yaml#/ErrorResponse"
 
-check-method:
-  put:
-    summary: Set check method for a server
-    operationId: SetCheckMethod
-    x-ogen-operation-group: Endpoint
-    tags:
-      - endpoints
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            $ref: "../schemas/endpoint.yaml#/SetCheckMethodRequest"
-    responses:
-      "200":
-        description: Check method updated successfully
-        content:
-          application/json:
-            schema:
-              $ref: "../schemas/server.yaml#/ServerResponse"
-      default:
-        description: Error response
-        content:
-          application/json:
-            schema:
-              $ref: "../schemas/common.yaml#/ErrorResponse"
-
 servers-count:
   get:
     summary: Count servers by status for the current user

@@ -2,107 +2,53 @@ package service
 
 import (
 	"context"
-	"errors"
 	"log/slog"
-	"strings"
-	"time"
 
 	"github.com/samber/do/v2"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/domain"
+	pingv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/ping/v1"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/dto"
-	apperrors "github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/infrastructure/grpcclient"
-	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/infrastructure/repository"
 )
 
-type EndpointRepository interface {
-	UpsertEndpoint(ctx context.Context, endpoint domain.Endpoint) error
-	DeleteByServerID(ctx context.Context, serverID uint) error
-}
-
 type EndpointService struct {
-	serverRepository   ServerRepository
-	endpointRepository EndpointRepository
-	pingClient         *grpcclient.PingClient
-	logger             *slog.Logger
+	pingClient *grpcclient.PingClient
+	logger     *slog.Logger
 }
 
 func RegisterEndpointService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointService, error) {
 		return &EndpointService{
-			serverRepository:   do.MustInvoke[*repository.ServerRepository](i),
-			endpointRepository: do.MustInvoke[*repository.EndpointRepository](i),
-			pingClient:         do.MustInvoke[*grpcclient.PingClient](i),
-			logger:             do.MustInvoke[*slog.Logger](i),
+			pingClient: do.MustInvoke[*grpcclient.PingClient](i),
+			logger:     do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
 
-func toDomainEndpoint(serverID uint, req dto.SetCheckMethodRequest) domain.Endpoint {
-	return domain.Endpoint{
-		ServerID:      serverID,
-		URL:           req.URL,
-		Interval:      req.Interval,
-		Timeout:       req.Timeout,
-		Method:        req.HTTPMethod,
-		ExpectedCode:  req.ExpectedCode,
-		BodyCheckExpr: req.BodyCheckExpr,
-	}
-}
-
-func (es *EndpointService) SetCheckMethod(ctx context.Context, serverID uint, userID uint, req dto.SetCheckMethodRequest) error {
-
-	server, err := es.serverRepository.GetByID(ctx, serverID)
-	if errors.Is(err, apperrors.ErrNotFound) {
-		return apperrors.ErrNotFound
-	}
-	if err != nil {
-		es.logger.Error("failed to get server for set check method", slog.Any("error", err))
-		return apperrors.ErrInternal
-	}
-
-	if server.CreatedByID != userID {
-		return apperrors.ErrForbidden
-	}
-
-	endpoint := toDomainEndpoint(serverID, req)
-
-	if err := es.endpointRepository.UpsertEndpoint(ctx, endpoint); err != nil {
-		es.logger.Error("failed to upsert endpoint", slog.Any("error", err))
-		return apperrors.ErrInternal
-	}
-
-	return nil
-}
-
 func (es *EndpointService) TestEndpoint(ctx context.Context, req dto.TestEndpointRequest) (*dto.TestEndpointResponse, error) {
 
-	pingCtx, cancel := context.WithTimeout(ctx, req.Timeout)
-	defer cancel()
-
-	var bodyExpr string
-	if req.BodyCheckExpr != nil {
-		bodyExpr = *req.BodyCheckExpr
+	timeoutMs := int64(req.Timeout.Milliseconds())
+	if timeoutMs == 0 {
+		timeoutMs = 10000
 	}
 
-	statusCode, err := es.pingClient.Ping(
-		pingCtx, req.Method, req.URL,
-		int64(req.Timeout/time.Millisecond),
-		int32(req.ExpectedCode),
-		bodyExpr,
-	)
+	running, err := es.pingClient.Ping(ctx, &pingv1.PingRequest{
+		Namespace:     req.Namespace,
+		Kind:          req.Kind,
+		ObjectId:      req.ObjectID,
+		ContainerName: req.ContainerName,
+		TimeoutMs:     timeoutMs,
+	})
 
 	if err != nil {
+		errMsg := err.Error()
 		return &dto.TestEndpointResponse{
-			Success:    false,
-			StatusCode: statusCode,
-			Error:      new(strings.TrimPrefix(err.Error(), "ping gRPC: ")),
+			Running: false,
+			Error:   &errMsg,
 		}, nil
 	}
 
 	return &dto.TestEndpointResponse{
-		Success:    statusCode == req.ExpectedCode,
-		StatusCode: statusCode,
+		Running: running,
 	}, nil
 }

@@ -17,6 +17,5 @@ type ServerService interface {
 }
 
 type EndpointService interface {
-	SetCheckMethod(ctx context.Context, serverID uint, userID uint, req dto.SetCheckMethodRequest) error
 	TestEndpoint(ctx context.Context, req dto.TestEndpointRequest) (*dto.TestEndpointResponse, error)
 }

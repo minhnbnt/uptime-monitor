@@ -13,7 +13,7 @@ import (
 )
 
 type StatusClient interface {
-	GetCurrentStatuses(ctx context.Context, endpointIDs []uint) (
+	GetCurrentStatuses(ctx context.Context, serverIDs []uint) (
 		map[uint]domain.ServerStatus, error,
 	)
 	CountByStatus(ctx context.Context, userID uint) (
@@ -26,7 +26,8 @@ type EventClient struct {
 }
 
 func NewEventClient(cc *config.GRPCClientWrapper) *EventClient {
-	return &EventClient{client: eventv1.NewStatusServiceClient(cc.GetConn())}
+	client := eventv1.NewStatusServiceClient(cc.GetConn())
+	return &EventClient{client: client}
 }
 
 func newEventClient(i do.Injector) (*EventClient, error) {
@@ -58,14 +59,14 @@ func RegisterEventClient(i do.Injector) {
 
 func (c *EventClient) GetCurrentStatuses(
 	ctx context.Context,
-	endpointIDs []uint,
+	serverIDs []uint,
 ) (map[uint]domain.ServerStatus, error) {
 
-	if len(endpointIDs) == 0 {
+	if len(serverIDs) == 0 {
 		return nil, nil
 	}
 
-	ids := lo.Map(endpointIDs, func(id uint, _ int) uint64 { return uint64(id) })
+	ids := lo.Map(serverIDs, func(id uint, _ int) uint64 { return uint64(id) })
 	request := eventv1.GetCurrentStatusesRequest{EndpointIds: ids}
 	resp, err := c.client.GetCurrentStatuses(ctx, &request)
 	if err != nil {

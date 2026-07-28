@@ -32,12 +32,13 @@ message GetServerResponse {
 message ServerWithEndpoint {
   uint64 id = 1;
   string name = 2;
-  string url = 3;
-  string method = 4;
-  int32 expected_code = 5;
-  int64 interval_ms = 6;
-  int64 timeout_ms = 7;
-  int64 created_at = 8;
+  string namespace = 3;
+  string kind = 4;
+  string object_id = 5;
+  string container_name = 6;
+  int64 interval_ms = 7;
+  int64 timeout_ms = 8;
+  int64 created_at = 9;
 }
 
 message SearchServersRequest {
@@ -56,18 +57,19 @@ message SearchServersResponse {
 message ServerWithEndpointInput {
   int32 row = 1;
   string name = 2;
-  string url = 3;
-  string method = 4;
-  int32 expected_code = 5;
-  int64 interval_ms = 6;
-  int64 timeout_ms = 7;
-  uint64 user_id = 8;
+  string namespace = 3;
+  string kind = 4;
+  string object_id = 5;
+  string container_name = 6;
+  int64 interval_ms = 7;
+  int64 timeout_ms = 8;
+  uint64 user_id = 9;
 }
 
 message BatchCreateServerResult {
   int32 row = 1;
   string name = 2;
-  string url = 3;
+  string namespace = 3;
   uint64 server_id = 4;
   string error = 5;
 }

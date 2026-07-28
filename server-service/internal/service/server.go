@@ -22,19 +22,17 @@ type ServerWriter interface {
 
 type ServerService struct {
 	*ServerReader
-	serverWriter       ServerWriter
-	endpointRepository EndpointRepository
-	serverRepo         *repository.ServerRepository
+	serverWriter ServerWriter
+	serverRepo   *repository.ServerRepository
 }
 
 func RegisterServerService(i do.Injector) {
 
 	do.Provide(i, func(i do.Injector) (*ServerService, error) {
 		return &ServerService{
-			ServerReader:       do.MustInvoke[*ServerReader](i),
-			serverWriter:       do.MustInvoke[*repository.ServerRepository](i),
-			endpointRepository: do.MustInvoke[*repository.EndpointRepository](i),
-			serverRepo:         do.MustInvoke[*repository.ServerRepository](i),
+			ServerReader: do.MustInvoke[*ServerReader](i),
+			serverWriter: do.MustInvoke[*repository.ServerRepository](i),
+			serverRepo:   do.MustInvoke[*repository.ServerRepository](i),
 		}, nil
 	})
 }
@@ -52,8 +50,14 @@ func (ss *ServerService) CreateServer(
 ) (*dto.Server, error) {
 
 	server := domain.Server{
-		Name:        req.Name,
-		CreatedByID: createdByID,
+		Name:          req.Name,
+		Namespace:     req.Namespace,
+		Kind:          req.Kind,
+		ObjectID:      req.ObjectID,
+		ContainerName: req.ContainerName,
+		Interval:      req.Interval,
+		Timeout:       req.Timeout,
+		CreatedByID:   createdByID,
 	}
 
 	if err := ss.serverWriter.Create(ctx, &server); err != nil {
@@ -80,9 +84,7 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uint, userID uint,
 		return nil, apperrors.ErrForbidden
 	}
 
-	if req.Name != nil {
-		server.Name = *req.Name
-	}
+	applyUpdateServer(server, req)
 
 	updateErr := ss.serverWriter.Update(ctx, server)
 	if errors.Is(updateErr, apperrors.ErrNotFound) {
@@ -122,14 +124,29 @@ func (ss *ServerService) DeleteServer(ctx context.Context, id uint, userID uint)
 		return apperrors.ErrInternal
 	}
 
-	err = ss.endpointRepository.DeleteByServerID(ctx, id)
-	if err != nil {
-		ss.logger.Error(
-			"failed to clean up endpoint resources",
-			slog.Any("error", err),
-		)
-		return apperrors.ErrInternal
-	}
-
 	return nil
+}
+
+func applyUpdateServer(s *domain.Server, req dto.UpdateServerRequest) {
+	if req.Name != nil {
+		s.Name = *req.Name
+	}
+	if req.Namespace != nil {
+		s.Namespace = *req.Namespace
+	}
+	if req.Kind != nil {
+		s.Kind = *req.Kind
+	}
+	if req.ObjectID != nil {
+		s.ObjectID = *req.ObjectID
+	}
+	if req.ContainerName != nil {
+		s.ContainerName = *req.ContainerName
+	}
+	if req.Interval != nil {
+		s.Interval = *req.Interval
+	}
+	if req.Timeout != nil {
+		s.Timeout = *req.Timeout
+	}
 }

@@ -7,12 +7,12 @@ option go_package = "github.com/minhnbnt/uptime-monitor-microservices/common/pro
 message EndpointData {
   uint64 id = 1;
   uint64 server_id = 2;
-  string url = 3;
-  string method = 4;
-  int32 expected_code = 5;
-  int64 interval_ms = 6;
-  int64 timeout_ms = 7;
-  string body_check_expr = 8;
+  string namespace = 3;
+  string kind = 4;
+  string object_id = 5;
+  string container_name = 6;
+  int64 interval_ms = 7;
+  int64 timeout_ms = 8;
 }
 
 message GetEndpointsRequest {

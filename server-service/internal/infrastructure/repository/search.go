@@ -39,7 +39,6 @@ func (s *ParadeDBSearcher) Search(
 	safeOrder, limit, offset := getQueryOptions(&params)
 
 	query := gorm.G[domain.Server](s.db).
-		Preload("Endpoint", nil).
 		Where("created_by_id = ?", createdByID)
 
 	if params.Q != "" {

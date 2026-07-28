@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
@@ -15,18 +14,18 @@ import (
 func RegisterEndpointServer(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointServer, error) {
 		return NewEndpointServer(
-			do.MustInvoke[*repository.EndpointRepository](i),
+			do.MustInvoke[*repository.ServerRepository](i),
 		), nil
 	})
 }
 
 type EndpointServer struct {
 	endpointv1.UnimplementedEndpointServiceServer
-	endpointRepo *repository.EndpointRepository
+	serverRepo *repository.ServerRepository
 }
 
-func NewEndpointServer(endpointRepo *repository.EndpointRepository) *EndpointServer {
-	return &EndpointServer{endpointRepo: endpointRepo}
+func NewEndpointServer(serverRepo *repository.ServerRepository) *EndpointServer {
+	return &EndpointServer{serverRepo: serverRepo}
 }
 
 func (s *EndpointServer) GetEndpoints(ctx context.Context, req *endpointv1.GetEndpointsRequest) (*endpointv1.GetEndpointsResponse, error) {
@@ -35,23 +34,28 @@ func (s *EndpointServer) GetEndpoints(ctx context.Context, req *endpointv1.GetEn
 		return uint(id)
 	})
 
-	endpoints, err := s.endpointRepo.GetByIDs(ctx, ids)
+	if len(ids) == 0 {
+		return &endpointv1.GetEndpointsResponse{}, nil
+	}
+
+	servers, err := s.serverRepo.GetByIDs(ctx, ids)
 	if err != nil {
-		return nil, fmt.Errorf("get endpoints: %w", err)
+		return nil, err
 	}
 
 	resp := &endpointv1.GetEndpointsResponse{}
 	resp.Endpoints = lo.Map(
-		endpoints,
-		func(ep domain.Endpoint, _ int) *endpointv1.EndpointData {
+		servers,
+		func(sv domain.Server, _ int) *endpointv1.EndpointData {
 			return &endpointv1.EndpointData{
-				Id:           uint64(ep.ID),
-				ServerId:     uint64(ep.ServerID),
-				Url:          ep.URL,
-				Method:       ep.Method,
-				ExpectedCode: int32(ep.ExpectedCode),
-				IntervalMs:   ep.Interval.Milliseconds(),
-				TimeoutMs:    ep.Timeout.Milliseconds(),
+				Id:            uint64(sv.ID),
+				ServerId:      uint64(sv.ID),
+				Namespace:     sv.Namespace,
+				Kind:          sv.Kind,
+				ObjectId:      sv.ObjectID,
+				ContainerName: sv.ContainerName,
+				IntervalMs:    sv.Interval.Milliseconds(),
+				TimeoutMs:     sv.Timeout.Milliseconds(),
 			}
 		},
 	)

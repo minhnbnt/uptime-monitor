@@ -15,10 +15,12 @@ type PingClient struct {
 }
 
 func NewPingClient(cc *config.GRPCClientWrapper) *PingClient {
-	return &PingClient{client: pingv1.NewPingServiceClient(cc.GetConn())}
+	client := pingv1.NewPingServiceClient(cc.GetConn())
+	return &PingClient{client: client}
 }
 
 func newPingClient(i do.Injector) (*PingClient, error) {
+
 	cfg := do.MustInvoke[*config.Config](i)
 	addr := cfg.GRPC.PingAddr
 	if addr == "" {
@@ -39,28 +41,16 @@ func RegisterPingClient(i do.Injector) {
 	})
 }
 
-func (c *PingClient) Ping(
-	ctx context.Context,
-	method, url string,
-	timeoutMs int64,
-	expectedCode int32,
-	bodyCheckExpr string,
-) (int, error) {
+func (c *PingClient) Ping(ctx context.Context, req *pingv1.PingRequest) (bool, error) {
 
-	resp, err := c.client.Ping(ctx, &pingv1.PingRequest{
-		Method:        method,
-		Url:           url,
-		TimeoutMs:     timeoutMs,
-		ExpectedCode:  expectedCode,
-		BodyCheckExpr: bodyCheckExpr,
-	})
+	resp, err := c.client.Ping(ctx, req)
 	if err != nil {
-		return 0, fmt.Errorf("ping gRPC: %w", err)
+		return false, fmt.Errorf("ping gRPC: %w", err)
 	}
 
 	if resp.Error != "" {
-		return int(resp.StatusCode), fmt.Errorf("%s", resp.Error)
+		return false, fmt.Errorf("%s", resp.Error)
 	}
 
-	return int(resp.StatusCode), nil
+	return resp.Running, nil
 }

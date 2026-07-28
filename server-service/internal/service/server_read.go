@@ -16,7 +16,7 @@ import (
 )
 
 type StatusClient interface {
-	GetCurrentStatuses(ctx context.Context, endpointIDs []uint) (map[uint]domain.ServerStatus, error)
+	GetCurrentStatuses(ctx context.Context, serverIDs []uint) (map[uint]domain.ServerStatus, error)
 	CountByStatus(ctx context.Context, userID uint) (online, offline int64, err error)
 }
 
@@ -82,7 +82,8 @@ func (r *ServerReader) ListServers(
 	}
 
 	servers := lo.Map(result, func(item domain.Server, _ int) *dto.Server {
-		return new(dto.ServerFromDomain(item))
+		s := dto.ServerFromDomain(item)
+		return &s
 	})
 
 	r.applyStatuses(ctx, servers)
@@ -124,7 +125,8 @@ func (r *ServerReader) SearchServers(
 	}
 
 	mapped := lo.Map(servers, func(item domain.Server, _ int) *dto.Server {
-		return new(dto.ServerFromDomain(item))
+		s := dto.ServerFromDomain(item)
+		return &s
 	})
 
 	r.applyStatuses(ctx, mapped)
@@ -138,19 +140,16 @@ func (r *ServerReader) SearchServers(
 
 func (r *ServerReader) applyStatuses(ctx context.Context, servers []*dto.Server) {
 
-	serversMap := make(map[uint]*dto.Server, len(servers))
-	for _, server := range servers {
-		if server != nil && server.Endpoint != nil {
-			serversMap[server.Endpoint.ID] = server
-		}
-	}
+	serversMap := lo.SliceToMap(servers, func(s *dto.Server) (uint, *dto.Server) {
+		return s.ID, s
+	})
 
-	endpointIDs := lo.Keys(serversMap)
-	if len(endpointIDs) == 0 {
+	serverIDs := lo.Keys(serversMap)
+	if len(serverIDs) == 0 {
 		return
 	}
 
-	statuses, err := r.statusClient.GetCurrentStatuses(ctx, endpointIDs)
+	statuses, err := r.statusClient.GetCurrentStatuses(ctx, serverIDs)
 	if err != nil {
 		r.logger.Warn(
 			"failed to get current statuses, returning without monitor_status",
@@ -159,8 +158,8 @@ func (r *ServerReader) applyStatuses(ctx context.Context, servers []*dto.Server)
 		return
 	}
 
-	for endpointID, status := range statuses {
-		if server, ok := serversMap[endpointID]; ok {
+	for serverID, status := range statuses {
+		if server, ok := serversMap[serverID]; ok {
 			server.MonitorStatus = status
 		}
 	}

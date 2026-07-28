@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/samber/do/v2"
@@ -19,10 +18,7 @@ type ServerRepository struct {
 	eventClient grpcclient.StatusClient
 }
 
-func NewServerRepository(
-	db *gorm.DB,
-	eventClient grpcclient.StatusClient,
-) *ServerRepository {
+func NewServerRepository(db *gorm.DB, eventClient grpcclient.StatusClient) *ServerRepository {
 	return &ServerRepository{db: db, eventClient: eventClient}
 }
 
@@ -32,10 +28,10 @@ func RegisterServerRepository(i do.Injector) {
 		dbWrapper := do.MustInvoke[*config.GORMWrapper](i)
 		eventClient := do.MustInvoke[grpcclient.StatusClient](i)
 
-		return &ServerRepository{
-			db:          dbWrapper.GetDB(),
-			eventClient: eventClient,
-		}, nil
+		return NewServerRepository(
+			dbWrapper.GetDB(),
+			eventClient,
+		), nil
 	})
 }
 
@@ -53,7 +49,6 @@ func (sr *ServerRepository) List(
 
 	servers, err := gorm.G[domain.Server](sr.db).
 		Where("created_by_id = ?", createdByID).
-		Preload("Endpoint", nil).
 		Limit(limit).
 		Offset(offset).
 		Find(ctx)
@@ -69,24 +64,35 @@ func (sr *ServerRepository) Create(ctx context.Context, s *domain.Server) error 
 	return gorm.G[domain.Server](sr.db).Create(ctx, s)
 }
 
-func (sr *ServerRepository) GetByID(
-	ctx context.Context, id uint,
-) (*domain.Server, error) {
+func (sr *ServerRepository) GetByIDs(ctx context.Context, ids []uint) ([]domain.Server, error) {
 
-	server, err := gorm.G[domain.Server](sr.db).
-		Preload("Endpoint", nil).
-		Where("id = ?", id).
-		First(ctx)
+	if len(ids) == 0 {
+		return nil, nil
+	}
 
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	servers, err := gorm.G[domain.Server](sr.db).
+		Where("id IN ?", ids).
+		Find(ctx)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get servers by ids: %w", err)
+	}
+
+	return servers, nil
+}
+
+func (sr *ServerRepository) GetByID(ctx context.Context, id uint) (*domain.Server, error) {
+
+	results, err := sr.GetByIDs(ctx, []uint{id})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(results) == 0 {
 		return nil, fmt.Errorf("server %d: %w", id, apperrors.ErrNotFound)
 	}
 
-	if err != nil {
-		return nil, fmt.Errorf("failed to get server: %w", err)
-	}
-
-	return &server, nil
+	return &results[0], nil
 }
 
 func (sr *ServerRepository) Update(ctx context.Context, s *domain.Server) error {

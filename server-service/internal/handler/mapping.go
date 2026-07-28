@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"net/url"
-
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/generated/api"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/dto"
 )
@@ -21,31 +19,16 @@ func ToAPIServer(s *dto.Server) api.ServerObject {
 	return api.ServerObject{
 		ID:            int(s.ID),
 		Name:          s.Name,
+		Namespace:     s.Namespace,
+		Kind:          api.ServerObjectKind(s.Kind),
+		ObjectID:      s.ObjectID,
+		ContainerName: api.NewOptString(s.ContainerName),
 		MonitorStatus: monitorStatus,
-		Endpoint:      toAPIEndpoint(s.Endpoint),
+		Interval:      api.NewOptInt(int(s.Interval.Seconds())),
+		Timeout:       api.NewOptInt(int(s.Timeout.Seconds())),
 		CreatedAt:     s.CreatedAt,
 		UpdatedAt:     s.UpdatedAt,
 	}
-}
-
-func toAPIEndpoint(e *dto.Endpoint) api.OptEndpoint {
-
-	if e == nil {
-		return api.OptEndpoint{}
-	}
-
-	var u url.URL
-	if parsed, err := url.Parse(e.URL); err == nil {
-		u = *parsed
-	}
-
-	return api.NewOptEndpoint(api.Endpoint{
-		URL:          u,
-		Interval:     int(e.Interval.Seconds()),
-		Timeout:      int(e.Timeout.Seconds()),
-		Method:       api.EndpointMethod(e.Method),
-		ExpectedCode: e.ExpectedCode,
-	})
 }
 
 func ToPaginationMeta(page, perPage int, total int64) api.PaginationMeta {

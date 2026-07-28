@@ -34,8 +34,6 @@ paths:
   # ── Endpoints ────────────────────────────
   /api/v1/test-endpoint:
     $ref: "./paths/servers.yaml#/test-endpoint"
-  /api/v1/servers/{id}/check_method:
-    $ref: "./paths/servers.yaml#/check-method"
 
 
 
@@ -59,12 +57,6 @@ components:
     ServerCountResponse:
       $ref: "./schemas/server.yaml#/ServerCountResponse"
 
-    CheckMethodType:
-      $ref: "./schemas/endpoint.yaml#/CheckMethodType"
-    Endpoint:
-      $ref: "./schemas/endpoint.yaml#/Endpoint"
-    SetCheckMethodRequest:
-      $ref: "./schemas/endpoint.yaml#/SetCheckMethodRequest"
     TestEndpointRequest:
       $ref: "./schemas/endpoint.yaml#/TestEndpointRequest"
     TestEndpointResponse:

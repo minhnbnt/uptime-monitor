@@ -30,6 +30,13 @@ func ToAPIError(err error) *api.ErrorResponseStatusCode {
 		}
 	}
 
+	if errors.Is(err, ErrYAMLInvalid) {
+		return &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusBadRequest,
+			Response:   errResponse("YAML_INVALID", err.Error()),
+		}
+	}
+
 	return &api.ErrorResponseStatusCode{
 		StatusCode: http.StatusInternalServerError,
 		Response:   errResponse("INTERNAL_ERROR", err.Error()),

@@ -158,20 +158,15 @@ func serverBriefFromDTO(sv dto.Server) *serverv1.ServerBrief {
 }
 
 func mapServerToProto(sv dto.Server) *serverv1.ServerWithEndpoint {
-
-	p := &serverv1.ServerWithEndpoint{
-		Id:        uint64(sv.ID),
-		Name:      sv.Name,
-		CreatedAt: sv.CreatedAt.UnixMilli(),
+	return &serverv1.ServerWithEndpoint{
+		Id:            uint64(sv.ID),
+		Name:          sv.Name,
+		Namespace:     sv.Namespace,
+		Kind:          sv.Kind,
+		ObjectId:      sv.ObjectID,
+		ContainerName: sv.ContainerName,
+		IntervalMs:    sv.Interval.Milliseconds(),
+		TimeoutMs:     sv.Timeout.Milliseconds(),
+		CreatedAt:     sv.CreatedAt.UnixMilli(),
 	}
-
-	if sv.Endpoint != nil {
-		p.Url = sv.Endpoint.URL
-		p.Method = sv.Endpoint.Method
-		p.ExpectedCode = int32(sv.Endpoint.ExpectedCode)
-		p.IntervalMs = sv.Endpoint.Interval.Milliseconds()
-		p.TimeoutMs = sv.Endpoint.Timeout.Milliseconds()
-	}
-
-	return p
 }

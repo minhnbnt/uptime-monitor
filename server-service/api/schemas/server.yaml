@@ -3,6 +3,9 @@ ServerObject:
   required:
     - id
     - name
+    - namespace
+    - kind
+    - object_id
     - created_at
     - updated_at
   properties:
@@ -12,14 +15,36 @@ ServerObject:
       type: string
       minLength: 1
       maxLength: 255
+    namespace:
+      type: string
+      minLength: 1
+    kind:
+      type: string
+      enum:
+        - Pod
+        - Deployment
+        - StatefulSet
+        - DaemonSet
+        - ReplicaSet
+    object_id:
+      type: string
+      minLength: 1
+    container_name:
+      type: string
     monitor_status:
       type: string
       enum:
         - "ON"
         - "OFF"
       nullable: true
-    endpoint:
-      $ref: "./endpoint.yaml#/Endpoint"
+    interval:
+      type: integer
+      minimum: 1
+      description: Interval in seconds (default 30)
+    timeout:
+      type: integer
+      minimum: 1
+      description: Timeout in seconds (default 10)
     created_at:
       type: string
       format: date-time
@@ -31,11 +56,38 @@ CreateServerRequest:
   type: object
   required:
     - name
+    - namespace
+    - kind
+    - object_id
   properties:
     name:
       type: string
       minLength: 1
       maxLength: 255
+    namespace:
+      type: string
+      minLength: 1
+    kind:
+      type: string
+      enum:
+        - Pod
+        - Deployment
+        - StatefulSet
+        - DaemonSet
+        - ReplicaSet
+    object_id:
+      type: string
+      minLength: 1
+    container_name:
+      type: string
+    interval:
+      type: integer
+      minimum: 1
+      description: Interval in seconds (default 30)
+    timeout:
+      type: integer
+      minimum: 1
+      description: Timeout in seconds (default 10)
 
 UpdateServerRequest:
   type: object
@@ -44,6 +96,26 @@ UpdateServerRequest:
       type: string
       minLength: 1
       maxLength: 255
+    namespace:
+      type: string
+    kind:
+      type: string
+      enum:
+        - Pod
+        - Deployment
+        - StatefulSet
+        - DaemonSet
+        - ReplicaSet
+    object_id:
+      type: string
+    container_name:
+      type: string
+    interval:
+      type: integer
+      minimum: 1
+    timeout:
+      type: integer
+      minimum: 1
 
 ServerResponse:
   type: object

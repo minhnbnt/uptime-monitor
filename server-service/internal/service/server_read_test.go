@@ -25,28 +25,28 @@ func (m *mockStatusClient) CountByStatus(_ context.Context, _ uint) (int64, int6
 
 func TestServerReader_applyStatuses(t *testing.T) {
 
-	withEndpoint := &dto.Server{ID: 1, Endpoint: &dto.Endpoint{ID: 10}}
-	noEndpoint := &dto.Server{ID: 2}
-	servers := []*dto.Server{withEndpoint, noEndpoint}
+	server1 := &dto.Server{ID: 1}
+	server2 := &dto.Server{ID: 2}
+	servers := []*dto.Server{server1, server2}
 
 	reader := &ServerReader{
-		statusClient: &mockStatusClient{statuses: map[uint]domain.ServerStatus{10: domain.StatusOn}},
+		statusClient: &mockStatusClient{statuses: map[uint]domain.ServerStatus{1: domain.StatusOn}},
 		logger:       slog.Default(),
 	}
 
 	reader.applyStatuses(t.Context(), servers)
 
 	if servers[0].MonitorStatus != domain.StatusOn {
-		t.Errorf("server with endpoint: want ON, got %q", servers[0].MonitorStatus)
+		t.Errorf("server 1: want ON, got %q", servers[0].MonitorStatus)
 	}
 	if servers[1].MonitorStatus != "" {
-		t.Errorf("server without endpoint: want empty, got %q", servers[1].MonitorStatus)
+		t.Errorf("server 2: want empty, got %q", servers[1].MonitorStatus)
 	}
 }
 
 func TestServerReader_applyStatuses_errorIsBestEffort(t *testing.T) {
 
-	servers := []*dto.Server{{ID: 1, Endpoint: &dto.Endpoint{ID: 10}}}
+	servers := []*dto.Server{{ID: 1}}
 
 	reader := &ServerReader{
 		statusClient: &mockStatusClient{err: errors.New("boom")},
@@ -59,16 +59,16 @@ func TestServerReader_applyStatuses_errorIsBestEffort(t *testing.T) {
 	}
 }
 
-func TestServerReader_applyStatuses_noEndpoint(t *testing.T) {
+func TestServerReader_applyStatuses_noServers(t *testing.T) {
 
-	servers := []*dto.Server{{ID: 1}}
+	servers := []*dto.Server{}
 	reader := &ServerReader{
 		statusClient: &mockStatusClient{statuses: map[uint]domain.ServerStatus{10: domain.StatusOff}},
 		logger:       slog.Default(),
 	}
 
 	reader.applyStatuses(t.Context(), servers)
-	if servers[0].MonitorStatus != "" {
-		t.Errorf("no endpoint: want empty, got %q", servers[0].MonitorStatus)
+	if len(servers) != 0 {
+		t.Errorf("expected empty servers slice")
 	}
 }

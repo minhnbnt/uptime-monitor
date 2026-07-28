@@ -11,7 +11,6 @@ replace github.com/minhnbnt/uptime-monitor-microservices/common/authclient => ..
 require (
 	github.com/go-faster/errors v0.7.1
 	github.com/go-faster/jx v1.2.0
-	github.com/google/uuid v1.6.0
 	github.com/minhnbnt/uptime-monitor-microservices/common/authclient v0.0.0-00010101000000-000000000000
 	github.com/minhnbnt/uptime-monitor-microservices/common/proto v0.0.0-00010101000000-000000000000
 	github.com/ogen-go/ogen v1.23.0
@@ -34,6 +33,7 @@ require (
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-faster/yaml v0.4.6 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.6.0 // indirect

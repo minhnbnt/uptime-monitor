@@ -6,38 +6,16 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/domain"
 )
 
-type Endpoint struct {
-	ID            uint
-	URL           string
-	Interval      time.Duration
-	Timeout       time.Duration
-	Method        string
-	ExpectedCode  int
-	BodyCheckExpr *string
-}
-
-func EndpointFromDomain(e *domain.Endpoint) *Endpoint {
-
-	if e == nil {
-		return nil
-	}
-
-	return &Endpoint{
-		ID:            e.ID,
-		URL:           e.URL,
-		Interval:      e.Interval,
-		Timeout:       e.Timeout,
-		Method:        e.Method,
-		ExpectedCode:  e.ExpectedCode,
-		BodyCheckExpr: e.BodyCheckExpr,
-	}
-}
-
 type Server struct {
 	ID            uint
 	Name          string
+	Namespace     string
+	Kind          string
+	ObjectID      string
+	ContainerName string
+	Interval      time.Duration
+	Timeout       time.Duration
 	CreatedByID   uint
-	Endpoint      *Endpoint
 	MonitorStatus domain.ServerStatus
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
@@ -45,50 +23,49 @@ type Server struct {
 
 func ServerFromDomain(s domain.Server) Server {
 	return Server{
-		ID:          s.ID,
-		Name:        s.Name,
-		CreatedByID: s.CreatedByID,
-		Endpoint:    EndpointFromDomain(s.Endpoint),
-		CreatedAt:   s.CreatedAt,
-		UpdatedAt:   s.UpdatedAt,
+		ID:            s.ID,
+		Name:          s.Name,
+		Namespace:     s.Namespace,
+		Kind:          s.Kind,
+		ObjectID:      s.ObjectID,
+		ContainerName: s.ContainerName,
+		Interval:      s.Interval,
+		Timeout:       s.Timeout,
+		CreatedByID:   s.CreatedByID,
+		CreatedAt:     s.CreatedAt,
+		UpdatedAt:     s.UpdatedAt,
 	}
 }
 
-type CheckMethodType string
-
-const (
-	CheckMethodPull CheckMethodType = "pull"
-	CheckMethodPush CheckMethodType = "push"
-)
-
 type CreateServerRequest struct {
-	Name string
+	Name          string
+	Namespace     string
+	Kind          string
+	ObjectID      string
+	ContainerName string
+	Interval      time.Duration
+	Timeout       time.Duration
 }
 
 type UpdateServerRequest struct {
-	Name *string
-}
-
-type SetCheckMethodRequest struct {
-	URL           string
-	Method        CheckMethodType
-	HTTPMethod    string
-	Interval      time.Duration
-	Timeout       time.Duration
-	ExpectedCode  int
-	BodyCheckExpr *string
+	Name          *string
+	Namespace     *string
+	Kind          *string
+	ObjectID      *string
+	ContainerName *string
+	Interval      *time.Duration
+	Timeout       *time.Duration
 }
 
 type TestEndpointRequest struct {
-	URL           string
-	Method        string
+	Namespace     string
+	ObjectID      string
+	Kind          string
+	ContainerName string
 	Timeout       time.Duration
-	ExpectedCode  int
-	BodyCheckExpr *string
 }
 
 type TestEndpointResponse struct {
-	Success    bool
-	StatusCode int
-	Error      *string
+	Running bool
+	Error   *string
 }

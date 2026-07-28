@@ -5,15 +5,15 @@ package ping.v1;
 option go_package = "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/ping/v1;pingv1";
 
 message PingRequest {
-  string method = 1;
-  string url = 2;
-  int64 timeout_ms = 3;
-  int32 expected_code = 4;
-  string body_check_expr = 5;
+  string namespace = 1;
+  string kind = 2;
+  string object_id = 3;
+  string container_name = 4;
+  int64 timeout_ms = 5;
 }
 
 message PingResponse {
-  int32 status_code = 1;
+  bool running = 1;
   string error = 2;
 }
 

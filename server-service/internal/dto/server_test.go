@@ -9,62 +9,24 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/domain"
 )
 
-func TestEndpointFromDomain(t *testing.T) {
-	t.Run("nil input returns nil", func(t *testing.T) {
-		if got := EndpointFromDomain(nil); got != nil {
-			t.Errorf("got %+v, want nil", got)
-		}
-	})
-
-	t.Run("maps fields correctly", func(t *testing.T) {
-		ep := &domain.Endpoint{
-			URL:          "https://example.com",
-			Interval:     30 * time.Second,
-			Timeout:      10 * time.Second,
-			Method:       "GET",
-			ExpectedCode: 200,
-		}
-		got := EndpointFromDomain(ep)
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if got.URL != "https://example.com" {
-			t.Errorf("URL = %q, want %q", got.URL, "https://example.com")
-		}
-		if got.Interval != 30*time.Second {
-			t.Errorf("Interval = %v, want %v", got.Interval, 30*time.Second)
-		}
-		if got.Timeout != 10*time.Second {
-			t.Errorf("Timeout = %v, want %v", got.Timeout, 10*time.Second)
-		}
-		if got.Method != "GET" {
-			t.Errorf("Method = %q, want %q", got.Method, "GET")
-		}
-		if got.ExpectedCode != 200 {
-			t.Errorf("ExpectedCode = %d, want %d", got.ExpectedCode, 200)
-		}
-	})
-}
-
 func TestServerFromDomain(t *testing.T) {
 	now := time.Now()
 
-	t.Run("server with endpoint", func(t *testing.T) {
+	t.Run("server with k8s fields", func(t *testing.T) {
 		srv := domain.Server{
 			Model: gorm.Model{
 				ID:        42,
 				CreatedAt: now,
 				UpdatedAt: now,
 			},
-			Name: "Test Server",
-			Endpoint: &domain.Endpoint{
-				URL:          "https://example.com",
-				Interval:     30 * time.Second,
-				Timeout:      10 * time.Second,
-				Method:       "GET",
-				ExpectedCode: 200,
-			},
-			CreatedByID: 1,
+			Name:          "Test Server",
+			Namespace:     "prod",
+			Kind:          "Deployment",
+			ObjectID:      "web-app",
+			ContainerName: "nginx",
+			Interval:      30 * time.Second,
+			Timeout:       10 * time.Second,
+			CreatedByID:   1,
 		}
 
 		got := ServerFromDomain(srv)
@@ -74,28 +36,26 @@ func TestServerFromDomain(t *testing.T) {
 		if got.Name != "Test Server" {
 			t.Errorf("Name = %q, want %q", got.Name, "Test Server")
 		}
-		if got.Endpoint == nil {
-			t.Fatal("expected non-nil Endpoint")
+		if got.Namespace != "prod" {
+			t.Errorf("Namespace = %q, want %q", got.Namespace, "prod")
 		}
-		if got.Endpoint.URL != "https://example.com" {
-			t.Errorf("Endpoint.URL = %q", got.Endpoint.URL)
+		if got.Kind != "Deployment" {
+			t.Errorf("Kind = %q, want %q", got.Kind, "Deployment")
+		}
+		if got.ObjectID != "web-app" {
+			t.Errorf("ObjectID = %q, want %q", got.ObjectID, "web-app")
+		}
+		if got.ContainerName != "nginx" {
+			t.Errorf("ContainerName = %q, want %q", got.ContainerName, "nginx")
+		}
+		if got.Interval != 30*time.Second {
+			t.Errorf("Interval = %v, want %v", got.Interval, 30*time.Second)
+		}
+		if got.Timeout != 10*time.Second {
+			t.Errorf("Timeout = %v, want %v", got.Timeout, 10*time.Second)
 		}
 		if !got.CreatedAt.Equal(now) {
 			t.Errorf("CreatedAt mismatch")
-		}
-	})
-
-	t.Run("server without endpoint", func(t *testing.T) {
-		srv := domain.Server{
-			Model: gorm.Model{
-				ID: 1,
-			},
-			Name: "No Endpoint Server",
-		}
-
-		got := ServerFromDomain(srv)
-		if got.Endpoint != nil {
-			t.Errorf("expected nil Endpoint, got %+v", got.Endpoint)
 		}
 	})
 
@@ -109,7 +69,10 @@ func TestServerFromDomain(t *testing.T) {
 				CreatedAt: createdAt,
 				UpdatedAt: updatedAt,
 			},
-			Name: "Timestamp Test",
+			Name:      "Timestamp Test",
+			Namespace: "default",
+			Kind:      "Pod",
+			ObjectID:  "test-pod",
 		}
 
 		got := ServerFromDomain(srv)
