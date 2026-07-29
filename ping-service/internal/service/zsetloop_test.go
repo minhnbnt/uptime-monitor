@@ -55,13 +55,13 @@ func TestGetSleepDuration(t *testing.T) {
 }
 
 func TestRunIteration(t *testing.T) {
-	ep := &domain.Endpoint{
-		Model:        gorm.Model{ID: 1},
-		ServerID:     10,
-		URL:          "https://example.com",
-		Method:       "GET",
-		ExpectedCode: 200,
-		Interval:     30 * time.Second,
+	sv := &domain.Server{
+		Model:     gorm.Model{ID: 1},
+		ServerID:  10,
+		Namespace: "default",
+		Kind:      "Pod",
+		ObjectID:  "web-app",
+		Interval:  30 * time.Second,
 	}
 
 	t.Run("empty due list calls handler with empty tasks", func(t *testing.T) {
@@ -69,9 +69,9 @@ func TestRunIteration(t *testing.T) {
 		s := &ZsetLoopService{
 			logger:           logger.NewMockLogger(),
 			schedulerStorage: nil,
-			endpointProvider: &mockEndpointProvider{
-				getBatchFn: func(_ context.Context, _ []uint) (map[uint]*domain.Endpoint, error) {
-					return make(map[uint]*domain.Endpoint), nil
+			serverProvider: &mockServerProvider{
+				getBatchFn: func(_ context.Context, _ []uint) (map[uint]*domain.Server, error) {
+					return make(map[uint]*domain.Server), nil
 				},
 			},
 		}
@@ -87,34 +87,34 @@ func TestRunIteration(t *testing.T) {
 	})
 
 	t.Run("happy path", func(t *testing.T) {
-		var gotEndpoints []*domain.Endpoint
+		var gotServers []*domain.Server
 
 		s := &ZsetLoopService{
 			logger: logger.NewMockLogger(),
-			endpointProvider: &mockEndpointProvider{
-				getBatchFn: func(_ context.Context, _ []uint) (map[uint]*domain.Endpoint, error) {
-					return map[uint]*domain.Endpoint{1: ep}, nil
+			serverProvider: &mockServerProvider{
+				getBatchFn: func(_ context.Context, _ []uint) (map[uint]*domain.Server, error) {
+					return map[uint]*domain.Server{1: sv}, nil
 				},
 			},
 		}
 
 		due := []scheduler.ScheduledTask{
-			{EndpointID: 1},
+			{ServerID: 1},
 		}
 
 		err := s.runIteration(t.Context(), due, func(_ context.Context, tasks []PingTask) {
 			for _, t := range tasks {
-				gotEndpoints = append(gotEndpoints, t.Endpoint)
+				gotServers = append(gotServers, t.Server)
 			}
 		})
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
-		if len(gotEndpoints) != 1 {
-			t.Errorf("got %d endpoints, want 1", len(gotEndpoints))
+		if len(gotServers) != 1 {
+			t.Errorf("got %d servers, want 1", len(gotServers))
 		}
-		if gotEndpoints[0].ID != 1 {
-			t.Errorf("got endpoint %d, want 1", gotEndpoints[0].ID)
+		if gotServers[0].ID != 1 {
+			t.Errorf("got server %d, want 1", gotServers[0].ID)
 		}
 	})
 
@@ -122,14 +122,14 @@ func TestRunIteration(t *testing.T) {
 		wantErr := errors.New("provider error")
 		s := &ZsetLoopService{
 			logger: logger.NewMockLogger(),
-			endpointProvider: &mockEndpointProvider{
-				getBatchFn: func(_ context.Context, _ []uint) (map[uint]*domain.Endpoint, error) {
+			serverProvider: &mockServerProvider{
+				getBatchFn: func(_ context.Context, _ []uint) (map[uint]*domain.Server, error) {
 					return nil, wantErr
 				},
 			},
 		}
 
-		err := s.runIteration(t.Context(), []scheduler.ScheduledTask{{EndpointID: 1}}, func(_ context.Context, _ []PingTask) {})
+		err := s.runIteration(t.Context(), []scheduler.ScheduledTask{{ServerID: 1}}, func(_ context.Context, _ []PingTask) {})
 		if err != wantErr {
 			t.Errorf("got %v, want %v", err, wantErr)
 		}

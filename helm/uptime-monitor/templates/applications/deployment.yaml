@@ -19,6 +19,9 @@ spec:
       labels:
         {{- include "uptime-monitor.labels" (dict "name" $name) | nindent 8 }}
     spec:
+      {{- if $app.serviceAccountName }}
+      serviceAccountName: {{ $app.serviceAccountName }}
+      {{- end }}
       # Disable K8s auto-injected service env vars (e.g. PING_SERVICE_PORT) that
       # would otherwise clobber our config keys like server.port.
       enableServiceLinks: false

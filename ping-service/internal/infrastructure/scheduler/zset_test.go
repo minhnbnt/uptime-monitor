@@ -8,8 +8,8 @@ func TestGetScheduledTask(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if task.EndpointID != 42 {
-			t.Errorf("EndpointID = %d, want 42", task.EndpointID)
+		if task.ServerID != 42 {
+			t.Errorf("ServerID = %d, want 42", task.ServerID)
 		}
 		if task.Score != 1000 {
 			t.Errorf("Score = %d, want 1000", task.Score)

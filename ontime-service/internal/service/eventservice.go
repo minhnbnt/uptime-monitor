@@ -19,8 +19,8 @@ type EventRecorder interface {
 }
 
 type EventRepository interface {
-	GetCurrentStatuses(ctx context.Context, endpointIDs []uint) ([]repository.CurrentStatus, error)
-	CountByStatus(ctx context.Context, endpointIDs []uint) (online, offline int64, err error)
+	GetCurrentStatuses(ctx context.Context, serverIDs []uint) ([]repository.CurrentStatus, error)
+	CountByStatus(ctx context.Context, serverIDs []uint) (online, offline int64, err error)
 	CountByStatusByUserID(ctx context.Context, userID uint) (online, offline int64, err error)
 }
 
@@ -50,34 +50,34 @@ func (s *EventService) RecordEvent(ctx context.Context, req dto.RecordEventReque
 	}
 
 	event := &domain.ServerEvent{
-		ID:         id,
-		Time:       time.Now(),
-		EndpointID: req.EndpointID,
-		Status:     domain.ServerStatus(req.Status),
+		ID:       id,
+		Time:     time.Now(),
+		ServerID: req.ServerID,
+		Status:   domain.ServerStatus(req.Status),
 	}
 
 	return s.recorder.Save(ctx, event)
 }
 
-func (s *EventService) GetCurrentStatuses(ctx context.Context, endpointIDs []uint) ([]dto.EndpointStatus, error) {
+func (s *EventService) GetCurrentStatuses(ctx context.Context, serverIDs []uint) ([]dto.EndpointStatus, error) {
 
-	rows, err := s.repo.GetCurrentStatuses(ctx, endpointIDs)
+	rows, err := s.repo.GetCurrentStatuses(ctx, serverIDs)
 	if err != nil {
 		return nil, err
 	}
 
 	results := lo.Map(rows, func(r repository.CurrentStatus, _ int) dto.EndpointStatus {
 		return dto.EndpointStatus{
-			EndpointID: r.EndpointID,
-			Status:     dto.ServerStatus(r.Status),
+			ServerID: r.ServerID,
+			Status:   dto.ServerStatus(r.Status),
 		}
 	})
 
 	return results, nil
 }
 
-func (s *EventService) CountByStatus(ctx context.Context, endpointIDs []uint) (online, offline int64, err error) {
-	return s.repo.CountByStatus(ctx, endpointIDs)
+func (s *EventService) CountByStatus(ctx context.Context, serverIDs []uint) (online, offline int64, err error) {
+	return s.repo.CountByStatus(ctx, serverIDs)
 }
 
 func (s *EventService) CountByStatusByUserID(ctx context.Context, userID uint) (online, offline int64, err error) {

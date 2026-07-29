@@ -38,11 +38,11 @@ func (c *EventRecorderClient) Shutdown() error {
 	return c.wrapper.Shutdown()
 }
 
-func (c *EventRecorderClient) RecordEvent(ctx context.Context, endpointID uint, status domain.ServerStatus) error {
+func (c *EventRecorderClient) RecordEvent(ctx context.Context, serverID uint, status domain.ServerStatus) error {
 
 	_, err := c.client.RecordEvent(ctx, &eventv1.RecordEventRequest{
-		EndpointId: uint64(endpointID),
-		Status:     string(status),
+		ServerId: uint64(serverID),
+		Status:   string(status),
 	})
 
 	if err != nil {

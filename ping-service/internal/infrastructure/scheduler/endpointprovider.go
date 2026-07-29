@@ -13,23 +13,23 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/grpcclient"
 )
 
-type EndpointProvider struct {
+type ServerProvider struct {
 	client *grpcclient.EndpointClient
-	cache  *EndpointMetaCache
+	cache  *ServerMetaCache
 	logger *slog.Logger
 }
 
-func RegisterEndpointProvider(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (*EndpointProvider, error) {
-		return &EndpointProvider{
+func RegisterServerProvider(i do.Injector) {
+	do.Provide(i, func(i do.Injector) (*ServerProvider, error) {
+		return &ServerProvider{
 			client: do.MustInvoke[*grpcclient.EndpointClient](i),
-			cache:  do.MustInvoke[*EndpointMetaCache](i),
+			cache:  do.MustInvoke[*ServerMetaCache](i),
 			logger: do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
 
-func (p *EndpointProvider) Get(ctx context.Context, id uint) (*domain.Endpoint, error) {
+func (p *ServerProvider) Get(ctx context.Context, id uint) (*domain.Server, error) {
 
 	results, err := p.GetBatch(ctx, []uint{id})
 	if err != nil {
@@ -38,31 +38,31 @@ func (p *EndpointProvider) Get(ctx context.Context, id uint) (*domain.Endpoint, 
 
 	result, has := results[id]
 	if !has {
-		return nil, fmt.Errorf("endpoint not found: %d", id)
+		return nil, fmt.Errorf("server not found: %d", id)
 	}
 
 	return result, nil
 }
 
-func (p *EndpointProvider) GetBatch(ctx context.Context, ids []uint) (map[uint]*domain.Endpoint, error) {
+func (p *ServerProvider) GetBatch(ctx context.Context, ids []uint) (map[uint]*domain.Server, error) {
 
 	if len(ids) == 0 {
-		return make(map[uint]*domain.Endpoint), nil
+		return make(map[uint]*domain.Server), nil
 	}
 
-	endpoints, err := p.cache.MGet(ctx, ids)
+	servers, err := p.cache.MGet(ctx, ids)
 	if err != nil {
-		p.logger.Error("failed to get endpoints from cache", "error", err)
-		endpoints = make(map[uint]*domain.Endpoint)
+		p.logger.Error("failed to get servers from cache", "error", err)
+		servers = make(map[uint]*domain.Server)
 	}
 
 	missed := lo.Filter(ids, func(id uint, _ int) bool {
-		_, has := endpoints[id]
+		_, has := servers[id]
 		return !has
 	})
 
 	if len(missed) == 0 {
-		return endpoints, nil
+		return servers, nil
 	}
 
 	batch, err := p.client.GetBatch(ctx, missed)
@@ -70,11 +70,11 @@ func (p *EndpointProvider) GetBatch(ctx context.Context, ids []uint) (map[uint]*
 		return nil, err
 	}
 
-	maps.Copy(endpoints, batch)
+	maps.Copy(servers, batch)
 
-	if err := p.cache.SetMulti(ctx, lo.Values(endpoints)); err != nil {
-		p.logger.Error("failed to set endpoints in cache", "error", err)
+	if err := p.cache.SetMulti(ctx, lo.Values(servers)); err != nil {
+		p.logger.Error("failed to set servers in cache", "error", err)
 	}
 
-	return endpoints, nil
+	return servers, nil
 }

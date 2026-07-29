@@ -7,10 +7,10 @@ import (
 )
 
 type EventRecorder interface {
-	RecordEvent(ctx context.Context, endpointID uint, status domain.ServerStatus) error
+	RecordEvent(ctx context.Context, serverID uint, status domain.ServerStatus) error
 }
 
 type StatusStore interface {
-	GetStatus(ctx context.Context, endpointID uint) (domain.ServerStatus, error)
-	SetStatus(ctx context.Context, endpointID uint, status domain.ServerStatus) error
+	GetStatus(ctx context.Context, serverID uint) (domain.ServerStatus, error)
+	SetStatus(ctx context.Context, serverID uint, status domain.ServerStatus) error
 }

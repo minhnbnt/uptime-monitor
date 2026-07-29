@@ -18,14 +18,14 @@ const (
 
 type DueHandler func(ctx context.Context, tasks []PingTask)
 
-type endpointProvider interface {
-	GetBatch(ctx context.Context, ids []uint) (map[uint]*domain.Endpoint, error)
+type serverProvider interface {
+	GetBatch(ctx context.Context, ids []uint) (map[uint]*domain.Server, error)
 }
 
 type ZsetLoopService struct {
 	logger           *slog.Logger
 	schedulerStorage *scheduler.ZSetScheduleRepository
-	endpointProvider endpointProvider
+	serverProvider   serverProvider
 }
 
 func RegisterLoopService(i do.Injector) {
@@ -33,7 +33,7 @@ func RegisterLoopService(i do.Injector) {
 		return &ZsetLoopService{
 			logger:           do.MustInvoke[*slog.Logger](i),
 			schedulerStorage: do.MustInvoke[*scheduler.ZSetScheduleRepository](i),
-			endpointProvider: do.MustInvoke[*scheduler.EndpointProvider](i),
+			serverProvider:   do.MustInvoke[*scheduler.ServerProvider](i),
 		}, nil
 	})
 }
@@ -66,8 +66,8 @@ func getSleepDuration(next scheduler.ScheduledTask, hasNext bool) time.Duration 
 
 func (s *ZsetLoopService) runIteration(ctx context.Context, due []scheduler.ScheduledTask, dueHandler DueHandler) error {
 
-	ids := lo.Map(due, func(task scheduler.ScheduledTask, _ int) uint { return task.EndpointID })
-	endpointMap, err := s.endpointProvider.GetBatch(ctx, ids)
+	ids := lo.Map(due, func(task scheduler.ScheduledTask, _ int) uint { return task.ServerID })
+	serverMap, err := s.serverProvider.GetBatch(ctx, ids)
 	if err != nil {
 		return err
 	}
@@ -75,13 +75,13 @@ func (s *ZsetLoopService) runIteration(ctx context.Context, due []scheduler.Sche
 	tasks := make([]PingTask, 0, len(due))
 	for _, task := range due {
 
-		ep, ok := endpointMap[task.EndpointID]
+		sv, ok := serverMap[task.ServerID]
 		if !ok {
 			continue
 		}
 
 		task := PingTask{
-			Endpoint:  ep,
+			Server:    sv,
 			PrevScore: task.Score,
 		}
 

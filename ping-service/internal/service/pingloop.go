@@ -8,13 +8,14 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
-	infra "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/k8sclient"
 	scheduler "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/utils"
 )
 
 type pingWorker interface {
-	Ping(ctx context.Context, ep *domain.Endpoint) (*infra.Response, error)
+	CheckPodStatus(ctx context.Context, namespace, kind, objectID, containerName string) (bool, error)
 }
 
 type recordWorker interface {
@@ -22,12 +23,11 @@ type recordWorker interface {
 }
 
 type scoreUpdater interface {
-	Update(ctx context.Context, endpointID uint, nextScore int64) error
+	Update(ctx context.Context, serverID uint, nextScore int64) error
 }
 
 type PingLoopService struct {
 	pingWorker         pingWorker
-	responseChecker    *ResponseChecker
 	recordStatusWorker recordWorker
 	scoreUpdater       scoreUpdater
 	logger             *slog.Logger
@@ -36,18 +36,17 @@ type PingLoopService struct {
 func RegisterPingService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*PingLoopService, error) {
 		return &PingLoopService{
-			pingWorker:         do.MustInvoke[*infra.PingClient](i),
-			responseChecker:    do.MustInvoke[*ResponseChecker](i),
-			recordStatusWorker: do.MustInvoke[*infra.RecordStatusWorker](i),
+			pingWorker:         do.MustInvoke[k8sclient.K8sClient](i),
+			recordStatusWorker: do.MustInvoke[*infrastructure.RecordStatusWorker](i),
 			scoreUpdater:       do.MustInvoke[*scheduler.ScoreUpdater](i),
 			logger:             do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
 
-func (s *PingLoopService) pingAndRecordEndpoint(ctx context.Context, task PingTask) {
+func (s *PingLoopService) pingAndRecordServer(ctx context.Context, task PingTask) {
 
-	ep := task.Endpoint
+	sv := task.Server
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -55,15 +54,15 @@ func (s *PingLoopService) pingAndRecordEndpoint(ctx context.Context, task PingTa
 		}
 	}()
 
-	isUp, pingErr := s.Ping(ctx, ep)
+	isUp, pingErr := s.pingWorker.CheckPodStatus(ctx, sv.Namespace, sv.Kind, sv.ObjectID, sv.ContainerName)
 
 	if pingErr != nil {
 		s.logger.Warn(
 			"ping failed",
-			slog.String("url", ep.URL),
-			slog.String("method", ep.Method),
-			slog.Int("expected_code", ep.ExpectedCode),
-			slog.Int64("endpoint_id", int64(ep.ID)),
+			slog.String("namespace", sv.Namespace),
+			slog.String("kind", sv.Kind),
+			slog.String("object_id", sv.ObjectID),
+			slog.Uint64("server_id", uint64(sv.ServerID)),
 			slog.Any("error", pingErr),
 		)
 	}
@@ -77,57 +76,43 @@ func (s *PingLoopService) pingAndRecordEndpoint(ctx context.Context, task PingTa
 	if err != nil {
 		s.logger.Error(
 			"generate event id",
-			slog.Int64("endpoint", int64(ep.ID)),
+			slog.Uint64("server_id", uint64(sv.ServerID)),
 			slog.Any("error", err),
 		)
 		return
 	}
 
 	event := domain.ServerEvent{
-		ID:         id,
-		EndpointID: ep.ID,
-		Status:     status,
+		ID:       id,
+		ServerID: sv.ServerID,
+		Status:   status,
 	}
 
 	if err := s.Record(ctx, &event); err != nil {
 		s.logger.Error(
 			"record event",
-			slog.Int64("endpoint", int64(ep.ID)),
+			slog.Uint64("server_id", uint64(sv.ServerID)),
 			slog.Any("error", err),
 		)
 	}
 
-	nextScore, err := utils.NextExecutionTime(ep.ID, ep.Interval)
+	nextScore, err := utils.NextExecutionTime(sv.ID, sv.Interval)
 	if err != nil {
 		s.logger.Error(
 			"calculate next score",
-			slog.Int64("endpoint", int64(ep.ID)),
+			slog.Uint64("server_id", uint64(sv.ServerID)),
 			slog.Any("error", err),
 		)
 		return
 	}
 
-	if err := s.scoreUpdater.Update(ctx, ep.ID, nextScore.UnixMilli()); err != nil {
+	if err := s.scoreUpdater.Update(ctx, sv.ID, nextScore.UnixMilli()); err != nil {
 		s.logger.Error(
 			"update score",
-			slog.Int64("endpoint", int64(ep.ID)),
+			slog.Uint64("server_id", uint64(sv.ServerID)),
 			slog.Any("error", err),
 		)
 	}
-}
-
-func (s *PingLoopService) Ping(ctx context.Context, ep *domain.Endpoint) (bool, error) {
-
-	out, err := s.pingWorker.Ping(ctx, ep)
-	if err != nil {
-		return false, err
-	}
-
-	if err := s.responseChecker.CheckResponse(*ep, *out); err != nil {
-		return false, err
-	}
-
-	return true, nil
 }
 
 func (s *PingLoopService) Record(ctx context.Context, event *domain.ServerEvent) error {
@@ -143,11 +128,11 @@ func (s *PingLoopService) Run(ctx context.Context, channel <-chan PingTask) {
 				return
 			}
 
-			if task.Endpoint == nil {
+			if task.Server == nil {
 				continue
 			}
 
-			s.pingAndRecordEndpoint(ctx, task)
+			s.pingAndRecordServer(ctx, task)
 
 		case <-ctx.Done():
 			return

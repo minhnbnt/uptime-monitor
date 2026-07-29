@@ -113,7 +113,7 @@ func getScheduledTask(member, scoreStr any) (*ScheduledTask, error) {
 
 	id, err := strconv.ParseUint(memberStr, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("parse endpoint id: %w", err)
+		return nil, fmt.Errorf("parse server id: %w", err)
 	}
 
 	score, err := strconv.ParseInt(scoreStrStr, 10, 64)
@@ -122,8 +122,8 @@ func getScheduledTask(member, scoreStr any) (*ScheduledTask, error) {
 	}
 
 	return &ScheduledTask{
-		EndpointID: uint(id),
-		Score:      score,
+		ServerID: uint(id),
+		Score:    score,
 	}, nil
 }
 

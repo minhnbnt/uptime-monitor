@@ -14,35 +14,37 @@ import (
 )
 
 type debeziumMessage struct {
-	Before *debeziumEndpointData `json:"before"`
-	After  *debeziumEndpointData `json:"after"`
-	Op     string                `json:"op"` // c=create, u=update, d=delete
+	Before *debeziumServerData `json:"before"`
+	After  *debeziumServerData `json:"after"`
+	Op     string              `json:"op"` // c=create, u=update, d=delete
 }
 
-type debeziumEndpointData struct {
-	ID           uint   `json:"id"`
-	ServerID     uint   `json:"server_id"`
-	URL          string `json:"url"`
-	Method       string `json:"method"`
-	ExpectedCode int    `json:"expected_code"`
-	Interval     int64  `json:"interval"`
-	Timeout      int64  `json:"timeout"`
+type debeziumServerData struct {
+	ID            uint   `json:"id"`
+	ServerID      uint   `json:"server_id"`
+	Namespace     string `json:"namespace"`
+	Kind          string `json:"kind"`
+	ObjectID      string `json:"object_id"`
+	ContainerName string `json:"container_name"`
+	Interval      int64  `json:"interval"`
+	Timeout       int64  `json:"timeout"`
 }
 
-func (d *debeziumEndpointData) toDomain() domain.Endpoint {
-	return domain.Endpoint{
-		Model:        gorm.Model{ID: d.ID},
-		ServerID:     d.ServerID,
-		URL:          d.URL,
-		Method:       d.Method,
-		ExpectedCode: d.ExpectedCode,
-		Interval:     time.Duration(d.Interval),
-		Timeout:      time.Duration(d.Timeout),
+func (d *debeziumServerData) toDomain() domain.Server {
+	return domain.Server{
+		Model:         gorm.Model{ID: d.ID},
+		ServerID:      d.ServerID,
+		Namespace:     d.Namespace,
+		Kind:          d.Kind,
+		ObjectID:      d.ObjectID,
+		ContainerName: d.ContainerName,
+		Interval:      time.Duration(d.Interval),
+		Timeout:       time.Duration(d.Timeout),
 	}
 }
 
 type messageProcessor struct {
-	handler EndpointEventHandler
+	handler ServerEventHandler
 	logger  *slog.Logger
 }
 
@@ -66,8 +68,8 @@ func (p *messageProcessor) onUpdate(ctx context.Context, event debeziumMessage) 
 		return nil
 	}
 
-	domain := event.After.toDomain()
-	if err := p.handler.OnUpdate(ctx, domain); err != nil {
+	sv := event.After.toDomain()
+	if err := p.handler.OnUpdate(ctx, sv); err != nil {
 		return err
 	}
 
@@ -80,8 +82,8 @@ func (p *messageProcessor) onCreate(ctx context.Context, event debeziumMessage) 
 		return nil
 	}
 
-	domain := event.After.toDomain()
-	if err := p.handler.OnCreate(ctx, domain); err != nil {
+	sv := event.After.toDomain()
+	if err := p.handler.OnCreate(ctx, sv); err != nil {
 		return err
 	}
 
@@ -121,8 +123,8 @@ func (p *messageProcessor) ProcessMessage(ctx context.Context, msg redis.XMessag
 	switch event.Op {
 	case "c", "r":
 		if err := p.onCreate(ctx, event); err != nil {
-			p.logger.Error("handle endpoint",
-				slog.Uint64("endpoint_id", uint64(event.After.ID)),
+			p.logger.Error("handle server",
+				slog.Uint64("server_id", uint64(event.After.ID)),
 				slog.String("op", event.Op),
 				slog.Any("error", err),
 			)
@@ -132,8 +134,8 @@ func (p *messageProcessor) ProcessMessage(ctx context.Context, msg redis.XMessag
 
 	case "u":
 		if err := p.onUpdate(ctx, event); err != nil {
-			p.logger.Error("handle endpoint",
-				slog.Uint64("endpoint_id", uint64(event.After.ID)),
+			p.logger.Error("handle server",
+				slog.Uint64("server_id", uint64(event.After.ID)),
 				slog.String("op", event.Op),
 				slog.Any("error", err),
 			)
@@ -143,8 +145,8 @@ func (p *messageProcessor) ProcessMessage(ctx context.Context, msg redis.XMessag
 
 	case "d":
 		if err := p.onDelete(ctx, event); err != nil {
-			p.logger.Error("handle endpoint",
-				slog.Uint64("endpoint_id", uint64(event.Before.ID)),
+			p.logger.Error("handle server",
+				slog.Uint64("server_id", uint64(event.Before.ID)),
 				slog.String("op", event.Op),
 				slog.Any("error", err),
 			)

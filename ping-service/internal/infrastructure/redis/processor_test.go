@@ -12,15 +12,16 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/logger"
 )
 
-func TestDebeziumEndpointDataToDomain(t *testing.T) {
-	data := debeziumEndpointData{
-		ID:           1,
-		ServerID:     10,
-		URL:          "https://example.com",
-		Method:       "GET",
-		ExpectedCode: 200,
-		Interval:     30000000000,
-		Timeout:      10000000000,
+func TestDebeziumServerDataToDomain(t *testing.T) {
+	data := debeziumServerData{
+		ID:            1,
+		ServerID:      10,
+		Namespace:     "default",
+		Kind:          "Pod",
+		ObjectID:      "web-app",
+		ContainerName: "nginx",
+		Interval:      30000000000,
+		Timeout:       10000000000,
 	}
 
 	got := data.toDomain()
@@ -30,14 +31,17 @@ func TestDebeziumEndpointDataToDomain(t *testing.T) {
 	if got.ServerID != 10 {
 		t.Errorf("ServerID = %d, want 10", got.ServerID)
 	}
-	if got.URL != "https://example.com" {
-		t.Errorf("URL = %q", got.URL)
+	if got.Namespace != "default" {
+		t.Errorf("Namespace = %q", got.Namespace)
 	}
-	if got.Method != "GET" {
-		t.Errorf("Method = %q", got.Method)
+	if got.Kind != "Pod" {
+		t.Errorf("Kind = %q", got.Kind)
 	}
-	if got.ExpectedCode != 200 {
-		t.Errorf("ExpectedCode = %d, want 200", got.ExpectedCode)
+	if got.ObjectID != "web-app" {
+		t.Errorf("ObjectID = %q", got.ObjectID)
+	}
+	if got.ContainerName != "nginx" {
+		t.Errorf("ContainerName = %q", got.ContainerName)
 	}
 	if got.Interval != 30*time.Second {
 		t.Errorf("Interval = %v, want 30s", got.Interval)
@@ -50,8 +54,8 @@ func TestDebeziumEndpointDataToDomain(t *testing.T) {
 func TestResolveDeletedID(t *testing.T) {
 	t.Run("before field exists", func(t *testing.T) {
 		id, err := resolveDeletedID(debeziumMessage{
-			Before: &debeziumEndpointData{ID: 1},
-			After:  &debeziumEndpointData{ID: 2},
+			Before: &debeziumServerData{ID: 1},
+			After:  &debeziumServerData{ID: 2},
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -63,7 +67,7 @@ func TestResolveDeletedID(t *testing.T) {
 
 	t.Run("only after field exists", func(t *testing.T) {
 		id, err := resolveDeletedID(debeziumMessage{
-			After: &debeziumEndpointData{ID: 3},
+			After: &debeziumServerData{ID: 3},
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -148,31 +152,31 @@ func TestProcessMessage(t *testing.T) {
 	})
 
 	t.Run("create operation", func(t *testing.T) {
-		var created domain.Endpoint
+		var created domain.Server
 		p := &messageProcessor{
-			handler: &mockEndpointEventHandler{
-				onCreateFn: func(_ context.Context, inEp domain.Endpoint) error {
-					created = inEp
+			handler: &mockServerEventHandler{
+				onCreateFn: func(_ context.Context, inSv domain.Server) error {
+					created = inSv
 					return nil
 				},
 			},
 			logger: logger.NewMockLogger(),
 		}
 
-		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"op":"c","after":{"id":1,"server_id":10,"url":"https://example.com","method":"GET","expected_code":200,"interval":30000000000,"timeout":10000000000}}`))
+		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"op":"c","after":{"id":1,"server_id":10,"namespace":"default","kind":"Pod","object_id":"web-app","container_name":"nginx","interval":30000000000,"timeout":10000000000}}`))
 		if !canAck {
 			t.Error("expected canAck=true")
 		}
 		if created.ID != 1 {
-			t.Errorf("created endpoint ID = %d, want 1", created.ID)
+			t.Errorf("created server ID = %d, want 1", created.ID)
 		}
 	})
 
 	t.Run("create operation handler error", func(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
 		p := &messageProcessor{
-			handler: &mockEndpointEventHandler{
-				onCreateFn: func(_ context.Context, _ domain.Endpoint) error {
+			handler: &mockServerEventHandler{
+				onCreateFn: func(_ context.Context, _ domain.Server) error {
 					return errors.New("handler error")
 				},
 			},
@@ -189,30 +193,30 @@ func TestProcessMessage(t *testing.T) {
 	})
 
 	t.Run("update operation", func(t *testing.T) {
-		var updated domain.Endpoint
+		var updated domain.Server
 		p := &messageProcessor{
-			handler: &mockEndpointEventHandler{
-				onUpdateFn: func(_ context.Context, inEp domain.Endpoint) error {
-					updated = inEp
+			handler: &mockServerEventHandler{
+				onUpdateFn: func(_ context.Context, inSv domain.Server) error {
+					updated = inSv
 					return nil
 				},
 			},
 			logger: logger.NewMockLogger(),
 		}
 
-		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"op":"u","after":{"id":2,"url":"https://updated.com"}}`))
+		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"op":"u","after":{"id":2,"namespace":"prod"}}`))
 		if !canAck {
 			t.Error("expected canAck=true")
 		}
 		if updated.ID != 2 {
-			t.Errorf("updated endpoint ID = %d, want 2", updated.ID)
+			t.Errorf("updated server ID = %d, want 2", updated.ID)
 		}
 	})
 
 	t.Run("delete operation", func(t *testing.T) {
 		var deletedID uint
 		p := &messageProcessor{
-			handler: &mockEndpointEventHandler{
+			handler: &mockServerEventHandler{
 				onDeleteFn: func(_ context.Context, id uint) error {
 					deletedID = id
 					return nil
@@ -233,8 +237,8 @@ func TestProcessMessage(t *testing.T) {
 	t.Run("create with nil after acks but does not call handler", func(t *testing.T) {
 		var handlerCalled bool
 		p := &messageProcessor{
-			handler: &mockEndpointEventHandler{
-				onCreateFn: func(_ context.Context, _ domain.Endpoint) error {
+			handler: &mockServerEventHandler{
+				onCreateFn: func(_ context.Context, _ domain.Server) error {
 					handlerCalled = true
 					return nil
 				},
@@ -254,7 +258,7 @@ func TestProcessMessage(t *testing.T) {
 	t.Run("delete on event with only after resolves ID from after", func(t *testing.T) {
 		var deletedID uint
 		p := &messageProcessor{
-			handler: &mockEndpointEventHandler{
+			handler: &mockServerEventHandler{
 				onDeleteFn: func(_ context.Context, id uint) error {
 					deletedID = id
 					return nil
@@ -275,8 +279,8 @@ func TestProcessMessage(t *testing.T) {
 	t.Run("update with nil after acks but does not call handler", func(t *testing.T) {
 		var handlerCalled bool
 		p := &messageProcessor{
-			handler: &mockEndpointEventHandler{
-				onUpdateFn: func(_ context.Context, _ domain.Endpoint) error {
+			handler: &mockServerEventHandler{
+				onUpdateFn: func(_ context.Context, _ domain.Server) error {
 					handlerCalled = true
 					return nil
 				},
@@ -298,16 +302,16 @@ func TestOnCreateUpdateDelete(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("onCreate delegates", func(t *testing.T) {
-		var got domain.Endpoint
+		var got domain.Server
 		p := &messageProcessor{
-			handler: &mockEndpointEventHandler{
-				onCreateFn: func(_ context.Context, inE domain.Endpoint) error {
-					got = inE
+			handler: &mockServerEventHandler{
+				onCreateFn: func(_ context.Context, inSv domain.Server) error {
+					got = inSv
 					return nil
 				},
 			},
 		}
-		err := p.onCreate(ctx, debeziumMessage{After: &debeziumEndpointData{ID: 1}})
+		err := p.onCreate(ctx, debeziumMessage{After: &debeziumServerData{ID: 1}})
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -319,8 +323,8 @@ func TestOnCreateUpdateDelete(t *testing.T) {
 	t.Run("onCreate nil after returns nil", func(t *testing.T) {
 		var handlerCalled bool
 		p := &messageProcessor{
-			handler: &mockEndpointEventHandler{
-				onCreateFn: func(_ context.Context, _ domain.Endpoint) error {
+			handler: &mockServerEventHandler{
+				onCreateFn: func(_ context.Context, _ domain.Server) error {
 					handlerCalled = true
 					return nil
 				},
@@ -336,16 +340,16 @@ func TestOnCreateUpdateDelete(t *testing.T) {
 	})
 
 	t.Run("onUpdate delegates", func(t *testing.T) {
-		var got domain.Endpoint
+		var got domain.Server
 		p := &messageProcessor{
-			handler: &mockEndpointEventHandler{
-				onUpdateFn: func(_ context.Context, inE domain.Endpoint) error {
-					got = inE
+			handler: &mockServerEventHandler{
+				onUpdateFn: func(_ context.Context, inSv domain.Server) error {
+					got = inSv
 					return nil
 				},
 			},
 		}
-		err := p.onUpdate(ctx, debeziumMessage{After: &debeziumEndpointData{ID: 2}})
+		err := p.onUpdate(ctx, debeziumMessage{After: &debeziumServerData{ID: 2}})
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -357,8 +361,8 @@ func TestOnCreateUpdateDelete(t *testing.T) {
 	t.Run("onUpdate nil after returns nil", func(t *testing.T) {
 		var handlerCalled bool
 		p := &messageProcessor{
-			handler: &mockEndpointEventHandler{
-				onUpdateFn: func(_ context.Context, _ domain.Endpoint) error {
+			handler: &mockServerEventHandler{
+				onUpdateFn: func(_ context.Context, _ domain.Server) error {
 					handlerCalled = true
 					return nil
 				},
@@ -376,14 +380,14 @@ func TestOnCreateUpdateDelete(t *testing.T) {
 	t.Run("onDelete delegates", func(t *testing.T) {
 		var gotID uint
 		p := &messageProcessor{
-			handler: &mockEndpointEventHandler{
+			handler: &mockServerEventHandler{
 				onDeleteFn: func(_ context.Context, id uint) error {
 					gotID = id
 					return nil
 				},
 			},
 		}
-		err := p.onDelete(ctx, debeziumMessage{Before: &debeziumEndpointData{ID: 3}})
+		err := p.onDelete(ctx, debeziumMessage{Before: &debeziumServerData{ID: 3}})
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}

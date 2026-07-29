@@ -8,6 +8,7 @@ import (
 	pinginfra "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/grpcclient"
 	pinggrpcserver "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/grpcserver"
+	pingk8s "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/k8sclient"
 	pingredis "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis"
 	pingrepo "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/repository"
 	pingsched "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
@@ -29,12 +30,15 @@ func providers(dev bool) []func(do.Injector) {
 		pingsched.RegisterZSetScheduleRepository,
 		pingsched.RegisterZSetTaskClaimer,
 		pingsched.RegisterScoreUpdater,
-		pingsched.RegisterEndpointMetaCache,
-		pingsched.RegisterEndpointProvider,
+		pingsched.RegisterServerMetaCache,
+		pingsched.RegisterServerProvider,
 
 		pinginfra.RegisterPingWorker,
 		pinginfra.RegisterBodyChecker,
 		pinginfra.RegisterRecordStatusWorker,
+
+		config.RegisterK8sClient,
+		pingk8s.RegisterK8sClient,
 
 		pinggrpcserver.RegisterPingServer,
 

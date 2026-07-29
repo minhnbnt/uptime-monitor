@@ -11,16 +11,16 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/logger"
 )
 
-func newEvent(endpointID uint, status domain.ServerStatus) *domain.ServerEvent {
+func newEvent(serverID uint, status domain.ServerStatus) *domain.ServerEvent {
 	return &domain.ServerEvent{
-		ID:         uuid.New(),
-		EndpointID: endpointID,
-		Status:     status,
+		ID:       uuid.New(),
+		ServerID: serverID,
+		Status:   status,
 	}
 }
 
 func TestRecord(t *testing.T) {
-	endpointID := uint(42)
+	serverID := uint(42)
 
 	t.Run("get status error logs warn and returns nil", func(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
@@ -34,7 +34,7 @@ func TestRecord(t *testing.T) {
 			logger:        log,
 		}
 
-		err := w.Record(context.Background(), newEvent(endpointID, domain.StatusOn))
+		err := w.Record(context.Background(), newEvent(serverID, domain.StatusOn))
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -64,7 +64,7 @@ func TestRecord(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		err := w.Record(context.Background(), newEvent(endpointID, domain.StatusOn))
+		err := w.Record(context.Background(), newEvent(serverID, domain.StatusOn))
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -77,9 +77,9 @@ func TestRecord(t *testing.T) {
 	})
 
 	t.Run("status changed records event and updates status", func(t *testing.T) {
-		var recordedEndpointID uint
+		var recordedServerID uint
 		var recordedStatus domain.ServerStatus
-		var setEndpointID uint
+		var setServerID uint
 		var setStatus domain.ServerStatus
 
 		w := &RecordStatusWorker{
@@ -87,15 +87,15 @@ func TestRecord(t *testing.T) {
 				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
 					return domain.StatusOff, nil
 				},
-				setStatusFn: func(_ context.Context, endpointID uint, status domain.ServerStatus) error {
-					setEndpointID = endpointID
+				setStatusFn: func(_ context.Context, serverID uint, status domain.ServerStatus) error {
+					setServerID = serverID
 					setStatus = status
 					return nil
 				},
 			},
 			eventRecorder: &mockEventRecorder{
-				recordEventFn: func(_ context.Context, endpointID uint, status domain.ServerStatus) error {
-					recordedEndpointID = endpointID
+				recordEventFn: func(_ context.Context, serverID uint, status domain.ServerStatus) error {
+					recordedServerID = serverID
 					recordedStatus = status
 					return nil
 				},
@@ -103,18 +103,18 @@ func TestRecord(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		err := w.Record(context.Background(), newEvent(endpointID, domain.StatusOn))
+		err := w.Record(context.Background(), newEvent(serverID, domain.StatusOn))
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
-		if recordedEndpointID != endpointID {
-			t.Errorf("recorded endpoint %d, want %d", recordedEndpointID, endpointID)
+		if recordedServerID != serverID {
+			t.Errorf("recorded server %d, want %d", recordedServerID, serverID)
 		}
 		if recordedStatus != domain.StatusOn {
 			t.Errorf("recorded status %q, want %q", recordedStatus, domain.StatusOn)
 		}
-		if setEndpointID != endpointID {
-			t.Errorf("set endpoint %d, want %d", setEndpointID, endpointID)
+		if setServerID != serverID {
+			t.Errorf("set server %d, want %d", setServerID, serverID)
 		}
 		if setStatus != domain.StatusOn {
 			t.Errorf("set status %q, want %q", setStatus, domain.StatusOn)
@@ -137,7 +137,7 @@ func TestRecord(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		err := w.Record(context.Background(), newEvent(endpointID, domain.StatusOn))
+		err := w.Record(context.Background(), newEvent(serverID, domain.StatusOn))
 		if err != wantErr {
 			t.Errorf("got %v, want %v", err, wantErr)
 		}
@@ -162,7 +162,7 @@ func TestRecord(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		err := w.Record(context.Background(), newEvent(endpointID, domain.StatusOn))
+		err := w.Record(context.Background(), newEvent(serverID, domain.StatusOn))
 		if err != wantErr {
 			t.Errorf("got %v, want %v", err, wantErr)
 		}

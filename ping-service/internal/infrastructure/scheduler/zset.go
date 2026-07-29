@@ -23,8 +23,8 @@ func shardKey(shardID uint) string {
 }
 
 type ScheduledTask struct {
-	EndpointID uint
-	Score      int64 // next execution time in UnixMilliseconds
+	ServerID uint
+	Score    int64 // next execution time in UnixMilliseconds
 }
 
 type ZSetScheduleRepository struct {
@@ -76,38 +76,38 @@ func RegisterZSetScheduleRepository(i do.Injector) {
 	})
 }
 
-func (r *ZSetScheduleRepository) Register(ctx context.Context, endpoint *domain.Endpoint) error {
-	return r.RegisterBatch(ctx, []domain.Endpoint{*endpoint})
+func (r *ZSetScheduleRepository) Register(ctx context.Context, server *domain.Server) error {
+	return r.RegisterBatch(ctx, []domain.Server{*server})
 }
 
-func (r *ZSetScheduleRepository) RegisterBatch(ctx context.Context, endpoints []domain.Endpoint) error {
+func (r *ZSetScheduleRepository) RegisterBatch(ctx context.Context, servers []domain.Server) error {
 
-	if len(endpoints) == 0 {
+	if len(servers) == 0 {
 		return nil
 	}
 
-	scoreMap := make(map[uint]int64, len(endpoints))
-	for _, endpoint := range endpoints {
+	scoreMap := make(map[uint]int64, len(servers))
+	for _, sv := range servers {
 
-		score, err := utils.NextExecutionTime(endpoint.ID, endpoint.Interval)
+		score, err := utils.NextExecutionTime(sv.ID, sv.Interval)
 		if err != nil {
 			return fmt.Errorf("failed to calculate next execution time: %w", err)
 		}
 
-		scoreMap[endpoint.ID] = score.UnixMilli()
+		scoreMap[sv.ID] = score.UnixMilli()
 	}
 
 	return r.scoreUpdater.UpdateBatch(ctx, scoreMap)
 }
 
-func (r *ZSetScheduleRepository) Unregister(ctx context.Context, endpointID uint) error {
+func (r *ZSetScheduleRepository) Unregister(ctx context.Context, serverID uint) error {
 
-	zsetKey, err := schedulerShardKey(r.shardCount, endpointID)
+	zsetKey, err := schedulerShardKey(r.shardCount, serverID)
 	if err != nil {
 		return fmt.Errorf("failed to get shard key: %w", err)
 	}
 
-	cmd := r.client.ZRem(ctx, zsetKey, fmt.Sprint(endpointID))
+	cmd := r.client.ZRem(ctx, zsetKey, fmt.Sprint(serverID))
 
 	return cmd.Err()
 }
@@ -121,7 +121,7 @@ func (r *ZSetScheduleRepository) MoveIfWrongShard(
 
 	for _, task := range due {
 
-		correctKey, err := schedulerShardKey(r.shardCount, task.EndpointID)
+		correctKey, err := schedulerShardKey(r.shardCount, task.ServerID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get shard key: %w", err)
 		}
@@ -134,17 +134,17 @@ func (r *ZSetScheduleRepository) MoveIfWrongShard(
 		_, err = r.client.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 
 			pipe.ZAdd(ctx, correctKey, redis.Z{
-				Member: fmt.Sprint(task.EndpointID),
+				Member: fmt.Sprint(task.ServerID),
 				Score:  float64(task.Score),
 			})
 
-			pipe.ZRem(ctx, claimedKey, fmt.Sprint(task.EndpointID))
+			pipe.ZRem(ctx, claimedKey, fmt.Sprint(task.ServerID))
 
 			return nil
 		})
 
 		if err != nil {
-			return nil, fmt.Errorf("move task %d to correct shard: %w", task.EndpointID, err)
+			return nil, fmt.Errorf("move task %d to correct shard: %w", task.ServerID, err)
 		}
 	}
 

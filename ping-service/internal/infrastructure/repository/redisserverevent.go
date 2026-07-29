@@ -34,9 +34,9 @@ func RegisterRedisServerEventRepository(i do.Injector) {
 	do.Provide(i, newRedisServerEventRepository)
 }
 
-func (r *RedisServerEventRepository) GetStatus(ctx context.Context, endpointID uint) (domain.ServerStatus, error) {
+func (r *RedisServerEventRepository) GetStatus(ctx context.Context, serverID uint) (domain.ServerStatus, error) {
 
-	val, err := r.client.HGet(ctx, statusKey, fmt.Sprint(endpointID)).Result()
+	val, err := r.client.HGet(ctx, statusKey, fmt.Sprint(serverID)).Result()
 	if err != nil && err != redis.Nil {
 		return "", err
 	}
@@ -44,12 +44,12 @@ func (r *RedisServerEventRepository) GetStatus(ctx context.Context, endpointID u
 	return domain.ServerStatus(val), nil
 }
 
-func (r *RedisServerEventRepository) SetStatus(ctx context.Context, endpointID uint, status domain.ServerStatus) error {
+func (r *RedisServerEventRepository) SetStatus(ctx context.Context, serverID uint, status domain.ServerStatus) error {
 
 	pipe := r.client.Pipeline()
 
-	pipe.HSet(ctx, statusKey, fmt.Sprint(endpointID), string(status))
-	pipe.HExpire(ctx, statusKey, defaultTTL, fmt.Sprint(endpointID))
+	pipe.HSet(ctx, statusKey, fmt.Sprint(serverID), string(status))
+	pipe.HExpire(ctx, statusKey, defaultTTL, fmt.Sprint(serverID))
 
 	_, err := pipe.Exec(ctx)
 

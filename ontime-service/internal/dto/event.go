@@ -10,13 +10,13 @@ const (
 func (s ServerStatus) String() string { return string(s) }
 
 type RecordEventRequest struct {
-	EndpointID uint
-	Status     ServerStatus
+	ServerID uint
+	Status   ServerStatus
 }
 
 type EndpointStatus struct {
-	EndpointID uint
-	Status     ServerStatus
+	ServerID uint
+	Status   ServerStatus
 }
 
 type StatusCount struct {

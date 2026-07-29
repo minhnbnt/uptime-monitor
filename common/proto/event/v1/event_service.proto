@@ -5,23 +5,23 @@ package event.v1;
 option go_package = "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/event/v1;eventv1";
 
 message RecordEventRequest {
-  uint64 endpoint_id = 1;
+  uint64 server_id = 1;
   string status = 2;
 }
 
 message RecordEventResponse {}
 
 message GetCurrentStatusesRequest {
-  repeated uint64 endpoint_ids = 1;
+  repeated uint64 server_ids = 1;
 }
 
-message EndpointStatus {
-  uint64 endpoint_id = 1;
+message ServerStatus {
+  uint64 server_id = 1;
   string status = 2;
 }
 
 message GetCurrentStatusesResponse {
-  repeated EndpointStatus statuses = 1;
+  repeated ServerStatus statuses = 1;
 }
 
 message CountByStatusRequest {

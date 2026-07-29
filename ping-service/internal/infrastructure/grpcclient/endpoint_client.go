@@ -27,7 +27,7 @@ func RegisterEndpointClient(i do.Injector) {
 	})
 }
 
-func (c *EndpointClient) GetBatch(ctx context.Context, ids []uint) (map[uint]*domain.Endpoint, error) {
+func (c *EndpointClient) GetBatch(ctx context.Context, ids []uint) (map[uint]*domain.Server, error) {
 
 	endpointIDs := make([]uint64, len(ids))
 	for i, id := range ids {
@@ -42,24 +42,18 @@ func (c *EndpointClient) GetBatch(ctx context.Context, ids []uint) (map[uint]*do
 		return nil, fmt.Errorf("get endpoints: %w", err)
 	}
 
-	result := make(map[uint]*domain.Endpoint, len(resp.Endpoints))
+	result := make(map[uint]*domain.Server, len(resp.Endpoints))
 	for _, ep := range resp.Endpoints {
 
-		var bodyCheckExpr *string
-		if ep.BodyCheckExpr != "" {
-			s := ep.BodyCheckExpr
-			bodyCheckExpr = &s
-		}
-
-		result[uint(ep.Id)] = &domain.Endpoint{
+		result[uint(ep.Id)] = &domain.Server{
 			Model:         gorm.Model{ID: uint(ep.Id)},
 			ServerID:      uint(ep.ServerId),
-			URL:           ep.Url,
-			Method:        ep.Method,
-			ExpectedCode:  int(ep.ExpectedCode),
+			Namespace:     ep.Namespace,
+			Kind:          ep.Kind,
+			ObjectID:      ep.ObjectId,
+			ContainerName: ep.ContainerName,
 			Interval:      time.Duration(ep.IntervalMs) * time.Millisecond,
 			Timeout:       time.Duration(ep.TimeoutMs) * time.Millisecond,
-			BodyCheckExpr: bodyCheckExpr,
 		}
 	}
 

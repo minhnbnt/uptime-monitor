@@ -57,12 +57,12 @@ func TestRegisterBatch(t *testing.T) {
 	repo := newRepo(t)
 	ctx := context.Background()
 
-	endpoints := []domain.Endpoint{
+	servers := []domain.Server{
 		{Model: gorm.Model{ID: 1}, Interval: 30 * time.Second},
 		{Model: gorm.Model{ID: 2}, Interval: 60 * time.Second},
 	}
 
-	err := repo.RegisterBatch(ctx, endpoints)
+	err := repo.RegisterBatch(ctx, servers)
 	if err != nil {
 		t.Fatalf("RegisterBatch: %v", err)
 	}
@@ -82,10 +82,10 @@ func TestRegisterUnregister(t *testing.T) {
 	repo := newRepo(t)
 	ctx := context.Background()
 
-	endpoints := []domain.Endpoint{
+	servers := []domain.Server{
 		{Model: gorm.Model{ID: 10}, Interval: 30 * time.Second},
 	}
-	err := repo.RegisterBatch(ctx, endpoints)
+	err := repo.RegisterBatch(ctx, servers)
 	if err != nil {
 		t.Fatalf("RegisterBatch: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestClaimDueTasks(t *testing.T) {
 	pastScore := now.Add(-time.Hour).UnixMilli()
 	futureScore := now.Add(time.Hour).UnixMilli()
 
-	// Manually insert endpoints with known scores
+	// Manually insert servers with known scores
 	client := repo.client
 	client.ZAdd(ctx, shardKey(0),
 		redis.Z{Member: "1", Score: float64(pastScore)},
@@ -139,15 +139,15 @@ func TestClaimDueTasks(t *testing.T) {
 
 		// Returned due tasks should have original past scores (pre-bump)
 		for _, task := range due {
-			if task.EndpointID == 1 || task.EndpointID == 2 {
+			if task.ServerID == 1 || task.ServerID == 2 {
 				if task.Score != pastScore {
-					t.Errorf("task %d original score = %d, want %d", task.EndpointID, task.Score, pastScore)
+					t.Errorf("task %d original score = %d, want %d", task.ServerID, task.Score, pastScore)
 				}
 			} else {
-				t.Errorf("unexpected due endpoint: %d", task.EndpointID)
+				t.Errorf("unexpected due server: %d", task.ServerID)
 			}
 			// ZSET should have the bumped (locked) score, not the original
-			member := fmt.Sprint(task.EndpointID)
+			member := fmt.Sprint(task.ServerID)
 			zsetScore, err := client.ZScore(ctx, shardKey(0), member).Result()
 			if err != nil {
 				t.Fatalf("ZScore for %s: %v", member, err)
@@ -161,8 +161,8 @@ func TestClaimDueTasks(t *testing.T) {
 		if !hasNext {
 			t.Error("expected hasNext=true")
 		}
-		if next.EndpointID != 3 {
-			t.Errorf("next.EndpointID = %d, want 3", next.EndpointID)
+		if next.ServerID != 3 {
+			t.Errorf("next.ServerID = %d, want 3", next.ServerID)
 		}
 		if next.Score != futureScore {
 			t.Errorf("next.Score = %d, want %d", next.Score, futureScore)
@@ -207,8 +207,8 @@ func TestClaimDueTasksNoDue(t *testing.T) {
 	if !hasNext {
 		t.Error("expected hasNext=true when future task exists")
 	}
-	if next.EndpointID != 1 {
-		t.Errorf("next.EndpointID = %d, want 1", next.EndpointID)
+	if next.ServerID != 1 {
+		t.Errorf("next.ServerID = %d, want 1", next.ServerID)
 	}
 }
 
@@ -243,8 +243,8 @@ func TestClaimDueTasksPartialClaim(t *testing.T) {
 	if len(due) != 1 {
 		t.Errorf("expected 1 due task in second round, got %d", len(due))
 	}
-	if due[0].EndpointID != 3 {
-		t.Errorf("expected endpoint 3, got %d", due[0].EndpointID)
+	if due[0].ServerID != 3 {
+		t.Errorf("expected server 3, got %d", due[0].ServerID)
 	}
 }
 
@@ -332,25 +332,25 @@ func TestRegisterBatchWithSharding(t *testing.T) {
 	repo := newShardedRepo(t, 3)
 	ctx := context.Background()
 
-	endpoints := []domain.Endpoint{
+	servers := []domain.Server{
 		{Model: gorm.Model{ID: 1}, Interval: 30 * time.Second},
 		{Model: gorm.Model{ID: 2}, Interval: 60 * time.Second},
 		{Model: gorm.Model{ID: 3}, Interval: 90 * time.Second},
 	}
 
-	err := repo.RegisterBatch(ctx, endpoints)
+	err := repo.RegisterBatch(ctx, servers)
 	if err != nil {
 		t.Fatalf("RegisterBatch: %v", err)
 	}
 
-	for _, ep := range endpoints {
-		key, _ := schedulerShardKey(3, ep.ID)
-		score, err := repo.client.ZScore(ctx, key, fmt.Sprint(ep.ID)).Result()
+	for _, sv := range servers {
+		key, _ := schedulerShardKey(3, sv.ID)
+		score, err := repo.client.ZScore(ctx, key, fmt.Sprint(sv.ID)).Result()
 		if err != nil {
-			t.Errorf("endpoint %d not found in shard key %q: %v", ep.ID, key, err)
+			t.Errorf("server %d not found in shard key %q: %v", sv.ID, key, err)
 		}
 		if score <= 0 {
-			t.Errorf("expected positive score for endpoint %d, got %f", ep.ID, score)
+			t.Errorf("expected positive score for server %d, got %f", sv.ID, score)
 		}
 	}
 
@@ -360,8 +360,8 @@ func TestRegisterBatchWithSharding(t *testing.T) {
 		c, _ := repo.client.ZCard(ctx, fmt.Sprintf("%s:%d", schedulerQueuePrefix, i)).Result()
 		total += int(c)
 	}
-	if total != len(endpoints) {
-		t.Errorf("total entries across shards = %d, want %d", total, len(endpoints))
+	if total != len(servers) {
+		t.Errorf("total entries across shards = %d, want %d", total, len(servers))
 	}
 }
 
@@ -392,8 +392,8 @@ func TestClaimDueTasksForShardIsolatesShards(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ClaimDueTasksForShard shard 1: %v", err)
 	}
-	if len(due1) != 1 || due1[0].EndpointID != 11 {
-		t.Errorf("shard 1 claimed %+v, want endpoint 11 only", due1)
+	if len(due1) != 1 || due1[0].ServerID != 11 {
+		t.Errorf("shard 1 claimed %+v, want server 11 only", due1)
 	}
 
 	// Shard 2 still holds its own task.
@@ -401,8 +401,8 @@ func TestClaimDueTasksForShardIsolatesShards(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ClaimDueTasksForShard shard 2: %v", err)
 	}
-	if len(due2) != 1 || due2[0].EndpointID != 22 {
-		t.Errorf("shard 2 claimed %+v, want endpoint 22 only", due2)
+	if len(due2) != 1 || due2[0].ServerID != 22 {
+		t.Errorf("shard 2 claimed %+v, want server 22 only", due2)
 	}
 }
 
@@ -410,7 +410,7 @@ func TestUnregisterWithSharding(t *testing.T) {
 	repo := newShardedRepo(t, 3)
 	ctx := context.Background()
 
-	err := repo.RegisterBatch(ctx, []domain.Endpoint{
+	err := repo.RegisterBatch(ctx, []domain.Server{
 		{Model: gorm.Model{ID: 10}, Interval: 30 * time.Second},
 		{Model: gorm.Model{ID: 20}, Interval: 30 * time.Second},
 	})
@@ -423,27 +423,27 @@ func TestUnregisterWithSharding(t *testing.T) {
 
 	// Confirm both are in the correct shards
 	if _, err := repo.client.ZScore(ctx, key10, "10").Result(); err != nil {
-		t.Fatalf("endpoint 10 not found: %v", err)
+		t.Fatalf("server 10 not found: %v", err)
 	}
 	if _, err := repo.client.ZScore(ctx, key20, "20").Result(); err != nil {
-		t.Fatalf("endpoint 20 not found: %v", err)
+		t.Fatalf("server 20 not found: %v", err)
 	}
 
-	// Unregister endpoint 10
+	// Unregister server 10
 	err = repo.Unregister(ctx, 10)
 	if err != nil {
 		t.Fatalf("Unregister: %v", err)
 	}
 
-	// Endpoint 10 should be gone from its shard
+	// Server 10 should be gone from its shard
 	_, err = repo.client.ZScore(ctx, key10, "10").Result()
 	if err != redis.Nil {
-		t.Errorf("expected redis.Nil for unregistered endpoint, got %v", err)
+		t.Errorf("expected redis.Nil for unregistered server, got %v", err)
 	}
 
-	// Endpoint 20 should still exist in its shard
+	// Server 20 should still exist in its shard
 	if _, err := repo.client.ZScore(ctx, key20, "20").Result(); err != nil {
-		t.Errorf("endpoint 20 should still exist: %v", err)
+		t.Errorf("server 20 should still exist: %v", err)
 	}
 }
 
@@ -456,7 +456,7 @@ func TestScoreUpdaterUpdateBatchWithSharding(t *testing.T) {
 	now := time.Now()
 	past := now.Add(-time.Hour).UnixMilli()
 
-	// Seed endpoints in their respective shards
+	// Seed servers in their respective shards
 	for _, id := range []uint{1, 2, 3} {
 		key, _ := schedulerShardKey(3, id)
 		client.ZAdd(ctx, key, redis.Z{Member: fmt.Sprint(id), Score: float64(past)})
@@ -477,11 +477,11 @@ func TestScoreUpdaterUpdateBatchWithSharding(t *testing.T) {
 		key, _ := schedulerShardKey(3, id)
 		score, err := client.ZScore(ctx, key, fmt.Sprint(id)).Result()
 		if err != nil {
-			t.Errorf("endpoint %d not found in shard %q: %v", id, key, err)
+			t.Errorf("server %d not found in shard %q: %v", id, key, err)
 			continue
 		}
 		if score != float64(expectedScore) {
-			t.Errorf("endpoint %d score = %f, want %d", id, score, expectedScore)
+			t.Errorf("server %d score = %f, want %d", id, score, expectedScore)
 		}
 	}
 }
@@ -491,7 +491,7 @@ func TestSingleShardBehaviorIsUnchanged(t *testing.T) {
 	repo := newRepo(t)
 	ctx := context.Background()
 
-	err := repo.RegisterBatch(ctx, []domain.Endpoint{
+	err := repo.RegisterBatch(ctx, []domain.Server{
 		{Model: gorm.Model{ID: 1}, Interval: 30 * time.Second},
 	})
 	if err != nil {
@@ -501,7 +501,7 @@ func TestSingleShardBehaviorIsUnchanged(t *testing.T) {
 	// Must be in the shard 0 key with a future score
 	score, err := repo.client.ZScore(ctx, shardKey(0), "1").Result()
 	if err != nil {
-		t.Errorf("endpoint 1 not in %q: %v", shardKey(0), err)
+		t.Errorf("server 1 not in %q: %v", shardKey(0), err)
 	}
 	if score <= float64(time.Now().UnixMilli()) {
 		t.Errorf("expected future score, got %f", score)

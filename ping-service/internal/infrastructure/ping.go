@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/samber/do/v2"
-
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 )
 
 const maxBodyBytes = 1 << 20 // 1MB
@@ -29,17 +27,16 @@ func RegisterPingWorker(i do.Injector) {
 	})
 }
 
-func (p *PingClient) Ping(ctx context.Context, ep *domain.Endpoint) (*Response, error) {
+func (p *PingClient) Ping(ctx context.Context, timeout time.Duration, method, url string) (*Response, error) {
 
-	timeout := ep.Timeout
-	if timeout <= 0 {
+	if timeout <= 0 || timeout > 10*time.Second {
 		timeout = 10 * time.Second
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	request, err := http.NewRequestWithContext(ctx, ep.Method, ep.URL, nil)
+	request, err := http.NewRequestWithContext(ctx, method, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}

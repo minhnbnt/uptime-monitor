@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	streamKey       = "uptime.public.endpoints"
+	streamKey       = "uptime.public.servers"
 	consumerGroup   = "ping-service"
 	consumerName    = "worker-1"
 	streamReadCount = 10
@@ -35,13 +35,13 @@ func RegisterStreamEventConsumer(i do.Injector) {
 	})
 }
 
-type EndpointEventHandler interface {
-	OnCreate(context.Context, domain.Endpoint) error
-	OnUpdate(context.Context, domain.Endpoint) error
+type ServerEventHandler interface {
+	OnCreate(context.Context, domain.Server) error
+	OnUpdate(context.Context, domain.Server) error
 	OnDelete(ctx context.Context, id uint) error
 }
 
-func (c *StreamEventConsumer) Run(ctx context.Context, handler EndpointEventHandler) {
+func (c *StreamEventConsumer) Run(ctx context.Context, handler ServerEventHandler) {
 
 	c.logger.Info(
 		"starting stream consumer",

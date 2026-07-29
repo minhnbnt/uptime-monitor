@@ -12,16 +12,16 @@ import (
 )
 
 type BatchGetOntimeRequest struct {
-	EndpointID uint      `json:"endpoint_id" binding:"required"`
-	Date       time.Time `json:"date" binding:"required"`
+	ServerID uint      `json:"server_id" binding:"required"`
+	Date     time.Time `json:"date" binding:"required"`
 }
 
 type RawEvent struct {
-	EndpointID uint
-	Day        time.Time
-	Status     string
-	Time       time.Time
-	Src        string
+	ServerID uint
+	Day      time.Time
+	Status   string
+	Time     time.Time
+	Src      string
 }
 
 type OntineRepository struct {
@@ -53,45 +53,45 @@ const rawEventSQL = `
 	WITH requested AS (
 		SELECT *
 		FROM jsonb_to_recordset(?::jsonb)
-		AS x(endpoint_id bigint, date date)
+		AS x(server_id bigint, date date)
 	),
 	lowerbound AS (
-		SELECT DISTINCT ON (r.endpoint_id, r.date)
-			r.endpoint_id,
+		SELECT DISTINCT ON (r.server_id, r.date)
+			r.server_id,
 			r.date           AS day,
 			se.status,
 			se.time
 		FROM requested r
-		LEFT JOIN server_events se ON se.endpoint_id = r.endpoint_id
+		LEFT JOIN server_events se ON se.server_id = r.server_id
 			AND se.time < r.date
-		ORDER BY r.endpoint_id, r.date, se.time DESC
+		ORDER BY r.server_id, r.date, se.time DESC
 	),
 	upperbound AS (
-		SELECT DISTINCT ON (r.endpoint_id, r.date)
-			r.endpoint_id,
+		SELECT DISTINCT ON (r.server_id, r.date)
+			r.server_id,
 			r.date           AS day,
 			se.status,
 			se.time
 		FROM requested r
-		LEFT JOIN server_events se ON se.endpoint_id = r.endpoint_id
+		LEFT JOIN server_events se ON se.server_id = r.server_id
 			AND se.time < r.date + interval '1 day'
-		ORDER BY r.endpoint_id, r.date, se.time DESC
+		ORDER BY r.server_id, r.date, se.time DESC
 	),
 	day_events AS (
-		SELECT r.endpoint_id, r.date AS day, se.status, se.time
+		SELECT r.server_id, r.date AS day, se.status, se.time
 		FROM requested r
-		JOIN server_events se ON se.endpoint_id = r.endpoint_id
+		JOIN server_events se ON se.server_id = r.server_id
 			AND se.time >= r.date
 			AND se.time < r.date + interval '1 day'
 	),
 	combined AS (
-		SELECT endpoint_id, day, status, time, 'lowerbound' AS src FROM lowerbound WHERE status IS NOT NULL
+		SELECT server_id, day, status, time, 'lowerbound' AS src FROM lowerbound WHERE status IS NOT NULL
 		UNION ALL
-		SELECT endpoint_id, day, status, time, 'upperbound' AS src FROM upperbound WHERE status IS NOT NULL
+		SELECT server_id, day, status, time, 'upperbound' AS src FROM upperbound WHERE status IS NOT NULL
 		UNION ALL
-		SELECT endpoint_id, day, status, time, 'day_event' AS src FROM day_events
+		SELECT server_id, day, status, time, 'day_event' AS src FROM day_events
 	)
-	SELECT endpoint_id, day, status, time, src
+	SELECT server_id, day, status, time, src
 	FROM combined
-	ORDER BY endpoint_id, day, time ASC
+	ORDER BY server_id, day, time ASC
 `

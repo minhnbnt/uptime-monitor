@@ -35,7 +35,7 @@ func (r *ServerEventRepository) Save(ctx context.Context, event *domain.ServerEv
 	return r.db.Transaction(func(tx *gorm.DB) error {
 
 		latestEvent, err := gorm.G[domain.ServerEvent](tx).
-			Where("endpoint_id = ?", event.EndpointID).
+			Where("server_id = ?", event.ServerID).
 			Order("time DESC").
 			First(ctx)
 

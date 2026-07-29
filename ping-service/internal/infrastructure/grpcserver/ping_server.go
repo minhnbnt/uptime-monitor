@@ -8,22 +8,18 @@ import (
 	"github.com/samber/do/v2"
 
 	pingv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/ping/v1"
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
-	pinginfra "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure"
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/service"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/k8sclient"
 )
 
 type PingServer struct {
 	pingv1.UnimplementedPingServiceServer
-	pingWorker      *pinginfra.PingClient
-	responseChecker *service.ResponseChecker
+	k8sClient k8sclient.K8sClient
 }
 
 func RegisterPingServer(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*PingServer, error) {
 		return &PingServer{
-			pingWorker:      do.MustInvoke[*pinginfra.PingClient](i),
-			responseChecker: do.MustInvoke[*service.ResponseChecker](i),
+			k8sClient: do.MustInvoke[k8sclient.K8sClient](i),
 		}, nil
 	})
 }
@@ -31,40 +27,21 @@ func RegisterPingServer(i do.Injector) {
 func (s *PingServer) Ping(ctx context.Context, req *pingv1.PingRequest) (*pingv1.PingResponse, error) {
 
 	timeout := time.Duration(req.TimeoutMs) * time.Millisecond
-	if timeout <= 0 {
-		timeout = 10 * time.Second
+	if timeout > 0 {
+
+		cancel := context.CancelFunc(nil)
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+
+		defer cancel()
 	}
 
-	bodyExpr := req.BodyCheckExpr
-	var bodyExprPtr *string
-	if bodyExpr != "" {
-		bodyExprPtr = &bodyExpr
-	}
-
-	endpoint := &domain.Endpoint{
-		URL:           req.Url,
-		Method:        req.Method,
-		Timeout:       timeout,
-		ExpectedCode:  int(req.ExpectedCode),
-		BodyCheckExpr: bodyExprPtr,
-	}
-
-	resp, err := s.pingWorker.Ping(ctx, endpoint)
+	running, err := s.k8sClient.CheckPodStatus(ctx, req.Namespace, req.Kind, req.ObjectId, req.ContainerName)
 	if err != nil {
 		return &pingv1.PingResponse{
-			StatusCode: 0,
-			Error:      fmt.Sprintf("ping error: %s", err.Error()),
+			Running: false,
+			Error:   fmt.Sprintf("check error: %s", err.Error()),
 		}, nil
 	}
 
-	if err := s.responseChecker.CheckResponse(*endpoint, *resp); err != nil {
-		return &pingv1.PingResponse{
-			StatusCode: int32(resp.StatusCode),
-			Error:      fmt.Sprintf("check failed: %s", err.Error()),
-		}, nil
-	}
-
-	return &pingv1.PingResponse{
-		StatusCode: int32(resp.StatusCode),
-	}, nil
+	return &pingv1.PingResponse{Running: running}, nil
 }

@@ -23,22 +23,22 @@ func metaCacheKey(id uint) string {
 	return fmt.Sprintf("%s%d", metaCachePrefix, id)
 }
 
-type EndpointMetaCache struct {
+type ServerMetaCache struct {
 	client *redis.Client
 }
 
-func NewEndpointMetaCache(client *redis.Client) *EndpointMetaCache {
-	return &EndpointMetaCache{client: client}
+func NewServerMetaCache(client *redis.Client) *ServerMetaCache {
+	return &ServerMetaCache{client: client}
 }
 
-func RegisterEndpointMetaCache(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (*EndpointMetaCache, error) {
+func RegisterServerMetaCache(i do.Injector) {
+	do.Provide(i, func(i do.Injector) (*ServerMetaCache, error) {
 		wrapper := do.MustInvoke[*config.RedisClientWrapper](i)
-		return NewEndpointMetaCache(wrapper.GetClient()), nil
+		return NewServerMetaCache(wrapper.GetClient()), nil
 	})
 }
 
-func (c *EndpointMetaCache) Get(ctx context.Context, id uint) (*domain.Endpoint, error) {
+func (c *ServerMetaCache) Get(ctx context.Context, id uint) (*domain.Server, error) {
 
 	results, err := c.MGet(ctx, []uint{id})
 	if err != nil {
@@ -47,15 +47,15 @@ func (c *EndpointMetaCache) Get(ctx context.Context, id uint) (*domain.Endpoint,
 
 	result, ok := results[id]
 	if !ok {
-		return nil, fmt.Errorf("endpoint %d not found", id)
+		return nil, fmt.Errorf("server %d not found", id)
 	}
 
 	return result, nil
 }
 
-func (c *EndpointMetaCache) MGet(ctx context.Context, ids []uint) (map[uint]*domain.Endpoint, error) {
+func (c *ServerMetaCache) MGet(ctx context.Context, ids []uint) (map[uint]*domain.Server, error) {
 
-	result := make(map[uint]*domain.Endpoint, len(ids))
+	result := make(map[uint]*domain.Server, len(ids))
 	if len(ids) == 0 {
 		return result, nil
 	}
@@ -82,38 +82,41 @@ func (c *EndpointMetaCache) MGet(ctx context.Context, ids []uint) (map[uint]*dom
 			continue
 		}
 
-		ep, err := mapToEndpoint(id, data)
+		sv, err := mapToServer(id, data)
 		if err != nil {
 			continue
 		}
 
-		result[id] = ep
+		result[id] = sv
 	}
 
 	return result, nil
 }
 
-func (c *EndpointMetaCache) Set(ctx context.Context, ep *domain.Endpoint) error {
-	return c.SetMulti(ctx, []*domain.Endpoint{ep})
+func (c *ServerMetaCache) Set(ctx context.Context, sv *domain.Server) error {
+	return c.SetMulti(ctx, []*domain.Server{sv})
 }
 
-func (c *EndpointMetaCache) SetMulti(ctx context.Context, endpoints []*domain.Endpoint) error {
+func (c *ServerMetaCache) SetMulti(ctx context.Context, servers []*domain.Server) error {
 
-	if len(endpoints) == 0 {
+	if len(servers) == 0 {
 		return nil
 	}
 
 	pipe := c.client.Pipeline()
 
-	for _, endpoint := range endpoints {
+	for _, sv := range servers {
 
-		key := metaCacheKey(endpoint.ID)
+		key := metaCacheKey(sv.ID)
 
 		pipe.HSet(
 			ctx, key,
-			"url", endpoint.URL, "method", endpoint.Method,
-			"expected_code", fmt.Sprint(endpoint.ExpectedCode),
-			"interval_ns", fmt.Sprint(endpoint.Interval.Nanoseconds()),
+			"namespace", sv.Namespace,
+			"kind", sv.Kind,
+			"object_id", sv.ObjectID,
+			"container_name", sv.ContainerName,
+			"interval_ns", fmt.Sprint(sv.Interval.Nanoseconds()),
+			"timeout_ns", fmt.Sprint(sv.Timeout.Nanoseconds()),
 		)
 
 		pipe.Expire(ctx, key, metaCacheTTL)
@@ -124,11 +127,11 @@ func (c *EndpointMetaCache) SetMulti(ctx context.Context, endpoints []*domain.En
 	return err
 }
 
-func (c *EndpointMetaCache) Delete(ctx context.Context, id uint) error {
+func (c *ServerMetaCache) Delete(ctx context.Context, id uint) error {
 	return c.DeleteMulti(ctx, []uint{id})
 }
 
-func (c *EndpointMetaCache) DeleteMulti(ctx context.Context, ids []uint) error {
+func (c *ServerMetaCache) DeleteMulti(ctx context.Context, ids []uint) error {
 
 	if len(ids) == 0 {
 		return nil
@@ -145,23 +148,25 @@ func (c *EndpointMetaCache) DeleteMulti(ctx context.Context, ids []uint) error {
 	return err
 }
 
-func mapToEndpoint(id uint, data map[string]string) (*domain.Endpoint, error) {
+func mapToServer(id uint, data map[string]string) (*domain.Server, error) {
 
 	intervalNs, err := strconv.ParseInt(data["interval_ns"], 10, 64)
 	if err != nil {
 		return nil, fmt.Errorf("parse interval_ns: %w", err)
 	}
 
-	expectedCode, err := strconv.Atoi(data["expected_code"])
+	timeoutNs, err := strconv.ParseInt(data["timeout_ns"], 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("parse expected_code: %w", err)
+		return nil, fmt.Errorf("parse timeout_ns: %w", err)
 	}
 
-	return &domain.Endpoint{
-		Model:        gorm.Model{ID: id},
-		URL:          data["url"],
-		Method:       data["method"],
-		ExpectedCode: expectedCode,
-		Interval:     time.Duration(intervalNs),
+	return &domain.Server{
+		Model:         gorm.Model{ID: id},
+		Namespace:     data["namespace"],
+		Kind:          data["kind"],
+		ObjectID:      data["object_id"],
+		ContainerName: data["container_name"],
+		Interval:      time.Duration(intervalNs),
+		Timeout:       time.Duration(timeoutNs),
 	}, nil
 }

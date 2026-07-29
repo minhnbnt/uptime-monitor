@@ -10,28 +10,28 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
 )
 
-type EndpointEventHandler struct {
-	scheduler     *scheduler.ZSetScheduleRepository
-	endpointCache *scheduler.EndpointMetaCache
+type ServerEventHandler struct {
+	scheduler   *scheduler.ZSetScheduleRepository
+	serverCache *scheduler.ServerMetaCache
 }
 
-func (e *EndpointEventHandler) OnCreate(ctx context.Context, endpoint domain.Endpoint) error {
-	return e.scheduler.Register(ctx, &endpoint)
+func (e *ServerEventHandler) OnCreate(ctx context.Context, server domain.Server) error {
+	return e.scheduler.Register(ctx, &server)
 }
 
-func (e *EndpointEventHandler) OnUpdate(ctx context.Context, endpoint domain.Endpoint) error {
+func (e *ServerEventHandler) OnUpdate(ctx context.Context, server domain.Server) error {
 
-	err := e.endpointCache.Delete(ctx, endpoint.ID)
+	err := e.serverCache.Delete(ctx, server.ID)
 	if err != nil {
 		return err
 	}
 
-	return e.scheduler.Register(ctx, &endpoint)
+	return e.scheduler.Register(ctx, &server)
 }
 
-func (e *EndpointEventHandler) OnDelete(ctx context.Context, id uint) error {
+func (e *ServerEventHandler) OnDelete(ctx context.Context, id uint) error {
 
-	err := e.endpointCache.Delete(ctx, id)
+	err := e.serverCache.Delete(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -41,17 +41,17 @@ func (e *EndpointEventHandler) OnDelete(ctx context.Context, id uint) error {
 
 type EndpointEventService struct {
 	consumer     *redis.StreamEventConsumer
-	eventHandler *EndpointEventHandler
+	eventHandler *ServerEventHandler
 }
 
 func RegisterEventService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointEventService, error) {
 
 		sched := do.MustInvoke[*scheduler.ZSetScheduleRepository](i)
-		cache := do.MustInvoke[*scheduler.EndpointMetaCache](i)
-		eventHandler := &EndpointEventHandler{
-			scheduler:     sched,
-			endpointCache: cache,
+		cache := do.MustInvoke[*scheduler.ServerMetaCache](i)
+		eventHandler := &ServerEventHandler{
+			scheduler:   sched,
+			serverCache: cache,
 		}
 
 		consumer := do.MustInvoke[*redis.StreamEventConsumer](i)

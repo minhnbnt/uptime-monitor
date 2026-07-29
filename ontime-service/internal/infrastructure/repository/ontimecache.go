@@ -45,9 +45,9 @@ func RegisterOntimeCacheRepository(i do.Injector) {
 	})
 }
 
-func redisKey(endpointID uint, day time.Time) string {
+func redisKey(serverID uint, day time.Time) string {
 	return fmt.Sprintf(
-		"%s%d:%s%s", ontimeKeyPrefix, endpointID,
+		"%s%d:%s%s", ontimeKeyPrefix, serverID,
 		day.Format("2006-01-02"), ontimeKeySuffix,
 	)
 }
@@ -59,7 +59,7 @@ func (r *OntimeCacheRepository) MGet(ctx context.Context, keys []dto.BatchGetOnt
 	}
 
 	redisKeys := lo.Map(keys, func(k dto.BatchGetOntimeItem, _ int) string {
-		return redisKey(k.EndpointID, k.Date)
+		return redisKey(k.ServerID, k.Date)
 	})
 
 	values, err := r.client.MGet(ctx, redisKeys...).Result()
@@ -105,7 +105,7 @@ func (r *OntimeCacheRepository) MSet(ctx context.Context, items map[dto.BatchGet
 		}
 
 		pipe.Set(
-			ctx, redisKey(key.EndpointID, key.Date),
+			ctx, redisKey(key.ServerID, key.Date),
 			fmt.Sprintf("%.2f", stats), ttl,
 		)
 	}

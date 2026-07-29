@@ -10,8 +10,8 @@ import (
 )
 
 type CurrentStatus struct {
-	EndpointID uint
-	Status     string
+	ServerID uint
+	Status   string
 }
 
 type EventRepository struct {
@@ -30,18 +30,18 @@ func RegisterEventRepository(i do.Injector) {
 }
 
 func (r *EventRepository) GetCurrentStatuses(
-	ctx context.Context, endpointIDs []uint,
+	ctx context.Context, serverIDs []uint,
 ) ([]CurrentStatus, error) {
 
-	if len(endpointIDs) == 0 {
+	if len(serverIDs) == 0 {
 		return nil, nil
 	}
 
 	latest := r.db.WithContext(ctx).
-		Select("DISTINCT ON (endpoint_id) endpoint_id, status").
+		Select("DISTINCT ON (server_id) server_id, status").
 		Table("server_events").
-		Where("endpoint_id IN ?", endpointIDs).
-		Order("endpoint_id, time DESC")
+		Where("server_id IN ?", serverIDs).
+		Order("server_id, time DESC")
 
 	rows, err := gorm.G[CurrentStatus](r.db).
 		Table("(?) AS latest", latest).
@@ -55,18 +55,18 @@ func (r *EventRepository) GetCurrentStatuses(
 }
 
 func (r *EventRepository) CountByStatus(
-	ctx context.Context, endpointIDs []uint,
+	ctx context.Context, serverIDs []uint,
 ) (online, offline int64, err error) {
 
-	if len(endpointIDs) == 0 {
+	if len(serverIDs) == 0 {
 		return 0, 0, nil
 	}
 
 	latest := r.db.WithContext(ctx).
-		Select("DISTINCT ON (endpoint_id) endpoint_id, status").
+		Select("DISTINCT ON (server_id) server_id, status").
 		Table("server_events").
-		Where("endpoint_id IN ?", endpointIDs).
-		Order("endpoint_id, time DESC")
+		Where("server_id IN ?", serverIDs).
+		Order("server_id, time DESC")
 
 	type counts struct {
 		Online  int64 `gorm:"column:online"`
@@ -105,11 +105,11 @@ func (r *EventRepository) CountByStatusByUserID(
 			COUNT(*) FILTER (WHERE latest.status = 'OFF') AS offline
 		`).
 		Table(`(
-			SELECT DISTINCT ON (se.endpoint_id) se.endpoint_id, se.status
+			SELECT DISTINCT ON (se.server_id) se.server_id, se.status
 			FROM server_events se
-			JOIN server_owners so ON so.server_id = se.endpoint_id
+			JOIN server_owners so ON so.server_id = se.server_id
 			WHERE so.user_id = ? AND so.deleted_at IS NULL
-			ORDER BY se.endpoint_id, se.time DESC
+			ORDER BY se.server_id, se.time DESC
 		) AS latest`, userID).
 		Scan(ctx, &c)
 

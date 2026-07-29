@@ -6,17 +6,24 @@ import (
 	"gorm.io/gorm"
 )
 
-type Endpoint struct {
+type Server struct {
 	gorm.Model
 	ServerID      uint          `gorm:"not null;uniqueIndex"`
-	URL           string        `gorm:"type:text;not null"`
+	Namespace     string        `gorm:"type:varchar(253);not null"`
+	Kind          string        `gorm:"type:varchar(50);not null"`
+	ObjectID      string        `gorm:"type:varchar(253);not null"`
+	ContainerName string        `gorm:"type:varchar(253)"`
 	Interval      time.Duration `gorm:"type:bigint;not null;default:30000000000"`
 	Timeout       time.Duration `gorm:"type:bigint;not null;default:10000000000"`
-	Method        string        `gorm:"type:varchar(10);not null;default:GET"`
-	ExpectedCode  int           `gorm:"type:int;not null;default:200"`
-	BodyCheckExpr *string       `gorm:"type:text"`
+
+	// Deprecated: kept for dead code compatibility (responseChecker.go).
+	ExpectedCode  int     `gorm:"-"`
+	BodyCheckExpr *string `gorm:"-"`
 }
 
-func (Endpoint) TableName() string {
-	return "endpoints"
+func (Server) TableName() string {
+	return "servers"
 }
+
+// Endpoint is a type alias for backward compatibility with dead code.
+type Endpoint = Server

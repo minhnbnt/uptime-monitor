@@ -32,11 +32,11 @@ func (w *RecordStatusWorker) Record(ctx context.Context, event *domain.ServerEve
 
 	event.Time = time.Now()
 
-	lastStatus, err := w.statusStore.GetStatus(ctx, event.EndpointID)
+	lastStatus, err := w.statusStore.GetStatus(ctx, event.ServerID)
 	if err != nil {
 		w.logger.Warn(
 			"failed to get status from redis",
-			slog.Int64("endpointID", int64(event.EndpointID)),
+			slog.Uint64("serverID", uint64(event.ServerID)),
 			slog.Any("error", err),
 		)
 		return nil
@@ -46,11 +46,11 @@ func (w *RecordStatusWorker) Record(ctx context.Context, event *domain.ServerEve
 		return nil
 	}
 
-	if err := w.eventRecorder.RecordEvent(ctx, event.EndpointID, event.Status); err != nil {
+	if err := w.eventRecorder.RecordEvent(ctx, event.ServerID, event.Status); err != nil {
 		return err
 	}
 
-	if err := w.statusStore.SetStatus(ctx, event.EndpointID, event.Status); err != nil {
+	if err := w.statusStore.SetStatus(ctx, event.ServerID, event.Status); err != nil {
 		return err
 	}
 

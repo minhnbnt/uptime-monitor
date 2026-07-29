@@ -71,10 +71,10 @@ func newBatcherWithRedis(tb testing.TB, db *gorm.DB, redisClient *redis.Client) 
 func seedEvent(tb testing.TB, db *gorm.DB, endpointID uint, status domain.ServerStatus, tm time.Time) {
 	tb.Helper()
 	db.Create(&domain.ServerEvent{
-		ID:         uuid.New(),
-		EndpointID: endpointID,
-		Status:     status,
-		Time:       tm,
+		ID:       uuid.New(),
+		ServerID: endpointID,
+		Status:   status,
+		Time:     tm,
 	})
 }
 
@@ -89,7 +89,7 @@ func TestIntegration_BatchGetOntime_CacheMiss(t *testing.T) {
 	seedEvent(t, db, 1, domain.StatusOff, oTm(2026, 6, 1, 18, 0))
 
 	b := newBatcher(t, db)
-	req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: now}}
+	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: now}}
 
 	results, err := b.BatchGetOntime(t.Context(), req)
 	if err != nil {
@@ -114,7 +114,7 @@ func TestIntegration_BatchGetOntime_AllOn(t *testing.T) {
 	seedEvent(t, db, 1, domain.StatusOn, oTm(2026, 6, 1, 0, 0))
 
 	b := newBatcher(t, db)
-	req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: now}}
+	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: now}}
 
 	results, err := b.BatchGetOntime(t.Context(), req)
 	if err != nil {
@@ -133,7 +133,7 @@ func TestIntegration_BatchGetOntime_AllOff(t *testing.T) {
 	seedEvent(t, db, 1, domain.StatusOff, oTm(2026, 6, 1, 0, 0))
 
 	b := newBatcher(t, db)
-	req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: now}}
+	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: now}}
 
 	results, err := b.BatchGetOntime(t.Context(), req)
 	if err != nil {
@@ -150,7 +150,7 @@ func TestIntegration_BatchGetOntime_NoEvents(t *testing.T) {
 
 	now := oDay(2026, 6, 1)
 	b := newBatcher(t, db)
-	req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: now}}
+	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: now}}
 
 	results, err := b.BatchGetOntime(t.Context(), req)
 	if err != nil {
@@ -193,7 +193,7 @@ func TestIntegration_BatchGetOntime_CacheHit(t *testing.T) {
 		t.Fatalf("seed redis: %v", err)
 	}
 
-	req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: now}}
+	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: now}}
 	results, err := b.BatchGetOntime(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -215,7 +215,7 @@ func TestIntegration_BatchGetOntime_CacheMissThenWarm(t *testing.T) {
 	seedEvent(t, db, 1, domain.StatusOn, oTm(2026, 6, 1, 6, 0))
 
 	b := newBatcherWithRedis(t, db, redisClient)
-	req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: now}}
+	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: now}}
 
 	results, err := b.BatchGetOntime(t.Context(), req)
 	if err != nil {
@@ -254,8 +254,8 @@ func TestIntegration_BatchGetOntime_PartialCacheHit(t *testing.T) {
 
 	b := newBatcherWithRedis(t, db, redisClient)
 	req := []dto.BatchGetOntimeItem{
-		{EndpointID: 1, Date: now},
-		{EndpointID: 2, Date: now},
+		{ServerID: 1, Date: now},
+		{ServerID: 2, Date: now},
 	}
 
 	results, err := b.BatchGetOntime(t.Context(), req)
@@ -268,15 +268,15 @@ func TestIntegration_BatchGetOntime_PartialCacheHit(t *testing.T) {
 
 	for _, r := range results {
 		if len(r.Result) != 1 {
-			t.Fatalf("server %d: got %d results, want 1", r.EndpointID, len(r.Result))
+			t.Fatalf("server %d: got %d results, want 1", r.ServerID, len(r.Result))
 		}
 	}
 
 	for _, r := range results {
-		if r.EndpointID == 1 && r.Result[0].Stats != 88.00 {
+		if r.ServerID == 1 && r.Result[0].Stats != 88.00 {
 			t.Errorf("server 1: Stats = %f, want 88.00", r.Result[0].Stats)
 		}
-		if r.EndpointID == 2 && r.Result[0].Stats <= 0 {
+		if r.ServerID == 2 && r.Result[0].Stats <= 0 {
 			t.Errorf("server 2: Stats = %f, want > 0", r.Result[0].Stats)
 		}
 	}
@@ -306,7 +306,7 @@ func TestIntegration_BatchGetOntime_Today(t *testing.T) {
 	seedEvent(t, db, 1, domain.StatusOn, onTime)
 
 	b := newBatcher(t, db)
-	req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: today}}
+	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: today}}
 
 	results, err := b.BatchGetOntime(t.Context(), req)
 	if err != nil {

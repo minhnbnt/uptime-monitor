@@ -17,7 +17,7 @@ func TestIntegration_BatchGetOntime_LowerboundON_NoDayEvents(t *testing.T) {
 	seedEvent(t, db, 1, domain.StatusOn, oTm(2026, 6, 1, 18, 0))
 
 	b := newBatcher(t, db)
-	req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: queryDate}}
+	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: queryDate}}
 
 	results, err := b.BatchGetOntime(t.Context(), req)
 	if err != nil {
@@ -40,7 +40,7 @@ func TestIntegration_BatchGetOntime_LowerboundOFF_NoDayEvents(t *testing.T) {
 	seedEvent(t, db, 1, domain.StatusOff, oTm(2026, 6, 1, 23, 0))
 
 	b := newBatcher(t, db)
-	req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: queryDate}}
+	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: queryDate}}
 
 	results, err := b.BatchGetOntime(t.Context(), req)
 	if err != nil {
@@ -71,7 +71,7 @@ func TestIntegration_BatchGetOntime_TodaySingleON_PrevDayOFF(t *testing.T) {
 
 	now := time.Now()
 	b := newBatcher(t, db)
-	req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: today}}
+	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: today}}
 
 	results, err := b.BatchGetOntimeUntil(t.Context(), req, now)
 	if err != nil {
@@ -107,7 +107,7 @@ func TestIntegration_BatchGetOntime_Today_ON_to_OFF(t *testing.T) {
 
 	now := time.Now()
 	b := newBatcher(t, db)
-	req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: today}}
+	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: today}}
 
 	results, err := b.BatchGetOntimeUntil(t.Context(), req, now)
 	if err != nil {
@@ -142,9 +142,9 @@ func TestIntegration_BatchGetOntime_MultipleServers(t *testing.T) {
 
 	b := newBatcher(t, db)
 	req := []dto.BatchGetOntimeItem{
-		{EndpointID: 1, Date: now},
-		{EndpointID: 2, Date: now},
-		{EndpointID: 3, Date: now},
+		{ServerID: 1, Date: now},
+		{ServerID: 2, Date: now},
+		{ServerID: 3, Date: now},
 	}
 
 	results, err := b.BatchGetOntime(t.Context(), req)
@@ -158,7 +158,7 @@ func TestIntegration_BatchGetOntime_MultipleServers(t *testing.T) {
 	stats := map[uint]float64{}
 	for _, r := range results {
 		if len(r.Result) == 1 {
-			stats[r.EndpointID] = r.Result[0].Stats
+			stats[r.ServerID] = r.Result[0].Stats
 		}
 	}
 	if stats[1] != 100 {

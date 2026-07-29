@@ -26,8 +26,8 @@ func RegisterEventRecorderServer(i do.Injector) {
 func (s *EventRecorderServer) RecordEvent(ctx context.Context, req *eventv1.RecordEventRequest) (*eventv1.RecordEventResponse, error) {
 
 	err := s.eventService.RecordEvent(ctx, dto.RecordEventRequest{
-		Status:     dto.ServerStatus(req.Status),
-		EndpointID: uint(req.EndpointId),
+		Status:   dto.ServerStatus(req.Status),
+		ServerID: uint(req.ServerId),
 	})
 
 	if err != nil {

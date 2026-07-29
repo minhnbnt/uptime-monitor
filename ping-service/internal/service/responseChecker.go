@@ -21,10 +21,10 @@ func RegisterResponseChecker(i do.Injector) {
 
 func (rc *ResponseChecker) CheckResponse(endpoint domain.Endpoint, response infra.Response) error {
 
-	if endpoint.ExpectedCode != response.StatusCode {
+	if endpoint.ExpectedCode != response.StatusCode { //nolint:staticcheck // SA1019: dead code compatibility
 		return fmt.Errorf(
 			"unexpected status code: got %d, want %d",
-			response.StatusCode, endpoint.ExpectedCode,
+			response.StatusCode, endpoint.ExpectedCode, //nolint:staticcheck // SA1019: dead code compatibility
 		)
 	}
 

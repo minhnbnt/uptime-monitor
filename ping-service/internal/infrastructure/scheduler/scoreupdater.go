@@ -11,13 +11,13 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/utils"
 )
 
-func schedulerShardKey(shardCount int, endpointID uint) (string, error) {
+func schedulerShardKey(shardCount int, serverID uint) (string, error) {
 
 	if shardCount < 1 {
 		shardCount = 1
 	}
 
-	hash, err := utils.Hash(endpointID)
+	hash, err := utils.Hash(serverID)
 	if err != nil {
 		return "", err
 	}
@@ -51,8 +51,8 @@ func RegisterScoreUpdater(i do.Injector) {
 	})
 }
 
-func (u *ScoreUpdater) Update(ctx context.Context, endpointID uint, nextScore int64) error {
-	return u.UpdateBatch(ctx, map[uint]int64{endpointID: nextScore})
+func (u *ScoreUpdater) Update(ctx context.Context, serverID uint, nextScore int64) error {
+	return u.UpdateBatch(ctx, map[uint]int64{serverID: nextScore})
 }
 
 func (u *ScoreUpdater) UpdateBatch(ctx context.Context, items map[uint]int64) error {

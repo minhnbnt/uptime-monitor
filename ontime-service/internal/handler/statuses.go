@@ -28,21 +28,21 @@ func (s *StatusServer) GetCurrentStatuses(
 	ctx context.Context, req *eventv1.GetCurrentStatusesRequest,
 ) (*eventv1.GetCurrentStatusesResponse, error) {
 
-	if len(req.EndpointIds) == 0 {
+	if len(req.ServerIds) == 0 {
 		return &eventv1.GetCurrentStatusesResponse{}, nil
 	}
 
-	ids := lo.Map(req.EndpointIds, func(id uint64, _ int) uint { return uint(id) })
+	ids := lo.Map(req.ServerIds, func(id uint64, _ int) uint { return uint(id) })
 
 	statuses, err := s.eventService.GetCurrentStatuses(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
 
-	mapped := lo.Map(statuses, func(st dto.EndpointStatus, _ int) *eventv1.EndpointStatus {
-		return &eventv1.EndpointStatus{
-			EndpointId: uint64(st.EndpointID),
-			Status:     st.Status.String(),
+	mapped := lo.Map(statuses, func(st dto.EndpointStatus, _ int) *eventv1.ServerStatus {
+		return &eventv1.ServerStatus{
+			ServerId: uint64(st.ServerID),
+			Status:   st.Status.String(),
 		}
 	})
 
