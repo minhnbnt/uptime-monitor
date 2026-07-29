@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sort"
 	"time"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/domain"
@@ -89,14 +90,16 @@ func (o OntimeCalculator) BuildTimeline(events []ontimerepo.RawEvent, startTime,
 }
 
 func (o OntimeCalculator) splitEventsByRange(events []ontimerepo.RawEvent, startTime, endTime time.Time) (prev, inside []ontimerepo.RawEvent) {
-	for _, e := range events {
-		if e.Time.Before(startTime) {
-			prev = append(prev, e)
-		} else if !e.Time.After(endTime) {
-			inside = append(inside, e)
-		}
-	}
-	return
+
+	firstInside := sort.Search(len(events), func(i int) bool {
+		return !events[i].Time.Before(startTime)
+	})
+
+	pastEnd := sort.Search(len(events), func(i int) bool {
+		return events[i].Time.After(endTime)
+	})
+
+	return events[:firstInside], events[firstInside:pastEnd]
 }
 
 func (o OntimeCalculator) applyStartState(t *Timeline, prevEvents, dayEvents []ontimerepo.RawEvent) {

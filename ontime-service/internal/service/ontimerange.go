@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"sort"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -66,18 +67,25 @@ func (s *OntimeRangeService) CalculateUptime(
 }
 
 func convertRangeToRawEvents(events []ontimerepo.RangeEvent, from time.Time) []ontimerepo.RawEvent {
+
 	if len(events) == 0 {
 		return nil
 	}
 
 	raw := make([]ontimerepo.RawEvent, 0, len(events)+1)
 
-	var startStatus string
-	for _, e := range events {
-		if e.Time.Before(from) && e.Status != "" {
-			startStatus = e.Status
+	startStatus := ""
+	idx := sort.Search(len(events), func(i int) bool {
+		return !events[i].Time.Before(from)
+	})
+
+	for i := idx - 1; i >= 0; i-- {
+		if events[i].Status != "" {
+			startStatus = events[i].Status
+			break
 		}
 	}
+
 	if startStatus == "" {
 		startStatus = events[0].StartStatus
 	}
@@ -93,9 +101,11 @@ func convertRangeToRawEvents(events []ontimerepo.RangeEvent, from time.Time) []o
 	}
 
 	for _, e := range events {
+
 		if e.Status == "" {
 			continue
 		}
+
 		raw = append(raw, ontimerepo.RawEvent{
 			ServerID: e.ServerID,
 			Day:      utils.TruncateDay(e.Time),
@@ -103,6 +113,7 @@ func convertRangeToRawEvents(events []ontimerepo.RangeEvent, from time.Time) []o
 			Time:     e.Time,
 		})
 	}
+
 	return raw
 }
 
