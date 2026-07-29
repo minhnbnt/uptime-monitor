@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,10 +28,11 @@ type EventRepository interface {
 type EventService struct {
 	recorder EventRecorder
 	repo     EventRepository
+	logger   *slog.Logger
 }
 
-func NewEventService(r EventRecorder, repo EventRepository) *EventService {
-	return &EventService{recorder: r, repo: repo}
+func NewEventService(r EventRecorder, repo EventRepository, logger *slog.Logger) *EventService {
+	return &EventService{recorder: r, repo: repo, logger: logger}
 }
 
 func RegisterEventService(i do.Injector) {
@@ -38,11 +40,14 @@ func RegisterEventService(i do.Injector) {
 		return NewEventService(
 			do.MustInvoke[*repository.ServerEventRepository](i),
 			do.MustInvoke[*repository.EventRepository](i),
+			do.MustInvoke[*slog.Logger](i),
 		), nil
 	})
 }
 
 func (s *EventService) RecordEvent(ctx context.Context, req dto.RecordEventRequest) error {
+
+	s.logger.Info("record event", "serverID", req.ServerID, "status", req.Status)
 
 	id, err := uuid.NewV7()
 	if err != nil {

@@ -53,3 +53,13 @@ func (m *mockServerClient) GetServer(ctx context.Context, serverID uint, userID 
 }
 
 var _ ServerClient = (*mockServerClient)(nil)
+
+type mockRangeRepo struct {
+	batchGetOntimeRangeFn func(ctx context.Context, req []ontimerepo.BatchGetOntimeRangeRequest) ([]ontimerepo.RangeEvent, error)
+}
+
+func (m *mockRangeRepo) BatchGetOntimeRange(ctx context.Context, req []ontimerepo.BatchGetOntimeRangeRequest) ([]ontimerepo.RangeEvent, error) {
+	return m.batchGetOntimeRangeFn(ctx, req)
+}
+
+var _ OntineRangeRepository = (*mockRangeRepo)(nil)

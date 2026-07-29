@@ -109,6 +109,7 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []servercl
 	serverDates := make(map[uint][]time.Time, len(servers))
 
 	for _, sv := range servers {
+
 		created := utils.TruncateDay(sv.CreatedAt)
 		dates := lo.Filter(dates, func(d time.Time, _ int) bool {
 			return !d.Before(created)

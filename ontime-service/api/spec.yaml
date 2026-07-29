@@ -62,6 +62,36 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/v1/servers/{id}/uptime/calculate:
+    post:
+      operationId: calculateUptime
+      summary: Calculate uptime for a time range
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalculateUptimeRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UptimeResponse"
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     OntimeStats:
@@ -105,3 +135,57 @@ components:
           type: string
         message:
           type: string
+
+    CalculateUptimeRequest:
+      type: object
+      required:
+        - from
+        - to
+      properties:
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        resolution:
+          type: string
+          description: Go duration string (e.g., "15m", "1h"), minimum 1 minute
+
+    UptimeResponse:
+      type: object
+      properties:
+        server_id:
+          type: integer
+        uptime:
+          type: number
+          format: double
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        total_seconds:
+          type: number
+          format: double
+        online_seconds:
+          type: number
+          format: double
+        intervals:
+          type: array
+          items:
+            $ref: "#/components/schemas/IntervalResult"
+
+    IntervalResult:
+      type: object
+      properties:
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        uptime:
+          type: number
+          format: double

@@ -241,7 +241,7 @@ func TestBuildTimelinePastDay(t *testing.T) {
 		e(d, tm(2026, 6, 4, 12, 0), "OFF"),
 	}
 
-	tl := OntimeCalculator{}.BuildTimeline(events, d.Add(24*time.Hour), d.Add(48*time.Hour))
+	tl := OntimeCalculator{}.BuildTimeline(events, d, d.Add(24*time.Hour))
 
 	if !tl.Day.Equal(d) {
 		t.Errorf("Day = %v, want %v", tl.Day, d)
@@ -270,8 +270,8 @@ func TestBuildTimelineToday(t *testing.T) {
 
 	tl := OntimeCalculator{}.BuildTimeline(events, d, now)
 
-	if !tl.StartTime.Equal(tm(2026, 6, 4, 6, 0)) {
-		t.Errorf("StartTime = %v, want 06:00", tl.StartTime)
+	if !tl.StartTime.Equal(d) {
+		t.Errorf("StartTime = %v, want %v", tl.StartTime, d)
 	}
 	if !tl.EndTime.Equal(now) {
 		t.Errorf("EndTime = %v, want %v", tl.EndTime, now)
@@ -287,7 +287,7 @@ func TestBuildTimelineTodayWithPrevEvents(t *testing.T) {
 		e(d, tm(2026, 6, 4, 10, 0), "OFF"),
 	}
 
-	tl := OntimeCalculator{}.BuildTimeline(events, d, now)
+	tl := OntimeCalculator{}.BuildTimeline(events, prev, now)
 
 	if !tl.StartTime.Equal(prev) {
 		t.Errorf("StartTime = %v, want %v", tl.StartTime, prev)
@@ -297,12 +297,14 @@ func TestBuildTimelineTodayWithPrevEvents(t *testing.T) {
 	}
 }
 
-func TestSplitByDayBoundary(t *testing.T) {
+func TestSplitEventsByRange(t *testing.T) {
 	d := day(2026, 6, 4)
 
 	tests := []struct {
 		name       string
 		events     []ontimerepo.RawEvent
+		startTime  time.Time
+		endTime    time.Time
 		wantPrev   int
 		wantInside int
 	}{
@@ -312,6 +314,8 @@ func TestSplitByDayBoundary(t *testing.T) {
 				e(d, tm(2026, 6, 4, 6, 0), "ON"),
 				e(d, tm(2026, 6, 4, 12, 0), "OFF"),
 			},
+			startTime:  d,
+			endTime:    d.Add(24 * time.Hour),
 			wantPrev:   0,
 			wantInside: 2,
 		},
@@ -322,6 +326,8 @@ func TestSplitByDayBoundary(t *testing.T) {
 				e(d, tm(2026, 6, 4, 6, 0), "ON"),
 				e(d, tm(2026, 6, 4, 12, 0), "OFF"),
 			},
+			startTime:  d,
+			endTime:    d.Add(24 * time.Hour),
 			wantPrev:   1,
 			wantInside: 2,
 		},
@@ -331,14 +337,28 @@ func TestSplitByDayBoundary(t *testing.T) {
 				e(d.Add(-48*time.Hour), tm(2026, 6, 2, 12, 0), "ON"),
 				e(d.Add(-24*time.Hour), tm(2026, 6, 3, 6, 0), "OFF"),
 			},
+			startTime:  d,
+			endTime:    d.Add(24 * time.Hour),
 			wantPrev:   2,
 			wantInside: 0,
+		},
+		{
+			name: "sub-range",
+			events: []ontimerepo.RawEvent{
+				e(d, tm(2026, 6, 4, 2, 0), "ON"),
+				e(d, tm(2026, 6, 4, 6, 0), "OFF"),
+				e(d, tm(2026, 6, 4, 10, 0), "ON"),
+			},
+			startTime:  d.Add(4 * time.Hour),
+			endTime:    d.Add(8 * time.Hour),
+			wantPrev:   1,
+			wantInside: 1,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			prev, inside := OntimeCalculator{}.splitByDayBoundary(tt.events, d)
+			prev, inside := OntimeCalculator{}.splitEventsByRange(tt.events, tt.startTime, tt.endTime)
 			if len(prev) != tt.wantPrev {
 				t.Errorf("len(prev) = %d, want %d", len(prev), tt.wantPrev)
 			}
@@ -403,59 +423,35 @@ func TestDedupEvents(t *testing.T) {
 }
 
 func TestApplyStartState(t *testing.T) {
-	d := day(2026, 6, 4)
-
 	tests := []struct {
 		name       string
 		prevEvents []ontimerepo.RawEvent
 		dayEvents  []ontimerepo.RawEvent
-		allEvents  []ontimerepo.RawEvent
-		isToday    bool
 		wantStatus string
-		wantTime   time.Time
 	}{
 		{
-			name:       "prev present, not today",
+			name:       "prev present",
 			prevEvents: []ontimerepo.RawEvent{{Time: tm(2026, 6, 3, 23, 0), Status: "OFF"}},
-			isToday:    false,
 			wantStatus: "OFF",
-			wantTime:   d,
-		},
-		{
-			name:       "prev present, today",
-			prevEvents: []ontimerepo.RawEvent{{Time: tm(2026, 6, 3, 23, 0), Status: "ON"}},
-			isToday:    true,
-			wantStatus: "ON",
-			wantTime:   tm(2026, 6, 3, 23, 0),
 		},
 		{
 			name:       "no prev, use first day event",
 			dayEvents:  []ontimerepo.RawEvent{{Time: tm(2026, 6, 4, 8, 0), Status: "ON"}},
-			allEvents:  []ontimerepo.RawEvent{{Time: tm(2026, 6, 4, 8, 0), Status: "ON"}},
-			isToday:    false,
 			wantStatus: "ON",
-			wantTime:   d,
 		},
 		{
-			name:       "no prev, today, use first day event",
-			dayEvents:  []ontimerepo.RawEvent{{Time: tm(2026, 6, 4, 8, 0), Status: "OFF"}},
-			allEvents:  []ontimerepo.RawEvent{{Time: tm(2026, 6, 4, 8, 0), Status: "OFF"}},
-			isToday:    true,
-			wantStatus: "OFF",
-			wantTime:   tm(2026, 6, 4, 8, 0),
+			name:       "no prev, no day events",
+			wantStatus: "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tl := &Timeline{StartTime: d, EndTime: d.Add(24 * time.Hour)}
-			OntimeCalculator{}.applyStartState(tl, tt.prevEvents, tt.dayEvents, tt.allEvents, tt.isToday)
+			tl := &Timeline{}
+			OntimeCalculator{}.applyStartState(tl, tt.prevEvents, tt.dayEvents)
 
 			if tl.StartStatus != tt.wantStatus {
 				t.Errorf("StartStatus = %v, want %v", tl.StartStatus, tt.wantStatus)
-			}
-			if !tl.StartTime.Equal(tt.wantTime) {
-				t.Errorf("StartTime = %v, want %v", tl.StartTime, tt.wantTime)
 			}
 		})
 	}

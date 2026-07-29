@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"time"
 
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
@@ -10,6 +11,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/generated/api"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/errors"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/utils"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/service"
 )
 
@@ -18,14 +20,20 @@ type OntimeService interface {
 	GetServerWithOntime(ctx context.Context, serverID uint, userID uint) (*dto.ServerOntime, error)
 }
 
+type OntimeRangeService interface {
+	CalculateUptime(ctx context.Context, serverID uint, from, to time.Time, resolution time.Duration) (*dto.UptimeResponse, error)
+}
+
 type OntimeHandler struct {
-	ontimeService OntimeService
+	ontimeService      OntimeService
+	ontimeRangeService OntimeRangeService
 }
 
 func RegisterOntimeHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*OntimeHandler, error) {
 		return &OntimeHandler{
-			ontimeService: do.MustInvoke[*service.OntimeService](i),
+			ontimeService:      do.MustInvoke[*service.OntimeService](i),
+			ontimeRangeService: do.MustInvoke[*service.OntimeRangeService](i),
 		}, nil
 	})
 }
@@ -81,6 +89,45 @@ func (h *OntimeHandler) NewError(_ context.Context, err error) *api.ErrorRespons
 	}
 }
 
+func (h *OntimeHandler) CalculateUptime(ctx context.Context, req *api.CalculateUptimeRequest, params api.CalculateUptimeParams) (*api.UptimeResponse, error) {
+
+	if err := validateRequest(req); err != nil {
+		return nil, err
+	}
+
+	resolution := time.Duration(15 * time.Minute)
+	if req.Resolution.IsSet() {
+		d, err := utils.ParseResolution(req.Resolution.Value)
+		if err != nil {
+			return nil, err
+		}
+		resolution = d
+	}
+
+	result, err := h.ontimeRangeService.CalculateUptime(ctx, uint(params.ID), req.From, req.To, resolution)
+	if err != nil {
+		return nil, err
+	}
+
+	return toAPIUptimeResponse(result)
+}
+
+func validateRequest(req *api.CalculateUptimeRequest) error {
+	if req.From.After(req.To) || req.From.Equal(req.To) {
+		return apperrors.ErrBadRequest
+	}
+
+	if req.To.After(time.Now()) {
+		return apperrors.ErrBadRequest
+	}
+
+	if req.To.Sub(req.From) > 90*24*time.Hour {
+		return apperrors.ErrBadRequest
+	}
+
+	return nil
+}
+
 func toOntimeStats(stats []dto.OntimeStats) []api.OntimeStats {
 	return lo.Map(stats, func(s dto.OntimeStats, _ int) api.OntimeStats {
 		return api.OntimeStats{
@@ -90,7 +137,46 @@ func toOntimeStats(stats []dto.OntimeStats) []api.OntimeStats {
 	})
 }
 
+func toAPIUptimeResponse(r *dto.UptimeResponse) (*api.UptimeResponse, error) {
+	intervals := make([]api.IntervalResult, len(r.Intervals))
+	for i, iv := range r.Intervals {
+		from, err := time.Parse(time.RFC3339, iv.From)
+		if err != nil {
+			return nil, err
+		}
+		to, err := time.Parse(time.RFC3339, iv.To)
+		if err != nil {
+			return nil, err
+		}
+		intervals[i] = api.IntervalResult{
+			From:   api.NewOptDateTime(from),
+			To:     api.NewOptDateTime(to),
+			Uptime: api.NewOptFloat64(iv.Uptime),
+		}
+	}
+
+	from, err := time.Parse(time.RFC3339, r.From)
+	if err != nil {
+		return nil, err
+	}
+	to, err := time.Parse(time.RFC3339, r.To)
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.UptimeResponse{
+		ServerID:      api.NewOptInt(int(r.ServerID)),
+		Uptime:        api.NewOptFloat64(r.Uptime),
+		From:          api.NewOptDateTime(from),
+		To:            api.NewOptDateTime(to),
+		TotalSeconds:  api.NewOptFloat64(r.TotalSeconds),
+		OnlineSeconds: api.NewOptFloat64(r.OnlineSeconds),
+		Intervals:     intervals,
+	}, nil
+}
+
 var (
-	_ OntimeService = (*service.OntimeService)(nil)
-	_ api.Handler   = (*OntimeHandler)(nil)
+	_ OntimeService      = (*service.OntimeService)(nil)
+	_ OntimeRangeService = (*service.OntimeRangeService)(nil)
+	_ api.Handler        = (*OntimeHandler)(nil)
 )
