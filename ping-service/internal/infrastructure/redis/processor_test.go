@@ -15,7 +15,6 @@ import (
 func TestDebeziumServerDataToDomain(t *testing.T) {
 	data := debeziumServerData{
 		ID:            1,
-		ServerID:      10,
 		Namespace:     "default",
 		Kind:          "Pod",
 		ObjectID:      "web-app",
@@ -27,9 +26,6 @@ func TestDebeziumServerDataToDomain(t *testing.T) {
 	got := data.toDomain()
 	if got.ID != 1 {
 		t.Errorf("ID = %d, want 1", got.ID)
-	}
-	if got.ServerID != 10 {
-		t.Errorf("ServerID = %d, want 10", got.ServerID)
 	}
 	if got.Namespace != "default" {
 		t.Errorf("Namespace = %q", got.Namespace)
@@ -163,7 +159,7 @@ func TestProcessMessage(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"op":"c","after":{"id":1,"server_id":10,"namespace":"default","kind":"Pod","object_id":"web-app","container_name":"nginx","interval":30000000000,"timeout":10000000000}}`))
+		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"op":"c","after":{"id":1,"namespace":"default","kind":"Pod","object_id":"web-app","container_name":"nginx","interval":30000000000,"timeout":10000000000}}`))
 		if !canAck {
 			t.Error("expected canAck=true")
 		}

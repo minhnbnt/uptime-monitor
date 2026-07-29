@@ -25,11 +25,13 @@ func NewEventRecorderClient(wrapper *config.GRPCClientWrapper) *EventRecorderCli
 
 func RegisterEventRecorderClient(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EventRecorderClient, error) {
+
 		cfg := do.MustInvoke[*config.Config](i)
 		wrapper, err := config.NewGRPCClientWrapper(cfg.GRPC.EventAddr)
 		if err != nil {
 			return nil, fmt.Errorf("dial event grpc: %w", err)
 		}
+
 		return NewEventRecorderClient(wrapper), nil
 	})
 }

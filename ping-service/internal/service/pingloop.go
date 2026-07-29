@@ -62,7 +62,7 @@ func (s *PingLoopService) pingAndRecordServer(ctx context.Context, task PingTask
 			slog.String("namespace", sv.Namespace),
 			slog.String("kind", sv.Kind),
 			slog.String("object_id", sv.ObjectID),
-			slog.Uint64("server_id", uint64(sv.ServerID)),
+			slog.Uint64("server_id", uint64(sv.ID)),
 			slog.Any("error", pingErr),
 		)
 	}
@@ -76,7 +76,7 @@ func (s *PingLoopService) pingAndRecordServer(ctx context.Context, task PingTask
 	if err != nil {
 		s.logger.Error(
 			"generate event id",
-			slog.Uint64("server_id", uint64(sv.ServerID)),
+			slog.Uint64("server_id", uint64(sv.ID)),
 			slog.Any("error", err),
 		)
 		return
@@ -84,14 +84,14 @@ func (s *PingLoopService) pingAndRecordServer(ctx context.Context, task PingTask
 
 	event := domain.ServerEvent{
 		ID:       id,
-		ServerID: sv.ServerID,
+		ServerID: sv.ID,
 		Status:   status,
 	}
 
 	if err := s.Record(ctx, &event); err != nil {
 		s.logger.Error(
 			"record event",
-			slog.Uint64("server_id", uint64(sv.ServerID)),
+			slog.Uint64("server_id", uint64(sv.ID)),
 			slog.Any("error", err),
 		)
 	}
@@ -100,7 +100,7 @@ func (s *PingLoopService) pingAndRecordServer(ctx context.Context, task PingTask
 	if err != nil {
 		s.logger.Error(
 			"calculate next score",
-			slog.Uint64("server_id", uint64(sv.ServerID)),
+			slog.Uint64("server_id", uint64(sv.ID)),
 			slog.Any("error", err),
 		)
 		return
@@ -109,7 +109,7 @@ func (s *PingLoopService) pingAndRecordServer(ctx context.Context, task PingTask
 	if err := s.scoreUpdater.Update(ctx, sv.ID, nextScore.UnixMilli()); err != nil {
 		s.logger.Error(
 			"update score",
-			slog.Uint64("server_id", uint64(sv.ServerID)),
+			slog.Uint64("server_id", uint64(sv.ID)),
 			slog.Any("error", err),
 		)
 	}

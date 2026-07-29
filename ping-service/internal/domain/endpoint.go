@@ -1,28 +1,19 @@
 package domain
 
-import (
-	"time"
-
-	"gorm.io/gorm"
-)
+import "time"
 
 type Server struct {
-	gorm.Model
-	ServerID      uint          `gorm:"not null;uniqueIndex"`
-	Namespace     string        `gorm:"type:varchar(253);not null"`
-	Kind          string        `gorm:"type:varchar(50);not null"`
-	ObjectID      string        `gorm:"type:varchar(253);not null"`
-	ContainerName string        `gorm:"type:varchar(253)"`
-	Interval      time.Duration `gorm:"type:bigint;not null;default:30000000000"`
-	Timeout       time.Duration `gorm:"type:bigint;not null;default:10000000000"`
+	ID            uint          `json:"id"`
+	Namespace     string        `json:"namespace"`
+	Kind          string        `json:"kind"`
+	ObjectID      string        `json:"object_id"`
+	ContainerName string        `json:"container_name"`
+	Interval      time.Duration `json:"interval"`
+	Timeout       time.Duration `json:"timeout"`
 
 	// Deprecated: kept for dead code compatibility (responseChecker.go).
-	ExpectedCode  int     `gorm:"-"`
-	BodyCheckExpr *string `gorm:"-"`
-}
-
-func (Server) TableName() string {
-	return "servers"
+	ExpectedCode  int     `json:"-"`
+	BodyCheckExpr *string `json:"-"`
 }
 
 // Endpoint is a type alias for backward compatibility with dead code.

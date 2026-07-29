@@ -76,6 +76,7 @@ func (c *k8sClient) checkWorkload(ctx context.Context, namespace, kind, name, co
 			return true, nil
 		}
 	}
+
 	return false, nil
 }
 
@@ -96,6 +97,7 @@ func (c *k8sClient) getWorkloadLabelSelector(ctx context.Context, namespace, kin
 			return "", nil
 		}
 		return metav1.FormatLabelSelector(sts.Spec.Selector), nil
+
 	case "DaemonSet":
 		ds, err := c.clientset.AppsV1().DaemonSets(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
@@ -103,6 +105,7 @@ func (c *k8sClient) getWorkloadLabelSelector(ctx context.Context, namespace, kin
 			return "", nil
 		}
 		return metav1.FormatLabelSelector(ds.Spec.Selector), nil
+
 	case "ReplicaSet":
 		rs, err := c.clientset.AppsV1().ReplicaSets(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
@@ -110,6 +113,7 @@ func (c *k8sClient) getWorkloadLabelSelector(ctx context.Context, namespace, kin
 			return "", nil
 		}
 		return metav1.FormatLabelSelector(rs.Spec.Selector), nil
+
 	default:
 		return "", fmt.Errorf("unsupported workload kind: %s", kind)
 	}
@@ -126,12 +130,15 @@ func isPodRunning(pod *corev1.Pod, containerName string) bool {
 	}
 
 	if containerName != "" {
+
 		target := lo.Filter(statuses, func(status corev1.ContainerStatus, _ int) bool {
 			return status.Name == containerName
 		})
+
 		if len(target) != 1 {
 			return false
 		}
+
 		return target[0].Ready
 	}
 

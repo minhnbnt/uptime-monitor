@@ -32,18 +32,19 @@ func (w *RecordStatusWorker) Record(ctx context.Context, event *domain.ServerEve
 
 	event.Time = time.Now()
 
+	w.logger.Info("record status", "serverID", event.ServerID, "status", event.Status)
+
 	lastStatus, err := w.statusStore.GetStatus(ctx, event.ServerID)
+	if err == nil && lastStatus == event.Status {
+		return nil
+	}
+
 	if err != nil {
 		w.logger.Warn(
 			"failed to get status from redis",
 			slog.Uint64("serverID", uint64(event.ServerID)),
 			slog.Any("error", err),
 		)
-		return nil
-	}
-
-	if lastStatus == event.Status {
-		return nil
 	}
 
 	if err := w.eventRecorder.RecordEvent(ctx, event.ServerID, event.Status); err != nil {

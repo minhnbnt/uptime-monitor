@@ -71,6 +71,8 @@ func bindEnvVars(v *viper.Viper) error {
 		"grpc.server_addr": "GRPC_SERVER_ADDR",
 		"grpc.event_addr":  "GRPC_EVENT_ADDR",
 
+		"kubeconfig": "KUBECONFIG",
+
 		"log.level": "LOG_LEVEL",
 	}
 

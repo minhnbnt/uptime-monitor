@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"gorm.io/gorm"
-
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/logger"
 )
@@ -30,8 +28,7 @@ func (m *mockRecordWorker) Record(ctx context.Context, event *domain.ServerEvent
 
 func TestPingAndRecordServer(t *testing.T) {
 	sv := &domain.Server{
-		Model:     gorm.Model{ID: 1},
-		ServerID:  10,
+		ID:        1,
 		Namespace: "default",
 		Kind:      "Pod",
 		ObjectID:  "web-app",
@@ -70,8 +67,8 @@ func TestPingAndRecordServer(t *testing.T) {
 		if recordedEvent.Status != domain.StatusOn {
 			t.Errorf("status = %q, want %q", recordedEvent.Status, domain.StatusOn)
 		}
-		if recordedEvent.ServerID != 10 {
-			t.Errorf("serverID = %d, want 10", recordedEvent.ServerID)
+		if recordedEvent.ServerID != 1 {
+			t.Errorf("serverID = %d, want 1", recordedEvent.ServerID)
 		}
 		if updatedScore <= 0 {
 			t.Errorf("expected positive updated score, got %d", updatedScore)

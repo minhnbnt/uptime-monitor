@@ -15,11 +15,12 @@ import (
 func RegisterK8sClient(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (kubernetes.Interface, error) {
 		logger := do.MustInvoke[*slog.Logger](i)
+		cfg := do.MustInvoke[*Config](i)
 
 		config, err := rest.InClusterConfig()
 		if err != nil {
 			logger.Info("in-cluster config unavailable, falling back to kubeconfig", slog.Any("error", err))
-			config, err = clientcmd.BuildConfigFromFlags("", kubeconfigOrDefault())
+			config, err = clientcmd.BuildConfigFromFlags("", resolveKubeconfig(cfg.Kubeconfig))
 			if err != nil {
 				return nil, fmt.Errorf("k8s config: in-cluster and kubeconfig both failed: %w", err)
 			}
@@ -34,9 +35,9 @@ func RegisterK8sClient(i do.Injector) {
 	})
 }
 
-func kubeconfigOrDefault() string {
-	if v := os.Getenv("KUBECONFIG"); v != "" {
-		return v
+func resolveKubeconfig(cfgPath string) string {
+	if cfgPath != "" {
+		return cfgPath
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
