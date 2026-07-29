@@ -6,7 +6,7 @@ WORKDIR /proto
 RUN buf generate
 
 
-FROM golang:1.26-alpine AS builder
+FROM public.ecr.aws/docker/library/golang:1.26 AS builder
 
 ENV CGO_ENABLED=0 \
     GOOS=linux \
@@ -24,7 +24,7 @@ RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
     go build -trimpath -ldflags="-s -w" -o /app/notification-service ./cmd
 
 
-FROM alpine:3.22 AS upx
+FROM public.ecr.aws/docker/library/alpine:3 AS upx
 
 RUN --mount=type=cache,id=apk-cache,target=/var/cache/apk \
     apk add upx
@@ -34,7 +34,7 @@ COPY --from=builder /app/notification-service /app/notification-service
 RUN upx --best --lzma /app/notification-service
 
 
-FROM gcr.io/distroless/static-debian13:nonroot
+FROM registry.access.redhat.com/hi/static:latest
 
 WORKDIR /app
 
