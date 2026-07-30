@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"slices"
+	"sort"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -111,14 +112,17 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []servercl
 	for _, sv := range servers {
 
 		created := utils.TruncateDay(sv.CreatedAt)
-		dates := lo.Filter(dates, func(d time.Time, _ int) bool {
-			return !d.Before(created)
+		i := sort.Search(len(dates), func(i int) bool {
+			return !dates[i].Before(created)
 		})
+
+		dates = dates[i:]
 
 		datesIter := slices.Values(dates)
 		newItems := it.Map(datesIter, func(d time.Time) dto.BatchGetOntimeItem {
 			return dto.BatchGetOntimeItem{ServerID: sv.ID, Date: d}
 		})
+
 		items = slices.AppendSeq(items, newItems)
 		serverDates[sv.ID] = dates
 	}
@@ -137,10 +141,12 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []servercl
 
 	out := make(map[uint][]dto.OntimeStats, len(servers))
 	for _, sv := range servers {
+
 		stats, ok := lookup[sv.ID]
 		if !ok {
 			stats = make(map[time.Time]float64)
 		}
+
 		out[sv.ID] = lo.Map(serverDates[sv.ID], func(d time.Time, _ int) dto.OntimeStats {
 			return dto.OntimeStats{Date: d, Stats: stats[d]}
 		})

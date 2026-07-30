@@ -59,6 +59,7 @@ func (s *OntimeRangeService) CalculateUptime(
 
 	intervals := utils.SplitIntervals(from, to, resolution)
 	intervalResults := s.calc.CalculateIntervals(events, intervals)
+	intervalResults = mergeIntervals(intervalResults)
 
 	totalSeconds := to.Sub(from).Seconds()
 	onlineSeconds := uptime / 100 * totalSeconds
@@ -72,6 +73,28 @@ func (s *OntimeRangeService) CalculateUptime(
 		OnlineSeconds: onlineSeconds,
 		Intervals:     intervalResults,
 	}, nil
+}
+
+func mergeIntervals(intervals []dto.IntervalResult) []dto.IntervalResult {
+
+	if len(intervals) <= 1 {
+		return intervals
+	}
+
+	merged := []dto.IntervalResult{intervals[0]}
+
+	for i := 1; i < len(intervals); i++ {
+
+		last, cur := &merged[len(merged)-1], intervals[i]
+
+		if last.To == cur.From && last.Uptime == cur.Uptime {
+			last.To = cur.To
+		} else {
+			merged = append(merged, cur)
+		}
+	}
+
+	return merged
 }
 
 func (o OntimeCalculator) CalculateIntervals(events []ontimerepo.Event, intervals []utils.Interval) []dto.IntervalResult {

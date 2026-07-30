@@ -38,7 +38,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/v1/servers/{id}:
+  /api/v1/servers/ontime/{id}:
     get:
       operationId: getServerOntime
       summary: Get server with ontime stats
@@ -62,7 +62,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/v1/servers/{id}/uptime/calculate:
+  /api/v1/servers/ontime/{id}/range:
     post:
       operationId: calculateUptime
       summary: Calculate uptime for a time range

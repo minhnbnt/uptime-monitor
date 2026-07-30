@@ -216,8 +216,8 @@ func TestOntimeRangeService_CalculateUptime(t *testing.T) {
 		if result.Uptime != 100 {
 			t.Errorf("Uptime = %f, want 100", result.Uptime)
 		}
-		if len(result.Intervals) != 4 {
-			t.Errorf("len(Intervals) = %d, want 4", len(result.Intervals))
+		if len(result.Intervals) != 1 {
+			t.Errorf("len(Intervals) = %d, want 1 (merged all 100%% intervals)", len(result.Intervals))
 		}
 	})
 
