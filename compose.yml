@@ -15,10 +15,11 @@ services:
 
     labels:
       traefik.enable: true
-      traefik.http.middlewares.cors.headers.accessControlAllowOriginList: "*"
+      traefik.http.middlewares.cors.headers.accessControlAllowOriginList: http://localhost:5173
       traefik.http.middlewares.cors.headers.accessControlAllowMethods: GET,POST,PUT,PATCH,DELETE,OPTIONS
       traefik.http.middlewares.cors.headers.accessControlAllowHeaders: "*"
       traefik.http.middlewares.cors.headers.accessControlMaxAge: 86400
+      traefik.http.middlewares.cors.headers.accessControlAllowCredentials: true
 
   auth-service:
     build:
@@ -104,8 +105,12 @@ services:
 
     command: ["--config=/config.yml"]
 
+    environment:
+      KUBECONFIG: /kube/config
+
     volumes:
       - ./config/ping-service.yml:/config.yml
+      - ${KUBECONFIG:-$HOME/.kube/config}:/kube/config:ro
 
     ports:
       - "50053:50053"
@@ -167,7 +172,7 @@ services:
       traefik.http.services.notification-service.loadbalancer.server.port: 8085
 
   pgbouncer:
-    image: edoburu/pgbouncer:v1.25.1-p0
+    image: registry.access.redhat.com/hi/pgbouncer:1.25
 
     ports:
       - 6432:6432
@@ -181,14 +186,14 @@ services:
         condition: service_healthy
 
   redis:
-    image: ghcr.io/valkey-io/valkey:9-alpine
+    image: registry.access.redhat.com/hi/valkey:9
     ports:
       - 6379:6379
 
     volumes:
       - redis_data:/data
 
-    command: redis-server --appendonly yes
+    command: --appendonly yes --protected-mode no --maxmemory-policy volatile-lru
 
   postgres:
     image: paradedb/paradedb:pg18
