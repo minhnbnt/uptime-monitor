@@ -73,10 +73,9 @@ func (p *Parser) ParseImportFile(file io.Reader) ([]dto.ImportRow, []dto.ImportR
 
 var expectedHeaders = []string{
 	"server_name",
-	"url", "method",
+	"namespace", "kind", "object_id",
 	"interval_sec",
 	"timeout_sec",
-	"expected_code",
 }
 
 func validateHeaders(colMap map[string]int) error {
@@ -129,15 +128,16 @@ func parseRow(rowNum int, row []string, colMap map[string]int) (dto.ImportRow, [
 		errs = append(errs, err)
 	}
 
-	r.URL, err = parseURL(getCellByHeader(row, colMap, "url"))
+	r.Namespace = strings.TrimSpace(getCellByHeader(row, colMap, "namespace"))
+
+	r.Kind, err = parseKind(getCellByHeader(row, colMap, "kind"))
 	if err != nil {
 		errs = append(errs, err)
 	}
 
-	r.Method, err = parseMethod(getCellByHeader(row, colMap, "method"))
-	if err != nil {
-		errs = append(errs, err)
-	}
+	r.ObjectID = strings.TrimSpace(getCellByHeader(row, colMap, "object_id"))
+
+	r.ContainerName = strings.TrimSpace(getCellByHeader(row, colMap, "container_name"))
 
 	r.Interval, err = parseInterval(getCellByHeader(row, colMap, "interval_sec"))
 	if err != nil {
@@ -145,11 +145,6 @@ func parseRow(rowNum int, row []string, colMap map[string]int) (dto.ImportRow, [
 	}
 
 	r.Timeout, err = parseTimeout(getCellByHeader(row, colMap, "timeout_sec"))
-	if err != nil {
-		errs = append(errs, err)
-	}
-
-	r.ExpectedCode, err = parseExpectedCode(getCellByHeader(row, colMap, "expected_code"))
 	if err != nil {
 		errs = append(errs, err)
 	}
@@ -167,17 +162,16 @@ func parseServerName(v string) (string, error) {
 	return v, nil
 }
 
-func parseURL(v string) (string, error) {
-
-	if err := utils.ValidateURL(v); err != nil {
-		return "", err
+func parseKind(v string) (string, error) {
+	v = strings.TrimSpace(v)
+	switch v {
+	case "Pod", "Deployment", "StatefulSet", "DaemonSet", "ReplicaSet":
+		return v, nil
+	case "":
+		return "Pod", nil
+	default:
+		return "", fmt.Errorf("invalid kind: %s (must be Pod, Deployment, StatefulSet, DaemonSet, or ReplicaSet)", v)
 	}
-
-	return strings.TrimSpace(v), nil
-}
-
-func parseMethod(v string) (string, error) {
-	return utils.ValidateMethod(v)
 }
 
 func parseIntCell(v, field string, defaultValue int, validateFn func(int) error) (int, error) {
@@ -205,8 +199,4 @@ func parseInterval(v string) (int, error) {
 
 func parseTimeout(v string) (int, error) {
 	return parseIntCell(v, "timeout_sec", 10, utils.ValidateTimeout)
-}
-
-func parseExpectedCode(v string) (int, error) {
-	return parseIntCell(v, "expected_code", 200, utils.ValidateExpectedCode)
 }

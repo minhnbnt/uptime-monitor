@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/samber/do/v2"
+	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/common/authclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/generated/api"
@@ -48,15 +49,13 @@ func (h *ImportHandler) ImportServers(ctx context.Context, req *api.ImportServer
 		return nil, apperrors.ToAPIError(err)
 	}
 
-	successes := make([]api.ImportServerSuccess, len(result.Successes))
-	for i, s := range result.Successes {
-		successes[i] = api.ImportServerSuccess{
+	successes := lo.Map(result.Successes, func(s dto.ImportSuccess, _ int) api.ImportServerSuccess {
+		return api.ImportServerSuccess{
 			Row:      api.NewOptInt(s.Row),
 			Name:     api.NewOptString(s.Name),
-			URL:      api.NewOptString(s.URL),
 			ServerID: api.NewOptInt(int(s.ServerID)),
 		}
-	}
+	})
 
 	failed := make([]api.ImportServerRowError, 0, len(result.RowErrors)+len(result.BatchErrors))
 

@@ -8,7 +8,6 @@ import (
 	"github.com/xuri/excelize/v2"
 
 	serverdto "github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/dto"
-	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/utils"
 )
 
 type Exporter struct{}
@@ -23,10 +22,9 @@ func fillTemplate(xl *excelize.File) error {
 
 	headers := []string{
 		"server_name",
-		"url", "method",
+		"namespace", "kind", "object_id", "container_name",
 		"interval_sec",
 		"timeout_sec",
-		"expected_code",
 	}
 
 	if err := setHeader(xl, "Sheet1", headers); err != nil {
@@ -36,7 +34,13 @@ func fillTemplate(xl *excelize.File) error {
 	if err := xl.SetCellValue("Sheet1", "A2", "My Server"); err != nil {
 		return fmt.Errorf("failed to set cell value: %w", err)
 	}
-	if err := xl.SetCellValue("Sheet1", "B2", "https://example.com/health"); err != nil {
+	if err := xl.SetCellValue("Sheet1", "B2", "default"); err != nil {
+		return fmt.Errorf("failed to set cell value: %w", err)
+	}
+	if err := xl.SetCellValue("Sheet1", "C2", "Pod"); err != nil {
+		return fmt.Errorf("failed to set cell value: %w", err)
+	}
+	if err := xl.SetCellValue("Sheet1", "D2", "my-pod"); err != nil {
 		return fmt.Errorf("failed to set cell value: %w", err)
 	}
 
@@ -72,10 +76,9 @@ func fillExportFile(xl *excelize.File, servers []serverdto.Server) error {
 
 	headers := []string{
 		"server_name",
-		"url", "method",
+		"namespace", "kind", "object_id", "container_name",
 		"interval_sec",
 		"timeout_sec",
-		"expected_code",
 	}
 
 	if err := setHeader(xl, "Sheet1", headers); err != nil {
@@ -84,36 +87,25 @@ func fillExportFile(xl *excelize.File, servers []serverdto.Server) error {
 
 	for i, sv := range servers {
 
-		url := ""
-		method := "GET"
 		interval := 30
-		timeout := 10
-		expectedCode := 200
+		if sec := int(sv.Interval.Seconds()); sec >= 30 {
+			interval = sec
+		}
 
-		if sv.Endpoint != nil {
-			url = sv.Endpoint.URL
-			if m, err := utils.ValidateMethod(sv.Endpoint.Method); err == nil {
-				method = m
-			}
-			if sec := int(sv.Endpoint.Interval.Seconds()); sec >= 30 {
-				interval = sec
-			}
-			if sec := int(sv.Endpoint.Timeout.Seconds()); sec >= 10 {
-				timeout = sec
-			}
-			if code := sv.Endpoint.ExpectedCode; code >= 100 && code <= 599 {
-				expectedCode = code
-			}
+		timeout := 10
+		if sec := int(sv.Timeout.Seconds()); sec >= 10 {
+			timeout = sec
 		}
 
 		row := i + 2
 		values := map[string]string{
 			fmt.Sprintf("A%d", row): sv.Name,
-			fmt.Sprintf("B%d", row): url,
-			fmt.Sprintf("C%d", row): method,
-			fmt.Sprintf("D%d", row): fmt.Sprintf("%d", interval),
-			fmt.Sprintf("E%d", row): fmt.Sprintf("%d", timeout),
-			fmt.Sprintf("F%d", row): fmt.Sprintf("%d", expectedCode),
+			fmt.Sprintf("B%d", row): sv.Namespace,
+			fmt.Sprintf("C%d", row): sv.Kind,
+			fmt.Sprintf("D%d", row): sv.ObjectID,
+			fmt.Sprintf("E%d", row): sv.ContainerName,
+			fmt.Sprintf("F%d", row): fmt.Sprintf("%d", interval),
+			fmt.Sprintf("G%d", row): fmt.Sprintf("%d", timeout),
 		}
 
 		for cell, value := range values {

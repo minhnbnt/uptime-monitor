@@ -1,19 +1,19 @@
 package dto
 
 type ImportRow struct {
-	Row          int
-	Name         string
-	URL          string
-	Method       string
-	Interval     int
-	Timeout      int
-	ExpectedCode int
+	Row           int
+	Name          string
+	Namespace     string
+	Kind          string
+	ObjectID      string
+	ContainerName string
+	Interval      int
+	Timeout       int
 }
 
 type ImportSuccess struct {
 	Row      int
 	Name     string
-	URL      string
 	ServerID uint
 }
 

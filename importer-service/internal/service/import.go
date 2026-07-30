@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/samber/do/v2"
+	"github.com/samber/lo"
 
 	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/server/v1"
 	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/config"
@@ -49,19 +50,19 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 		return &dto.ImportResult{RowErrors: rowErrors}, nil
 	}
 
-	protoInputs := make([]*serverv1.ServerWithEndpointInput, len(rows))
-	for i, r := range rows {
-		protoInputs[i] = &serverv1.ServerWithEndpointInput{
-			Row:          int32(r.Row),
-			Name:         r.Name,
-			Url:          r.URL,
-			Method:       r.Method,
-			ExpectedCode: int32(r.ExpectedCode),
-			IntervalMs:   int64(r.Interval) * 1000,
-			TimeoutMs:    int64(r.Timeout) * 1000,
-			UserId:       uint64(userID),
+	protoInputs := lo.Map(rows, func(r dto.ImportRow, _ int) *serverv1.ServerWithEndpointInput {
+		return &serverv1.ServerWithEndpointInput{
+			Row:           int32(r.Row),
+			Name:          r.Name,
+			Namespace:     r.Namespace,
+			Kind:          r.Kind,
+			ObjectId:      r.ObjectID,
+			ContainerName: r.ContainerName,
+			IntervalMs:    int64(r.Interval) * 1000,
+			TimeoutMs:     int64(r.Timeout) * 1000,
+			UserId:        uint64(userID),
 		}
-	}
+	})
 
 	request := serverv1.BatchCreateServersRequest{Servers: protoInputs}
 	resp, err := s.serverClient.BatchCreateServers(ctx, &request)
@@ -80,7 +81,6 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 			successes = append(successes, dto.ImportSuccess{
 				Row:      int(r.Row),
 				Name:     r.Name,
-				URL:      r.Url,
 				ServerID: uint(r.ServerId),
 			})
 		} else {
@@ -137,23 +137,14 @@ func (s *ImportService) ExportServers(ctx context.Context, userID uint, q string
 }
 
 func protoToExportServers(in []*serverv1.ServerWithEndpoint) []dto.Server {
-
-	out := make([]dto.Server, len(in))
-
-	for i, p := range in {
-		out[i] = dto.Server{
-			ID:   uint(p.Id),
-			Name: p.Name,
+	return lo.Map(in, func(p *serverv1.ServerWithEndpoint, _ int) dto.Server {
+		return dto.Server{
+			ID:            uint(p.Id),
+			Name:          p.Name,
+			Namespace:     p.Namespace,
+			Kind:          p.Kind,
+			ObjectID:      p.ObjectId,
+			ContainerName: p.ContainerName,
 		}
-
-		if p.Url != "" {
-			out[i].Endpoint = &dto.Endpoint{
-				URL:          p.Url,
-				Method:       p.Method,
-				ExpectedCode: int(p.ExpectedCode),
-			}
-		}
-	}
-
-	return out
+	})
 }
