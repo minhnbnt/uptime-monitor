@@ -67,7 +67,7 @@ func (c *EventClient) GetCurrentStatuses(
 	}
 
 	ids := lo.Map(serverIDs, func(id uint, _ int) uint64 { return uint64(id) })
-	request := eventv1.GetCurrentStatusesRequest{EndpointIds: ids}
+	request := eventv1.GetCurrentStatusesRequest{ServerIds: ids}
 	resp, err := c.client.GetCurrentStatuses(ctx, &request)
 	if err != nil {
 		return nil, fmt.Errorf("get current statuses: %w", err)
@@ -75,8 +75,8 @@ func (c *EventClient) GetCurrentStatuses(
 
 	return lo.SliceToMap(
 		resp.Statuses,
-		func(status *eventv1.EndpointStatus) (uint, domain.ServerStatus) {
-			return uint(status.EndpointId), domain.ServerStatus(status.Status)
+		func(status *eventv1.ServerStatus) (uint, domain.ServerStatus) {
+			return uint(status.ServerId), domain.ServerStatus(status.Status)
 		},
 	), nil
 }
