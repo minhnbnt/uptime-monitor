@@ -28,6 +28,7 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 		repository.RegisterEventRepository,
 		service.RegisterBatcher,
 		service.RegisterOntimeService,
+		service.RegisterOntimeRangeService,
 		service.RegisterEventService,
 
 		handler.RegisterOntimeHandler,
