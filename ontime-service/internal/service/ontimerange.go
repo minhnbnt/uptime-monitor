@@ -74,12 +74,12 @@ func (s *OntimeRangeService) CalculateUptime(
 	}, nil
 }
 
-func (o OntimeCalculator) CalculateIntervals(events []ontimerepo.Event, intervals [][2]time.Time) []dto.IntervalResult {
-	return lo.Map(intervals, func(iv [2]time.Time, _ int) dto.IntervalResult {
+func (o OntimeCalculator) CalculateIntervals(events []ontimerepo.Event, intervals []utils.Interval) []dto.IntervalResult {
+	return lo.Map(intervals, func(iv utils.Interval, _ int) dto.IntervalResult {
 		return dto.IntervalResult{
-			From:   iv[0].Format(time.RFC3339),
-			To:     iv[1].Format(time.RFC3339),
-			Uptime: o.CalculateOntime(events, iv[0], iv[1]),
+			From:   iv.Start.Format(time.RFC3339),
+			To:     iv.End.Format(time.RFC3339),
+			Uptime: o.CalculateOntime(events, iv.Start, iv.End),
 		}
 	})
 }

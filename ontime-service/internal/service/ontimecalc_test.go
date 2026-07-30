@@ -248,7 +248,7 @@ func TestCalculateOnlineDuration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := OntimeCalculator{}.calculateOnlineDuration(tt.timeline)
+			got := OntimeCalculator{}.onlineSeconds(tt.timeline)
 			if got != tt.want {
 				t.Errorf("CalculateOnlineDuration = %v, want %v", got, tt.want)
 			}
@@ -263,7 +263,7 @@ func TestBuildTimelinePastDay(t *testing.T) {
 		e(d, tm(2026, 6, 4, 12, 0), "OFF"),
 	}
 
-	tl := OntimeCalculator{}.buildTimeline(events, d, d.Add(24*time.Hour))
+	tl := OntimeCalculator{}.newTimeline(events, d, d.Add(24*time.Hour))
 
 	if !tl.Day.Equal(d) {
 		t.Errorf("Day = %v, want %v", tl.Day, d)
@@ -290,7 +290,7 @@ func TestBuildTimelineToday(t *testing.T) {
 		e(d, tm(2026, 6, 4, 12, 0), "OFF"),
 	}
 
-	tl := OntimeCalculator{}.buildTimeline(events, d, now)
+	tl := OntimeCalculator{}.newTimeline(events, d, now)
 
 	if !tl.StartTime.Equal(d) {
 		t.Errorf("StartTime = %v, want %v", tl.StartTime, d)
@@ -309,7 +309,7 @@ func TestBuildTimelineTodayWithPrevEvents(t *testing.T) {
 		e(d, tm(2026, 6, 4, 10, 0), "OFF"),
 	}
 
-	tl := OntimeCalculator{}.buildTimeline(events, prev, now)
+	tl := OntimeCalculator{}.newTimeline(events, prev, now)
 
 	if !tl.StartTime.Equal(prev) {
 		t.Errorf("StartTime = %v, want %v", tl.StartTime, prev)
@@ -380,7 +380,7 @@ func TestSplitEventsByRange(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			prev, inside := OntimeCalculator{}.splitEventsByRange(tt.events, tt.startTime, tt.endTime)
+			prev, inside := OntimeCalculator{}.splitByRange(tt.events, tt.startTime, tt.endTime)
 			if len(prev) != tt.wantPrev {
 				t.Errorf("len(prev) = %d, want %d", len(prev), tt.wantPrev)
 			}

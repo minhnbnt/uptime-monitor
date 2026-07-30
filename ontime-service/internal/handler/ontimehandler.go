@@ -89,7 +89,11 @@ func (h *OntimeHandler) NewError(_ context.Context, err error) *api.ErrorRespons
 	}
 }
 
-func (h *OntimeHandler) CalculateUptime(ctx context.Context, req *api.CalculateUptimeRequest, params api.CalculateUptimeParams) (*api.UptimeResponse, error) {
+func (h *OntimeHandler) CalculateUptime(
+	ctx context.Context,
+	req *api.CalculateUptimeRequest,
+	params api.CalculateUptimeParams,
+) (*api.UptimeResponse, error) {
 
 	if err := validateRequest(req); err != nil {
 		return nil, err
@@ -104,7 +108,12 @@ func (h *OntimeHandler) CalculateUptime(ctx context.Context, req *api.CalculateU
 		resolution = d
 	}
 
-	result, err := h.ontimeRangeService.CalculateUptime(ctx, uint(params.ID), req.From, req.To, resolution)
+	result, err := h.ontimeRangeService.CalculateUptime(
+		ctx, uint(params.ID),
+		req.From, req.To,
+		resolution,
+	)
+
 	if err != nil {
 		return nil, err
 	}
@@ -113,6 +122,7 @@ func (h *OntimeHandler) CalculateUptime(ctx context.Context, req *api.CalculateU
 }
 
 func validateRequest(req *api.CalculateUptimeRequest) error {
+
 	if req.From.After(req.To) || req.From.Equal(req.To) {
 		return apperrors.ErrBadRequest
 	}

@@ -47,8 +47,8 @@ func TestSplitIntervals(t *testing.T) {
 		to         time.Time
 		resolution time.Duration
 		wantLen    int
-		wantFirst  [2]time.Time
-		wantLast   [2]time.Time
+		wantFirst  Interval
+		wantLast   Interval
 	}{
 		{
 			name:       "1h with 15m resolution = 4 intervals",
@@ -56,8 +56,8 @@ func TestSplitIntervals(t *testing.T) {
 			to:         base.Add(time.Hour),
 			resolution: 15 * time.Minute,
 			wantLen:    4,
-			wantFirst:  [2]time.Time{base, base.Add(15 * time.Minute)},
-			wantLast:   [2]time.Time{base.Add(45 * time.Minute), base.Add(time.Hour)},
+			wantFirst:  Interval{base, base.Add(15 * time.Minute)},
+			wantLast:   Interval{base.Add(45 * time.Minute), base.Add(time.Hour)},
 		},
 		{
 			name:       "30m with 1h resolution = 1 interval (cutoff)",
@@ -65,8 +65,8 @@ func TestSplitIntervals(t *testing.T) {
 			to:         base.Add(30 * time.Minute),
 			resolution: time.Hour,
 			wantLen:    1,
-			wantFirst:  [2]time.Time{base, base.Add(30 * time.Minute)},
-			wantLast:   [2]time.Time{base, base.Add(30 * time.Minute)},
+			wantFirst:  Interval{base, base.Add(30 * time.Minute)},
+			wantLast:   Interval{base, base.Add(30 * time.Minute)},
 		},
 		{
 			name:       "same from/to = 0 intervals",
@@ -81,8 +81,8 @@ func TestSplitIntervals(t *testing.T) {
 			to:         base.Add(2 * time.Hour),
 			resolution: time.Hour,
 			wantLen:    2,
-			wantFirst:  [2]time.Time{base, base.Add(time.Hour)},
-			wantLast:   [2]time.Time{base.Add(time.Hour), base.Add(2 * time.Hour)},
+			wantFirst:  Interval{base, base.Add(time.Hour)},
+			wantLast:   Interval{base.Add(time.Hour), base.Add(2 * time.Hour)},
 		},
 	}
 

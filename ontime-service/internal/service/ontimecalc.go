@@ -34,10 +34,11 @@ func (o OntimeCalculator) CalculateOntime(events []ontimerepo.Event, startTime, 
 		return 0
 	}
 
-	t := o.buildTimeline(events, startTime, endTime)
-	online := o.calculateOnlineDuration(t)
+	t := o.newTimeline(events, startTime, endTime)
+	online := o.onlineSeconds(t)
 
-	return calcUptimePercent(online, t.EndTime.Sub(t.StartTime).Seconds())
+	totalTime := t.EndTime.Sub(t.StartTime).Seconds()
+	return calcUptimePercent(online, totalTime)
 }
 
 func (o OntimeCalculator) CalculateDayOntime(events []ontimerepo.Event, today time.Time, now time.Time) float64 {
@@ -77,7 +78,7 @@ func (o OntimeCalculator) CalculateDayOntime(events []ontimerepo.Event, today ti
 	return 0
 }
 
-func (o OntimeCalculator) buildTimeline(events []ontimerepo.Event, startTime, endTime time.Time) Timeline {
+func (o OntimeCalculator) newTimeline(events []ontimerepo.Event, startTime, endTime time.Time) Timeline {
 
 	t := Timeline{
 		StartTime: startTime,
@@ -88,14 +89,14 @@ func (o OntimeCalculator) buildTimeline(events []ontimerepo.Event, startTime, en
 		t.Day = utils.TruncateDay(events[0].AnchorTime)
 	}
 
-	prevEvents, dayEvents := o.splitEventsByRange(events, startTime, endTime)
+	prevEvents, dayEvents := o.splitByRange(events, startTime, endTime)
 	o.applyStartState(&t, prevEvents, dayEvents)
 	t.Events = o.dedupEvents(dayEvents)
 
 	return t
 }
 
-func (o OntimeCalculator) splitEventsByRange(events []ontimerepo.Event, startTime, endTime time.Time) (prev, inside []ontimerepo.Event) {
+func (o OntimeCalculator) splitByRange(events []ontimerepo.Event, startTime, endTime time.Time) (prev, inside []ontimerepo.Event) {
 
 	firstInside := sort.Search(len(events), func(i int) bool {
 		return !events[i].Time.Before(startTime)
@@ -136,7 +137,7 @@ func (o OntimeCalculator) dedupEvents(events []ontimerepo.Event) []ontimerepo.Ev
 	return unique
 }
 
-func (o OntimeCalculator) calculateOnlineDuration(t Timeline) float64 {
+func (o OntimeCalculator) onlineSeconds(t Timeline) float64 {
 
 	total := 0.0
 

@@ -44,9 +44,14 @@ func ParseResolution(s string) (time.Duration, error) {
 	return d, nil
 }
 
-func SplitIntervals(from, to time.Time, resolution time.Duration) [][2]time.Time {
+type Interval struct {
+	Start time.Time
+	End   time.Time
+}
 
-	intervals := make([][2]time.Time, 0)
+func SplitIntervals(from, to time.Time, resolution time.Duration) []Interval {
+
+	intervals := make([]Interval, 0)
 	for start := from; start.Before(to); start = start.Add(resolution) {
 
 		end := start.Add(resolution)
@@ -54,7 +59,7 @@ func SplitIntervals(from, to time.Time, resolution time.Duration) [][2]time.Time
 			end = to
 		}
 
-		intervals = append(intervals, [2]time.Time{start, end})
+		intervals = append(intervals, Interval{start, end})
 	}
 
 	return intervals

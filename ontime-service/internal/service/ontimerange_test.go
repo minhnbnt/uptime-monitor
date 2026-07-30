@@ -161,7 +161,7 @@ func TestBuildTimeline(t *testing.T) {
 
 	t.Run("sets start status from first event", func(t *testing.T) {
 		events := []ontimerepo.Event{raw("ON", base)}
-		tl := OntimeCalculator{}.buildTimeline(events, base, end)
+		tl := OntimeCalculator{}.newTimeline(events, base, end)
 		if tl.StartStatus != "ON" {
 			t.Errorf("StartStatus = %q, want ON", tl.StartStatus)
 		}
@@ -173,14 +173,14 @@ func TestBuildTimeline(t *testing.T) {
 			raw("ON", base),
 			raw("OFF", base.Add(30*time.Minute)),
 		}
-		tl := OntimeCalculator{}.buildTimeline(events, base, end)
+		tl := OntimeCalculator{}.newTimeline(events, base, end)
 		if len(tl.Events) != 2 {
 			t.Errorf("len(Events) = %d, want 2", len(tl.Events))
 		}
 	})
 
 	t.Run("empty events", func(t *testing.T) {
-		tl := OntimeCalculator{}.buildTimeline(nil, base, end)
+		tl := OntimeCalculator{}.newTimeline(nil, base, end)
 		if tl.StartStatus != "" {
 			t.Errorf("StartStatus = %q, want empty", tl.StartStatus)
 		}
