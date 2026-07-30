@@ -19,6 +19,12 @@ func TestResponseChecker_CheckResponse(t *testing.T) {
 		wantErr bool
 	}{
 		{
+			name:    "default no check",
+			ep:      domain.Endpoint{},
+			resp:    infra.Response{StatusCode: 500, Body: "anything"},
+			wantErr: false,
+		},
+		{
 			name:    "status mismatch",
 			ep:      domain.Endpoint{ExpectedCode: 200},
 			resp:    infra.Response{StatusCode: 500, Body: ""},

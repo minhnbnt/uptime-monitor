@@ -19,6 +19,7 @@ TestEndpointRequest:
         - StatefulSet
         - DaemonSet
         - ReplicaSet
+        - Service
     container_name:
       type: string
       description: Optional container name for multi-container pods
@@ -27,6 +28,21 @@ TestEndpointRequest:
       minimum: 1
       default: 10
       description: Timeout in seconds (default 10)
+    http_config:
+      type: object
+      nullable: true
+      properties:
+        port:
+          type: integer
+          minimum: 1
+        endpoint_path:
+          type: string
+        expected_code:
+          type: integer
+          minimum: 100
+          maximum: 599
+        body_check_expr:
+          type: string
 
 TestEndpointResponse:
   type: object

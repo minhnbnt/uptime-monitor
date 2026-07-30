@@ -10,10 +10,11 @@ type Server struct {
 	ContainerName string        `json:"container_name"`
 	Interval      time.Duration `json:"interval"`
 	Timeout       time.Duration `json:"timeout"`
-
-	// Deprecated: kept for dead code compatibility (responseChecker.go).
-	ExpectedCode  int     `json:"-"`
-	BodyCheckExpr *string `json:"-"`
+	PingType      uint          `json:"ping_type"`
+	Port          int           `json:"port"`
+	EndpointPath  string        `json:"endpoint_path"`
+	ExpectedCode  int           `json:"expected_code"`
+	BodyCheckExpr *string       `json:"body_check_expr"`
 }
 
 // Endpoint is a type alias for backward compatibility with dead code.

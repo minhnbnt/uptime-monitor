@@ -32,13 +32,27 @@ func (es *EndpointService) TestEndpoint(ctx context.Context, req dto.TestEndpoin
 		timeoutMs = 10000
 	}
 
-	running, err := es.pingClient.Ping(ctx, &pingv1.PingRequest{
+	pingReq := &pingv1.PingRequest{
 		Namespace:     req.Namespace,
 		Kind:          req.Kind,
 		ObjectId:      req.ObjectID,
 		ContainerName: req.ContainerName,
 		TimeoutMs:     timeoutMs,
-	})
+	}
+
+	if req.HttpConfig != nil {
+		pingReq.PingType = pingv1.PingType_PING_TYPE_HTTP_DNS
+		pingReq.HttpDnsConfig = &pingv1.HttpDnsConfig{
+			Port:          int32(req.HttpConfig.Port),
+			EndpointPath:  req.HttpConfig.EndpointPath,
+			ExpectedCode:  int32(req.HttpConfig.ExpectedCode),
+			BodyCheckExpr: req.HttpConfig.BodyCheckExpr,
+		}
+	} else {
+		pingReq.PingType = pingv1.PingType_PING_TYPE_POD_STATUS
+	}
+
+	running, err := es.pingClient.Ping(ctx, pingReq)
 
 	if err != nil {
 		errMsg := err.Error()

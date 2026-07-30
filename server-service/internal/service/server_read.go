@@ -15,6 +15,10 @@ import (
 	serverrepo "github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/infrastructure/repository"
 )
 
+type HttpConfigLoader interface {
+	GetByServerIDs(ctx context.Context, serverIDs []uint) (map[uint]domain.ServerHttpConfig, error)
+}
+
 type StatusClient interface {
 	GetCurrentStatuses(ctx context.Context, serverIDs []uint) (map[uint]domain.ServerStatus, error)
 	CountByStatus(ctx context.Context, userID uint) (online, offline int64, err error)
@@ -34,6 +38,7 @@ type ServerReader struct {
 	serverRepository ServerRepository
 	searchRepository ServerSearchRepository
 	statusClient     StatusClient
+	httpCfgRepo      *serverrepo.ServerHttpConfigRepository
 	logger           *slog.Logger
 }
 
@@ -41,12 +46,14 @@ func NewServerReader(
 	serverRepository ServerRepository,
 	searchRepository ServerSearchRepository,
 	statusClient StatusClient,
+	httpCfgRepo *serverrepo.ServerHttpConfigRepository,
 	logger *slog.Logger,
 ) *ServerReader {
 	return &ServerReader{
 		serverRepository: serverRepository,
 		searchRepository: searchRepository,
 		statusClient:     statusClient,
+		httpCfgRepo:      httpCfgRepo,
 		logger:           logger,
 	}
 }
@@ -57,6 +64,7 @@ func RegisterServerReader(i do.Injector) {
 			do.MustInvoke[*serverrepo.ServerRepository](i),
 			do.MustInvoke[*serverrepo.ParadeDBSearcher](i),
 			do.MustInvoke[grpcclient.StatusClient](i),
+			do.MustInvoke[*serverrepo.ServerHttpConfigRepository](i),
 			do.MustInvoke[*slog.Logger](i),
 		), nil
 	})
@@ -87,6 +95,7 @@ func (r *ServerReader) ListServers(
 	})
 
 	r.applyStatuses(ctx, servers)
+	r.applyHttpConfigs(ctx, servers)
 
 	out := lo.Map(servers, func(s *dto.Server, _ int) dto.Server {
 		return *s
@@ -108,6 +117,7 @@ func (r *ServerReader) GetServer(ctx context.Context, id uint) (*dto.Server, err
 
 	result := dto.ServerFromDomain(*server)
 	r.applyStatuses(ctx, []*dto.Server{&result})
+	r.applyHttpConfigs(ctx, []*dto.Server{&result})
 
 	return &result, nil
 }
@@ -130,12 +140,35 @@ func (r *ServerReader) SearchServers(
 	})
 
 	r.applyStatuses(ctx, mapped)
+	r.applyHttpConfigs(ctx, mapped)
 
 	out := lo.Map(mapped, func(s *dto.Server, _ int) dto.Server {
 		return *s
 	})
 
 	return out, total, nil
+}
+
+func (r *ServerReader) applyHttpConfigs(ctx context.Context, servers []*dto.Server) {
+	ids := lo.FilterMap(servers, func(s *dto.Server, _ int) (uint, bool) {
+		return s.ID, s.HttpConfig == nil
+	})
+	if len(ids) == 0 {
+		return
+	}
+	cfgs, err := r.httpCfgRepo.GetByServerIDs(ctx, ids)
+	if err != nil {
+		r.logger.Warn("failed to load http configs", slog.Any("error", err))
+		return
+	}
+	for _, sv := range servers {
+		if cfg, ok := cfgs[sv.ID]; ok {
+			sv.HttpConfig = &dto.HttpConfig{
+				Port:         cfg.Port,
+				EndpointPath: cfg.EndpointPath,
+			}
+		}
+	}
 }
 
 func (r *ServerReader) applyStatuses(ctx context.Context, servers []*dto.Server) {

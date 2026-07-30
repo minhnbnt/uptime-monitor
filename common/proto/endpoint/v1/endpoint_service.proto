@@ -4,6 +4,18 @@ package endpoint.v1;
 
 option go_package = "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/endpoint/v1;endpointv1";
 
+enum PingType {
+  PING_TYPE_POD_STATUS = 0;
+  PING_TYPE_HTTP_DNS = 1;
+}
+
+message HttpDnsConfig {
+  int32 port = 1;
+  string endpoint_path = 2;
+  int32 expected_code = 3;
+  string body_check_expr = 4;
+}
+
 message EndpointData {
   uint64 id = 1;
   uint64 server_id = 2;
@@ -13,6 +25,8 @@ message EndpointData {
   string container_name = 6;
   int64 interval_ms = 7;
   int64 timeout_ms = 8;
+  PingType ping_type = 9;
+  optional HttpDnsConfig http_dns_config = 10;
 }
 
 message GetEndpointsRequest {

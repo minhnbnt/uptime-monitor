@@ -108,6 +108,11 @@ func (c *ServerMetaCache) SetMulti(ctx context.Context, servers []*domain.Server
 
 		key := metaCacheKey(sv.ID)
 
+		bce := ""
+		if sv.BodyCheckExpr != nil {
+			bce = *sv.BodyCheckExpr
+		}
+
 		pipe.HSet(
 			ctx, key,
 			"namespace", sv.Namespace,
@@ -116,6 +121,11 @@ func (c *ServerMetaCache) SetMulti(ctx context.Context, servers []*domain.Server
 			"container_name", sv.ContainerName,
 			"interval_ns", fmt.Sprint(sv.Interval.Nanoseconds()),
 			"timeout_ns", fmt.Sprint(sv.Timeout.Nanoseconds()),
+			"ping_type", fmt.Sprint(sv.PingType),
+			"port", fmt.Sprint(sv.Port),
+			"endpoint_path", sv.EndpointPath,
+			"expected_code", fmt.Sprint(sv.ExpectedCode),
+			"body_check_expr", bce,
 		)
 
 		pipe.Expire(ctx, key, metaCacheTTL)
@@ -159,6 +169,27 @@ func mapToServer(id uint, data map[string]string) (*domain.Server, error) {
 		return nil, fmt.Errorf("parse timeout_ns: %w", err)
 	}
 
+	pingType, err := strconv.ParseUint(data["ping_type"], 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("parse ping_type: %w", err)
+	}
+
+	port, err := strconv.ParseInt(data["port"], 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("parse port: %w", err)
+	}
+
+	expectedCode, err := strconv.ParseInt(data["expected_code"], 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("parse expected_code: %w", err)
+	}
+
+	bce := data["body_check_expr"]
+	var bodyCheckExpr *string
+	if bce != "" {
+		bodyCheckExpr = &bce
+	}
+
 	return &domain.Server{
 		ID:            id,
 		Namespace:     data["namespace"],
@@ -167,5 +198,10 @@ func mapToServer(id uint, data map[string]string) (*domain.Server, error) {
 		ContainerName: data["container_name"],
 		Interval:      time.Duration(intervalNs),
 		Timeout:       time.Duration(timeoutNs),
+		PingType:      uint(pingType),
+		Port:          int(port),
+		EndpointPath:  data["endpoint_path"],
+		ExpectedCode:  int(expectedCode),
+		BodyCheckExpr: bodyCheckExpr,
 	}, nil
 }

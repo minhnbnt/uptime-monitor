@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"time"
 
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
@@ -54,25 +53,8 @@ func (h *ServerHandler) CreateServer(
 	req *api.CreateServerRequest,
 ) (*api.ServerResponse, error) {
 
-	dtoReq := dto.CreateServerRequest{
-		Name:      req.Name,
-		Namespace: req.Namespace,
-		Kind:      string(req.Kind),
-		ObjectID:  req.ObjectID,
-	}
-
-	if v, ok := req.ContainerName.Get(); ok {
-		dtoReq.ContainerName = v
-	}
-	if v, ok := req.Interval.Get(); ok {
-		dtoReq.Interval = time.Duration(v) * time.Second
-	}
-	if v, ok := req.Timeout.Get(); ok {
-		dtoReq.Timeout = time.Duration(v) * time.Second
-	}
-
 	userID := authclient.GetUserID(ctx)
-	result, err := h.serverService.CreateServer(ctx, dtoReq, userID)
+	result, err := h.serverService.CreateServer(ctx, ToCreateServerRequest(req), userID)
 	if err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}
@@ -86,34 +68,8 @@ func (h *ServerHandler) UpdateServer(
 	params api.UpdateServerParams,
 ) (*api.ServerResponse, error) {
 
-	dtoReq := dto.UpdateServerRequest{}
-	if name, ok := req.Name.Get(); ok {
-		dtoReq.Name = &name
-	}
-	if ns, ok := req.Namespace.Get(); ok {
-		dtoReq.Namespace = &ns
-	}
-	if kind, ok := req.Kind.Get(); ok {
-		k := string(kind)
-		dtoReq.Kind = &k
-	}
-	if oid, ok := req.ObjectID.Get(); ok {
-		dtoReq.ObjectID = &oid
-	}
-	if cn, ok := req.ContainerName.Get(); ok {
-		dtoReq.ContainerName = &cn
-	}
-	if v, ok := req.Interval.Get(); ok {
-		d := time.Duration(v) * time.Second
-		dtoReq.Interval = &d
-	}
-	if v, ok := req.Timeout.Get(); ok {
-		d := time.Duration(v) * time.Second
-		dtoReq.Timeout = &d
-	}
-
 	userID := authclient.GetUserID(ctx)
-	result, err := h.serverService.UpdateServer(ctx, uint(params.ID), userID, dtoReq)
+	result, err := h.serverService.UpdateServer(ctx, uint(params.ID), userID, ToUpdateServerRequest(req))
 	if err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}

@@ -2,12 +2,10 @@ package handler
 
 import (
 	"context"
-	"time"
 
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/generated/api"
-	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/dto"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/service"
 )
@@ -29,20 +27,8 @@ func (h *EndpointHandler) TestEndpoint(
 	req *api.TestEndpointRequest,
 ) (*api.TestEndpointResponse, error) {
 
-	timeout := req.Timeout.Or(10)
-
-	dtoReq := dto.TestEndpointRequest{
-		Namespace: req.Namespace,
-		ObjectID:  req.ObjectID,
-		Kind:      string(req.Kind),
-		Timeout:   time.Duration(timeout) * time.Second,
-	}
-
-	if v, ok := req.ContainerName.Get(); ok {
-		dtoReq.ContainerName = v
-	}
-
-	result, err := h.endpointService.TestEndpoint(ctx, dtoReq)
+	dto := ToTestEndpointRequest(req)
+	result, err := h.endpointService.TestEndpoint(ctx, dto)
 	if err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}

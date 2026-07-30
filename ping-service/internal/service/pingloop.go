@@ -15,7 +15,7 @@ import (
 )
 
 type pingWorker interface {
-	CheckPodStatus(ctx context.Context, namespace, kind, objectID, containerName string) (bool, error)
+	CheckPodStatus(ctx context.Context, params k8sclient.PingCheck) (bool, error)
 }
 
 type recordWorker interface {
@@ -54,7 +54,17 @@ func (s *PingLoopService) pingAndRecordServer(ctx context.Context, task PingTask
 		}
 	}()
 
-	isUp, pingErr := s.pingWorker.CheckPodStatus(ctx, sv.Namespace, sv.Kind, sv.ObjectID, sv.ContainerName)
+	isUp, pingErr := s.pingWorker.CheckPodStatus(ctx, k8sclient.PingCheck{
+		Namespace:     sv.Namespace,
+		Kind:          sv.Kind,
+		ObjectID:      sv.ObjectID,
+		ContainerName: sv.ContainerName,
+		PingType:      sv.PingType,
+		Port:          sv.Port,
+		EndpointPath:  sv.EndpointPath,
+		ExpectedCode:  sv.ExpectedCode,
+		BodyCheckExpr: sv.BodyCheckExpr,
+	})
 
 	if pingErr != nil {
 		s.logger.Warn(

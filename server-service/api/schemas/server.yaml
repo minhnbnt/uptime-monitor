@@ -26,6 +26,7 @@ ServerObject:
         - StatefulSet
         - DaemonSet
         - ReplicaSet
+        - Service
     object_id:
       type: string
       minLength: 1
@@ -45,6 +46,21 @@ ServerObject:
       type: integer
       minimum: 1
       description: Timeout in seconds (default 10)
+    http_config:
+      type: object
+      nullable: true
+      properties:
+        port:
+          type: integer
+          minimum: 1
+        endpoint_path:
+          type: string
+        expected_code:
+          type: integer
+          minimum: 100
+          maximum: 599
+        body_check_expr:
+          type: string
     created_at:
       type: string
       format: date-time
@@ -75,6 +91,7 @@ CreateServerRequest:
         - StatefulSet
         - DaemonSet
         - ReplicaSet
+        - Service
     object_id:
       type: string
       minLength: 1
@@ -88,6 +105,20 @@ CreateServerRequest:
       type: integer
       minimum: 1
       description: Timeout in seconds (default 10)
+    http_config:
+      type: object
+      properties:
+        port:
+          type: integer
+          minimum: 1
+        endpoint_path:
+          type: string
+        expected_code:
+          type: integer
+          minimum: 100
+          maximum: 599
+        body_check_expr:
+          type: string
 
 UpdateServerRequest:
   type: object
@@ -106,6 +137,7 @@ UpdateServerRequest:
         - StatefulSet
         - DaemonSet
         - ReplicaSet
+        - Service
     object_id:
       type: string
     container_name:
@@ -116,6 +148,21 @@ UpdateServerRequest:
     timeout:
       type: integer
       minimum: 1
+    http_config:
+      type: object
+      nullable: true
+      properties:
+        port:
+          type: integer
+          minimum: 1
+        endpoint_path:
+          type: string
+        expected_code:
+          type: integer
+          minimum: 100
+          maximum: 599
+        body_check_expr:
+          type: string
 
 ServerResponse:
   type: object

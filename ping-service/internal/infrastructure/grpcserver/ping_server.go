@@ -35,7 +35,24 @@ func (s *PingServer) Ping(ctx context.Context, req *pingv1.PingRequest) (*pingv1
 		defer cancel()
 	}
 
-	running, err := s.k8sClient.CheckPodStatus(ctx, req.Namespace, req.Kind, req.ObjectId, req.ContainerName)
+	params := k8sclient.PingCheck{
+		Namespace:     req.Namespace,
+		Kind:          req.Kind,
+		ObjectID:      req.ObjectId,
+		ContainerName: req.ContainerName,
+		PingType:      uint(req.PingType),
+	}
+
+	if cfg := req.GetHttpDnsConfig(); cfg != nil {
+		params.Port = int(cfg.Port)
+		params.EndpointPath = cfg.EndpointPath
+		params.ExpectedCode = int(cfg.ExpectedCode)
+		if cfg.BodyCheckExpr != "" {
+			params.BodyCheckExpr = &cfg.BodyCheckExpr
+		}
+	}
+
+	running, err := s.k8sClient.CheckPodStatus(ctx, params)
 	if err != nil {
 		return &pingv1.PingResponse{
 			Running: false,

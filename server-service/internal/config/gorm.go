@@ -112,6 +112,7 @@ func RunMigration(db *gorm.DB) error {
 
 	schemas := []any{
 		&domain.Server{},
+		&domain.ServerHttpConfig{},
 	}
 
 	if err := db.AutoMigrate(schemas...); err != nil {

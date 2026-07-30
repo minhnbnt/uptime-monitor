@@ -15,17 +15,19 @@ func RegisterEndpointServer(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*EndpointServer, error) {
 		return NewEndpointServer(
 			do.MustInvoke[*repository.ServerRepository](i),
+			do.MustInvoke[*repository.ServerHttpConfigRepository](i),
 		), nil
 	})
 }
 
 type EndpointServer struct {
 	endpointv1.UnimplementedEndpointServiceServer
-	serverRepo *repository.ServerRepository
+	serverRepo  *repository.ServerRepository
+	httpCfgRepo *repository.ServerHttpConfigRepository
 }
 
-func NewEndpointServer(serverRepo *repository.ServerRepository) *EndpointServer {
-	return &EndpointServer{serverRepo: serverRepo}
+func NewEndpointServer(serverRepo *repository.ServerRepository, httpCfgRepo *repository.ServerHttpConfigRepository) *EndpointServer {
+	return &EndpointServer{serverRepo: serverRepo, httpCfgRepo: httpCfgRepo}
 }
 
 func (s *EndpointServer) GetEndpoints(ctx context.Context, req *endpointv1.GetEndpointsRequest) (*endpointv1.GetEndpointsResponse, error) {
@@ -43,11 +45,17 @@ func (s *EndpointServer) GetEndpoints(ctx context.Context, req *endpointv1.GetEn
 		return nil, err
 	}
 
+	httpCfgs, err := s.httpCfgRepo.GetByServerIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
 	resp := &endpointv1.GetEndpointsResponse{}
 	resp.Endpoints = lo.Map(
 		servers,
 		func(sv domain.Server, _ int) *endpointv1.EndpointData {
-			return &endpointv1.EndpointData{
+
+			ed := &endpointv1.EndpointData{
 				Id:            uint64(sv.ID),
 				ServerId:      uint64(sv.ID),
 				Namespace:     sv.Namespace,
@@ -57,6 +65,19 @@ func (s *EndpointServer) GetEndpoints(ctx context.Context, req *endpointv1.GetEn
 				IntervalMs:    sv.Interval.Milliseconds(),
 				TimeoutMs:     sv.Timeout.Milliseconds(),
 			}
+
+			ed.PingType = endpointv1.PingType_PING_TYPE_POD_STATUS
+			if cfg, ok := httpCfgs[sv.ID]; ok {
+				ed.PingType = endpointv1.PingType_PING_TYPE_HTTP_DNS
+				ed.HttpDnsConfig = &endpointv1.HttpDnsConfig{
+					Port:          int32(cfg.Port),
+					EndpointPath:  cfg.EndpointPath,
+					ExpectedCode:  int32(cfg.ExpectedCode),
+					BodyCheckExpr: cfg.BodyCheckExpr,
+				}
+			}
+
+			return ed
 		},
 	)
 

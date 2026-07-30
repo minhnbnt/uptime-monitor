@@ -17,6 +17,7 @@ type Server struct {
 	Timeout       time.Duration
 	CreatedByID   uint
 	MonitorStatus domain.ServerStatus
+	HttpConfig    *HttpConfig
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
@@ -45,16 +46,19 @@ type CreateServerRequest struct {
 	ContainerName string
 	Interval      time.Duration
 	Timeout       time.Duration
+	HttpConfig    *HttpConfig
 }
 
 type UpdateServerRequest struct {
-	Name          *string
-	Namespace     *string
-	Kind          *string
-	ObjectID      *string
-	ContainerName *string
-	Interval      *time.Duration
-	Timeout       *time.Duration
+	Name             *string
+	Namespace        *string
+	Kind             *string
+	ObjectID         *string
+	ContainerName    *string
+	Interval         *time.Duration
+	Timeout          *time.Duration
+	HttpConfig       *HttpConfig
+	ClearHttpConfig  bool
 }
 
 type TestEndpointRequest struct {
@@ -63,6 +67,7 @@ type TestEndpointRequest struct {
 	Kind          string
 	ContainerName string
 	Timeout       time.Duration
+	HttpConfig    *HttpConfig
 }
 
 type TestEndpointResponse struct {

@@ -44,7 +44,7 @@ func (c *EndpointClient) GetBatch(ctx context.Context, ids []uint) (map[uint]*do
 	result := make(map[uint]*domain.Server, len(resp.Endpoints))
 	for _, ep := range resp.Endpoints {
 
-		result[uint(ep.Id)] = &domain.Server{
+		sv := &domain.Server{
 			ID:            uint(ep.Id),
 			Namespace:     ep.Namespace,
 			Kind:          ep.Kind,
@@ -52,7 +52,19 @@ func (c *EndpointClient) GetBatch(ctx context.Context, ids []uint) (map[uint]*do
 			ContainerName: ep.ContainerName,
 			Interval:      time.Duration(ep.IntervalMs) * time.Millisecond,
 			Timeout:       time.Duration(ep.TimeoutMs) * time.Millisecond,
+			PingType:      uint(ep.PingType),
 		}
+
+		if cfg := ep.GetHttpDnsConfig(); cfg != nil {
+			sv.Port = int(cfg.Port)
+			sv.EndpointPath = cfg.EndpointPath
+			sv.ExpectedCode = int(cfg.ExpectedCode)
+			if cfg.BodyCheckExpr != "" {
+				sv.BodyCheckExpr = &cfg.BodyCheckExpr
+			}
+		}
+
+		result[uint(ep.Id)] = sv
 	}
 
 	return result, nil

@@ -19,13 +19,18 @@ type debeziumMessage struct {
 }
 
 type debeziumServerData struct {
-	ID            uint   `json:"id"`
-	Namespace     string `json:"namespace"`
-	Kind          string `json:"kind"`
-	ObjectID      string `json:"object_id"`
-	ContainerName string `json:"container_name"`
-	Interval      int64  `json:"interval"`
-	Timeout       int64  `json:"timeout"`
+	ID            uint    `json:"id"`
+	Namespace     string  `json:"namespace"`
+	Kind          string  `json:"kind"`
+	ObjectID      string  `json:"object_id"`
+	ContainerName string  `json:"container_name"`
+	Interval      int64   `json:"interval"`
+	Timeout       int64   `json:"timeout"`
+	PingType      uint    `json:"ping_type"`
+	Port          int     `json:"port"`
+	EndpointPath  string  `json:"endpoint_path"`
+	ExpectedCode  int     `json:"expected_code"`
+	BodyCheckExpr *string `json:"body_check_expr"`
 }
 
 func (d *debeziumServerData) toDomain() domain.Server {
@@ -37,6 +42,11 @@ func (d *debeziumServerData) toDomain() domain.Server {
 		ContainerName: d.ContainerName,
 		Interval:      time.Duration(d.Interval),
 		Timeout:       time.Duration(d.Timeout),
+		PingType:      d.PingType,
+		Port:          d.Port,
+		EndpointPath:  d.EndpointPath,
+		ExpectedCode:  d.ExpectedCode,
+		BodyCheckExpr: d.BodyCheckExpr,
 	}
 }
 

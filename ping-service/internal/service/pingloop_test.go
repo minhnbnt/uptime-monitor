@@ -7,15 +7,16 @@ import (
 	"time"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/k8sclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/logger"
 )
 
 type mockPingWorker struct {
-	checkPodStatusFn func(ctx context.Context, namespace, kind, objectID, containerName string) (bool, error)
+	checkPodStatusFn func(ctx context.Context, params k8sclient.PingCheck) (bool, error)
 }
 
-func (m *mockPingWorker) CheckPodStatus(ctx context.Context, namespace, kind, objectID, containerName string) (bool, error) {
-	return m.checkPodStatusFn(ctx, namespace, kind, objectID, containerName)
+func (m *mockPingWorker) CheckPodStatus(ctx context.Context, params k8sclient.PingCheck) (bool, error) {
+	return m.checkPodStatusFn(ctx, params)
 }
 
 type mockRecordWorker struct {
@@ -40,7 +41,7 @@ func TestPingAndRecordServer(t *testing.T) {
 		var updatedScore int64
 		s := &PingLoopService{
 			pingWorker: &mockPingWorker{
-				checkPodStatusFn: func(_ context.Context, _, _, _, _ string) (bool, error) {
+				checkPodStatusFn: func(_ context.Context, _ k8sclient.PingCheck) (bool, error) {
 					return true, nil
 				},
 			},
@@ -80,7 +81,7 @@ func TestPingAndRecordServer(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
 		s := &PingLoopService{
 			pingWorker: &mockPingWorker{
-				checkPodStatusFn: func(_ context.Context, _, _, _, _ string) (bool, error) {
+				checkPodStatusFn: func(_ context.Context, _ k8sclient.PingCheck) (bool, error) {
 					return false, errors.New("connection refused")
 				},
 			},
@@ -112,7 +113,7 @@ func TestPingAndRecordServer(t *testing.T) {
 		var recordedEvent *domain.ServerEvent
 		s := &PingLoopService{
 			pingWorker: &mockPingWorker{
-				checkPodStatusFn: func(_ context.Context, _, _, _, _ string) (bool, error) {
+				checkPodStatusFn: func(_ context.Context, _ k8sclient.PingCheck) (bool, error) {
 					return false, nil
 				},
 			},
@@ -141,7 +142,7 @@ func TestPingAndRecordServer(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
 		s := &PingLoopService{
 			pingWorker: &mockPingWorker{
-				checkPodStatusFn: func(_ context.Context, _, _, _, _ string) (bool, error) {
+				checkPodStatusFn: func(_ context.Context, _ k8sclient.PingCheck) (bool, error) {
 					return true, nil
 				},
 			},
@@ -166,7 +167,7 @@ func TestPingAndRecordServer(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
 		s := &PingLoopService{
 			pingWorker: &mockPingWorker{
-				checkPodStatusFn: func(_ context.Context, _, _, _, _ string) (bool, error) {
+				checkPodStatusFn: func(_ context.Context, _ k8sclient.PingCheck) (bool, error) {
 					return true, nil
 				},
 			},

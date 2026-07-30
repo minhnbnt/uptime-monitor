@@ -24,6 +24,7 @@ type ServerService struct {
 	*ServerReader
 	serverWriter ServerWriter
 	serverRepo   *repository.ServerRepository
+	httpCfgRepo  *repository.ServerHttpConfigRepository
 }
 
 func RegisterServerService(i do.Injector) {
@@ -33,6 +34,7 @@ func RegisterServerService(i do.Injector) {
 			ServerReader: do.MustInvoke[*ServerReader](i),
 			serverWriter: do.MustInvoke[*repository.ServerRepository](i),
 			serverRepo:   do.MustInvoke[*repository.ServerRepository](i),
+			httpCfgRepo:  do.MustInvoke[*repository.ServerHttpConfigRepository](i),
 		}, nil
 	})
 }
@@ -65,6 +67,17 @@ func (ss *ServerService) CreateServer(
 		return nil, apperrors.ErrInternal
 	}
 
+	if req.HttpConfig != nil {
+		if err := ss.httpCfgRepo.Upsert(ctx, &domain.ServerHttpConfig{
+			ServerID:     server.ID,
+			Port:         req.HttpConfig.Port,
+			EndpointPath: req.HttpConfig.EndpointPath,
+		}); err != nil {
+			ss.logger.Error("failed to create http config", slog.Any("error", err))
+			return nil, apperrors.ErrInternal
+		}
+	}
+
 	result := dto.ServerFromDomain(server)
 	return &result, nil
 }
@@ -90,10 +103,25 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uint, userID uint,
 	if errors.Is(updateErr, apperrors.ErrNotFound) {
 		return nil, apperrors.ErrNotFound
 	}
-
 	if updateErr != nil {
 		ss.logger.Error("failed to update server", slog.Any("error", updateErr))
 		return nil, apperrors.ErrInternal
+	}
+
+	if req.ClearHttpConfig {
+		if err := ss.httpCfgRepo.DeleteByServerID(ctx, id); err != nil {
+			ss.logger.Error("failed to delete http config", slog.Any("error", err))
+			return nil, apperrors.ErrInternal
+		}
+	} else if req.HttpConfig != nil {
+		if err := ss.httpCfgRepo.Upsert(ctx, &domain.ServerHttpConfig{
+			ServerID:     server.ID,
+			Port:         req.HttpConfig.Port,
+			EndpointPath: req.HttpConfig.EndpointPath,
+		}); err != nil {
+			ss.logger.Error("failed to upsert http config", slog.Any("error", err))
+			return nil, apperrors.ErrInternal
+		}
 	}
 
 	result := dto.ServerFromDomain(*server)
