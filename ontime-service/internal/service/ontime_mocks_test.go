@@ -9,10 +9,10 @@ import (
 )
 
 type mockOntineRepo struct {
-	batchGetOntimeFn func(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error)
+	batchGetOntimeFn func(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.ServerEvent, error)
 }
 
-func (m *mockOntineRepo) BatchGetOntime(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
+func (m *mockOntineRepo) BatchGetOntime(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.ServerEvent, error) {
 	return m.batchGetOntimeFn(ctx, req)
 }
 
@@ -55,10 +55,10 @@ func (m *mockServerClient) GetServer(ctx context.Context, serverID uint, userID 
 var _ ServerClient = (*mockServerClient)(nil)
 
 type mockRangeRepo struct {
-	batchGetOntimeRangeFn func(ctx context.Context, req []ontimerepo.BatchGetOntimeRangeRequest) ([]ontimerepo.RangeEvent, error)
+	batchGetOntimeRangeFn func(ctx context.Context, req []ontimerepo.BatchGetOntimeRangeRequest) ([]ontimerepo.ServerEvent, error)
 }
 
-func (m *mockRangeRepo) BatchGetOntimeRange(ctx context.Context, req []ontimerepo.BatchGetOntimeRangeRequest) ([]ontimerepo.RangeEvent, error) {
+func (m *mockRangeRepo) BatchGetOntimeRange(ctx context.Context, req []ontimerepo.BatchGetOntimeRangeRequest) ([]ontimerepo.ServerEvent, error) {
 	return m.batchGetOntimeRangeFn(ctx, req)
 }
 

@@ -3,9 +3,9 @@ package dto
 import "time"
 
 type CalculateUptimeRequest struct {
-	From       time.Time  `json:"from"`
-	To         time.Time  `json:"to"`
-	Resolution *string    `json:"resolution,omitempty"`
+	From       time.Time `json:"from"`
+	To         time.Time `json:"to"`
+	Resolution *string   `json:"resolution,omitempty"`
 }
 
 type UptimeResponse struct {

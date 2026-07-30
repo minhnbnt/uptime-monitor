@@ -6,6 +6,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/domain"
 	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/utils"
 )
 
 type Timeline struct {
@@ -13,46 +14,50 @@ type Timeline struct {
 	StartTime   time.Time
 	EndTime     time.Time
 	StartStatus string
-	Events      []ontimerepo.RawEvent
+	Events      []ontimerepo.Event
 }
 
 type OntimeCalculator struct{}
 
 func calcUptimePercent(online, total float64) float64 {
+
 	if total > 0 {
 		return online / total * 100
 	}
+
 	return 0
 }
 
-func CalculateOntime(events []ontimerepo.RawEvent, startTime, endTime time.Time) float64 {
+func (o OntimeCalculator) CalculateOntime(events []ontimerepo.Event, startTime, endTime time.Time) float64 {
 
 	if len(events) == 0 {
 		return 0
 	}
 
-	t := OntimeCalculator{}.BuildTimeline(events, startTime, endTime)
-	online := OntimeCalculator{}.CalculateOnlineDuration(t)
+	t := o.buildTimeline(events, startTime, endTime)
+	online := o.calculateOnlineDuration(t)
 
 	return calcUptimePercent(online, t.EndTime.Sub(t.StartTime).Seconds())
 }
 
-func (OntimeCalculator) CalculateDayOntime(events []ontimerepo.RawEvent, today time.Time, now time.Time) float64 {
+func (o OntimeCalculator) CalculateDayOntime(events []ontimerepo.Event, today time.Time, now time.Time) float64 {
 
 	if len(events) == 0 {
 		return 0
 	}
 
-	day := events[0].Day
-	startTime := day
-	endTime := day.Add(24 * time.Hour)
-	if day.Equal(today) {
+	day := utils.TruncateDay(events[0].AnchorTime)
+	startTime, endTime := day, day.Add(24*time.Hour)
+	if startTime.Equal(today) {
+
 		endTime = now
 
-		for _, e := range events {
-			if e.Time.Before(day) {
-				startTime = e.Time
-			}
+		index := sort.Search(len(events), func(i int) bool {
+			return !events[i].Time.Before(day)
+		})
+
+		if index > 0 {
+			startTime = events[index-1].Time
 		}
 
 		if startTime.Equal(day) && len(events) > 0 {
@@ -60,7 +65,7 @@ func (OntimeCalculator) CalculateDayOntime(events []ontimerepo.RawEvent, today t
 		}
 	}
 
-	uptime := CalculateOntime(events, startTime, endTime)
+	uptime := o.CalculateOntime(events, startTime, endTime)
 	if uptime > 0 {
 		return uptime
 	}
@@ -68,10 +73,11 @@ func (OntimeCalculator) CalculateDayOntime(events []ontimerepo.RawEvent, today t
 	if domain.ServerStatus(events[0].Status) == domain.StatusOn {
 		return 100
 	}
+
 	return 0
 }
 
-func (o OntimeCalculator) BuildTimeline(events []ontimerepo.RawEvent, startTime, endTime time.Time) Timeline {
+func (o OntimeCalculator) buildTimeline(events []ontimerepo.Event, startTime, endTime time.Time) Timeline {
 
 	t := Timeline{
 		StartTime: startTime,
@@ -79,7 +85,7 @@ func (o OntimeCalculator) BuildTimeline(events []ontimerepo.RawEvent, startTime,
 	}
 
 	if len(events) > 0 {
-		t.Day = events[0].Day
+		t.Day = utils.TruncateDay(events[0].AnchorTime)
 	}
 
 	prevEvents, dayEvents := o.splitEventsByRange(events, startTime, endTime)
@@ -89,7 +95,7 @@ func (o OntimeCalculator) BuildTimeline(events []ontimerepo.RawEvent, startTime,
 	return t
 }
 
-func (o OntimeCalculator) splitEventsByRange(events []ontimerepo.RawEvent, startTime, endTime time.Time) (prev, inside []ontimerepo.RawEvent) {
+func (o OntimeCalculator) splitEventsByRange(events []ontimerepo.Event, startTime, endTime time.Time) (prev, inside []ontimerepo.Event) {
 
 	firstInside := sort.Search(len(events), func(i int) bool {
 		return !events[i].Time.Before(startTime)
@@ -102,7 +108,7 @@ func (o OntimeCalculator) splitEventsByRange(events []ontimerepo.RawEvent, start
 	return events[:firstInside], events[firstInside:pastEnd]
 }
 
-func (o OntimeCalculator) applyStartState(t *Timeline, prevEvents, dayEvents []ontimerepo.RawEvent) {
+func (o OntimeCalculator) applyStartState(t *Timeline, prevEvents, dayEvents []ontimerepo.Event) {
 
 	if len(prevEvents) > 0 {
 		t.StartStatus = prevEvents[len(prevEvents)-1].Status
@@ -114,13 +120,13 @@ func (o OntimeCalculator) applyStartState(t *Timeline, prevEvents, dayEvents []o
 	}
 }
 
-func (o OntimeCalculator) dedupEvents(events []ontimerepo.RawEvent) []ontimerepo.RawEvent {
+func (o OntimeCalculator) dedupEvents(events []ontimerepo.Event) []ontimerepo.Event {
 
 	if len(events) <= 1 {
 		return events
 	}
 
-	unique := []ontimerepo.RawEvent{events[0]}
+	unique := []ontimerepo.Event{events[0]}
 	for i := 1; i < len(events); i++ {
 		if !events[i].Time.Equal(events[i-1].Time) {
 			unique = append(unique, events[i])
@@ -130,22 +136,24 @@ func (o OntimeCalculator) dedupEvents(events []ontimerepo.RawEvent) []ontimerepo
 	return unique
 }
 
-func (o OntimeCalculator) CalculateOnlineDuration(t Timeline) float64 {
+func (o OntimeCalculator) calculateOnlineDuration(t Timeline) float64 {
 
-	prevTime := t.StartTime
-	prevStatus := t.StartStatus
 	total := 0.0
 
+	prevTime, prevStatus := t.StartTime, t.StartStatus
 	for _, e := range t.Events {
+
 		if domain.ServerStatus(prevStatus) == domain.StatusOn {
 			total += e.Time.Sub(prevTime).Seconds()
 		}
-		prevStatus = e.Status
-		prevTime = e.Time
+
+		prevStatus, prevTime = e.Status, e.Time
 	}
 
 	if domain.ServerStatus(prevStatus) == domain.StatusOn {
+
 		dur := t.EndTime.Sub(prevTime).Seconds()
+
 		if dur > 0 {
 			total += dur
 		}

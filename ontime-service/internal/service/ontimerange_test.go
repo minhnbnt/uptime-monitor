@@ -7,16 +7,19 @@ import (
 	"time"
 
 	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/utils"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/logger"
 )
 
-func re(serverID uint, startStatus string, status string, t time.Time) ontimerepo.RangeEvent {
-	return ontimerepo.RangeEvent{
-		ServerID:    serverID,
-		StartStatus: startStatus,
-		Status:      status,
-		Time:        t,
+func re(serverID uint, anchorTime time.Time, status string, t time.Time) ontimerepo.ServerEvent {
+	return ontimerepo.ServerEvent{
+		ServerID: serverID,
+		Event:    ontimerepo.Event{AnchorTime: anchorTime, Status: status, Time: t, Src: "test"},
 	}
+}
+
+func reEvent(anchorTime time.Time, status string, t time.Time) ontimerepo.Event {
+	return ontimerepo.Event{AnchorTime: anchorTime, Status: status, Time: t, Src: "test"}
 }
 
 func TestCalculateRangeOntime(t *testing.T) {
@@ -25,7 +28,7 @@ func TestCalculateRangeOntime(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		events []ontimerepo.RangeEvent
+		events []ontimerepo.Event
 		from   time.Time
 		to     time.Time
 		want   float64
@@ -39,8 +42,8 @@ func TestCalculateRangeOntime(t *testing.T) {
 		},
 		{
 			name: "single ON covering full range",
-			events: []ontimerepo.RangeEvent{
-				re(1, "ON", "ON", base),
+			events: []ontimerepo.Event{
+				reEvent(base, "ON", base),
 			},
 			from: base,
 			to:   end,
@@ -48,8 +51,8 @@ func TestCalculateRangeOntime(t *testing.T) {
 		},
 		{
 			name: "single OFF covering full range",
-			events: []ontimerepo.RangeEvent{
-				re(1, "OFF", "OFF", base),
+			events: []ontimerepo.Event{
+				reEvent(base, "OFF", base),
 			},
 			from: base,
 			to:   end,
@@ -57,8 +60,9 @@ func TestCalculateRangeOntime(t *testing.T) {
 		},
 		{
 			name: "ON then OFF at 30min",
-			events: []ontimerepo.RangeEvent{
-				re(1, "ON", "OFF", base.Add(30*time.Minute)),
+			events: []ontimerepo.Event{
+				reEvent(base, "ON", base),
+				reEvent(base, "OFF", base.Add(30*time.Minute)),
 			},
 			from: base,
 			to:   end,
@@ -66,8 +70,9 @@ func TestCalculateRangeOntime(t *testing.T) {
 		},
 		{
 			name: "OFF then ON at 30min",
-			events: []ontimerepo.RangeEvent{
-				re(1, "OFF", "ON", base.Add(30*time.Minute)),
+			events: []ontimerepo.Event{
+				reEvent(base, "OFF", base),
+				reEvent(base, "ON", base.Add(30*time.Minute)),
 			},
 			from: base,
 			to:   end,
@@ -75,9 +80,10 @@ func TestCalculateRangeOntime(t *testing.T) {
 		},
 		{
 			name: "ON→OFF→ON segments",
-			events: []ontimerepo.RangeEvent{
-				re(1, "ON", "OFF", base.Add(20*time.Minute)),
-				re(1, "", "ON", base.Add(40*time.Minute)),
+			events: []ontimerepo.Event{
+				reEvent(base, "ON", base),
+				reEvent(base, "OFF", base.Add(20*time.Minute)),
+				reEvent(base, "ON", base.Add(40*time.Minute)),
 			},
 			from: base,
 			to:   end,
@@ -85,9 +91,10 @@ func TestCalculateRangeOntime(t *testing.T) {
 		},
 		{
 			name: "start OFF, ON at 15min, OFF at 45min",
-			events: []ontimerepo.RangeEvent{
-				re(1, "OFF", "ON", base.Add(15*time.Minute)),
-				re(1, "", "OFF", base.Add(45*time.Minute)),
+			events: []ontimerepo.Event{
+				reEvent(base, "OFF", base),
+				reEvent(base, "ON", base.Add(15*time.Minute)),
+				reEvent(base, "OFF", base.Add(45*time.Minute)),
 			},
 			from: base,
 			to:   end,
@@ -97,7 +104,7 @@ func TestCalculateRangeOntime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CalculateRangeOntime(tt.events, tt.from, tt.to)
+			got := OntimeCalculator{}.CalculateOntime(tt.events, tt.from, tt.to)
 			diff := got - tt.want
 			if diff < 0 {
 				diff = -diff
@@ -112,11 +119,12 @@ func TestCalculateRangeOntime(t *testing.T) {
 func TestCalculateIntervals(t *testing.T) {
 	base := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
 
-	events := []ontimerepo.RangeEvent{
-		re(1, "ON", "OFF", base.Add(30*time.Minute)),
+	events := []ontimerepo.Event{
+		reEvent(base, "ON", base),
+		reEvent(base, "OFF", base.Add(30*time.Minute)),
 	}
 
-	intervals := CalculateIntervals(events, base, base.Add(time.Hour), 15*time.Minute)
+	intervals := OntimeCalculator{}.CalculateIntervals(events, utils.SplitIntervals(base, base.Add(time.Hour), 15*time.Minute))
 
 	if len(intervals) != 4 {
 		t.Fatalf("len(intervals) = %d, want 4", len(intervals))
@@ -147,101 +155,37 @@ func TestBuildTimeline(t *testing.T) {
 	base := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
 	end := base.Add(time.Hour)
 
-	raw := func(status string, tm time.Time) ontimerepo.RawEvent {
-		return ontimerepo.RawEvent{ServerID: 1, Status: status, Time: tm}
+	raw := func(status string, tm time.Time) ontimerepo.Event {
+		return ontimerepo.Event{AnchorTime: base, Status: status, Time: tm, Src: "test"}
 	}
 
 	t.Run("sets start status from first event", func(t *testing.T) {
-		events := []ontimerepo.RawEvent{raw("ON", base)}
-		tl := OntimeCalculator{}.BuildTimeline(events, base, end)
+		events := []ontimerepo.Event{raw("ON", base)}
+		tl := OntimeCalculator{}.buildTimeline(events, base, end)
 		if tl.StartStatus != "ON" {
 			t.Errorf("StartStatus = %q, want ON", tl.StartStatus)
 		}
 	})
 
 	t.Run("deduplicates events", func(t *testing.T) {
-		events := []ontimerepo.RawEvent{
+		events := []ontimerepo.Event{
 			raw("ON", base),
 			raw("ON", base),
 			raw("OFF", base.Add(30*time.Minute)),
 		}
-		tl := OntimeCalculator{}.BuildTimeline(events, base, end)
+		tl := OntimeCalculator{}.buildTimeline(events, base, end)
 		if len(tl.Events) != 2 {
 			t.Errorf("len(Events) = %d, want 2", len(tl.Events))
 		}
 	})
 
 	t.Run("empty events", func(t *testing.T) {
-		tl := OntimeCalculator{}.BuildTimeline(nil, base, end)
+		tl := OntimeCalculator{}.buildTimeline(nil, base, end)
 		if tl.StartStatus != "" {
 			t.Errorf("StartStatus = %q, want empty", tl.StartStatus)
 		}
 		if len(tl.Events) != 0 {
 			t.Errorf("len(Events) = %d, want 0", len(tl.Events))
-		}
-	})
-}
-
-func TestConvertRangeToRawEvents(t *testing.T) {
-	base := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
-
-	t.Run("filters empty status, keeps synthetic start", func(t *testing.T) {
-		events := []ontimerepo.RangeEvent{
-			re(1, "ON", "", base.Add(10*time.Minute)),
-			re(1, "", "", base.Add(20*time.Minute)),
-		}
-		raw := convertRangeToRawEvents(events, base)
-		if len(raw) != 1 {
-			t.Fatalf("len(raw) = %d, want 1 (synthetic start)", len(raw))
-		}
-		if raw[0].Status != "ON" || !raw[0].Time.Equal(base) {
-			t.Errorf("raw[0] = {Status: %q, Time: %v}, want {ON, %v}", raw[0].Status, raw[0].Time, base)
-		}
-	})
-
-	t.Run("adds synthetic event with start status", func(t *testing.T) {
-		events := []ontimerepo.RangeEvent{
-			re(1, "ON", "OFF", base.Add(30*time.Minute)),
-		}
-		raw := convertRangeToRawEvents(events, base)
-		if len(raw) != 2 {
-			t.Fatalf("len(raw) = %d, want 2", len(raw))
-		}
-		if raw[0].Status != "ON" || !raw[0].Time.Equal(base) {
-			t.Errorf("raw[0] = {Status: %q, Time: %v}, want {ON, %v}", raw[0].Status, raw[0].Time, base)
-		}
-		if raw[1].Status != "OFF" {
-			t.Errorf("raw[1].Status = %q, want OFF", raw[1].Status)
-		}
-	})
-
-	t.Run("uses lowerbound event status", func(t *testing.T) {
-		events := []ontimerepo.RangeEvent{
-			re(1, "OFF", "ON", base.Add(-10*time.Minute)),
-			re(1, "", "OFF", base.Add(30*time.Minute)),
-		}
-		raw := convertRangeToRawEvents(events, base)
-		if len(raw) != 2 {
-			t.Fatalf("len(raw) = %d, want 2 (lowerbound + real)", len(raw))
-		}
-		if raw[0].Status != "ON" {
-			t.Errorf("raw[0].Status = %q, want ON (from lowerbound Status)", raw[0].Status)
-		}
-		if raw[1].Status != "OFF" {
-			t.Errorf("raw[1].Status = %q, want OFF", raw[1].Status)
-		}
-	})
-
-	t.Run("no synthetic when no start status", func(t *testing.T) {
-		events := []ontimerepo.RangeEvent{
-			re(1, "", "ON", base.Add(30*time.Minute)),
-		}
-		raw := convertRangeToRawEvents(events, base)
-		if len(raw) != 1 {
-			t.Fatalf("len(raw) = %d, want 1", len(raw))
-		}
-		if raw[0].Status != "ON" {
-			t.Errorf("raw[0].Status = %q, want ON", raw[0].Status)
 		}
 	})
 }
@@ -253,9 +197,9 @@ func TestOntimeRangeService_CalculateUptime(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		svc := &OntimeRangeService{
 			repo: &mockRangeRepo{
-				batchGetOntimeRangeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRangeRequest) ([]ontimerepo.RangeEvent, error) {
-					return []ontimerepo.RangeEvent{
-						re(1, "ON", "ON", base),
+				batchGetOntimeRangeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRangeRequest) ([]ontimerepo.ServerEvent, error) {
+					return []ontimerepo.ServerEvent{
+						re(1, base, "ON", base),
 					}, nil
 				},
 			},
@@ -280,7 +224,7 @@ func TestOntimeRangeService_CalculateUptime(t *testing.T) {
 	t.Run("repo error", func(t *testing.T) {
 		svc := &OntimeRangeService{
 			repo: &mockRangeRepo{
-				batchGetOntimeRangeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRangeRequest) ([]ontimerepo.RangeEvent, error) {
+				batchGetOntimeRangeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRangeRequest) ([]ontimerepo.ServerEvent, error) {
 					return nil, errors.New("db error")
 				},
 			},

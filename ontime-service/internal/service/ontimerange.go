@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"log/slog"
-	"sort"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -15,16 +14,17 @@ import (
 )
 
 type OntineRangeRepository interface {
-	BatchGetOntimeRange(ctx context.Context, req []ontimerepo.BatchGetOntimeRangeRequest) ([]ontimerepo.RangeEvent, error)
+	BatchGetOntimeRange(ctx context.Context, req []ontimerepo.BatchGetOntimeRangeRequest) ([]ontimerepo.ServerEvent, error)
 }
 
 type OntimeRangeService struct {
 	repo   OntineRangeRepository
+	calc   OntimeCalculator
 	logger *slog.Logger
 }
 
 func NewOntimeRangeService(repo OntineRangeRepository, l *slog.Logger) *OntimeRangeService {
-	return &OntimeRangeService{repo: repo, logger: l}
+	return &OntimeRangeService{repo: repo, calc: OntimeCalculator{}, logger: l}
 }
 
 func RegisterOntimeRangeService(i do.Injector) {
@@ -40,17 +40,25 @@ func (s *OntimeRangeService) CalculateUptime(
 	ctx context.Context, serverID uint, from, to time.Time, resolution time.Duration,
 ) (*dto.UptimeResponse, error) {
 
-	events, err := s.repo.BatchGetOntimeRange(ctx, []ontimerepo.BatchGetOntimeRangeRequest{
+	request := []ontimerepo.BatchGetOntimeRangeRequest{
 		{ServerID: serverID, From: from, To: to},
-	})
+	}
+
+	serverEvents, err := s.repo.BatchGetOntimeRange(ctx, request)
 
 	if err != nil {
 		s.logger.Error("failed to get events for range", slog.Any("error", err))
 		return nil, err
 	}
 
-	uptime := CalculateRangeOntime(events, from, to)
-	intervals := CalculateIntervals(events, from, to, resolution)
+	events := lo.Map(serverEvents, func(se ontimerepo.ServerEvent, _ int) ontimerepo.Event {
+		return se.Event
+	})
+
+	uptime := s.calc.CalculateOntime(events, from, to)
+
+	intervals := utils.SplitIntervals(from, to, resolution)
+	intervalResults := s.calc.CalculateIntervals(events, intervals)
 
 	totalSeconds := to.Sub(from).Seconds()
 	onlineSeconds := uptime / 100 * totalSeconds
@@ -62,82 +70,16 @@ func (s *OntimeRangeService) CalculateUptime(
 		To:            to.Format(time.RFC3339),
 		TotalSeconds:  totalSeconds,
 		OnlineSeconds: onlineSeconds,
-		Intervals:     intervals,
+		Intervals:     intervalResults,
 	}, nil
 }
 
-func convertRangeToRawEvents(events []ontimerepo.RangeEvent, from time.Time) []ontimerepo.RawEvent {
-
-	if len(events) == 0 {
-		return nil
-	}
-
-	raw := make([]ontimerepo.RawEvent, 0, len(events)+1)
-
-	startStatus := ""
-	idx := sort.Search(len(events), func(i int) bool {
-		return !events[i].Time.Before(from)
-	})
-
-	for i := idx - 1; i >= 0; i-- {
-		if events[i].Status != "" {
-			startStatus = events[i].Status
-			break
-		}
-	}
-
-	if startStatus == "" {
-		startStatus = events[0].StartStatus
-	}
-
-	firstEventIsAfter := events[0].Time.After(from)
-	if startStatus != "" && firstEventIsAfter {
-		raw = append(raw, ontimerepo.RawEvent{
-			ServerID: events[0].ServerID,
-			Day:      utils.TruncateDay(from),
-			Status:   startStatus,
-			Time:     from,
-		})
-	}
-
-	for _, e := range events {
-
-		if e.Status == "" {
-			continue
-		}
-
-		raw = append(raw, ontimerepo.RawEvent{
-			ServerID: e.ServerID,
-			Day:      utils.TruncateDay(e.Time),
-			Status:   e.Status,
-			Time:     e.Time,
-		})
-	}
-
-	return raw
-}
-
-func CalculateRangeOntime(events []ontimerepo.RangeEvent, from, to time.Time) float64 {
-
-	if len(events) == 0 {
-		return 0
-	}
-
-	return CalculateOntime(convertRangeToRawEvents(events, from), from, to)
-}
-
-func CalculateIntervals(events []ontimerepo.RangeEvent, from, to time.Time, resolution time.Duration) []dto.IntervalResult {
-
-	intervals := utils.SplitIntervals(from, to, resolution)
-
+func (o OntimeCalculator) CalculateIntervals(events []ontimerepo.Event, intervals [][2]time.Time) []dto.IntervalResult {
 	return lo.Map(intervals, func(iv [2]time.Time, _ int) dto.IntervalResult {
-
-		uptime := CalculateRangeOntime(events, iv[0], iv[1])
-
 		return dto.IntervalResult{
 			From:   iv[0].Format(time.RFC3339),
 			To:     iv[1].Format(time.RFC3339),
-			Uptime: uptime,
+			Uptime: o.CalculateOntime(events, iv[0], iv[1]),
 		}
 	})
 }

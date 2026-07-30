@@ -237,7 +237,7 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 
 		b := &Batcher{
 			ontineRepository: &mockOntineRepo{
-				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
+				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.ServerEvent, error) {
 					dbCalled = true
 					return nil, nil
 				},
@@ -279,9 +279,14 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 
 		b := &Batcher{
 			ontineRepository: &mockOntineRepo{
-				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
-					return []ontimerepo.RawEvent{
-						{ServerID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)},
+				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.ServerEvent, error) {
+					return []ontimerepo.ServerEvent{
+						{ServerID: 1, Event: ontimerepo.Event{
+							AnchorTime: d1,
+							Status:     "ON",
+							Time:       d1.Add(6 * time.Hour),
+							Src:        "test",
+						}},
 					}, nil
 				},
 			},
@@ -319,7 +324,7 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 
 		b := &Batcher{
 			ontineRepository: &mockOntineRepo{
-				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
+				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.ServerEvent, error) {
 					return nil, errors.New("db error")
 				},
 			},
@@ -342,9 +347,14 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 
 		b := &Batcher{
 			ontineRepository: &mockOntineRepo{
-				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
-					return []ontimerepo.RawEvent{
-						{ServerID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)},
+				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.ServerEvent, error) {
+					return []ontimerepo.ServerEvent{
+						{ServerID: 1, Event: ontimerepo.Event{
+							AnchorTime: d1,
+							Status:     "ON",
+							Time:       d1.Add(6 * time.Hour),
+							Src:        "test",
+						}},
 					}, nil
 				},
 			},
@@ -434,20 +444,20 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 
 		b := &Batcher{
 			ontineRepository: &mockOntineRepo{
-				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
+				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.ServerEvent, error) {
 					// Only return events for the missing keys
-					events := []ontimerepo.RawEvent{}
+					events := []ontimerepo.ServerEvent{}
 					for _, r := range req {
 						if r.ServerID == 1 && r.Date.Equal(d2) {
-							events = append(events, ontimerepo.RawEvent{
-								ServerID: 1, Day: d2, Status: "ON",
-								Time: d2.Add(6 * time.Hour),
+							events = append(events, ontimerepo.ServerEvent{
+								ServerID: 1,
+								Event:    ontimerepo.Event{AnchorTime: d2, Status: "ON", Time: d2.Add(6 * time.Hour), Src: "test"},
 							})
 						}
 						if r.ServerID == 2 && r.Date.Equal(d3) {
-							events = append(events, ontimerepo.RawEvent{
-								ServerID: 2, Day: d3, Status: "OFF",
-								Time: d3.Add(12 * time.Hour),
+							events = append(events, ontimerepo.ServerEvent{
+								ServerID: 2,
+								Event:    ontimerepo.Event{AnchorTime: d3, Status: "OFF", Time: d3.Add(12 * time.Hour), Src: "test"},
 							})
 						}
 					}
@@ -493,13 +503,33 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 
 		b := &Batcher{
 			ontineRepository: &mockOntineRepo{
-				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
+				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.ServerEvent, error) {
 					dbCalled = true
-					return []ontimerepo.RawEvent{
-						{ServerID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)},
-						{ServerID: 1, Day: d2, Status: "ON", Time: d2.Add(8 * time.Hour)},
-						{ServerID: 1, Day: d2, Status: "OFF", Time: d2.Add(12 * time.Hour)},
-						{ServerID: 2, Day: d3, Status: "ON", Time: d3.Add(8 * time.Hour)},
+					return []ontimerepo.ServerEvent{
+						{ServerID: 1, Event: ontimerepo.Event{
+							AnchorTime: d1,
+							Status:     "ON",
+							Time:       d1.Add(6 * time.Hour),
+							Src:        "test",
+						}},
+						{ServerID: 1, Event: ontimerepo.Event{
+							AnchorTime: d2,
+							Status:     "ON",
+							Time:       d2.Add(8 * time.Hour),
+							Src:        "test",
+						}},
+						{ServerID: 1, Event: ontimerepo.Event{
+							AnchorTime: d2,
+							Status:     "OFF",
+							Time:       d2.Add(12 * time.Hour),
+							Src:        "test",
+						}},
+						{ServerID: 2, Event: ontimerepo.Event{
+							AnchorTime: d3,
+							Status:     "ON",
+							Time:       d3.Add(8 * time.Hour),
+							Src:        "test",
+						}},
 					}, nil
 				},
 			},

@@ -17,7 +17,7 @@ import (
 )
 
 type OntineRepository interface {
-	BatchGetOntime(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error)
+	BatchGetOntime(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.ServerEvent, error)
 }
 
 type OntimeCacheRepository interface {
@@ -58,6 +58,7 @@ type Batcher struct {
 }
 
 func (b *Batcher) BatchGetOntimeUntil(ctx context.Context, req []dto.BatchGetOntimeItem, until time.Time) ([]dto.BatchGetOntimeResponse, error) {
+
 	cacheKeys := getCacheKey(req)
 	resultMap := b.resolveCache(ctx, cacheKeys)
 
@@ -89,16 +90,20 @@ func (b *Batcher) BatchGetOntime(ctx context.Context, req []dto.BatchGetOntimeIt
 }
 
 func getCacheKey(req []dto.BatchGetOntimeItem) []dto.BatchGetOntimeItem {
+
 	reqIter := slices.Values(req)
 	cacheKeys := it.Map(reqIter, func(item dto.BatchGetOntimeItem) dto.BatchGetOntimeItem {
 		item.Date = utils.TruncateDay(item.Date)
 		return item
 	})
+
 	cacheKeys = it.Uniq(cacheKeys)
+
 	return slices.Collect(cacheKeys)
 }
 
 func (b *Batcher) resolveCache(ctx context.Context, keys []dto.BatchGetOntimeItem) map[dto.BatchGetOntimeItem]float64 {
+
 	if b.ontimeCacheRepository == nil {
 		return make(map[dto.BatchGetOntimeItem]float64, len(keys))
 	}
@@ -124,13 +129,18 @@ func (b *Batcher) fillMisses(ctx context.Context, missedKeys []dto.BatchGetOntim
 		return make(map[dto.BatchGetOntimeItem]float64)
 	}
 
-	groups := lo.GroupBy(rows, func(row ontimerepo.RawEvent) serverDayKey {
-		return serverDayKey{ServerID: row.ServerID, Day: row.Day}
+	groups := lo.GroupBy(rows, func(row ontimerepo.ServerEvent) serverDayKey {
+		return serverDayKey{ServerID: row.ServerID, Day: row.Event.AnchorTime}
 	})
 
 	dayUntil := utils.TruncateDay(until)
 	toCache := lo.SliceToMap(missedKeys, func(key dto.BatchGetOntimeItem) (dto.BatchGetOntimeItem, float64) {
-		events := groups[serverDayKey{ServerID: key.ServerID, Day: key.Date}]
+
+		serverEvents := groups[serverDayKey{ServerID: key.ServerID, Day: key.Date}]
+		events := lo.Map(serverEvents, func(se ontimerepo.ServerEvent, _ int) ontimerepo.Event {
+			return se.Event
+		})
+
 		return key, b.calculator.CalculateDayOntime(events, dayUntil, until)
 	})
 
