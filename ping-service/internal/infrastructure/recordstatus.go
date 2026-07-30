@@ -32,7 +32,7 @@ func (w *RecordStatusWorker) Record(ctx context.Context, event *domain.ServerEve
 
 	event.Time = time.Now()
 
-	w.logger.Info("record status", "serverID", event.ServerID, "status", event.Status)
+	w.logger.Debug("record status", "serverID", event.ServerID, "status", event.Status)
 
 	lastStatus, err := w.statusStore.GetStatus(ctx, event.ServerID)
 	if err == nil && lastStatus == event.Status {

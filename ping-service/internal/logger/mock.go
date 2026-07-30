@@ -22,9 +22,12 @@ func (h *CaptureHandler) Enabled(context.Context, slog.Level) bool {
 }
 
 func (h *CaptureHandler) Handle(_ context.Context, r slog.Record) error {
+
 	h.mu.Lock()
 	defer h.mu.Unlock()
+
 	h.records = append(h.records, r.Clone())
+
 	return nil
 }
 
@@ -37,8 +40,10 @@ func (h *CaptureHandler) WithGroup(string) slog.Handler {
 }
 
 func (h *CaptureHandler) Has(level slog.Level) bool {
+
 	h.mu.RLock()
 	defer h.mu.RUnlock()
+
 	return slices.ContainsFunc(h.records, func(record slog.Record) bool {
 		return record.Level == level
 	})
