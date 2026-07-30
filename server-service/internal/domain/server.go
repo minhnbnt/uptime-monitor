@@ -15,7 +15,7 @@ const (
 
 type Server struct {
 	gorm.Model
-	Name          string        `gorm:"type:varchar(255);not null"`
+	Name          string        `gorm:"type:varchar(255);not null;unique"`
 	Namespace     string        `gorm:"type:varchar(255);not null"`
 	Kind          string        `gorm:"type:varchar(50);not null"`
 	ObjectID      string        `gorm:"type:varchar(255);not null"`
