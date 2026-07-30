@@ -47,6 +47,7 @@ func (es *EndpointService) TestEndpoint(ctx context.Context, req dto.TestEndpoin
 			EndpointPath:  req.HttpConfig.EndpointPath,
 			ExpectedCode:  int32(req.HttpConfig.ExpectedCode),
 			BodyCheckExpr: req.HttpConfig.BodyCheckExpr,
+			Method:        req.HttpConfig.Method,
 		}
 	} else {
 		pingReq.PingType = pingv1.PingType_PING_TYPE_POD_STATUS

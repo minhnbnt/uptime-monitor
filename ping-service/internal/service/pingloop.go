@@ -60,6 +60,7 @@ func (s *PingLoopService) pingAndRecordServer(ctx context.Context, task PingTask
 		ObjectID:      sv.ObjectID,
 		ContainerName: sv.ContainerName,
 		PingType:      sv.PingType,
+		Method:        sv.Method,
 		Port:          sv.Port,
 		EndpointPath:  sv.EndpointPath,
 		ExpectedCode:  sv.ExpectedCode,

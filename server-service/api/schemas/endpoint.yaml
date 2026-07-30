@@ -43,6 +43,9 @@ TestEndpointRequest:
           maximum: 599
         body_check_expr:
           type: string
+        method:
+          type: string
+          default: GET
 
 TestEndpointResponse:
   type: object

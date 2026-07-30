@@ -31,6 +31,7 @@ type debeziumServerData struct {
 	EndpointPath  string  `json:"endpoint_path"`
 	ExpectedCode  int     `json:"expected_code"`
 	BodyCheckExpr *string `json:"body_check_expr"`
+	Method        string  `json:"method"`
 }
 
 func (d *debeziumServerData) toDomain() domain.Server {
@@ -47,6 +48,7 @@ func (d *debeziumServerData) toDomain() domain.Server {
 		EndpointPath:  d.EndpointPath,
 		ExpectedCode:  d.ExpectedCode,
 		BodyCheckExpr: d.BodyCheckExpr,
+		Method:        d.Method,
 	}
 }
 

@@ -12,6 +12,7 @@ func toHttpConfig(v interface {
 	GetEndpointPath() api.OptString
 	GetExpectedCode() api.OptInt
 	GetBodyCheckExpr() api.OptString
+	GetMethod() api.OptString
 }) *dto.HttpConfig {
 	cfg := &dto.HttpConfig{}
 	if p, ok := v.GetPort().Get(); ok {
@@ -25,6 +26,9 @@ func toHttpConfig(v interface {
 	}
 	if be, ok := v.GetBodyCheckExpr().Get(); ok {
 		cfg.BodyCheckExpr = be
+	}
+	if m, ok := v.GetMethod().Get(); ok {
+		cfg.Method = m
 	}
 	return cfg
 }
@@ -121,6 +125,7 @@ func ToAPIServer(s *dto.Server) api.ServerObject {
 			EndpointPath:  api.NewOptString(s.HttpConfig.EndpointPath),
 			ExpectedCode:  api.NewOptInt(s.HttpConfig.ExpectedCode),
 			BodyCheckExpr: api.NewOptString(s.HttpConfig.BodyCheckExpr),
+			Method:        api.NewOptString(s.HttpConfig.Method),
 		})
 	}
 

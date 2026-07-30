@@ -74,6 +74,7 @@ func (s *EndpointServer) GetEndpoints(ctx context.Context, req *endpointv1.GetEn
 					EndpointPath:  cfg.EndpointPath,
 					ExpectedCode:  int32(cfg.ExpectedCode),
 					BodyCheckExpr: cfg.BodyCheckExpr,
+					Method:        cfg.Method,
 				}
 			}
 

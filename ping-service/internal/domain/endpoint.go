@@ -11,6 +11,7 @@ type Server struct {
 	Interval      time.Duration `json:"interval"`
 	Timeout       time.Duration `json:"timeout"`
 	PingType      uint          `json:"ping_type"`
+	Method        string        `json:"method"`
 	Port          int           `json:"port"`
 	EndpointPath  string        `json:"endpoint_path"`
 	ExpectedCode  int           `json:"expected_code"`

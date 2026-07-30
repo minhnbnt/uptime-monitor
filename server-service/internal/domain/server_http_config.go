@@ -8,6 +8,7 @@ type ServerHttpConfig struct {
 	EndpointPath  string    `gorm:"type:varchar(500);not null;default:''"`
 	ExpectedCode  int       `gorm:"type:int;not null;default:0"`
 	BodyCheckExpr string    `gorm:"type:varchar(500);not null;default:''"`
+	Method        string    `gorm:"type:varchar(10);not null;default:'GET'"`
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }

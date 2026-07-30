@@ -108,13 +108,7 @@ func (c *ServerMetaCache) SetMulti(ctx context.Context, servers []*domain.Server
 
 		key := metaCacheKey(sv.ID)
 
-		bce := ""
-		if sv.BodyCheckExpr != nil {
-			bce = *sv.BodyCheckExpr
-		}
-
-		pipe.HSet(
-			ctx, key,
+		values := []any{
 			"namespace", sv.Namespace,
 			"kind", sv.Kind,
 			"object_id", sv.ObjectID,
@@ -125,9 +119,14 @@ func (c *ServerMetaCache) SetMulti(ctx context.Context, servers []*domain.Server
 			"port", fmt.Sprint(sv.Port),
 			"endpoint_path", sv.EndpointPath,
 			"expected_code", fmt.Sprint(sv.ExpectedCode),
-			"body_check_expr", bce,
-		)
+			"method", sv.Method,
+		}
 
+		if sv.BodyCheckExpr != nil {
+			values = append(values, "body_check_expr", *sv.BodyCheckExpr)
+		}
+
+		pipe.HSet(ctx, key, values...)
 		pipe.Expire(ctx, key, metaCacheTTL)
 	}
 
@@ -184,9 +183,8 @@ func mapToServer(id uint, data map[string]string) (*domain.Server, error) {
 		return nil, fmt.Errorf("parse expected_code: %w", err)
 	}
 
-	bce := data["body_check_expr"]
-	var bodyCheckExpr *string
-	if bce != "" {
+	bodyCheckExpr := new(string)
+	if bce, ok := data["body_check_expr"]; ok {
 		bodyCheckExpr = &bce
 	}
 
@@ -203,5 +201,6 @@ func mapToServer(id uint, data map[string]string) (*domain.Server, error) {
 		EndpointPath:  data["endpoint_path"],
 		ExpectedCode:  int(expectedCode),
 		BodyCheckExpr: bodyCheckExpr,
+		Method:        data["method"],
 	}, nil
 }

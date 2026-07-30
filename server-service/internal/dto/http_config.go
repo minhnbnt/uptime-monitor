@@ -5,4 +5,5 @@ type HttpConfig struct {
 	EndpointPath  string `json:"endpoint_path"`
 	ExpectedCode  int    `json:"expected_code"`
 	BodyCheckExpr string `json:"body_check_expr"`
+	Method        string `json:"method"`
 }

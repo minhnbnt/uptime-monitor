@@ -61,6 +61,9 @@ ServerObject:
           maximum: 599
         body_check_expr:
           type: string
+        method:
+          type: string
+          default: GET
     created_at:
       type: string
       format: date-time
@@ -119,6 +122,9 @@ CreateServerRequest:
           maximum: 599
         body_check_expr:
           type: string
+        method:
+          type: string
+          default: GET
 
 UpdateServerRequest:
   type: object
@@ -163,6 +169,9 @@ UpdateServerRequest:
           maximum: 599
         body_check_expr:
           type: string
+        method:
+          type: string
+          default: GET
 
 ServerResponse:
   type: object

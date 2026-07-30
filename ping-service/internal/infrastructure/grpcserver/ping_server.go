@@ -47,6 +47,7 @@ func (s *PingServer) Ping(ctx context.Context, req *pingv1.PingRequest) (*pingv1
 		params.Port = int(cfg.Port)
 		params.EndpointPath = cfg.EndpointPath
 		params.ExpectedCode = int(cfg.ExpectedCode)
+		params.Method = cfg.Method
 		if cfg.BodyCheckExpr != "" {
 			params.BodyCheckExpr = &cfg.BodyCheckExpr
 		}

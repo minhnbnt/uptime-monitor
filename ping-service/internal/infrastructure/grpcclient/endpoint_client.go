@@ -59,6 +59,7 @@ func (c *EndpointClient) GetBatch(ctx context.Context, ids []uint) (map[uint]*do
 			sv.Port = int(cfg.Port)
 			sv.EndpointPath = cfg.EndpointPath
 			sv.ExpectedCode = int(cfg.ExpectedCode)
+			sv.Method = cfg.Method
 			if cfg.BodyCheckExpr != "" {
 				sv.BodyCheckExpr = &cfg.BodyCheckExpr
 			}
