@@ -21,7 +21,7 @@ func newLabelSelector(logger *slog.Logger, clientset kubernetes.Interface) *k8sL
 	}
 }
 
-func (c *k8sLabelSelector) getWorkloadLabelSelector(ctx context.Context, kind, namespace, name string) (string, error) {
+func (c *k8sLabelSelector) getWorkloadLabelSelector(ctx context.Context, namespace, kind, name string) (string, error) {
 
 	switch kind {
 	case "Deployment":
