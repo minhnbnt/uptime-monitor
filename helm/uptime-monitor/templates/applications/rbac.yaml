@@ -32,3 +32,33 @@ subjects:
     name: ping-service
     namespace: {{ $ns }}
 {{- end }}
+{{- if index .Values.apps "server-service" "enabled" }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: server-service
+  namespace: {{ $ns }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: server-service
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "create", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: server-service
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: server-service
+subjects:
+  - kind: ServiceAccount
+    name: server-service
+    namespace: {{ $ns }}
+{{- end }}

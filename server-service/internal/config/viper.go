@@ -106,6 +106,8 @@ func bindEnvVars(v *viper.Viper) error {
 
 		"grpc.port": "GRPC_PORT",
 
+		"kubeconfig": "KUBECONFIG",
+
 		"mail.smtp_host":     "SMTP_HOST",
 		"mail.smtp_port":     "SMTP_PORT",
 		"mail.smtp_user":     "SMTP_USER",

@@ -54,8 +54,12 @@ services:
 
     command: ["--dev", "--config=/app/config.yml"]
 
+    environment:
+      KUBECONFIG: /kube/config
+
     volumes:
       - ./config/server-service.yml:/app/config.yml
+      - ${KUBECONFIG:-$HOME/.kube/config}:/kube/config:ro
 
     depends_on:
       redis:
@@ -65,7 +69,7 @@ services:
 
     labels:
       traefik.enable: "true"
-      traefik.http.routers.server.rule: PathPrefix(`/api/v1/servers`) || PathPrefix(`/api/v1/test-endpoint`)
+      traefik.http.routers.server.rule: PathPrefix(`/api/v1/servers`) || PathPrefix(`/api/v1/test-endpoint`) || PathPrefix(`/api/v1/k8s-objects`)
       traefik.http.routers.server.priority: 10
       traefik.http.routers.server.service: server-service
       traefik.http.services.server-service.loadbalancer.server.port: 8080
