@@ -6,6 +6,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/handler"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/infrastructure/grpcclient"
+	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/infrastructure/k8s"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/service"
 )
@@ -19,6 +20,9 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 		config.RegisterGORMDB,
 		config.RegisterRedisClient,
 
+		k8s.RegisterClientset,
+		k8s.RegisterK8sClient,
+
 		repository.RegisterServerRepository,
 		repository.RegisterServerHttpConfigRepository,
 		repository.RegisterParadeDBSearcher,
@@ -28,11 +32,13 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 
 		service.RegisterServerReader,
 		service.RegisterServerService,
+		service.RegisterK8sObjectService,
 		service.RegisterServerBatchService,
 		service.RegisterEndpointService,
 
 		handler.RegisterServerHandler,
 		handler.RegisterEndpointHandler,
+		handler.RegisterK8sObjectHandler,
 		handler.RegisterCompositeHandler,
 
 		handler.RegisterEndpointServer,

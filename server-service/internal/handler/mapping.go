@@ -105,6 +105,30 @@ func ToTestEndpointRequest(req *api.TestEndpointRequest) dto.TestEndpointRequest
 	return dtoReq
 }
 
+func ToCreateK8sObjectRequest(req *api.CreateK8sObjectRequest) dto.CreateK8sObjectRequest {
+	dtoReq := dto.CreateK8sObjectRequest{
+		Name:      req.Name,
+		Namespace: req.Namespace,
+		ObjectID:  req.ObjectID,
+	}
+	for _, c := range req.Containers {
+		dtoReq.Containers = append(dtoReq.Containers, dto.Container{Name: c.Name, Image: c.Image})
+	}
+	if v, ok := req.ContainerName.Get(); ok {
+		dtoReq.ContainerName = v
+	}
+	if v, ok := req.Interval.Get(); ok {
+		dtoReq.Interval = time.Duration(v) * time.Second
+	}
+	if v, ok := req.Timeout.Get(); ok {
+		dtoReq.Timeout = time.Duration(v) * time.Second
+	}
+	if v, ok := req.HTTPConfig.Get(); ok {
+		dtoReq.HttpConfig = toHttpConfig(&v)
+	}
+	return dtoReq
+}
+
 func ToAPIServer(s *dto.Server) api.ServerObject {
 
 	if s == nil {

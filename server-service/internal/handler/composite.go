@@ -13,15 +13,17 @@ import (
 type CompositeHandler struct {
 	*ServerHandler
 	*EndpointHandler
+	*K8sObjectHandler
 	logger *slog.Logger
 }
 
 func RegisterCompositeHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*CompositeHandler, error) {
 		return &CompositeHandler{
-			ServerHandler:   do.MustInvoke[*ServerHandler](i),
-			EndpointHandler: do.MustInvoke[*EndpointHandler](i),
-			logger:          do.MustInvoke[*slog.Logger](i),
+			ServerHandler:    do.MustInvoke[*ServerHandler](i),
+			EndpointHandler:  do.MustInvoke[*EndpointHandler](i),
+			K8sObjectHandler: do.MustInvoke[*K8sObjectHandler](i),
+			logger:           do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }

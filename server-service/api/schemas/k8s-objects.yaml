@@ -1,0 +1,58 @@
+ContainerSpec:
+  type: object
+  required:
+    - name
+    - image
+  properties:
+    name:
+      type: string
+      minLength: 1
+    image:
+      type: string
+      minLength: 1
+
+CreateK8sObjectRequest:
+  type: object
+  required:
+    - name
+    - namespace
+    - object_id
+    - containers
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 255
+    namespace:
+      type: string
+      minLength: 1
+    object_id:
+      type: string
+      minLength: 1
+    containers:
+      type: array
+      minItems: 1
+      description: Container specs for creating a new Pod.
+      items:
+        $ref: "#/ContainerSpec"
+    container_name:
+      type: string
+      description: Container to monitor; empty means all containers
+    interval:
+      type: integer
+      minimum: 1
+      description: Interval in seconds (default 30)
+    timeout:
+      type: integer
+      minimum: 1
+      description: Timeout in seconds (default 10)
+    http_config:
+      $ref: "./server.yaml#/CreateServerRequest/properties/http_config"
+
+K8sObjectResponse:
+  type: object
+  required:
+    - data
+  properties:
+    data:
+      $ref: "./server.yaml#/ServerObject"

@@ -1,0 +1,61 @@
+k8s-objects:
+  post:
+    summary: Create a k8s object
+    description: |
+      Creates a real Pod in the cluster from the given containers, then saves
+      the server record. To register an existing workload, use the regular
+      servers endpoint.
+    operationId: CreateK8sObject
+    x-ogen-operation-group: K8sObjects
+    tags:
+      - k8s-objects
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/k8s-objects.yaml#/CreateK8sObjectRequest"
+    responses:
+      "201":
+        description: Object created or registered
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/k8s-objects.yaml#/K8sObjectResponse"
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+  delete:
+    summary: Delete a k8s object from the cluster
+    description: |
+      Deletes the actual Pod. Rejected with 409 if a server record in
+      PostgreSQL still references the same namespace and object_id.
+    operationId: DeleteK8sObject
+    x-ogen-operation-group: K8sObjects
+    tags:
+      - k8s-objects
+    parameters:
+      - name: namespace
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+      - name: object_id
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+    responses:
+      "204":
+        description: Object deleted successfully
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"

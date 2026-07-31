@@ -1,10 +1,11 @@
 package config
 
 type Config struct {
-	DB    DBConfig    `mapstructure:"db"`
-	Redis RedisConfig `mapstructure:"redis"`
-	Log   LogConfig   `mapstructure:"log"`
-	GRPC  GRPCConfig  `mapstructure:"grpc"`
+	DB         DBConfig    `mapstructure:"db"`
+	Redis      RedisConfig `mapstructure:"redis"`
+	Log        LogConfig   `mapstructure:"log"`
+	GRPC       GRPCConfig  `mapstructure:"grpc"`
+	Kubeconfig string      `mapstructure:"kubeconfig"`
 }
 
 type GRPCConfig struct {

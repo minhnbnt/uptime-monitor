@@ -73,3 +73,24 @@ type TestEndpointResponse struct {
 	Running bool
 	Error   *string
 }
+
+type Container struct {
+	Name  string
+	Image string
+}
+
+type CreateK8sObjectRequest struct {
+	Name          string
+	Namespace     string
+	ObjectID      string
+	Containers    []Container
+	ContainerName string
+	Interval      time.Duration
+	Timeout       time.Duration
+	HttpConfig    *HttpConfig
+}
+
+type DeleteK8sObjectRequest struct {
+	Namespace string
+	ObjectID  string
+}

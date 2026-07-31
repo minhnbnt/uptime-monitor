@@ -21,26 +21,18 @@ type ServerWriter interface {
 }
 
 type ServerService struct {
-	*ServerReader
 	serverWriter ServerWriter
-	serverRepo   *repository.ServerRepository
+	logger       *slog.Logger
 }
 
 func RegisterServerService(i do.Injector) {
 
 	do.Provide(i, func(i do.Injector) (*ServerService, error) {
 		return &ServerService{
-			ServerReader: do.MustInvoke[*ServerReader](i),
 			serverWriter: do.MustInvoke[*repository.ServerRepository](i),
-			serverRepo:   do.MustInvoke[*repository.ServerRepository](i),
+			logger:       do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
-}
-
-func (ss *ServerService) CountByStatus(
-	ctx context.Context, userID uint,
-) (total, online, offline int64, err error) {
-	return ss.serverRepo.CountByStatus(ctx, userID)
 }
 
 func (ss *ServerService) CreateServer(

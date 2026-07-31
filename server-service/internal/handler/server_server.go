@@ -17,27 +17,27 @@ import (
 
 type ServerServer struct {
 	serverv1.UnsafeServerServiceServer
-	serverService *service.ServerService
-	batchService  *service.ServerBatchService
-	logger        *slog.Logger
+	serverReader *service.ServerReader
+	batchService *service.ServerBatchService
+	logger       *slog.Logger
 }
 
 func NewServerServer(
-	serverService *service.ServerService,
+	serverReader *service.ServerReader,
 	batchService *service.ServerBatchService,
 	logger *slog.Logger,
 ) *ServerServer {
 	return &ServerServer{
-		serverService: serverService,
-		batchService:  batchService,
-		logger:        logger,
+		serverReader: serverReader,
+		batchService: batchService,
+		logger:       logger,
 	}
 }
 
 func RegisterServerServer(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ServerServer, error) {
 		return NewServerServer(
-			do.MustInvoke[*service.ServerService](i),
+			do.MustInvoke[*service.ServerReader](i),
 			do.MustInvoke[*service.ServerBatchService](i),
 			do.MustInvoke[*slog.Logger](i),
 		), nil
@@ -49,7 +49,7 @@ func (s *ServerServer) GetServer(
 	req *serverv1.GetServerRequest,
 ) (*serverv1.GetServerResponse, error) {
 
-	server, err := s.serverService.GetServer(ctx, uint(req.ServerId))
+	server, err := s.serverReader.GetServer(ctx, uint(req.ServerId))
 	if errors.Is(err, apperrors.ErrNotFound) {
 		return nil, fmt.Errorf("server not found")
 	}
@@ -71,7 +71,7 @@ func (s *ServerServer) ListServers(
 	req *serverv1.ListServersRequest,
 ) (*serverv1.ListServersResponse, error) {
 
-	servers, _, err := s.serverService.ListServers(
+	servers, _, err := s.serverReader.ListServers(
 		ctx, uint(req.UserId),
 		int(req.Page), int(req.PerPage),
 	)
@@ -101,7 +101,7 @@ func (s *ServerServer) SearchServers(
 		SortOrder: req.SortOrder,
 	}
 
-	servers, _, err := s.serverService.SearchServers(ctx, params, uint(req.UserId))
+	servers, _, err := s.serverReader.SearchServers(ctx, params, uint(req.UserId))
 	if err != nil {
 		s.logger.Error("search servers failed", slog.Any("error", err))
 		return nil, fmt.Errorf("search servers: %w", err)
@@ -123,7 +123,7 @@ func (s *ServerServer) CountServersByStatus(
 	req *serverv1.CountServersByStatusRequest,
 ) (*serverv1.CountServersByStatusResponse, error) {
 
-	total, online, offline, err := s.serverService.CountByStatus(ctx, uint(req.UserId))
+	total, online, offline, err := s.serverReader.CountByStatus(ctx, uint(req.UserId))
 	if err != nil {
 		s.logger.Error("count servers by status failed", slog.Any("error", err))
 		return nil, fmt.Errorf("count servers by status: %w", err)

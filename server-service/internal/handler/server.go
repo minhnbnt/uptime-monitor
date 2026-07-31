@@ -14,13 +14,15 @@ import (
 )
 
 type ServerHandler struct {
-	serverService ServerService
+	serverReader ServerReader
+	serverWriter ServerWriter
 }
 
 func RegisterServerHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ServerHandler, error) {
 		return &ServerHandler{
-			serverService: do.MustInvoke[*service.ServerService](i),
+			serverReader: do.MustInvoke[*service.ServerReader](i),
+			serverWriter: do.MustInvoke[*service.ServerService](i),
 		}, nil
 	})
 }
@@ -33,7 +35,7 @@ func (h *ServerHandler) ListServers(
 	page, perPage := params.Page.Or(1), params.PerPage.Or(20)
 
 	userID := authclient.GetUserID(ctx)
-	result, total, err := h.serverService.ListServers(ctx, userID, page, perPage)
+	result, total, err := h.serverReader.ListServers(ctx, userID, page, perPage)
 	if err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}
@@ -54,7 +56,7 @@ func (h *ServerHandler) CreateServer(
 ) (*api.ServerResponse, error) {
 
 	userID := authclient.GetUserID(ctx)
-	result, err := h.serverService.CreateServer(ctx, ToCreateServerRequest(req), userID)
+	result, err := h.serverWriter.CreateServer(ctx, ToCreateServerRequest(req), userID)
 	if err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}
@@ -69,7 +71,7 @@ func (h *ServerHandler) UpdateServer(
 ) (*api.ServerResponse, error) {
 
 	userID := authclient.GetUserID(ctx)
-	result, err := h.serverService.UpdateServer(ctx, uint(params.ID), userID, ToUpdateServerRequest(req))
+	result, err := h.serverWriter.UpdateServer(ctx, uint(params.ID), userID, ToUpdateServerRequest(req))
 	if err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}
@@ -83,7 +85,7 @@ func (h *ServerHandler) DeleteServer(
 ) error {
 
 	userID := authclient.GetUserID(ctx)
-	if err := h.serverService.DeleteServer(ctx, uint(params.ID), userID); err != nil {
+	if err := h.serverWriter.DeleteServer(ctx, uint(params.ID), userID); err != nil {
 		return apperrors.ToAPIError(err)
 	}
 
@@ -96,7 +98,7 @@ func (h *ServerHandler) GetServer(
 ) (*api.ServerResponse, error) {
 
 	userID := authclient.GetUserID(ctx)
-	result, err := h.serverService.GetServer(ctx, uint(params.ID))
+	result, err := h.serverReader.GetServer(ctx, uint(params.ID))
 	if err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}
@@ -113,7 +115,7 @@ func (h *ServerHandler) CountServersByStatus(
 ) (*api.ServerCountResponse, error) {
 
 	userID := authclient.GetUserID(ctx)
-	total, online, offline, err := h.serverService.CountByStatus(ctx, userID)
+	total, online, offline, err := h.serverReader.CountByStatus(ctx, userID)
 	if err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}
@@ -141,7 +143,7 @@ func (h *ServerHandler) SearchServers(
 	}
 
 	userID := authclient.GetUserID(ctx)
-	result, total, err := h.serverService.SearchServers(ctx, searchParams, userID)
+	result, total, err := h.serverReader.SearchServers(ctx, searchParams, userID)
 	if err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}
@@ -156,4 +158,5 @@ func (h *ServerHandler) SearchServers(
 	}, nil
 }
 
-var _ ServerService = (*service.ServerService)(nil)
+var _ ServerReader = (*service.ServerReader)(nil)
+var _ ServerWriter = (*service.ServerService)(nil)

@@ -42,6 +42,8 @@ grpc:
   ping_addr: ping-service:50053
   event_addr: ontime-service:50052
 
+kubeconfig: ""
+
 mail:
   smtp_host: mailpit
   smtp_port: 1025

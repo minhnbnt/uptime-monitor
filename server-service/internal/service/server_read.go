@@ -27,6 +27,7 @@ type StatusClient interface {
 type ServerRepository interface {
 	List(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error)
 	Count(ctx context.Context, createdByID uint) (int64, error)
+	CountByStatus(ctx context.Context, createdByID uint) (total, online, offline int64, err error)
 	GetByID(ctx context.Context, id uint) (*domain.Server, error)
 }
 
@@ -102,6 +103,12 @@ func (r *ServerReader) ListServers(
 	})
 
 	return out, total, nil
+}
+
+func (r *ServerReader) CountByStatus(
+	ctx context.Context, userID uint,
+) (total, online, offline int64, err error) {
+	return r.serverRepository.CountByStatus(ctx, userID)
 }
 
 func (r *ServerReader) GetServer(ctx context.Context, id uint) (*dto.Server, error) {

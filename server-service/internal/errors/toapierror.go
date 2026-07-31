@@ -37,6 +37,13 @@ func ToAPIError(err error) *api.ErrorResponseStatusCode {
 		}
 	}
 
+	if errors.Is(err, ErrPodMonitored) {
+		return &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusConflict,
+			Response:   errResponse("CONFLICT", err.Error()),
+		}
+	}
+
 	return &api.ErrorResponseStatusCode{
 		StatusCode: http.StatusInternalServerError,
 		Response:   errResponse("INTERNAL_ERROR", err.Error()),

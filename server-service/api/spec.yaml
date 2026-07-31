@@ -35,6 +35,10 @@ paths:
   /api/v1/test-endpoint:
     $ref: "./paths/servers.yaml#/test-endpoint"
 
+  # ── K8s Objects ──────────────────────────
+  /api/v1/k8s-objects:
+    $ref: "./paths/k8s-objects.yaml#/k8s-objects"
+
 
 
 components:
@@ -61,6 +65,11 @@ components:
       $ref: "./schemas/endpoint.yaml#/TestEndpointRequest"
     TestEndpointResponse:
       $ref: "./schemas/endpoint.yaml#/TestEndpointResponse"
+
+    CreateK8sObjectRequest:
+      $ref: "./schemas/k8s-objects.yaml#/CreateK8sObjectRequest"
+    K8sObjectResponse:
+      $ref: "./schemas/k8s-objects.yaml#/K8sObjectResponse"
 
 
 

@@ -140,11 +140,7 @@ func (sr *ServerRepository) Update(ctx context.Context, s *domain.Server, config
 			Where("server_id = ?", s.ID).
 			Delete(ctx)
 
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return err
 	})
 }
 
@@ -194,4 +190,14 @@ func (sr *ServerRepository) BatchCreateServers(
 	}
 
 	return nil
+}
+
+func (sr *ServerRepository) ExistsByNamespaceObjectID(ctx context.Context, namespace, objectID string) (bool, error) {
+	count, err := gorm.G[domain.Server](sr.db).
+		Where("namespace = ? AND object_id = ?", namespace, objectID).
+		Count(ctx, "id")
+	if err != nil {
+		return false, fmt.Errorf("check server existence: %w", err)
+	}
+	return count > 0, nil
 }
