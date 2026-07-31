@@ -2,18 +2,19 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
 )
 
 const (
-	streamKey       = "uptime.public.servers"
 	consumerGroup   = "ping-service"
 	consumerName    = "worker-1"
 	streamReadCount = 10
@@ -36,22 +37,22 @@ func RegisterStreamEventConsumer(i do.Injector) {
 }
 
 type ServerEventHandler interface {
-	OnCreate(context.Context, domain.Server) error
-	OnUpdate(context.Context, domain.Server) error
-	OnDelete(ctx context.Context, id uint) error
+	OnMessage(context.Context, *dto.DebeziumMessage) error
 }
 
-func (c *StreamEventConsumer) Run(ctx context.Context, handler ServerEventHandler) {
+func (c *StreamEventConsumer) Run(ctx context.Context, streamKeys []string, handler ServerEventHandler) {
 
 	c.logger.Info(
 		"starting stream consumer",
-		slog.String("stream", streamKey),
+		slog.String("stream", strings.Join(streamKeys, ", ")),
 		slog.String("group", consumerGroup),
 	)
 
-	err := c.client.XGroupCreateMkStream(ctx, streamKey, consumerGroup, "$").Err()
-	if err != nil && err.Error() != "BUSYGROUP Consumer Group name already exists" {
-		c.logger.Warn("create consumer group", slog.Any("error", err))
+	for _, streamKey := range streamKeys {
+		err := c.client.XGroupCreateMkStream(ctx, streamKey, consumerGroup, "$").Err()
+		if err != nil && err.Error() != "BUSYGROUP Consumer Group name already exists" {
+			c.logger.Warn("create consumer group", slog.Any("error", err))
+		}
 	}
 
 	processor := &messageProcessor{
@@ -59,17 +60,23 @@ func (c *StreamEventConsumer) Run(ctx context.Context, handler ServerEventHandle
 		logger:  c.logger,
 	}
 
+	streams := make([]string, 0, len(streamKeys))
+	for _, streamKey := range streamKeys {
+		streams = append(streams, streamKey, ">")
+	}
+
+	args := redis.XReadGroupArgs{
+		Group:    consumerGroup,
+		Consumer: consumerName,
+		Streams:  streams,
+		Count:    streamReadCount,
+		Block:    streamBlockTime,
+	}
+
 	for ctx.Err() == nil {
 
-		streams, err := c.client.XReadGroup(ctx, &redis.XReadGroupArgs{
-			Group:    consumerGroup,
-			Consumer: consumerName,
-			Streams:  []string{streamKey, ">"},
-			Count:    streamReadCount,
-			Block:    streamBlockTime,
-		}).Result()
-
-		if err == redis.Nil {
+		streams, err := c.client.XReadGroup(ctx, &args).Result()
+		if errors.Is(err, redis.Nil) {
 			continue
 		}
 
@@ -81,25 +88,13 @@ func (c *StreamEventConsumer) Run(ctx context.Context, handler ServerEventHandle
 
 		for _, stream := range streams {
 			for _, msg := range stream.Messages {
-
-				canAck := processor.ProcessMessage(ctx, msg)
-
-				if canAck {
-					c.ack(ctx, msg.ID)
-				}
+				processor.ProcessMessage(ctx, stream.Stream, msg)
 			}
 		}
 	}
 }
 
-func (c *StreamEventConsumer) ack(ctx context.Context, msgID string) {
-
-	err := c.client.XAck(ctx, streamKey, consumerGroup, msgID).Err()
-
-	if err != nil {
-		c.logger.Error("ack message",
-			slog.String("msg_id", msgID),
-			slog.Any("error", err),
-		)
-	}
+func (c *StreamEventConsumer) Ack(ctx context.Context, message *dto.DebeziumMessage) error {
+	cmd := c.client.XAck(ctx, message.TopicName, consumerGroup, message.ID)
+	return cmd.Err()
 }

@@ -118,14 +118,7 @@ func (c *ServerMetaCache) SetMulti(ctx context.Context, servers []*domain.Server
 		}
 
 		if sv.HTTPConfig != nil {
-			values = append(values,
-				"http_config", "1",
-				"http_port", fmt.Sprint(sv.HTTPConfig.Port),
-				"http_endpoint_path", sv.HTTPConfig.EndpointPath,
-				"http_expected_code", fmt.Sprint(sv.HTTPConfig.ExpectedCode),
-				"http_body_check_expr", sv.HTTPConfig.BodyCheckExpr,
-				"http_method", sv.HTTPConfig.Method,
-			)
+			values = append(values, httpConfigHashValues(sv.HTTPConfig)...)
 		}
 
 		pipe.HSet(ctx, key, values...)
@@ -135,6 +128,17 @@ func (c *ServerMetaCache) SetMulti(ctx context.Context, servers []*domain.Server
 	_, err := pipe.Exec(ctx)
 
 	return err
+}
+
+func httpConfigHashValues(cfg *domain.ServerHTTPConfig) []any {
+	return []any{
+		"http_config", "1",
+		"http_port", fmt.Sprint(cfg.Port),
+		"http_endpoint_path", cfg.EndpointPath,
+		"http_expected_code", fmt.Sprint(cfg.ExpectedCode),
+		"http_body_check_expr", cfg.BodyCheckExpr,
+		"http_method", cfg.Method,
+	}
 }
 
 func (c *ServerMetaCache) Delete(ctx context.Context, id uint) error {
@@ -193,6 +197,7 @@ func mapToServer(id uint, data map[string]string) (*domain.Server, error) {
 		}
 
 		sv.HTTPConfig = &domain.ServerHTTPConfig{
+			ServerID:      id,
 			Port:          int(port),
 			EndpointPath:  data["http_endpoint_path"],
 			ExpectedCode:  int(expectedCode),

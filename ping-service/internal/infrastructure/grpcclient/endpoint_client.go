@@ -56,6 +56,7 @@ func (c *EndpointClient) GetBatch(ctx context.Context, ids []uint) (map[uint]*do
 
 		if cfg := ep.GetHttpDnsConfig(); cfg != nil {
 			sv.HTTPConfig = &domain.ServerHTTPConfig{
+				ServerID:      sv.ID,
 				Port:          int(cfg.Port),
 				EndpointPath:  cfg.EndpointPath,
 				ExpectedCode:  int(cfg.ExpectedCode),

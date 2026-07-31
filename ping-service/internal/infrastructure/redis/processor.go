@@ -3,97 +3,24 @@ package redis
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
 )
-
-type debeziumMessage struct {
-	Before *debeziumServerData `json:"before"`
-	After  *debeziumServerData `json:"after"`
-	Op     string              `json:"op"` // c=create, r=read, u=update, d=delete
-}
-
-type debeziumServerData struct {
-	ID            uint   `json:"id"`
-	Namespace     string `json:"namespace"`
-	Kind          string `json:"kind"`
-	ObjectID      string `json:"object_id"`
-	ContainerName string `json:"container_name"`
-	Interval      int64  `json:"interval"`
-	Timeout       int64  `json:"timeout"`
-}
-
-func (d *debeziumServerData) toDomain() domain.Server {
-	return domain.Server{
-		ID:            d.ID,
-		Namespace:     d.Namespace,
-		Kind:          d.Kind,
-		ObjectID:      d.ObjectID,
-		ContainerName: d.ContainerName,
-		Interval:      time.Duration(d.Interval),
-		Timeout:       time.Duration(d.Timeout),
-	}
-}
 
 type messageProcessor struct {
 	handler ServerEventHandler
 	logger  *slog.Logger
 }
 
-func (p *messageProcessor) onDelete(ctx context.Context, event debeziumMessage) error {
-
-	id, err := resolveDeletedID(event)
-	if err != nil {
-		return err
-	}
-
-	if err := p.handler.OnDelete(ctx, id); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (p *messageProcessor) onUpdate(ctx context.Context, event debeziumMessage) error {
-
-	if event.After == nil {
-		return nil
-	}
-
-	sv := event.After.toDomain()
-	if err := p.handler.OnUpdate(ctx, sv); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (p *messageProcessor) onCreate(ctx context.Context, event debeziumMessage) error {
-
-	if event.After == nil {
-		return nil
-	}
-
-	sv := event.After.toDomain()
-	if err := p.handler.OnCreate(ctx, sv); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (p *messageProcessor) ProcessMessage(ctx context.Context, msg redis.XMessage) (canAck bool) {
+func (p *messageProcessor) ProcessMessage(ctx context.Context, streamKey string, msg redis.XMessage) {
 
 	raw, ok := msg.Values["value"]
 	if !ok {
 		p.logger.Warn("stream message missing value field", slog.String("id", msg.ID))
-		return false
+		return
 	}
 
 	rawStr, ok := raw.(string)
@@ -104,10 +31,10 @@ func (p *messageProcessor) ProcessMessage(ctx context.Context, msg redis.XMessag
 			slog.String("id", msg.ID),
 		)
 
-		return false
+		return
 	}
 
-	event := debeziumMessage{}
+	event := dto.DebeziumMessage{ID: msg.ID, TopicName: streamKey}
 	if err := json.Unmarshal([]byte(rawStr), &event); err != nil {
 
 		p.logger.Error(
@@ -116,50 +43,15 @@ func (p *messageProcessor) ProcessMessage(ctx context.Context, msg redis.XMessag
 			slog.Any("error", err),
 		)
 
-		return false
+		return
 	}
 
-	if err := p.handleEvent(ctx, &event); err != nil {
-
+	if err := p.handler.OnMessage(ctx, &event); err != nil {
 		p.logger.Error(
 			"handle event",
 			slog.String("id", msg.ID),
-			slog.String("op", event.Op),
+			slog.String("topic", streamKey),
 			slog.Any("error", err),
 		)
-
-		return false
 	}
-
-	return true
-}
-
-func (p *messageProcessor) handleEvent(ctx context.Context, event *debeziumMessage) error {
-
-	switch event.Op {
-	case "c", "r":
-		return p.onCreate(ctx, *event)
-
-	case "u":
-		return p.onUpdate(ctx, *event)
-
-	case "d":
-		return p.onDelete(ctx, *event)
-
-	default:
-		return fmt.Errorf("unknown operation: %s", event.Op)
-	}
-}
-
-func resolveDeletedID(event debeziumMessage) (uint, error) {
-
-	if event.Before != nil {
-		return event.Before.ID, nil
-	}
-
-	if event.After != nil {
-		return event.After.ID, nil
-	}
-
-	return 0, errors.New("resolveDeletedID: event has no before or after")
 }

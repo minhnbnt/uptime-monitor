@@ -1,9 +1,10 @@
 package domain
 
 type ServerHTTPConfig struct {
-	Port          int
-	EndpointPath  string
-	ExpectedCode  int
-	BodyCheckExpr string // "" means no body check
-	Method        string
+	ServerID      uint   `json:"server_id"`
+	Port          int    `json:"port"`
+	EndpointPath  string `json:"endpoint_path"`
+	ExpectedCode  int    `json:"expected_code"`
+	BodyCheckExpr string `json:"body_check_expr"`
+	Method        string `json:"method"`
 }

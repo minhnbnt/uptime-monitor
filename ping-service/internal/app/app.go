@@ -12,6 +12,7 @@ import (
 	pingrepo "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/repository"
 	pingsched "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
 	pingservice "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/service"
+	pingevents "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/service/events"
 )
 
 func providers(dev bool) []func(do.Injector) {
@@ -47,7 +48,7 @@ func providers(dev bool) []func(do.Injector) {
 		pingservice.RegisterLoopService,
 
 		pingredis.RegisterStreamEventConsumer,
-		pingservice.RegisterEventService,
+		pingevents.RegisterEventService,
 		pinghandler.RegisterEndpointEventWorker,
 		pinghandler.RegisterZSetWorkerRunner,
 	}
