@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/samber/lo"
+
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis"
-	"github.com/samber/lo"
 )
 
 type EventHandler interface {
