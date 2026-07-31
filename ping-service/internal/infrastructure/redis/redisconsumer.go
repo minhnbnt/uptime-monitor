@@ -61,9 +61,12 @@ func (c *StreamEventConsumer) Run(ctx context.Context, streamKeys []string, hand
 		logger:  c.logger,
 	}
 
-	streams := make([]string, 0, len(streamKeys))
+	streams := make([]string, 0, 2*len(streamKeys))
 	for _, streamKey := range streamKeys {
-		streams = append(streams, streamKey, ">")
+		streams = append(streams, streamKey)
+	}
+	for range streamKeys {
+		streams = append(streams, ">")
 	}
 
 	args := redis.XReadGroupArgs{
