@@ -150,23 +150,34 @@ func (r *ServerReader) SearchServers(
 }
 
 func (r *ServerReader) applyHttpConfigs(ctx context.Context, servers []*dto.Server) {
+
 	ids := lo.FilterMap(servers, func(s *dto.Server, _ int) (uint, bool) {
 		return s.ID, s.HttpConfig == nil
 	})
+
 	if len(ids) == 0 {
 		return
 	}
+
 	cfgs, err := r.httpCfgRepo.GetByServerIDs(ctx, ids)
 	if err != nil {
 		r.logger.Warn("failed to load http configs", slog.Any("error", err))
 		return
 	}
+
 	for _, sv := range servers {
-		if cfg, ok := cfgs[sv.ID]; ok {
-			sv.HttpConfig = &dto.HttpConfig{
-				Port:         cfg.Port,
-				EndpointPath: cfg.EndpointPath,
-			}
+
+		cfg, ok := cfgs[sv.ID]
+		if !ok {
+			continue
+		}
+
+		sv.HttpConfig = &dto.HttpConfig{
+			Port:          cfg.Port,
+			EndpointPath:  cfg.EndpointPath,
+			ExpectedCode:  cfg.ExpectedCode,
+			BodyCheckExpr: cfg.BodyCheckExpr,
+			Method:        cfg.Method,
 		}
 	}
 }

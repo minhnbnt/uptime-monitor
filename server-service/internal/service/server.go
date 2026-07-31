@@ -14,8 +14,8 @@ import (
 )
 
 type ServerWriter interface {
-	Create(ctx context.Context, s *domain.Server) error
-	Update(ctx context.Context, s *domain.Server) error
+	Create(ctx context.Context, s *domain.Server, config *domain.ServerHttpConfig) error
+	Update(ctx context.Context, s *domain.Server, config *domain.ServerHttpConfig) error
 	Delete(ctx context.Context, id uint) error
 	GetByID(ctx context.Context, id uint) (*domain.Server, error)
 }
@@ -24,7 +24,6 @@ type ServerService struct {
 	*ServerReader
 	serverWriter ServerWriter
 	serverRepo   *repository.ServerRepository
-	httpCfgRepo  *repository.ServerHttpConfigRepository
 }
 
 func RegisterServerService(i do.Injector) {
@@ -34,7 +33,6 @@ func RegisterServerService(i do.Injector) {
 			ServerReader: do.MustInvoke[*ServerReader](i),
 			serverWriter: do.MustInvoke[*repository.ServerRepository](i),
 			serverRepo:   do.MustInvoke[*repository.ServerRepository](i),
-			httpCfgRepo:  do.MustInvoke[*repository.ServerHttpConfigRepository](i),
 		}, nil
 	})
 }
@@ -62,20 +60,21 @@ func (ss *ServerService) CreateServer(
 		CreatedByID:   createdByID,
 	}
 
-	if err := ss.serverWriter.Create(ctx, &server); err != nil {
-		ss.logger.Error("failed to create server", slog.Any("error", err))
-		return nil, apperrors.ErrInternal
+	var config *domain.ServerHttpConfig
+	if req.HttpConfig != nil {
+		config = &domain.ServerHttpConfig{
+			ServerID:      server.ID,
+			Port:          req.HttpConfig.Port,
+			EndpointPath:  req.HttpConfig.EndpointPath,
+			ExpectedCode:  req.HttpConfig.ExpectedCode,
+			BodyCheckExpr: req.HttpConfig.BodyCheckExpr,
+			Method:        defaultHttpMethod(req.HttpConfig.Method),
+		}
 	}
 
-	if req.HttpConfig != nil {
-		if err := ss.httpCfgRepo.Upsert(ctx, &domain.ServerHttpConfig{
-			ServerID:     server.ID,
-			Port:         req.HttpConfig.Port,
-			EndpointPath: req.HttpConfig.EndpointPath,
-		}); err != nil {
-			ss.logger.Error("failed to create http config", slog.Any("error", err))
-			return nil, apperrors.ErrInternal
-		}
+	if err := ss.serverWriter.Create(ctx, &server, config); err != nil {
+		ss.logger.Error("failed to create server", slog.Any("error", err))
+		return nil, apperrors.ErrInternal
 	}
 
 	result := dto.ServerFromDomain(server)
@@ -99,29 +98,26 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uint, userID uint,
 
 	applyUpdateServer(server, req)
 
-	updateErr := ss.serverWriter.Update(ctx, server)
-	if errors.Is(updateErr, apperrors.ErrNotFound) {
-		return nil, apperrors.ErrNotFound
-	}
-	if updateErr != nil {
-		ss.logger.Error("failed to update server", slog.Any("error", updateErr))
-		return nil, apperrors.ErrInternal
+	var config *domain.ServerHttpConfig
+	if req.HttpConfig != nil {
+		config = &domain.ServerHttpConfig{
+			ServerID:      server.ID,
+			Port:          req.HttpConfig.Port,
+			EndpointPath:  req.HttpConfig.EndpointPath,
+			ExpectedCode:  req.HttpConfig.ExpectedCode,
+			BodyCheckExpr: req.HttpConfig.BodyCheckExpr,
+			Method:        defaultHttpMethod(req.HttpConfig.Method),
+		}
 	}
 
-	if req.ClearHttpConfig {
-		if err := ss.httpCfgRepo.DeleteByServerID(ctx, id); err != nil {
-			ss.logger.Error("failed to delete http config", slog.Any("error", err))
-			return nil, apperrors.ErrInternal
-		}
-	} else if req.HttpConfig != nil {
-		if err := ss.httpCfgRepo.Upsert(ctx, &domain.ServerHttpConfig{
-			ServerID:     server.ID,
-			Port:         req.HttpConfig.Port,
-			EndpointPath: req.HttpConfig.EndpointPath,
-		}); err != nil {
-			ss.logger.Error("failed to upsert http config", slog.Any("error", err))
-			return nil, apperrors.ErrInternal
-		}
+	err = ss.serverWriter.Update(ctx, server, config)
+	if errors.Is(err, apperrors.ErrNotFound) {
+		return nil, apperrors.ErrNotFound
+	}
+
+	if err != nil {
+		ss.logger.Error("failed to update server", slog.Any("error", err))
+		return nil, apperrors.ErrInternal
 	}
 
 	result := dto.ServerFromDomain(*server)
@@ -156,6 +152,7 @@ func (ss *ServerService) DeleteServer(ctx context.Context, id uint, userID uint)
 }
 
 func applyUpdateServer(s *domain.Server, req dto.UpdateServerRequest) {
+
 	if req.Name != nil {
 		s.Name = *req.Name
 	}
@@ -177,4 +174,11 @@ func applyUpdateServer(s *domain.Server, req dto.UpdateServerRequest) {
 	if req.Timeout != nil {
 		s.Timeout = *req.Timeout
 	}
+}
+
+func defaultHttpMethod(method string) string {
+	if method == "" {
+		return "GET"
+	}
+	return method
 }

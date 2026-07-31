@@ -6,6 +6,7 @@ import (
 
 	"github.com/samber/do/v2"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/domain"
@@ -60,8 +61,20 @@ func (sr *ServerRepository) List(
 	return servers, nil
 }
 
-func (sr *ServerRepository) Create(ctx context.Context, s *domain.Server) error {
-	return gorm.G[domain.Server](sr.db).Create(ctx, s)
+func (sr *ServerRepository) Create(ctx context.Context, s *domain.Server, config *domain.ServerHttpConfig) error {
+	return sr.db.Transaction(func(tx *gorm.DB) error {
+
+		if err := gorm.G[domain.Server](tx).Create(ctx, s); err != nil {
+			return err
+		}
+
+		if config == nil {
+			return nil
+		}
+
+		config.ServerID = s.ID
+		return gorm.G[domain.ServerHttpConfig](tx).Create(ctx, config)
+	})
 }
 
 func (sr *ServerRepository) GetByIDs(ctx context.Context, ids []uint) ([]domain.Server, error) {
@@ -95,21 +108,44 @@ func (sr *ServerRepository) GetByID(ctx context.Context, id uint) (*domain.Serve
 	return &results[0], nil
 }
 
-func (sr *ServerRepository) Update(ctx context.Context, s *domain.Server) error {
+func (sr *ServerRepository) Update(ctx context.Context, s *domain.Server, config *domain.ServerHttpConfig) error {
+	return sr.db.Transaction(func(tx *gorm.DB) error {
 
-	rowAffected, err := gorm.G[domain.Server](sr.db).
-		Where("id = ?", s.ID).
-		Updates(ctx, *s)
+		rowAffected, err := gorm.G[domain.Server](tx).
+			Where("id = ?", s.ID).
+			Updates(ctx, *s)
 
-	if err != nil {
-		return err
-	}
+		if err != nil {
+			return err
+		}
 
-	if rowAffected == 0 {
-		return fmt.Errorf("server %d: %w", s.ID, apperrors.ErrNotFound)
-	}
+		if rowAffected == 0 {
+			return fmt.Errorf("server %d: %w", s.ID, apperrors.ErrNotFound)
+		}
 
-	return nil
+		if config != nil {
+
+			clauses := clause.OnConflict{
+				Columns:   []clause.Column{{Name: "server_id"}},
+				UpdateAll: true,
+			}
+
+			config.ServerID = s.ID
+			result := tx.WithContext(ctx).Clauses(clauses).Create(config)
+
+			return result.Error
+		}
+
+		_, err = gorm.G[domain.ServerHttpConfig](tx).
+			Where("server_id = ?", s.ID).
+			Delete(ctx)
+
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func (sr *ServerRepository) Delete(ctx context.Context, id uint) error {
@@ -148,8 +184,7 @@ func (sr *ServerRepository) CountByStatus(
 }
 
 func (sr *ServerRepository) BatchCreateServers(
-	ctx context.Context,
-	servers []domain.Server,
+	ctx context.Context, servers []domain.Server,
 ) error {
 
 	result := sr.db.WithContext(ctx).Create(&servers)

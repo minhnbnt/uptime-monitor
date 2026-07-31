@@ -50,15 +50,14 @@ type CreateServerRequest struct {
 }
 
 type UpdateServerRequest struct {
-	Name             *string
-	Namespace        *string
-	Kind             *string
-	ObjectID         *string
-	ContainerName    *string
-	Interval         *time.Duration
-	Timeout          *time.Duration
-	HttpConfig       *HttpConfig
-	ClearHttpConfig  bool
+	Name          *string
+	Namespace     *string
+	Kind          *string
+	ObjectID      *string
+	ContainerName *string
+	Interval      *time.Duration
+	Timeout       *time.Duration
+	HttpConfig    *HttpConfig
 }
 
 type TestEndpointRequest struct {

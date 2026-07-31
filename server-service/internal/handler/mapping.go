@@ -83,8 +83,6 @@ func ToUpdateServerRequest(req *api.UpdateServerRequest) dto.UpdateServerRequest
 	}
 	if v, ok := req.HTTPConfig.Get(); ok {
 		dtoReq.HttpConfig = toHttpConfig(&v)
-	} else if req.HTTPConfig.IsSet() {
-		dtoReq.ClearHttpConfig = true
 	}
 	return dtoReq
 }
@@ -120,13 +118,20 @@ func ToAPIServer(s *dto.Server) api.ServerObject {
 
 	httpConfig := api.OptNilServerObjectHTTPConfig{}
 	if s.HttpConfig != nil {
-		httpConfig.SetTo(api.ServerObjectHTTPConfig{
-			Port:          api.NewOptInt(s.HttpConfig.Port),
-			EndpointPath:  api.NewOptString(s.HttpConfig.EndpointPath),
-			ExpectedCode:  api.NewOptInt(s.HttpConfig.ExpectedCode),
-			BodyCheckExpr: api.NewOptString(s.HttpConfig.BodyCheckExpr),
-			Method:        api.NewOptString(s.HttpConfig.Method),
-		})
+		cfg := api.ServerObjectHTTPConfig{
+			Port:         api.NewOptInt(s.HttpConfig.Port),
+			EndpointPath: api.NewOptString(s.HttpConfig.EndpointPath),
+		}
+		if s.HttpConfig.ExpectedCode > 0 {
+			cfg.ExpectedCode = api.NewOptInt(s.HttpConfig.ExpectedCode)
+		}
+		if s.HttpConfig.BodyCheckExpr != "" {
+			cfg.BodyCheckExpr = api.NewOptString(s.HttpConfig.BodyCheckExpr)
+		}
+		if s.HttpConfig.Method != "" {
+			cfg.Method = api.NewOptString(s.HttpConfig.Method)
+		}
+		httpConfig.SetTo(cfg)
 	}
 
 	return api.ServerObject{
