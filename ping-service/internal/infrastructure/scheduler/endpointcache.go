@@ -115,15 +115,17 @@ func (c *ServerMetaCache) SetMulti(ctx context.Context, servers []*domain.Server
 			"container_name", sv.ContainerName,
 			"interval_ns", fmt.Sprint(sv.Interval.Nanoseconds()),
 			"timeout_ns", fmt.Sprint(sv.Timeout.Nanoseconds()),
-			"ping_type", fmt.Sprint(sv.PingType),
-			"port", fmt.Sprint(sv.Port),
-			"endpoint_path", sv.EndpointPath,
-			"expected_code", fmt.Sprint(sv.ExpectedCode),
-			"method", sv.Method,
 		}
 
-		if sv.BodyCheckExpr != nil {
-			values = append(values, "body_check_expr", *sv.BodyCheckExpr)
+		if sv.HTTPConfig != nil {
+			values = append(values,
+				"http_config", "1",
+				"http_port", fmt.Sprint(sv.HTTPConfig.Port),
+				"http_endpoint_path", sv.HTTPConfig.EndpointPath,
+				"http_expected_code", fmt.Sprint(sv.HTTPConfig.ExpectedCode),
+				"http_body_check_expr", sv.HTTPConfig.BodyCheckExpr,
+				"http_method", sv.HTTPConfig.Method,
+			)
 		}
 
 		pipe.HSet(ctx, key, values...)
@@ -168,27 +170,7 @@ func mapToServer(id uint, data map[string]string) (*domain.Server, error) {
 		return nil, fmt.Errorf("parse timeout_ns: %w", err)
 	}
 
-	pingType, err := strconv.ParseUint(data["ping_type"], 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("parse ping_type: %w", err)
-	}
-
-	port, err := strconv.ParseInt(data["port"], 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("parse port: %w", err)
-	}
-
-	expectedCode, err := strconv.ParseInt(data["expected_code"], 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("parse expected_code: %w", err)
-	}
-
-	bodyCheckExpr := new(string)
-	if bce, ok := data["body_check_expr"]; ok {
-		bodyCheckExpr = &bce
-	}
-
-	return &domain.Server{
+	sv := &domain.Server{
 		ID:            id,
 		Namespace:     data["namespace"],
 		Kind:          data["kind"],
@@ -196,11 +178,28 @@ func mapToServer(id uint, data map[string]string) (*domain.Server, error) {
 		ContainerName: data["container_name"],
 		Interval:      time.Duration(intervalNs),
 		Timeout:       time.Duration(timeoutNs),
-		PingType:      uint(pingType),
-		Port:          int(port),
-		EndpointPath:  data["endpoint_path"],
-		ExpectedCode:  int(expectedCode),
-		BodyCheckExpr: bodyCheckExpr,
-		Method:        data["method"],
-	}, nil
+	}
+
+	if data["http_config"] == "1" {
+
+		port, err := strconv.ParseInt(data["http_port"], 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("parse http_port: %w", err)
+		}
+
+		expectedCode, err := strconv.ParseInt(data["http_expected_code"], 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("parse http_expected_code: %w", err)
+		}
+
+		sv.HTTPConfig = &domain.ServerHTTPConfig{
+			Port:          int(port),
+			EndpointPath:  data["http_endpoint_path"],
+			ExpectedCode:  int(expectedCode),
+			BodyCheckExpr: data["http_body_check_expr"],
+			Method:        data["http_method"],
+		}
+	}
+
+	return sv, nil
 }

@@ -20,6 +20,7 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 		config.RegisterRedisClient,
 
 		repository.RegisterServerRepository,
+		repository.RegisterServerHttpConfigRepository,
 		repository.RegisterParadeDBSearcher,
 
 		grpcclient.RegisterEventClient,

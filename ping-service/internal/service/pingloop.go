@@ -3,11 +3,13 @@ package service
 import (
 	"context"
 	"log/slog"
+	"net/url"
 
 	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/k8sclient"
 	scheduler "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
@@ -15,7 +17,11 @@ import (
 )
 
 type pingWorker interface {
-	CheckPodStatus(ctx context.Context, params k8sclient.PingCheck) (bool, error)
+	CheckObjectStatus(ctx context.Context, params *dto.K8sObjectCheckParams) (bool, error)
+}
+
+type urlResolver interface {
+	ResolveURL(ctx context.Context, params *dto.CheckParams) (*url.URL, error)
 }
 
 type recordWorker interface {
@@ -30,18 +36,72 @@ type PingLoopService struct {
 	pingWorker         pingWorker
 	recordStatusWorker recordWorker
 	scoreUpdater       scoreUpdater
+	urlResolver        urlResolver
+	pingClient         *infrastructure.PingClient
+	responseChecker    *ResponseChecker
 	logger             *slog.Logger
 }
 
 func RegisterPingService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*PingLoopService, error) {
 		return &PingLoopService{
-			pingWorker:         do.MustInvoke[k8sclient.K8sClient](i),
+			pingWorker:         do.MustInvoke[*k8sclient.K8sClient](i),
 			recordStatusWorker: do.MustInvoke[*infrastructure.RecordStatusWorker](i),
 			scoreUpdater:       do.MustInvoke[*scheduler.ScoreUpdater](i),
+			urlResolver:        do.MustInvoke[*URLResolverService](i),
+			pingClient:         do.MustInvoke[*infrastructure.PingClient](i),
+			responseChecker:    do.MustInvoke[*ResponseChecker](i),
 			logger:             do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
+}
+
+func (s *PingLoopService) checkServer(ctx context.Context, sv *domain.Server) (bool, error) {
+
+	k8sParams := &dto.K8sObjectCheckParams{
+		Namespace:     sv.Namespace,
+		Kind:          sv.Kind,
+		ObjectID:      sv.ObjectID,
+		ContainerName: sv.ContainerName,
+	}
+
+	if sv.HTTPConfig != nil {
+		return s.checkHTTPDNS(ctx, k8sParams, sv)
+	}
+
+	return s.pingWorker.CheckObjectStatus(ctx, k8sParams)
+}
+
+func (s *PingLoopService) checkHTTPDNS(ctx context.Context, k8sParams *dto.K8sObjectCheckParams, sv *domain.Server) (bool, error) {
+
+	httpParams := &dto.HTTPCheckParams{
+		Method:        sv.HTTPConfig.Method,
+		Port:          sv.HTTPConfig.Port,
+		EndpointPath:  sv.HTTPConfig.EndpointPath,
+		ExpectedCode:  sv.HTTPConfig.ExpectedCode,
+		BodyCheckExpr: sv.HTTPConfig.BodyCheckExpr,
+	}
+
+	params := &dto.CheckParams{
+		K8sObjectCheckParams: *k8sParams,
+		HTTPCheckParams:      httpParams,
+	}
+
+	url, err := s.urlResolver.ResolveURL(ctx, params)
+	if err != nil {
+		return false, err
+	}
+
+	resp, err := s.pingClient.Ping(ctx, sv.Timeout, httpParams.Method, url.String())
+	if err != nil {
+		return false, err
+	}
+
+	if err := s.responseChecker.CheckResponse(httpParams, *resp); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (s *PingLoopService) pingAndRecordServer(ctx context.Context, task PingTask) {
@@ -54,19 +114,7 @@ func (s *PingLoopService) pingAndRecordServer(ctx context.Context, task PingTask
 		}
 	}()
 
-	isUp, pingErr := s.pingWorker.CheckPodStatus(ctx, k8sclient.PingCheck{
-		Namespace:     sv.Namespace,
-		Kind:          sv.Kind,
-		ObjectID:      sv.ObjectID,
-		ContainerName: sv.ContainerName,
-		PingType:      sv.PingType,
-		Method:        sv.Method,
-		Port:          sv.Port,
-		EndpointPath:  sv.EndpointPath,
-		ExpectedCode:  sv.ExpectedCode,
-		BodyCheckExpr: sv.BodyCheckExpr,
-	})
-
+	isUp, pingErr := s.checkServer(ctx, sv)
 	if pingErr != nil {
 		s.logger.Warn(
 			"ping failed",

@@ -21,9 +21,13 @@ type PingClient struct {
 	httpClient *http.Client
 }
 
+func NewPingClient(httpClient *http.Client) *PingClient {
+	return &PingClient{httpClient: httpClient}
+}
+
 func RegisterPingWorker(i do.Injector) {
 	do.Provide(i, func(_ do.Injector) (*PingClient, error) {
-		return &PingClient{httpClient: &http.Client{Timeout: 30 * time.Second}}, nil
+		return NewPingClient(&http.Client{Timeout: 30 * time.Second}), nil
 	})
 }
 

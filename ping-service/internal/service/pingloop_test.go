@@ -3,20 +3,32 @@ package service
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/k8sclient"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/logger"
 )
 
 type mockPingWorker struct {
-	checkPodStatusFn func(ctx context.Context, params k8sclient.PingCheck) (bool, error)
+	checkObjectStatusFn func(ctx context.Context, params *dto.K8sObjectCheckParams) (bool, error)
 }
 
-func (m *mockPingWorker) CheckPodStatus(ctx context.Context, params k8sclient.PingCheck) (bool, error) {
-	return m.checkPodStatusFn(ctx, params)
+func (m *mockPingWorker) CheckObjectStatus(ctx context.Context, params *dto.K8sObjectCheckParams) (bool, error) {
+	return m.checkObjectStatusFn(ctx, params)
+}
+
+type mockURLResolver struct {
+	resolveFn func(ctx context.Context, params *dto.CheckParams) (*url.URL, error)
+}
+
+func (m *mockURLResolver) ResolveURL(ctx context.Context, params *dto.CheckParams) (*url.URL, error) {
+	return m.resolveFn(ctx, params)
 }
 
 type mockRecordWorker struct {
@@ -25,6 +37,20 @@ type mockRecordWorker struct {
 
 func (m *mockRecordWorker) Record(ctx context.Context, event *domain.ServerEvent) error {
 	return m.recordFn(ctx, event)
+}
+
+func newTestPingLoop(worker pingWorker) *PingLoopService {
+	return &PingLoopService{
+		pingWorker: worker,
+		urlResolver: &mockURLResolver{
+			resolveFn: func(_ context.Context, _ *dto.CheckParams) (*url.URL, error) {
+				return nil, errors.New("unexpected url resolve")
+			},
+		},
+		pingClient:      infrastructure.NewPingClient(&http.Client{}),
+		responseChecker: &ResponseChecker{bodyChecker: &infrastructure.BodyChecker{}},
+		logger:          logger.NewMockLogger(),
+	}
 }
 
 func TestPingAndRecordServer(t *testing.T) {
@@ -39,25 +65,22 @@ func TestPingAndRecordServer(t *testing.T) {
 	t.Run("successful ping sets StatusOn and updates score", func(t *testing.T) {
 		var recordedEvent *domain.ServerEvent
 		var updatedScore int64
-		s := &PingLoopService{
-			pingWorker: &mockPingWorker{
-				checkPodStatusFn: func(_ context.Context, _ k8sclient.PingCheck) (bool, error) {
-					return true, nil
-				},
+		s := newTestPingLoop(&mockPingWorker{
+			checkObjectStatusFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (bool, error) {
+				return true, nil
 			},
-			recordStatusWorker: &mockRecordWorker{
-				recordFn: func(_ context.Context, event *domain.ServerEvent) error {
-					recordedEvent = event
-					return nil
-				},
+		})
+		s.recordStatusWorker = &mockRecordWorker{
+			recordFn: func(_ context.Context, event *domain.ServerEvent) error {
+				recordedEvent = event
+				return nil
 			},
-			scoreUpdater: &mockScoreUpdater{
-				updateFn: func(_ context.Context, _ uint, nextScore int64) error {
-					updatedScore = nextScore
-					return nil
-				},
+		}
+		s.scoreUpdater = &mockScoreUpdater{
+			updateFn: func(_ context.Context, _ uint, nextScore int64) error {
+				updatedScore = nextScore
+				return nil
 			},
-			logger: logger.NewMockLogger(),
 		}
 
 		task := PingTask{Server: sv}
@@ -79,22 +102,20 @@ func TestPingAndRecordServer(t *testing.T) {
 	t.Run("ping error sets StatusOff", func(t *testing.T) {
 		var recordedEvent *domain.ServerEvent
 		log, capLog := logger.NewCapturingLogger()
-		s := &PingLoopService{
-			pingWorker: &mockPingWorker{
-				checkPodStatusFn: func(_ context.Context, _ k8sclient.PingCheck) (bool, error) {
-					return false, errors.New("connection refused")
-				},
+		s := newTestPingLoop(&mockPingWorker{
+			checkObjectStatusFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (bool, error) {
+				return false, errors.New("connection refused")
 			},
-			recordStatusWorker: &mockRecordWorker{
-				recordFn: func(_ context.Context, event *domain.ServerEvent) error {
-					recordedEvent = event
-					return nil
-				},
+		})
+		s.logger = log
+		s.recordStatusWorker = &mockRecordWorker{
+			recordFn: func(_ context.Context, event *domain.ServerEvent) error {
+				recordedEvent = event
+				return nil
 			},
-			scoreUpdater: &mockScoreUpdater{
-				updateFn: func(_ context.Context, _ uint, _ int64) error { return nil },
-			},
-			logger: log,
+		}
+		s.scoreUpdater = &mockScoreUpdater{
+			updateFn: func(_ context.Context, _ uint, _ int64) error { return nil },
 		}
 
 		s.pingAndRecordServer(t.Context(), PingTask{Server: sv})
@@ -111,22 +132,19 @@ func TestPingAndRecordServer(t *testing.T) {
 
 	t.Run("pod not running sets StatusOff", func(t *testing.T) {
 		var recordedEvent *domain.ServerEvent
-		s := &PingLoopService{
-			pingWorker: &mockPingWorker{
-				checkPodStatusFn: func(_ context.Context, _ k8sclient.PingCheck) (bool, error) {
-					return false, nil
-				},
+		s := newTestPingLoop(&mockPingWorker{
+			checkObjectStatusFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (bool, error) {
+				return false, nil
 			},
-			recordStatusWorker: &mockRecordWorker{
-				recordFn: func(_ context.Context, event *domain.ServerEvent) error {
-					recordedEvent = event
-					return nil
-				},
+		})
+		s.recordStatusWorker = &mockRecordWorker{
+			recordFn: func(_ context.Context, event *domain.ServerEvent) error {
+				recordedEvent = event
+				return nil
 			},
-			scoreUpdater: &mockScoreUpdater{
-				updateFn: func(_ context.Context, _ uint, _ int64) error { return nil },
-			},
-			logger: logger.NewMockLogger(),
+		}
+		s.scoreUpdater = &mockScoreUpdater{
+			updateFn: func(_ context.Context, _ uint, _ int64) error { return nil },
 		}
 
 		s.pingAndRecordServer(t.Context(), PingTask{Server: sv})
@@ -140,21 +158,19 @@ func TestPingAndRecordServer(t *testing.T) {
 
 	t.Run("record error is logged but not returned", func(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
-		s := &PingLoopService{
-			pingWorker: &mockPingWorker{
-				checkPodStatusFn: func(_ context.Context, _ k8sclient.PingCheck) (bool, error) {
-					return true, nil
-				},
+		s := newTestPingLoop(&mockPingWorker{
+			checkObjectStatusFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (bool, error) {
+				return true, nil
 			},
-			recordStatusWorker: &mockRecordWorker{
-				recordFn: func(_ context.Context, _ *domain.ServerEvent) error {
-					return errors.New("grpc error")
-				},
+		})
+		s.logger = log
+		s.recordStatusWorker = &mockRecordWorker{
+			recordFn: func(_ context.Context, _ *domain.ServerEvent) error {
+				return errors.New("grpc error")
 			},
-			scoreUpdater: &mockScoreUpdater{
-				updateFn: func(_ context.Context, _ uint, _ int64) error { return nil },
-			},
-			logger: log,
+		}
+		s.scoreUpdater = &mockScoreUpdater{
+			updateFn: func(_ context.Context, _ uint, _ int64) error { return nil },
 		}
 
 		s.pingAndRecordServer(t.Context(), PingTask{Server: sv})
@@ -165,26 +181,97 @@ func TestPingAndRecordServer(t *testing.T) {
 
 	t.Run("score update error is logged but not returned", func(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
-		s := &PingLoopService{
-			pingWorker: &mockPingWorker{
-				checkPodStatusFn: func(_ context.Context, _ k8sclient.PingCheck) (bool, error) {
-					return true, nil
-				},
+		s := newTestPingLoop(&mockPingWorker{
+			checkObjectStatusFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (bool, error) {
+				return true, nil
 			},
-			recordStatusWorker: &mockRecordWorker{
-				recordFn: func(_ context.Context, _ *domain.ServerEvent) error { return nil },
+		})
+		s.logger = log
+		s.recordStatusWorker = &mockRecordWorker{
+			recordFn: func(_ context.Context, _ *domain.ServerEvent) error { return nil },
+		}
+		s.scoreUpdater = &mockScoreUpdater{
+			updateFn: func(_ context.Context, _ uint, _ int64) error {
+				return errors.New("redis error")
 			},
-			scoreUpdater: &mockScoreUpdater{
-				updateFn: func(_ context.Context, _ uint, _ int64) error {
-					return errors.New("redis error")
-				},
-			},
-			logger: log,
 		}
 
 		s.pingAndRecordServer(t.Context(), PingTask{Server: sv})
 		if !capLog.HasError() {
 			t.Error("expected error log for score update failure")
+		}
+	})
+
+	t.Run("http-dns server pings HTTP endpoint and checks response", func(t *testing.T) {
+		var recordedEvent *domain.ServerEvent
+		var updatedScore int64
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ok"}`))
+		}))
+		defer server.Close()
+
+		sv := &domain.Server{
+			ID:        2,
+			Namespace: "default",
+			Kind:      "Service",
+			ObjectID:  "my-api",
+			Interval:  30 * time.Second,
+			HTTPConfig: &domain.ServerHTTPConfig{
+				Port:          8080,
+				EndpointPath:  "/health",
+				ExpectedCode:  200,
+				BodyCheckExpr: `status == "ok"`,
+				Method:        "GET",
+			},
+		}
+
+		s := &PingLoopService{
+			pingWorker: &mockPingWorker{
+				checkObjectStatusFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (bool, error) {
+					t.Fatal("pod status check should not run for http-dns server")
+					return false, nil
+				},
+			},
+			urlResolver: &mockURLResolver{
+				resolveFn: func(_ context.Context, params *dto.CheckParams) (*url.URL, error) {
+					if params.HTTPCheckParams.Port != 8080 || params.HTTPCheckParams.EndpointPath != "/health" || params.HTTPCheckParams.Method != "GET" {
+						t.Errorf("unexpected http params: %+v", params.HTTPCheckParams)
+					}
+					u, err := url.Parse(server.URL)
+					if err != nil {
+						t.Fatalf("parse server url: %v", err)
+					}
+					return u, nil
+				},
+			},
+			pingClient:      infrastructure.NewPingClient(&http.Client{}),
+			responseChecker: &ResponseChecker{bodyChecker: &infrastructure.BodyChecker{}},
+			recordStatusWorker: &mockRecordWorker{
+				recordFn: func(_ context.Context, event *domain.ServerEvent) error {
+					recordedEvent = event
+					return nil
+				},
+			},
+			scoreUpdater: &mockScoreUpdater{
+				updateFn: func(_ context.Context, _ uint, nextScore int64) error {
+					updatedScore = nextScore
+					return nil
+				},
+			},
+			logger: logger.NewMockLogger(),
+		}
+
+		s.pingAndRecordServer(t.Context(), PingTask{Server: sv})
+		if recordedEvent == nil {
+			t.Fatal("expected event to be recorded")
+		}
+		if recordedEvent.Status != domain.StatusOn {
+			t.Errorf("status = %q, want %q", recordedEvent.Status, domain.StatusOn)
+		}
+		if updatedScore <= 0 {
+			t.Errorf("expected positive updated score, got %d", updatedScore)
 		}
 	})
 }

@@ -7,7 +7,6 @@ import (
 	pinghandler "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/handler"
 	pinginfra "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/grpcclient"
-	pinggrpcserver "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/grpcserver"
 	pingk8s "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/k8sclient"
 	pingredis "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis"
 	pingrepo "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/repository"
@@ -40,9 +39,9 @@ func providers(dev bool) []func(do.Injector) {
 		config.RegisterK8sClient,
 		pingk8s.RegisterK8sClient,
 
-		pinggrpcserver.RegisterPingServer,
-
 		pingservice.RegisterResponseChecker,
+		pingservice.RegisterURLResolverService,
+		pinghandler.RegisterPingServer,
 
 		pingservice.RegisterPingService,
 		pingservice.RegisterLoopService,

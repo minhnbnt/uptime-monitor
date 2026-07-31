@@ -5,7 +5,7 @@ import (
 
 	"github.com/samber/do/v2"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
 	infra "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure"
 )
 
@@ -19,27 +19,27 @@ func RegisterResponseChecker(i do.Injector) {
 	})
 }
 
-func (rc *ResponseChecker) CheckResponse(endpoint domain.Endpoint, response infra.Response) error {
+func (rc *ResponseChecker) CheckResponse(http *dto.HTTPCheckParams, response infra.Response) error {
 
-	if endpoint.ExpectedCode > 0 && endpoint.ExpectedCode != response.StatusCode {
+	if http.ExpectedCode > 0 && http.ExpectedCode != response.StatusCode {
 		return fmt.Errorf(
 			"unexpected status code: got %d, want %d",
-			response.StatusCode, endpoint.ExpectedCode,
+			response.StatusCode, http.ExpectedCode,
 		)
 	}
 
-	if endpoint.BodyCheckExpr == nil || *endpoint.BodyCheckExpr == "" {
+	if http.BodyCheckExpr == "" {
 		return nil
 	}
 
-	ok, err := rc.bodyChecker.Check(response.Body, *endpoint.BodyCheckExpr)
+	ok, err := rc.bodyChecker.Check(response.Body, http.BodyCheckExpr)
 	if err != nil {
 		return fmt.Errorf("body check failed: %w", err)
 	}
 	if !ok {
 		return fmt.Errorf(
 			"body check expression evaluated to false: %q",
-			*endpoint.BodyCheckExpr,
+			http.BodyCheckExpr,
 		)
 	}
 

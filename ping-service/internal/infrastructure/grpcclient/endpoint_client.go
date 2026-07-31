@@ -52,16 +52,15 @@ func (c *EndpointClient) GetBatch(ctx context.Context, ids []uint) (map[uint]*do
 			ContainerName: ep.ContainerName,
 			Interval:      time.Duration(ep.IntervalMs) * time.Millisecond,
 			Timeout:       time.Duration(ep.TimeoutMs) * time.Millisecond,
-			PingType:      uint(ep.PingType),
 		}
 
 		if cfg := ep.GetHttpDnsConfig(); cfg != nil {
-			sv.Port = int(cfg.Port)
-			sv.EndpointPath = cfg.EndpointPath
-			sv.ExpectedCode = int(cfg.ExpectedCode)
-			sv.Method = cfg.Method
-			if cfg.BodyCheckExpr != "" {
-				sv.BodyCheckExpr = &cfg.BodyCheckExpr
+			sv.HTTPConfig = &domain.ServerHTTPConfig{
+				Port:          int(cfg.Port),
+				EndpointPath:  cfg.EndpointPath,
+				ExpectedCode:  int(cfg.ExpectedCode),
+				BodyCheckExpr: cfg.BodyCheckExpr,
+				Method:        cfg.Method,
 			}
 		}
 

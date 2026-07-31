@@ -11,7 +11,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/ping/v1"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
-	pinggrpcserver "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/grpcserver"
+	pinghandler "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/handler"
 )
 
 func getGrpcServer(ctx context.Context, injector do.Injector) *grpc.Server {
@@ -22,7 +22,7 @@ func getGrpcServer(ctx context.Context, injector do.Injector) *grpc.Server {
 		grpcServer.GracefulStop()
 	}()
 
-	server := do.MustInvoke[*pinggrpcserver.PingServer](injector)
+	server := do.MustInvoke[*pinghandler.PingServer](injector)
 	pingv1.RegisterPingServiceServer(grpcServer, server)
 
 	return grpcServer

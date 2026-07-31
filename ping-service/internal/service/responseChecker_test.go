@@ -3,54 +3,49 @@ package service
 import (
 	"testing"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
 	infra "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure"
 )
-
-func strptr(s string) *string { return &s }
 
 func TestResponseChecker_CheckResponse(t *testing.T) {
 	checker := &ResponseChecker{bodyChecker: &infra.BodyChecker{}}
 
 	tests := []struct {
 		name    string
-		ep      domain.Endpoint
+		http    *dto.HTTPCheckParams
 		resp    infra.Response
 		wantErr bool
 	}{
 		{
-			name:    "default no check",
-			ep:      domain.Endpoint{},
-			resp:    infra.Response{StatusCode: 500, Body: "anything"},
-			wantErr: false,
+			name: "default no check",
+			http: &dto.HTTPCheckParams{},
+			resp: infra.Response{StatusCode: 500, Body: "anything"},
 		},
 		{
 			name:    "status mismatch",
-			ep:      domain.Endpoint{ExpectedCode: 200},
+			http:    &dto.HTTPCheckParams{ExpectedCode: 200},
 			resp:    infra.Response{StatusCode: 500, Body: ""},
 			wantErr: true,
 		},
 		{
-			name:    "status ok no expr",
-			ep:      domain.Endpoint{ExpectedCode: 200},
-			resp:    infra.Response{StatusCode: 200, Body: "anything"},
-			wantErr: false,
+			name: "status ok no expr",
+			http: &dto.HTTPCheckParams{ExpectedCode: 200},
+			resp: infra.Response{StatusCode: 200, Body: "anything"},
 		},
 		{
-			name:    "status ok expr true",
-			ep:      domain.Endpoint{ExpectedCode: 200, BodyCheckExpr: strptr(`status == "ok"`)},
-			resp:    infra.Response{StatusCode: 200, Body: `{"status":"ok"}`},
-			wantErr: false,
+			name: "status ok expr true",
+			http: &dto.HTTPCheckParams{ExpectedCode: 200, BodyCheckExpr: `status == "ok"`},
+			resp: infra.Response{StatusCode: 200, Body: `{"status":"ok"}`},
 		},
 		{
 			name:    "status ok expr false",
-			ep:      domain.Endpoint{ExpectedCode: 200, BodyCheckExpr: strptr(`status == "ok"`)},
+			http:    &dto.HTTPCheckParams{ExpectedCode: 200, BodyCheckExpr: `status == "ok"`},
 			resp:    infra.Response{StatusCode: 200, Body: `{"status":"fail"}`},
 			wantErr: true,
 		},
 		{
 			name:    "expr error is fail-safe",
-			ep:      domain.Endpoint{ExpectedCode: 200, BodyCheckExpr: strptr(`status =`)},
+			http:    &dto.HTTPCheckParams{ExpectedCode: 200, BodyCheckExpr: `status =`},
 			resp:    infra.Response{StatusCode: 200, Body: "x"},
 			wantErr: true,
 		},
@@ -58,7 +53,7 @@ func TestResponseChecker_CheckResponse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := checker.CheckResponse(tt.ep, tt.resp)
+			err := checker.CheckResponse(tt.http, tt.resp)
 			if tt.wantErr && err == nil {
 				t.Fatal("expected error, got nil")
 			}

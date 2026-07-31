@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -15,23 +16,17 @@ import (
 type debeziumMessage struct {
 	Before *debeziumServerData `json:"before"`
 	After  *debeziumServerData `json:"after"`
-	Op     string              `json:"op"` // c=create, u=update, d=delete
+	Op     string              `json:"op"` // c=create, r=read, u=update, d=delete
 }
 
 type debeziumServerData struct {
-	ID            uint    `json:"id"`
-	Namespace     string  `json:"namespace"`
-	Kind          string  `json:"kind"`
-	ObjectID      string  `json:"object_id"`
-	ContainerName string  `json:"container_name"`
-	Interval      int64   `json:"interval"`
-	Timeout       int64   `json:"timeout"`
-	PingType      uint    `json:"ping_type"`
-	Port          int     `json:"port"`
-	EndpointPath  string  `json:"endpoint_path"`
-	ExpectedCode  int     `json:"expected_code"`
-	BodyCheckExpr *string `json:"body_check_expr"`
-	Method        string  `json:"method"`
+	ID            uint   `json:"id"`
+	Namespace     string `json:"namespace"`
+	Kind          string `json:"kind"`
+	ObjectID      string `json:"object_id"`
+	ContainerName string `json:"container_name"`
+	Interval      int64  `json:"interval"`
+	Timeout       int64  `json:"timeout"`
 }
 
 func (d *debeziumServerData) toDomain() domain.Server {
@@ -43,12 +38,6 @@ func (d *debeziumServerData) toDomain() domain.Server {
 		ContainerName: d.ContainerName,
 		Interval:      time.Duration(d.Interval),
 		Timeout:       time.Duration(d.Timeout),
-		PingType:      d.PingType,
-		Port:          d.Port,
-		EndpointPath:  d.EndpointPath,
-		ExpectedCode:  d.ExpectedCode,
-		BodyCheckExpr: d.BodyCheckExpr,
-		Method:        d.Method,
 	}
 }
 
@@ -109,6 +98,7 @@ func (p *messageProcessor) ProcessMessage(ctx context.Context, msg redis.XMessag
 
 	rawStr, ok := raw.(string)
 	if !ok {
+
 		p.logger.Warn(
 			"stream message value not string",
 			slog.String("id", msg.ID),
@@ -129,46 +119,36 @@ func (p *messageProcessor) ProcessMessage(ctx context.Context, msg redis.XMessag
 		return false
 	}
 
-	switch event.Op {
-	case "c", "r":
-		if err := p.onCreate(ctx, event); err != nil {
-			p.logger.Error("handle server",
-				slog.Uint64("server_id", uint64(event.After.ID)),
-				slog.String("op", event.Op),
-				slog.Any("error", err),
-			)
+	if err := p.handleEvent(ctx, &event); err != nil {
 
-			return false
-		}
+		p.logger.Error(
+			"handle event",
+			slog.String("id", msg.ID),
+			slog.String("op", event.Op),
+			slog.Any("error", err),
+		)
 
-	case "u":
-		if err := p.onUpdate(ctx, event); err != nil {
-			p.logger.Error("handle server",
-				slog.Uint64("server_id", uint64(event.After.ID)),
-				slog.String("op", event.Op),
-				slog.Any("error", err),
-			)
-
-			return false
-		}
-
-	case "d":
-		if err := p.onDelete(ctx, event); err != nil {
-			p.logger.Error("handle server",
-				slog.Uint64("server_id", uint64(event.Before.ID)),
-				slog.String("op", event.Op),
-				slog.Any("error", err),
-			)
-
-			return false
-		}
-
-	default:
-		p.logger.Warn("unknown operation", slog.String("op", event.Op))
 		return false
 	}
 
 	return true
+}
+
+func (p *messageProcessor) handleEvent(ctx context.Context, event *debeziumMessage) error {
+
+	switch event.Op {
+	case "c", "r":
+		return p.onCreate(ctx, *event)
+
+	case "u":
+		return p.onUpdate(ctx, *event)
+
+	case "d":
+		return p.onDelete(ctx, *event)
+
+	default:
+		return fmt.Errorf("unknown operation: %s", event.Op)
+	}
 }
 
 func resolveDeletedID(event debeziumMessage) (uint, error) {
