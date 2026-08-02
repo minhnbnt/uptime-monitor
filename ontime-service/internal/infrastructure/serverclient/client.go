@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 
 	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/server/v1"
@@ -31,12 +32,12 @@ func RegisterClient(i do.Injector) {
 
 func (c *Client) GetServer(
 	ctx context.Context,
-	serverID, userID uint,
+	serverID uint, userID uuid.UUID,
 ) (*ServerBrief, error) {
 
 	request := serverv1.GetServerRequest{
 		ServerId: uint64(serverID),
-		UserId:   uint64(userID),
+		UserId:   userID.String(),
 	}
 
 	resp, err := c.client.GetServer(ctx, &request)
@@ -53,14 +54,14 @@ func (c *Client) GetServer(
 
 func (c *Client) ListServers(
 	ctx context.Context,
-	userID uint,
+	userID uuid.UUID,
 	page, perPage int,
 ) ([]ServerBrief, error) {
 
 	request := serverv1.ListServersRequest{
 		Page:    int32(page),
 		PerPage: int32(perPage),
-		UserId:  uint64(userID),
+		UserId:  userID.String(),
 	}
 
 	resp, err := c.client.ListServers(ctx, &request)

@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/domain"
@@ -26,7 +27,7 @@ func TestServerFromDomain(t *testing.T) {
 			ContainerName: "nginx",
 			Interval:      30 * time.Second,
 			Timeout:       10 * time.Second,
-			CreatedByID:   1,
+			CreatedByID:   uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 		}
 
 		got := ServerFromDomain(srv)

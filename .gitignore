@@ -20,6 +20,10 @@ go.work.sum
 .env
 .env.local
 .env.*.local
+.env.gotrue-es256
+
+# Compiled keygen binary
+tools/keygen/keygen
 
 generated/
 

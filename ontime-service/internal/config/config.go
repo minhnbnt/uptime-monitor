@@ -6,6 +6,11 @@ type Config struct {
 	Log    LogConfig    `mapstructure:"log"`
 	Server ServerConfig `mapstructure:"server"`
 	GRPC   GRPCConfig   `mapstructure:"grpc"`
+	Auth   AuthConfig   `mapstructure:"auth"`
+}
+
+type AuthConfig struct {
+	Issuer string `mapstructure:"issuer"`
 }
 
 type ServerConfig struct {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 
@@ -49,6 +50,11 @@ func (s *ServerServer) GetServer(
 	req *serverv1.GetServerRequest,
 ) (*serverv1.GetServerResponse, error) {
 
+	userID, err := parseUserID(req.UserId)
+	if err != nil {
+		return nil, err
+	}
+
 	server, err := s.serverReader.GetServer(ctx, uint(req.ServerId))
 	if errors.Is(err, apperrors.ErrNotFound) {
 		return nil, fmt.Errorf("server not found")
@@ -57,7 +63,7 @@ func (s *ServerServer) GetServer(
 		return nil, fmt.Errorf("get server: %w", err)
 	}
 
-	if server.CreatedByID != uint(req.UserId) {
+	if server.CreatedByID != userID {
 		return nil, fmt.Errorf("server not found")
 	}
 
@@ -71,8 +77,13 @@ func (s *ServerServer) ListServers(
 	req *serverv1.ListServersRequest,
 ) (*serverv1.ListServersResponse, error) {
 
+	userID, err := parseUserID(req.UserId)
+	if err != nil {
+		return nil, err
+	}
+
 	servers, _, err := s.serverReader.ListServers(
-		ctx, uint(req.UserId),
+		ctx, userID,
 		int(req.Page), int(req.PerPage),
 	)
 
@@ -101,7 +112,12 @@ func (s *ServerServer) SearchServers(
 		SortOrder: req.SortOrder,
 	}
 
-	servers, _, err := s.serverReader.SearchServers(ctx, params, uint(req.UserId))
+	userID, err := parseUserID(req.UserId)
+	if err != nil {
+		return nil, err
+	}
+
+	servers, _, err := s.serverReader.SearchServers(ctx, params, userID)
 	if err != nil {
 		s.logger.Error("search servers failed", slog.Any("error", err))
 		return nil, fmt.Errorf("search servers: %w", err)
@@ -123,7 +139,12 @@ func (s *ServerServer) CountServersByStatus(
 	req *serverv1.CountServersByStatusRequest,
 ) (*serverv1.CountServersByStatusResponse, error) {
 
-	total, online, offline, err := s.serverReader.CountByStatus(ctx, uint(req.UserId))
+	userID, err := parseUserID(req.UserId)
+	if err != nil {
+		return nil, err
+	}
+
+	total, online, offline, err := s.serverReader.CountByStatus(ctx, userID)
 	if err != nil {
 		s.logger.Error("count servers by status failed", slog.Any("error", err))
 		return nil, fmt.Errorf("count servers by status: %w", err)
@@ -147,6 +168,14 @@ func (s *ServerServer) BatchCreateServers(
 	}
 
 	return &serverv1.BatchCreateServersResponse{Results: results}, nil
+}
+
+func parseUserID(raw string) (uuid.UUID, error) {
+	userID, err := uuid.Parse(raw)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("invalid user id: %w", err)
+	}
+	return userID, nil
 }
 
 func serverBriefFromDTO(sv dto.Server) *serverv1.ServerBrief {

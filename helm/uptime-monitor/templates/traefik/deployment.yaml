@@ -39,6 +39,7 @@ spec:
             - --api.insecure=true
             - --providers.kubernetescrd
             - --providers.kubernetescrd.allowEmptyServices=true
+            - --providers.kubernetescrd.disableClusterScopeResources=true
             - --entrypoints.web.address=:{{ .Values.traefik.httpPort }}
             - --entrypoints.traefik.address=:{{ .Values.traefik.adminPort }}
           ports:

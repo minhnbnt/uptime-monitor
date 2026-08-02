@@ -46,10 +46,14 @@ func RunWebServer(ctx context.Context, i do.Injector) {
 		panic(err)
 	}
 
-	middleWare := authclient.NewAuthMiddleware(log)
-	muxHandler := middleWare.XUserIDMiddleware(srv)
-
 	cfg := do.MustInvoke[*config.Config](i)
+
+	authMW, err := authclient.NewAuthMiddleware(ctx, cfg.Auth.Issuer, log)
+	if err != nil {
+		log.Error("failed to create auth middleware", slog.Any("error", err))
+		panic(err)
+	}
+	muxHandler := authMW.Middleware(srv)
 
 	httpServer := http.Server{
 		Addr:    ":" + cfg.Server.Port,

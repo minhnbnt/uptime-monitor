@@ -1,5 +1,5 @@
 global:
-  externalHost: 172.27.102.17
+  externalHost: 192.168.122.1
   image:
     registry: ghcr.io/minhnbnt/uptime-monitor
     tag: latest
@@ -33,58 +33,30 @@ cors:
 infra:
   postgres:
     enabled: true
-    address: 172.27.102.17
+    address: 192.168.122.1
     port: 5432
   pgbouncer:
     enabled: true
-    address: 172.27.102.17
+    address: 192.168.122.1
     port: 6432
   redis:
     enabled: true
-    address: 172.27.102.17
+    address: 192.168.122.1
     port: 6379
   temporal:
     enabled: true
-    address: 172.27.102.17
+    address: 192.168.122.1
     port: 7233
   mailpit:
     enabled: true
-    address: 172.27.102.17
+    address: 192.168.122.1
     port: 1025
+  gotrue:
+    enabled: true
+    address: 192.168.122.1
+    port: 9999
 
 apps:
-  auth-service:
-    enabled: true
-    port: 8081
-    grpcPort:
-    replicas: 1
-    ingress:
-      - /api/v1/auth
-    config:
-      server:
-        port: 8081
-      db:
-        host: pgbouncer.uptime-monitor.svc.cluster.local
-        port: 6432
-        user: auth
-        dbname: auth
-      redis:
-        addr: redis.uptime-monitor.svc.cluster.local:6379
-        db: 0
-      token:
-        access_ttl: 15m
-        refresh_ttl: 168h
-        access_issuer: uptime-monitor
-        refresh_issuer: uptime-monitor-refresh
-      argon2:
-        memory: 16384
-        iterations: 2
-        parallelism: 1
-        salt_length: 16
-        key_length: 32
-      log:
-        level: info
-
   server-service:
     enabled: true
     port: 8080
@@ -127,6 +99,8 @@ apps:
         from_address: noreply@uptime.local
       scheduler:
         backend: redis
+      auth:
+        issuer: http://gotrue.uptime-monitor.svc.cluster.local:9999
       log:
         level: info
 
@@ -175,6 +149,8 @@ apps:
         addr: redis.uptime-monitor.svc.cluster.local:6379
         db: 0
         password: ""
+      auth:
+        issuer: http://gotrue.uptime-monitor.svc.cluster.local:9999
       log:
         level: info
 
@@ -191,6 +167,8 @@ apps:
         port: 8086
       grpc:
         server_addr: server-service-grpc.uptime-monitor.svc.cluster.local:50051
+      auth:
+        issuer: http://gotrue.uptime-monitor.svc.cluster.local:9999
       log:
         level: info
 
@@ -223,8 +201,9 @@ apps:
         from_address: noreply@uptime-monitor.local
         disable_security: true
         tls_insecure_skip_verify: false
-      auth_service:
-        addr: http://auth-service.uptime-monitor.svc.cluster.local:8081
+      auth:
+        issuer: http://gotrue.uptime-monitor.svc.cluster.local:9999
+        service_token: CHANGE_ME
       server_service:
         addr: http://server-service.uptime-monitor.svc.cluster.local:8080
       ontime_service:

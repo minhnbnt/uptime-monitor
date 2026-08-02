@@ -7,6 +7,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 	"github.com/samber/lo/it"
@@ -17,8 +18,8 @@ import (
 )
 
 type ServerClient interface {
-	ListServers(ctx context.Context, userID uint, page, perPage int) ([]serverclient.ServerBrief, error)
-	GetServer(ctx context.Context, serverID uint, userID uint) (*serverclient.ServerBrief, error)
+	ListServers(ctx context.Context, userID uuid.UUID, page, perPage int) ([]serverclient.ServerBrief, error)
+	GetServer(ctx context.Context, serverID uint, userID uuid.UUID) (*serverclient.ServerBrief, error)
 }
 
 type OntimeService struct {
@@ -45,7 +46,7 @@ func RegisterOntimeService(i do.Injector) {
 	})
 }
 
-func (s *OntimeService) ListServersWithOntime(ctx context.Context, userID uint, page, perPage int) ([]dto.ServerOntime, error) {
+func (s *OntimeService) ListServersWithOntime(ctx context.Context, userID uuid.UUID, page, perPage int) ([]dto.ServerOntime, error) {
 
 	servers, err := s.serverClient.ListServers(ctx, userID, page, perPage)
 	if err != nil {
@@ -69,7 +70,7 @@ func (s *OntimeService) ListServersWithOntime(ctx context.Context, userID uint, 
 	return out, nil
 }
 
-func (s *OntimeService) GetServersOntime(ctx context.Context, userID uint, maxRecords int) (map[uint][]dto.OntimeStats, error) {
+func (s *OntimeService) GetServersOntime(ctx context.Context, userID uuid.UUID, maxRecords int) (map[uint][]dto.OntimeStats, error) {
 
 	perPage := maxRecords
 	if perPage <= 0 {
@@ -78,14 +79,14 @@ func (s *OntimeService) GetServersOntime(ctx context.Context, userID uint, maxRe
 
 	servers, err := s.serverClient.ListServers(ctx, userID, 1, perPage)
 	if err != nil {
-		s.logger.Error("failed to list servers for ontime", slog.Uint64("user_id", uint64(userID)), slog.Any("error", err))
+		s.logger.Error("failed to list servers for ontime", slog.String("user_id", userID.String()), slog.Any("error", err))
 		return nil, err
 	}
 
 	return s.getServersOntime(ctx, servers)
 }
 
-func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID, userID uint) (*dto.ServerOntime, error) {
+func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID uint, userID uuid.UUID) (*dto.ServerOntime, error) {
 
 	server, err := s.serverClient.GetServer(ctx, serverID, userID)
 	if err != nil {

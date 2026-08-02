@@ -2,7 +2,9 @@ package handler
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 
@@ -28,7 +30,12 @@ func (s *OntimeGRPCServer) GetServersOntime(
 	ctx context.Context, req *eventv1.GetServersOntimeRequest,
 ) (*eventv1.GetServersOntimeResponse, error) {
 
-	ontimeMap, err := s.ontimeService.GetServersOntime(ctx, uint(req.UserId), int(req.MaxRecords))
+	userID, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user id: %w", err)
+	}
+
+	ontimeMap, err := s.ontimeService.GetServersOntime(ctx, userID, int(req.MaxRecords))
 	if err != nil {
 		return nil, err
 	}

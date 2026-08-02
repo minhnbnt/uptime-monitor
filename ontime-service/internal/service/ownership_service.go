@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/consumer"
@@ -24,11 +25,11 @@ func RegisterOwnershipService(i do.Injector) {
 	})
 }
 
-func (s *OwnershipService) OnCreate(ctx context.Context, serverID, userID uint) error {
+func (s *OwnershipService) OnCreate(ctx context.Context, serverID uint, userID uuid.UUID) error {
 	return s.repo.Upsert(ctx, serverID, userID, nil)
 }
 
-func (s *OwnershipService) OnUpdate(ctx context.Context, serverID, userID uint, deletedAt *time.Time) error {
+func (s *OwnershipService) OnUpdate(ctx context.Context, serverID uint, userID uuid.UUID, deletedAt *time.Time) error {
 	return s.repo.Upsert(ctx, serverID, userID, deletedAt)
 }
 

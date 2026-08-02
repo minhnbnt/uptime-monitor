@@ -5,7 +5,12 @@ type Config struct {
 	Redis      RedisConfig `mapstructure:"redis"`
 	Log        LogConfig   `mapstructure:"log"`
 	GRPC       GRPCConfig  `mapstructure:"grpc"`
+	Auth       AuthConfig  `mapstructure:"auth"`
 	Kubeconfig string      `mapstructure:"kubeconfig"`
+}
+
+type AuthConfig struct {
+	Issuer string `mapstructure:"issuer"`
 }
 
 type GRPCConfig struct {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/common/authclient"
@@ -14,9 +15,9 @@ import (
 )
 
 type NotificationService interface {
-	GetNotificationConfig(ctx context.Context, userID uint) (*dto.NotificationConfigResponse, error)
-	UpdateNotificationConfig(ctx context.Context, userID uint, req *dto.NotificationConfigRequest) error
-	SendReport(ctx context.Context, userID uint) error
+	GetNotificationConfig(ctx context.Context, userID uuid.UUID) (*dto.NotificationConfigResponse, error)
+	UpdateNotificationConfig(ctx context.Context, userID uuid.UUID, req *dto.NotificationConfigRequest) error
+	SendReport(ctx context.Context, userID uuid.UUID) error
 }
 
 type NotificationHandler struct {

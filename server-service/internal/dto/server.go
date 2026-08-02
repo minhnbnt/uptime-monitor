@@ -3,6 +3,8 @@ package dto
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/domain"
 )
 
@@ -15,7 +17,7 @@ type Server struct {
 	ContainerName string
 	Interval      time.Duration
 	Timeout       time.Duration
-	CreatedByID   uint
+	CreatedByID   uuid.UUID
 	MonitorStatus domain.ServerStatus
 	HttpConfig    *HttpConfig
 	CreatedAt     time.Time

@@ -1,4 +1,4 @@
-FROM bufbuild/buf:1.71 as buf
+FROM bufbuild/buf:1.72.0 as buf
 
 COPY common/proto /proto
 WORKDIR /proto

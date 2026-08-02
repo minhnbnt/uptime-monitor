@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 
@@ -16,7 +17,7 @@ type StatusClient interface {
 	GetCurrentStatuses(ctx context.Context, serverIDs []uint) (
 		map[uint]domain.ServerStatus, error,
 	)
-	CountByStatus(ctx context.Context, userID uint) (
+	CountByStatus(ctx context.Context, userID uuid.UUID) (
 		online, offline int64, err error,
 	)
 }
@@ -81,9 +82,9 @@ func (c *EventClient) GetCurrentStatuses(
 	), nil
 }
 
-func (c *EventClient) CountByStatus(ctx context.Context, userID uint) (online, offline int64, err error) {
+func (c *EventClient) CountByStatus(ctx context.Context, userID uuid.UUID) (online, offline int64, err error) {
 
-	request := eventv1.CountByStatusRequest{UserId: uint64(userID)}
+	request := eventv1.CountByStatusRequest{UserId: userID.String()}
 	resp, err := c.client.CountByStatus(ctx, &request)
 	if err != nil {
 		return 0, 0, fmt.Errorf("count by status: %w", err)

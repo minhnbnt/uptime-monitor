@@ -1,0 +1,336 @@
+{{- $ns := include "uptime-monitor.namespace" . -}}
+{{- $ext := .Values.global.externalHost -}}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: {{ $ns }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: {{ $ns }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - port: 53
+      protocol: UDP
+    - port: 53
+      protocol: TCP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-apiserver
+  namespace: {{ $ns }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+  - to:
+    - ipBlock:
+        cidr: {{ .Values.global.apiserverCIDR }}
+    ports:
+    - port: 6443
+      protocol: TCP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: server-service
+  namespace: {{ $ns }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: server-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: traefik
+    ports:
+    - port: {{ index .Values.apps "server-service" "port" }}
+      protocol: TCP
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: notification-service
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: ping-service
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: ontime-service
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: importer-service
+    ports:
+    - port: {{ index .Values.apps "server-service" "grpcPort" }}
+      protocol: TCP
+  egress:
+  - to:
+    - ipBlock:
+        cidr: {{ $ext }}/32
+    ports:
+    - port: 6432
+      protocol: TCP
+    - port: 6379
+      protocol: TCP
+    - port: 7233
+      protocol: TCP
+    - port: 1025
+      protocol: TCP
+    - port: 9999
+      protocol: TCP
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: ping-service
+    ports:
+    - port: {{ index .Values.apps "ping-service" "grpcPort" }}
+      protocol: TCP
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: ontime-service
+    ports:
+    - port: {{ index .Values.apps "ontime-service" "grpcPort" }}
+      protocol: TCP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ping-service
+  namespace: {{ $ns }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: ping-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: server-service
+    ports:
+    - port: {{ index .Values.apps "ping-service" "grpcPort" }}
+      protocol: TCP
+  egress:
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    - ipBlock:
+        cidr: "::/0"
+  - to:
+    - namespaceSelector: {}
+  - to:
+    - ipBlock:
+        cidr: {{ $ext }}/32
+    ports:
+    - port: 6379
+      protocol: TCP
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: server-service
+    ports:
+    - port: {{ index .Values.apps "server-service" "grpcPort" }}
+      protocol: TCP
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: ontime-service
+    ports:
+    - port: {{ index .Values.apps "ontime-service" "grpcPort" }}
+      protocol: TCP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ontime-service
+  namespace: {{ $ns }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: ontime-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: traefik
+    ports:
+    - port: {{ index .Values.apps "ontime-service" "port" }}
+      protocol: TCP
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: notification-service
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: ping-service
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: server-service
+    ports:
+    - port: {{ index .Values.apps "ontime-service" "grpcPort" }}
+      protocol: TCP
+  egress:
+  - to:
+    - ipBlock:
+        cidr: {{ $ext }}/32
+    ports:
+    - port: 6432
+      protocol: TCP
+    - port: 6379
+      protocol: TCP
+    - port: 9999
+      protocol: TCP
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: server-service
+    ports:
+    - port: {{ index .Values.apps "server-service" "grpcPort" }}
+      protocol: TCP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: importer-service
+  namespace: {{ $ns }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: importer-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: traefik
+    ports:
+    - port: {{ index .Values.apps "importer-service" "port" }}
+      protocol: TCP
+  egress:
+  - to:
+    - ipBlock:
+        cidr: {{ $ext }}/32
+    ports:
+    - port: 9999
+      protocol: TCP
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: server-service
+    ports:
+    - port: {{ index .Values.apps "server-service" "grpcPort" }}
+      protocol: TCP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: notification-service
+  namespace: {{ $ns }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: notification-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: traefik
+    ports:
+    - port: {{ index .Values.apps "notification-service" "port" }}
+      protocol: TCP
+  egress:
+  - to:
+    - ipBlock:
+        cidr: {{ $ext }}/32
+    ports:
+    - port: 6432
+      protocol: TCP
+    - port: 7233
+      protocol: TCP
+    - port: 1025
+      protocol: TCP
+    - port: 9999
+      protocol: TCP
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: server-service
+    ports:
+    - port: {{ index .Values.apps "server-service" "grpcPort" }}
+      protocol: TCP
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: ontime-service
+    ports:
+    - port: {{ index .Values.apps "ontime-service" "grpcPort" }}
+      protocol: TCP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: traefik
+  namespace: {{ $ns }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: traefik
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+  - from:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    - ipBlock:
+        cidr: "::/0"
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/part-of: uptime-monitor

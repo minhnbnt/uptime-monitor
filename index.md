@@ -28,23 +28,22 @@
 
 # Tech stack / Kiến trúc tổng quan
 
-> **Cập nhật:** dự án đã được tách từ một monolith Go duy nhất sang kiến trúc **microservices**, gồm **6 service** độc lập, mỗi service là một Go module riêng (`go.mod` riêng, build/deploy độc lập), giao tiếp với nhau qua **REST (đi qua API Gateway)**, **gRPC (nội bộ, service-to-service)** và **CDC (Change Data Capture) bất đồng bộ qua Debezium + Redis Streams**.
+> **Cập nhật:** dự án đã được tách từ một monolith Go duy nhất sang kiến trúc **microservices**, gồm **5 service** độc lập, mỗi service là một Go module riêng (`go.mod` riêng, build/deploy độc lập), giao tiếp với nhau qua **REST (đi qua API Gateway)**, **gRPC (nội bộ, service-to-service)** và **CDC (Change Data Capture) bất đồng bộ qua Debezium + Redis Streams**.
 
 ## Danh sách service
 
 | Service | Vai trò | Giao tiếp ra ngoài | Database riêng |
 |---|---|---|---|
-| **auth-service** | Đăng ký / đăng nhập, phát hành & thu hồi JWT, xác thực request hộ các service khác (forward-auth) | REST (`/api/v1/auth/*`) + endpoint `/auth/verify` cho Traefik ForwardAuth | `auth` |
 | **server-service** | CRUD server/endpoint, tìm kiếm full-text, expose dữ liệu server/endpoint cho service khác qua gRPC | REST (`/api/v1/servers/*`) + gRPC server (`ServerService`, `EndpointService` — port `50051`) | `server` |
 | **ping-service** | Thực thi việc ping endpoint theo lịch (ZSET), không có REST API, chỉ có gRPC server để test-ping theo yêu cầu | gRPC server (`PingService` — port `50053`); gRPC client gọi sang `server-service` (lấy danh sách endpoint) và `ontime-service` (ghi nhận event) | *(không có, stateless)* |
 | **ontime-service** | Ghi nhận event ON/OFF, tính uptime/ontime theo ngày, expose thống kê cho service khác | REST (`/api/v1/servers/ontime/*`) + gRPC server (`EventRecorderService`, `StatusService`, `OntimeService` — port `50052`) | `analytics` |
 | **notification-service** | Cấu hình digest email của user, chạy workflow gửi báo cáo định kỳ qua Temporal | REST (`/api/v1/notifications/*`) | `notification` |
 | **importer-service** | Import/export danh sách server bằng Excel (gọi sang `server-service` qua gRPC để tạo hàng loạt) | REST (`/api/v1/servers/import`, `/api/v1/servers/export`) | *(không có, stateless)* |
 
-Ngoài 6 service trên, còn có 2 thư viện dùng chung (`common/`):
+Ngoài 5 service trên, còn có 2 thư viện dùng chung (`common/`):
 
 * **`common/proto`** — định nghĩa toàn bộ hợp đồng gRPC (`.proto`) giữa các service, sinh code bằng `buf generate` (`make gen-proto`).
-* **`common/authclient`** — middleware đọc header `X-User-ID` (do `auth-service` set sau khi xác thực) và đưa vào `context`, dùng chung cho các service cần biết user hiện tại.
+* **`common/authclient`** — middleware xác thực JWT (OIDC Discovery qua `go-oidc`) dùng chung cho các service có REST API: verify access token do **GoTrue** phát hành, lấy user hiện tại (claim `sub`, dạng UUID) và đưa vào `context` qua `GetUserID(ctx)`.
 
 ## Ngôn ngữ & framework nền
 
@@ -71,15 +70,14 @@ Interface vẫn được định nghĩa ở nơi **sử dụng** (consumer), kh�
 
 Ba kênh giao tiếp được dùng, tuỳ theo yêu cầu về độ trễ và độ tin cậy:
 
-1. **REST qua API Gateway (Traefik)** — client bên ngoài gọi vào Traefik, Traefik route theo `PathPrefix` tới đúng service (`/api/v1/auth` → auth-service, `/api/v1/servers` → server-service, `/api/v1/servers/ontime` → ontime-service, `/api/v1/servers/import|export` → importer-service, `/api/v1/notifications` → notification-service). Các route cần đăng nhập đi qua middleware `forward-auth`: Traefik gọi `auth-service`'s `/auth/verify`, nếu hợp lệ thì auth-service trả về header `X-User-ID`, Traefik gắn header này vào request gốc trước khi forward tiếp — nhờ vậy các service phía sau **không cần tự verify JWT**, chỉ cần đọc `X-User-ID` (qua middleware dùng chung `common/authclient`).
+1. **REST qua API Gateway (Traefik)** — client bên ngoài gọi vào Traefik, Traefik route theo `PathPrefix` tới đúng service (`/api/v1/servers` → server-service, `/api/v1/servers/ontime` → ontime-service, `/api/v1/servers/import|export` → importer-service, `/api/v1/notifications` → notification-service). Client gọi `/auth/v1/token?grant_type=password` của **GoTrue** (cũng đi qua Traefik) để lấy access token. Các route cần đăng nhập tự verify JWT ở từng service qua middleware dùng chung `common/authclient` (OIDC Discovery, lấy issuer từ config `auth.issuer`) — **không còn forward-auth**, mỗi service tự xác thực request.
 2. **gRPC nội bộ** — dùng khi một service cần dữ liệu/tính toán từ service khác với độ trễ thấp, ví dụ: `ping-service` gọi `server-service.EndpointService` để lấy danh sách endpoint cần ping, gọi `ontime-service.EventRecorderService` để ghi nhận kết quả ON/OFF; `importer-service` gọi `server-service.ServerService.BatchCreateServers` khi import Excel; `server-service` gọi `ping-service.PingService` khi người dùng bấm "test endpoint" (ping đồng bộ, không qua lịch); `notification-service` gọi `server-service` và `ontime-service` để lấy danh sách server và số liệu ontime khi build báo cáo digest.
 3. **CDC bất đồng bộ (Debezium → Redis Streams)** — `server-service` là nơi duy nhất ghi (write) vào bảng `servers`/`endpoints`, nhưng `ontime-service` cần biết ai sở hữu server nào để tính/lọc ontime theo user mà không phải gọi gRPC đồng bộ liên tục. **Debezium Server** đọc **logical replication** (WAL) trực tiếp từ Postgres của `server-service` (bảng `servers`, `endpoints`), publish thay đổi (insert/update/delete) vào Redis Stream `uptime.public.servers`. `ontime-service` có một consumer (`OwnershipConsumer`, dùng Redis Consumer Group) lắng nghe stream này để đồng bộ bảng `server_owners` cục bộ của mình — đây là cách hai service giữ dữ liệu **eventually consistent** mà không tạo phụ thuộc đồng bộ, không cần gọi ngược từ server-service mỗi khi có thay đổi.
 
 ## Cơ sở dữ liệu & lưu trữ — mỗi service một database (database-per-service)
 
-Không còn một Postgres dùng chung cho tất cả — mỗi service có **database riêng**, cùng chạy trên một instance Postgres (`paradedb/paradedb`) khi dev, nhưng tách quyền truy cập bằng user/database riêng (`init.sql` tạo sẵn 4 user/database: `auth`, `server`, `analytics`, `notification`):
+Không còn một Postgres dùng chung cho tất cả — mỗi service có **database riêng**, cùng chạy trên một instance Postgres (`paradedb/paradedb`) khi dev, nhưng tách quyền truy cập bằng user/database riêng (`init.sql` tạo sẵn 3 user/database: `server`, `analytics`, `notification`):
 
-* **`auth`** (auth-service) — bảng `users`.
 * **`server`** (server-service) — bảng `servers`, `endpoints`. Đây cũng là database duy nhất bật extension **`pg_search`** (ParadeDB, BM25 full-text search) và **`wal_level=logical`** để phục vụ CDC.
 * **`analytics`** (ontime-service) — bảng `server_events` (lịch sử ON/OFF) và `server_owners` (bản sao quan hệ server↔user, đồng bộ qua CDC như mô tả ở trên).
 * **`notification`** (notification-service) — bảng `notification_configs`.
@@ -88,7 +86,7 @@ Không còn một Postgres dùng chung cho tất cả — mỗi service có **da
 Các thành phần lưu trữ dùng chung hạ tầng:
 
 * **PgBouncer** — connection pooler đặt trước Postgres (transaction pooling mode) cho các service cần DB, giúp chịu tải tốt hơn khi nhiều goroutine/worker cùng mở kết nối.
-* **Redis** — dùng cho nhiều mục đích khác nhau tuỳ service: cache/blacklist token (auth-service), **ZSET scheduler** cho việc ping (ping-service), transport cho CDC stream (Debezium → ontime-service), cache kết quả tính ontime (ontime-service).
+* **Redis** — dùng cho nhiều mục đích khác nhau tuỳ service: **ZSET scheduler** cho việc ping (ping-service), transport cho CDC stream (Debezium → ontime-service), cache kết quả tính ontime (ontime-service).
 
 ## Cơ chế điều độ ping
 
@@ -107,10 +105,10 @@ Khác với bản monolith trước đây (có 2 cơ chế song song ZSET + Temp
 
 ## Auth & bảo mật
 
-* **JWT** (`golang-jwt/jwt/v5`) cho access token, do `auth-service` phát hành và xác thực.
-* **Argon2** cho hashing mật khẩu.
-* Cơ chế **revoke token** lưu trong Redis của `auth-service` (đăng xuất / thu hồi token trước hạn).
-* **Forward-auth pattern**: các service khác không tự verify JWT — Traefik gọi `auth-service` để verify hộ, rồi truyền `X-User-ID` xuống; các service đọc user hiện tại qua middleware dùng chung `common/authclient`.
+* **GoTrue** (Supabase) làm dịch vụ xác thực thay cho `auth-service` cũ: đăng ký, đăng nhập, phát hành & refresh JWT, quản lý user. Chạy như một service trong compose, lưu user trong Postgres (DB `auth` của chính GoTrue, `gotrue.env` chứa cấu hình & JWT secret).
+* Access token là **JWT** do GoTrue phát hành, kèm claim `sub` = user id (UUID) và `aud` (`GOTRUE_JWT_AUD=uptime-monitor`).
+* **OIDC Discovery**: mỗi service có REST API tự verify JWT qua `go-oidc` với issuer cấu hình ở `auth.issuer` (`http://gotrue:9999` khi dev); `notification-service` gọi **GoTrue Admin API** (`GET {issuer}/admin/users/{uuid}`) với `service_token` để lấy email user khi build digest.
+* **`common/authclient`**: middleware dùng chung — verify token, đọc `sub` (UUID) và đưa vào `context`; handler/service lấy user hiện tại qua `authclient.GetUserID(ctx)`.
 * **CORS** cấu hình tập trung tại Traefik (middleware `cors`), áp dụng đồng nhất cho mọi route.
 
 ## Các thành phần hỗ trợ khác
@@ -120,14 +118,13 @@ Khác với bản monolith trước đây (có 2 cơ chế song song ZSET + Temp
 * **wneessen/go-mail** — gửi email digest (notification-service).
 * **excelize** — export danh sách server ra Excel và import hàng loạt từ file Excel (importer-service).
 * **testify + testcontainers-go** — unit test và integration test; integration test dựng thật Postgres/Redis bằng container ngay trong từng service.
-* **hurl** (`tests/*.hurl`) — kịch bản test luồng end-to-end xuyên qua nhiều service (auth flow, server flow, e2e flow) chạy qua Traefik.
 * **golangci-lint** (gofmt, gci, govet, bodyclose, noctx, errcheck, staticcheck, revive...) — bắt buộc chạy trước khi commit, áp dụng cho từng service.
 
 ## Đóng gói & triển khai
 
 * **Docker multi-stage build riêng cho từng service**: build bằng `public.ecr.aws/docker/library/golang:1.26` → nén binary bằng `upx` → chạy trên `registry.access.redhat.com/hi/static:latest` (image tối giản, không shell, chạy non-root) để giảm attack surface và kích thước image. Mỗi service có `Dockerfile` riêng.
-* **Docker Compose** (`compose.yml`) dựng toàn bộ hạ tầng dev: 6 service, `traefik` (API gateway), `postgres` (ParadeDB), `pgbouncer`, `redis`, `debezium`, `temporal`, `pgadmin`, `mailpit`.
-* **Kubernetes / Helm** (`helm/uptime-monitor/`) — chart triển khai 6 service lên K8s với Traefik làm ingress controller; hạ tầng có state (Postgres, PgBouncer, Redis, Temporal, Mailpit) chạy **ngoài cluster** (một compose riêng, `compose.infra.yml`), cluster trỏ vào qua `ExternalName` Service. Các gRPC server (`server-service:50051`, `ontime-service:50052`) được expose qua **headless Service** (`clusterIP: None`) để client gRPC lấy DNS ổn định theo từng pod thay vì bị load-balance ở tầng cluster-IP. Toàn bộ deployment stateless, không dùng PVC.
+* **Docker Compose** (`compose.yml`) dựng toàn bộ hạ tầng dev: 5 service, `traefik` (API gateway), `gotrue` (auth), `postgres` (ParadeDB), `pgbouncer`, `redis`, `debezium`, `temporal`, `pgadmin`, `mailpit`.
+* **Kubernetes / Helm** (`helm/uptime-monitor/`) — chart triển khai 5 service lên K8s với Traefik làm ingress controller; hạ tầng có state (Postgres, PgBouncer, Redis, Temporal, Mailpit) chạy **ngoài cluster** (một compose riêng, `compose.infra.yml`), cluster trỏ vào qua `ExternalName` Service. Các gRPC server (`server-service:50051`, `ontime-service:50052`) được expose qua **headless Service** (`clusterIP: None`) để client gRPC lấy DNS ổn định theo từng pod thay vì bị load-balance ở tầng cluster-IP. Toàn bộ deployment stateless, không dùng PVC.
 * **Air** — hot-reload khi phát triển từng service (`make dev` trong từng thư mục service).
 * **openspec/** — lưu các đề xuất thay đổi kiến trúc (proposal, design, tasks, spec) đã/đang thực hiện trong quá trình chuyển sang microservices, ví dụ: tách gRPC cho notification, đếm số server qua gRPC, per-shard goroutine cho scheduler, kiểm tra response body bằng expression, gRPC cho test-endpoint...
 
@@ -135,18 +132,14 @@ Khác với bản monolith trước đây (có 2 cơ chế song song ZSET + Temp
 
 ```mermaid
 flowchart TB
-    Client[Client] -->|REST| Traefik[Traefik API Gateway]
+    Client[Client] -->|REST + /auth/v1/token| Traefik[Traefik API Gateway]
+    Traefik -->|"/auth/v1/*"| GoTrue[GoTrue]
+    GoTrue --> AuthDB[(Postgres: auth)]
 
-    Traefik -->|"/api/v1/auth"| Auth[auth-service]
     Traefik -->|"/api/v1/servers"| Server[server-service]
     Traefik -->|"/api/v1/servers/ontime"| Ontime[ontime-service]
     Traefik -->|"/api/v1/servers/import,export"| Importer[importer-service]
     Traefik -->|"/api/v1/notifications"| Notif[notification-service]
-    Traefik -.->|forward-auth verify| Auth
-
-    Auth --> AuthDB[(Postgres: auth)]
-    Auth --> Redis1[(Redis: token blacklist)]
-
     Server --> ServerDB[(Postgres: server + pg_search + WAL logical)]
     Importer -->|gRPC BatchCreateServers| Server
 
@@ -174,23 +167,9 @@ flowchart TB
 
 > Sau khi tách microservices, các bảng dưới đây **không còn nằm chung một database** — mỗi bảng thuộc database riêng của service sở hữu nó (xem mục "database-per-service" ở trên). Mục dưới đây mô tả từng bảng kèm database/service sở hữu.
 
-## 1) `users` — database `auth`, sở hữu bởi `auth-service`
+## 1) `auth` — database của GoTrue (bảng `auth.users`)
 
-Đây là bảng tài khoản người dùng.
-
-### Chứa gì?
-
-* `email`: email đăng nhập
-* `username`: tên đăng nhập
-* `password`: mật khẩu đã hash
-* `name`: tên hiển thị
-
-### Vai trò
-
-* Là chủ sở hữu của các `servers`
-* Là nơi gắn cấu hình `notification_configs`
-
-### Ý nghĩa
+Đây là database của GoTrue lưu tài khoản người dùng (`auth.users`, `auth.identities`...). User id có dạng **UUID**, được truyền trong JWT claim `sub` và dùng làm `user_id`/`created_by_id` ở các service khác.
 
 Mỗi user có thể quản lý nhiều server, và có thể có cấu hình báo cáo riêng.
 

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/samber/do/v2"
 
@@ -20,8 +21,8 @@ const (
 )
 
 type ServerOwnerHandler interface {
-	OnCreate(ctx context.Context, serverID, userID uint) error
-	OnUpdate(ctx context.Context, serverID, userID uint, deletedAt *time.Time) error
+	OnCreate(ctx context.Context, serverID uint, userID uuid.UUID) error
+	OnUpdate(ctx context.Context, serverID uint, userID uuid.UUID, deletedAt *time.Time) error
 	OnDelete(ctx context.Context, serverID uint) error
 }
 

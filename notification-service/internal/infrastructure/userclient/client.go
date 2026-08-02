@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/config"
@@ -16,35 +17,38 @@ import (
 )
 
 type Client struct {
-	baseURL string
-	client  *http.Client
-	logger  *slog.Logger
+	baseURL      string
+	serviceToken string
+	client       *http.Client
+	logger       *slog.Logger
 }
 
 func RegisterClient(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*Client, error) {
 		cfg := do.MustInvoke[*config.Config](i)
 		return &Client{
-			baseURL: cfg.AuthService.Addr,
-			client:  &http.Client{Timeout: 10 * time.Second},
-			logger:  do.MustInvoke[*slog.Logger](i),
+			baseURL:      cfg.Auth.Issuer,
+			serviceToken: cfg.Auth.ServiceToken,
+			client:       &http.Client{Timeout: 10 * time.Second},
+			logger:       do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
 
-func (a *Client) FindByID(ctx context.Context, id uint) (*domain.User, error) {
+func (a *Client) FindByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
 
-	url := fmt.Sprintf("%s/api/v1/auth/private/users/%d", a.baseURL, id)
+	url := fmt.Sprintf("%s/admin/users/%s", a.baseURL, id.String())
 	a.logger.Debug(
 		"userclient.FindByID: sending request",
 		slog.String("url", url),
-		slog.Uint64("user_id", uint64(id)),
+		slog.String("user_id", id.String()),
 	)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
+	req.Header.Set("Authorization", "Bearer "+a.serviceToken)
 
 	resp, err := a.client.Do(req)
 	if err != nil {
@@ -61,7 +65,7 @@ func (a *Client) FindByID(ctx context.Context, id uint) (*domain.User, error) {
 	if resp.StatusCode == http.StatusNotFound {
 		a.logger.Debug(
 			"userclient.FindByID: user not found",
-			slog.Uint64("user_id", uint64(id)),
+			slog.String("user_id", id.String()),
 		)
 		return nil, nil
 	}
@@ -84,10 +88,8 @@ func (a *Client) FindByID(ctx context.Context, id uint) (*domain.User, error) {
 	}
 
 	type userResponse struct {
-		ID       int    `json:"id"`
-		Email    string `json:"email"`
-		Username string `json:"username"`
-		Name     string `json:"name"`
+		ID    string `json:"id"`
+		Email string `json:"email"`
 	}
 
 	u := userResponse{}
@@ -95,10 +97,13 @@ func (a *Client) FindByID(ctx context.Context, id uint) (*domain.User, error) {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
 
+	uid, err := uuid.Parse(u.ID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user id in response: %w", err)
+	}
+
 	return &domain.User{
-		ID:       uint(u.ID),
-		Email:    u.Email,
-		Username: u.Username,
-		Name:     u.Name,
+		ID:    uid,
+		Email: u.Email,
 	}, nil
 }

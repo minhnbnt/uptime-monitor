@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/generated/api"
 	ontimedto "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/errors"
@@ -15,7 +17,7 @@ func TestGetServerOntime(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		h := &OntimeHandler{
 			ontimeService: &mockOntimeService{
-				getServerWithOntimeFn: func(_ context.Context, serverID, _ uint) (*ontimedto.ServerOntime, error) {
+				getServerWithOntimeFn: func(_ context.Context, serverID uint, _ uuid.UUID) (*ontimedto.ServerOntime, error) {
 					return &ontimedto.ServerOntime{
 						ServerID:    serverID,
 						OntimeStats: []ontimedto.OntimeStats{},
@@ -38,7 +40,7 @@ func TestGetServerOntime(t *testing.T) {
 	t.Run("service error", func(t *testing.T) {
 		h := &OntimeHandler{
 			ontimeService: &mockOntimeService{
-				getServerWithOntimeFn: func(_ context.Context, _, _ uint) (*ontimedto.ServerOntime, error) {
+				getServerWithOntimeFn: func(_ context.Context, _ uint, _ uuid.UUID) (*ontimedto.ServerOntime, error) {
 					return nil, errors.New("some error")
 				},
 			},
@@ -54,7 +56,7 @@ func TestListServersOntime(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		h := &OntimeHandler{
 			ontimeService: &mockOntimeService{
-				listServersWithOntimeFn: func(_ context.Context, _ uint, _, _ int) ([]ontimedto.ServerOntime, error) {
+				listServersWithOntimeFn: func(_ context.Context, _ uuid.UUID, _, _ int) ([]ontimedto.ServerOntime, error) {
 					return []ontimedto.ServerOntime{
 						{ServerID: 1, OntimeStats: []ontimedto.OntimeStats{}},
 						{ServerID: 2, OntimeStats: []ontimedto.OntimeStats{}},
@@ -77,7 +79,7 @@ func TestListServersOntime(t *testing.T) {
 	t.Run("service error", func(t *testing.T) {
 		h := &OntimeHandler{
 			ontimeService: &mockOntimeService{
-				listServersWithOntimeFn: func(_ context.Context, _ uint, _, _ int) ([]ontimedto.ServerOntime, error) {
+				listServersWithOntimeFn: func(_ context.Context, _ uuid.UUID, _, _ int) ([]ontimedto.ServerOntime, error) {
 					return nil, errors.New("db error")
 				},
 			},

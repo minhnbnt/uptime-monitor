@@ -8,6 +8,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/domain"
@@ -25,16 +26,16 @@ type MailSender interface {
 }
 
 type UserAdapter interface {
-	FindByID(ctx context.Context, id uint) (*domain.User, error)
+	FindByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
 }
 
 type ServerAdapter interface {
-	List(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error)
-	CountByStatus(ctx context.Context, createdByID uint) (total, online, offline int64, err error)
+	List(ctx context.Context, createdByID uuid.UUID, limit, offset int) ([]domain.Server, error)
+	CountByStatus(ctx context.Context, createdByID uuid.UUID) (total, online, offline int64, err error)
 }
 
 type OntimeAdapter interface {
-	GetServersOntimeForDates(ctx context.Context, userID uint, servers []domain.Server, dates []time.Time) (map[uint][]domain.OntimeStats, error)
+	GetServersOntimeForDates(ctx context.Context, userID uuid.UUID, servers []domain.Server, dates []time.Time) (map[uint][]domain.OntimeStats, error)
 }
 
 func (s *DigestService) buildReport(servers []domain.Server, ontimeMap map[uint][]domain.OntimeStats) []excelgen.ServerRow {
@@ -94,21 +95,21 @@ func RegisterDigestService(i do.Injector) {
 	})
 }
 
-func (s *DigestService) SendUserDigest(ctx context.Context, userID uint, from time.Time) error {
+func (s *DigestService) SendUserDigest(ctx context.Context, userID uuid.UUID, from time.Time) error {
 
 	s.logger.Info("SendUserDigest: start",
-		slog.Uint64("user_id", uint64(userID)),
+		slog.String("user_id", userID.String()),
 		slog.String("from_date", from.Format("2006-01-02")),
 	)
 
 	return s.SendReport(ctx, userID, from)
 }
 
-func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.Time) error {
+func (s *DigestService) SendReport(ctx context.Context, userID uuid.UUID, from time.Time) error {
 
 	s.logger.Info(
 		"SendReport: start",
-		slog.Uint64("user_id", uint64(userID)),
+		slog.String("user_id", userID.String()),
 		slog.String("from_date", from.Format("2006-01-02")),
 	)
 
@@ -117,7 +118,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 		s.logger.Error(
 			"SendReport: failed to find user",
-			slog.Uint64("user_id", uint64(userID)),
+			slog.String("user_id", userID.String()),
 			slog.Any("error", err),
 		)
 
@@ -127,10 +128,10 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 		s.logger.Error(
 			"SendReport: user not found",
-			slog.Uint64("user_id", uint64(userID)),
+			slog.String("user_id", userID.String()),
 		)
 
-		return fmt.Errorf("user %d: %w", userID, apperrors.ErrNotFound)
+		return fmt.Errorf("user %s: %w", userID.String(), apperrors.ErrNotFound)
 	}
 
 	now := time.Now()
@@ -143,7 +144,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 		s.logger.Error(
 			"SendReport: failed to list servers",
-			slog.Uint64("user_id", uint64(userID)),
+			slog.String("user_id", userID.String()),
 			slog.Any("error", err),
 		)
 
@@ -152,7 +153,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 	s.logger.Debug(
 		"SendReport: listed servers",
-		slog.Uint64("user_id", uint64(userID)),
+		slog.String("user_id", userID.String()),
 		slog.Int("count", len(servers)),
 	)
 
@@ -163,7 +164,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 		s.logger.Error(
 			"SendReport: failed to get ontime stats",
-			slog.Uint64("user_id", uint64(userID)),
+			slog.String("user_id", userID.String()),
 			slog.Any("error", err),
 		)
 
@@ -172,7 +173,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 	s.logger.Debug(
 		"SendReport: got ontime stats",
-		slog.Uint64("user_id", uint64(userID)),
+		slog.String("user_id", userID.String()),
 		slog.Int("servers_with_stats", len(ontimeMap)),
 	)
 
@@ -183,7 +184,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 		s.logger.Error(
 			"SendReport: failed to count servers by status",
-			slog.Uint64("user_id", uint64(userID)),
+			slog.String("user_id", userID.String()),
 			slog.Any("error", err),
 		)
 
@@ -192,7 +193,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 	s.logger.Debug(
 		"SendReport: server counts",
-		slog.Uint64("user_id", uint64(userID)),
+		slog.String("user_id", userID.String()),
 		slog.Int64("total", total),
 		slog.Int64("online", online),
 		slog.Int64("offline", offline),
@@ -205,7 +206,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 		s.logger.Error(
 			"SendReport: failed to generate excel report",
-			slog.Uint64("user_id", uint64(userID)),
+			slog.String("user_id", userID.String()),
 			slog.Any("error", err),
 		)
 
@@ -219,7 +220,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 		s.logger.Error(
 			"SendReport: failed to send mail",
-			slog.Uint64("user_id", uint64(userID)),
+			slog.String("user_id", userID.String()),
 			slog.String("email", user.Email),
 			slog.Any("error", err),
 		)
@@ -229,7 +230,7 @@ func (s *DigestService) SendReport(ctx context.Context, userID uint, from time.T
 
 	s.logger.Info(
 		"SendReport: digest sent",
-		slog.Uint64("user_id", uint64(userID)),
+		slog.String("user_id", userID.String()),
 		slog.String("email", user.Email),
 	)
 

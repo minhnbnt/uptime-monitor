@@ -69,6 +69,8 @@ func setDefaults(v *viper.Viper) {
 		"redis.db":          0,
 		"grpc.port":         "50051",
 
+		"auth.issuer": "http://gotrue:9999",
+
 		"mail.smtp_host":     "localhost",
 		"mail.smtp_port":     587,
 		"mail.smtp_user":     "",
@@ -105,6 +107,8 @@ func bindEnvVars(v *viper.Viper) error {
 		"temporal.digest_task_queue": "TEMPORAL_DIGEST_TASK_QUEUE",
 
 		"grpc.port": "GRPC_PORT",
+
+		"auth.issuer": "AUTH_ISSUER",
 
 		"kubeconfig": "KUBECONFIG",
 

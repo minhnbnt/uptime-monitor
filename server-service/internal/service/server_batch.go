@@ -2,12 +2,13 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"slices"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
-	"github.com/samber/lo"
 	"github.com/samber/lo/it"
 
 	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/server/v1"
@@ -40,9 +41,28 @@ func (s *ServerBatchService) BatchCreateServers(
 
 	for chunk := range it.Chunk(slices.Values(inputs), batchChunkSize) {
 
-		servers := buildDomainServers(chunk)
+		servers, err := buildDomainServers(chunk)
+		if err != nil {
 
-		err := s.serverRepo.BatchCreateServers(ctx, servers)
+			s.logger.Error("batch create servers failed", slog.Any("error", err))
+
+			newResults := it.Map(
+				slices.Values(chunk),
+				func(input *serverv1.ServerWithEndpointInput) *serverv1.BatchCreateServerResult {
+					return &serverv1.BatchCreateServerResult{
+						Row:       input.Row,
+						Name:      input.Name,
+						Namespace: input.Namespace,
+						Error:     err.Error(),
+					}
+				},
+			)
+
+			results = slices.AppendSeq(results, newResults)
+			continue
+		}
+
+		err = s.serverRepo.BatchCreateServers(ctx, servers)
 		if err != nil {
 
 			s.logger.Error("batch create servers failed", slog.Any("error", err))
@@ -76,9 +96,17 @@ func (s *ServerBatchService) BatchCreateServers(
 	return results, nil
 }
 
-func buildDomainServers(inputs []*serverv1.ServerWithEndpointInput) []domain.Server {
-	return lo.Map(inputs, func(in *serverv1.ServerWithEndpointInput, _ int) domain.Server {
-		return domain.Server{
+func buildDomainServers(inputs []*serverv1.ServerWithEndpointInput) ([]domain.Server, error) {
+
+	servers := make([]domain.Server, 0, len(inputs))
+	for _, in := range inputs {
+
+		userID, err := uuid.Parse(in.UserId)
+		if err != nil {
+			return nil, fmt.Errorf("row %d: invalid user id %q: %w", in.Row, in.UserId, err)
+		}
+
+		servers = append(servers, domain.Server{
 			Name:          in.Name,
 			Namespace:     in.Namespace,
 			Kind:          in.Kind,
@@ -86,7 +114,9 @@ func buildDomainServers(inputs []*serverv1.ServerWithEndpointInput) []domain.Ser
 			ContainerName: in.ContainerName,
 			Interval:      time.Duration(in.IntervalMs) * time.Millisecond,
 			Timeout:       time.Duration(in.TimeoutMs) * time.Millisecond,
-			CreatedByID:   uint(in.UserId),
-		}
-	})
+			CreatedByID:   userID,
+		})
+	}
+
+	return servers, nil
 }

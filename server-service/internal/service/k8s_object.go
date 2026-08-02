@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/domain"
@@ -35,7 +36,7 @@ func RegisterK8sObjectService(i do.Injector) {
 func (s *K8sObjectService) CreateK8sObject(
 	ctx context.Context,
 	req dto.CreateK8sObjectRequest,
-	createdByID uint,
+	createdByID uuid.UUID,
 ) (*dto.Server, error) {
 
 	server := domain.Server{

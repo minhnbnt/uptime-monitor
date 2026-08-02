@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 
 	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/server/v1"
@@ -29,17 +30,17 @@ func RegisterClient(i do.Injector) {
 	})
 }
 
-func (a *Client) List(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error) {
+func (a *Client) List(ctx context.Context, createdByID uuid.UUID, limit, offset int) ([]domain.Server, error) {
 
 	req := serverv1.ListServersRequest{
-		UserId:  uint64(createdByID),
+		UserId:  createdByID.String(),
 		Page:    int32(offset/limit) + 1,
 		PerPage: int32(limit),
 	}
 
 	a.logger.Debug(
 		"serverclient.List: sending gRPC request",
-		slog.Uint64("user_id", uint64(createdByID)),
+		slog.String("user_id", createdByID.String()),
 		slog.Int("limit", limit),
 		slog.Int("offset", offset),
 	)
@@ -48,7 +49,7 @@ func (a *Client) List(ctx context.Context, createdByID uint, limit, offset int) 
 	if err != nil {
 		a.logger.Error(
 			"serverclient.List: gRPC call failed",
-			slog.Uint64("user_id", uint64(createdByID)),
+			slog.String("user_id", createdByID.String()),
 			slog.Any("error", err),
 		)
 		return nil, fmt.Errorf("list servers: %w", err)
@@ -62,19 +63,19 @@ func (a *Client) List(ctx context.Context, createdByID uint, limit, offset int) 
 	return servers, nil
 }
 
-func (a *Client) CountByStatus(ctx context.Context, createdByID uint) (total, online, offline int64, err error) {
+func (a *Client) CountByStatus(ctx context.Context, createdByID uuid.UUID) (total, online, offline int64, err error) {
 
-	req := serverv1.CountServersByStatusRequest{UserId: uint64(createdByID)}
+	req := serverv1.CountServersByStatusRequest{UserId: createdByID.String()}
 	a.logger.Debug(
 		"serverclient.CountByStatus: sending gRPC request",
-		slog.Uint64("user_id", uint64(createdByID)),
+		slog.String("user_id", createdByID.String()),
 	)
 
 	resp, err := a.client.CountServersByStatus(ctx, &req)
 	if err != nil {
 		a.logger.Error(
 			"serverclient.CountByStatus: gRPC call failed",
-			slog.Uint64("user_id", uint64(createdByID)),
+			slog.String("user_id", createdByID.String()),
 			slog.Any("error", err),
 		)
 		return 0, 0, 0, fmt.Errorf("count servers by status: %w", err)

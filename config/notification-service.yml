@@ -16,8 +16,8 @@ mail:
 log:
   level: debug
 
-auth_service:
-  addr: http://auth-service:8081
+auth:
+  issuer: http://gotrue:9999
 
 grpc:
   server_addr: "server-service:50051"

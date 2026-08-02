@@ -37,6 +37,17 @@ services:
       postgres:
         condition: service_healthy
 
+  gotrue:
+    image: ghcr.io/supabase/gotrue:v2.194.0
+    env_file:
+      - ./config/gotrue.env
+      - .env.gotrue-es256
+    ports:
+      - "9999:9999"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   redis:
     image: ghcr.io/valkey-io/valkey:9-alpine
     ports:
@@ -66,8 +77,20 @@ services:
       MAIL_FROM_ADDRESS: no-reply@test.local
       MAIL_FROM_NAME: My App
 
+  debezium:
+    image: quay.io/debezium/server:3.6.0.Final
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - ./config/debezium.yml:/debezium/config/application.yaml:ro
+      - debezium-data:/debezium/data
+
 volumes:
   postgres-data:
   redis_data:
   temporal-data:
   mailpit-data:
+  debezium-data:

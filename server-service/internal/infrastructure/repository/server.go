@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -36,7 +37,7 @@ func RegisterServerRepository(i do.Injector) {
 	})
 }
 
-func (sr *ServerRepository) Count(ctx context.Context, createdByID uint) (int64, error) {
+func (sr *ServerRepository) Count(ctx context.Context, createdByID uuid.UUID) (int64, error) {
 	return gorm.G[domain.Server](sr.db).
 		Where("created_by_id = ?", createdByID).
 		Count(ctx, "id")
@@ -44,7 +45,7 @@ func (sr *ServerRepository) Count(ctx context.Context, createdByID uint) (int64,
 
 func (sr *ServerRepository) List(
 	ctx context.Context,
-	createdByID uint,
+	createdByID uuid.UUID,
 	limit, offset int,
 ) ([]domain.Server, error) {
 
@@ -159,7 +160,7 @@ func (sr *ServerRepository) Delete(ctx context.Context, id uint) error {
 }
 
 func (sr *ServerRepository) CountByStatus(
-	ctx context.Context, createdByID uint,
+	ctx context.Context, createdByID uuid.UUID,
 ) (total, online, offline int64, err error) {
 
 	total, err = sr.Count(ctx, createdByID)

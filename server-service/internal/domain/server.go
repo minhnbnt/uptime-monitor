@@ -3,6 +3,7 @@ package domain
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -22,7 +23,7 @@ type Server struct {
 	ContainerName string        `gorm:"type:varchar(255);not null;default:''"`
 	Interval      time.Duration `gorm:"type:bigint;not null;default:30000000000"`
 	Timeout       time.Duration `gorm:"type:bigint;not null;default:10000000000"`
-	CreatedByID   uint          `gorm:"not null;default:0;index"`
+	CreatedByID   uuid.UUID     `gorm:"type:uuid;not null;index"`
 }
 
 func (Server) TableName() string {

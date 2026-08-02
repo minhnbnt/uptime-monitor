@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 	"gorm.io/gorm"
 
@@ -90,7 +91,7 @@ func (r *EventRepository) CountByStatus(
 }
 
 func (r *EventRepository) CountByStatusByUserID(
-	ctx context.Context, userID uint,
+	ctx context.Context, userID uuid.UUID,
 ) (online, offline int64, err error) {
 
 	type counts struct {

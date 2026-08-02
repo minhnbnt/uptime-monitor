@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 
@@ -16,8 +17,8 @@ import (
 )
 
 type OntimeService interface {
-	ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]dto.ServerOntime, error)
-	GetServerWithOntime(ctx context.Context, serverID uint, userID uint) (*dto.ServerOntime, error)
+	ListServersWithOntime(ctx context.Context, createdByID uuid.UUID, page, perPage int) ([]dto.ServerOntime, error)
+	GetServerWithOntime(ctx context.Context, serverID uint, userID uuid.UUID) (*dto.ServerOntime, error)
 }
 
 type OntimeRangeService interface {

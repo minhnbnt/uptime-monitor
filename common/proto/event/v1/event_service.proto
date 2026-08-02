@@ -25,7 +25,7 @@ message GetCurrentStatusesResponse {
 }
 
 message CountByStatusRequest {
-  uint64 user_id = 1;
+  string user_id = 1;
 }
 
 message CountByStatusResponse {
@@ -34,7 +34,7 @@ message CountByStatusResponse {
 }
 
 message GetServersOntimeRequest {
-  uint64 user_id = 1;
+  string user_id = 1;
   int64 max_records = 2;
 }
 

@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 
@@ -38,7 +39,7 @@ func RegisterImportService(i do.Injector) {
 	})
 }
 
-func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.Reader) (*dto.ImportResult, error) {
+func (s *ImportService) ImportServers(ctx context.Context, userID uuid.UUID, file io.Reader) (*dto.ImportResult, error) {
 
 	rows, rowErrors, err := s.excelParser.ParseImportFile(file)
 	if err != nil {
@@ -60,7 +61,7 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uint, file io.
 			ContainerName: r.ContainerName,
 			IntervalMs:    int64(r.Interval) * 1000,
 			TimeoutMs:     int64(r.Timeout) * 1000,
-			UserId:        uint64(userID),
+			UserId:        userID.String(),
 		}
 	})
 
@@ -109,10 +110,10 @@ func (s *ImportService) GenerateTemplate() (io.ReadCloser, error) {
 	return reader, nil
 }
 
-func (s *ImportService) ExportServers(ctx context.Context, userID uint, q string, from, to int, sortBy, sortOrder string) (io.ReadCloser, error) {
+func (s *ImportService) ExportServers(ctx context.Context, userID uuid.UUID, q string, from, to int, sortBy, sortOrder string) (io.ReadCloser, error) {
 
 	request := serverv1.SearchServersRequest{
-		UserId:    uint64(userID),
+		UserId:    userID.String(),
 		Q:         q,
 		From:      int32(from),
 		To:        int32(to),

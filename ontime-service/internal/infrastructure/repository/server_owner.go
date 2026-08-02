@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 	"gorm.io/gorm"
 
@@ -29,7 +30,7 @@ func RegisterServerOwnerRepository(i do.Injector) {
 
 func (r *ServerOwnerRepository) Upsert(
 	ctx context.Context,
-	serverID, userID uint,
+	serverID uint, userID uuid.UUID,
 	deletedAt *time.Time,
 ) error {
 

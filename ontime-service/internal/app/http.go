@@ -31,10 +31,13 @@ func RunWebServer(ctx context.Context, injector do.Injector) {
 	cfg := do.MustInvoke[*config.Config](injector)
 	log := do.MustInvoke[*slog.Logger](injector)
 
-	middleWare := authclient.NewAuthMiddleware(log)
+	authMW, err := authclient.NewAuthMiddleware(ctx, cfg.Auth.Issuer, log)
+	if err != nil {
+		panic(err)
+	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/", middleWare.XUserIDMiddleware(srv))
+	mux.Handle("/", authMW.Middleware(srv))
 
 	httpServer := http.Server{
 		Addr:    ":" + cfg.Server.Port,

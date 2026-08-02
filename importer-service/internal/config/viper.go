@@ -43,6 +43,7 @@ func setDefaults(v *viper.Viper) {
 	defaults := map[string]any{
 		"server.port":      "8086",
 		"grpc.server_addr": "localhost:50051",
+		"auth.issuer":      "http://gotrue:9999",
 		"log.level":        "info",
 	}
 
@@ -55,6 +56,7 @@ func bindEnvVars(v *viper.Viper) error {
 	envMap := map[string]string{
 		"server.port":      "PORT",
 		"grpc.server_addr": "GRPC_SERVER_ADDR",
+		"auth.issuer":      "AUTH_ISSUER",
 		"log.level":        "LOG_LEVEL",
 	}
 

@@ -2,7 +2,9 @@ package handler
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 
@@ -53,7 +55,12 @@ func (s *StatusServer) CountByStatus(
 	ctx context.Context, req *eventv1.CountByStatusRequest,
 ) (*eventv1.CountByStatusResponse, error) {
 
-	online, offline, err := s.eventService.CountByStatusByUserID(ctx, uint(req.UserId))
+	userID, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user id: %w", err)
+	}
+
+	online, offline, err := s.eventService.CountByStatusByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}

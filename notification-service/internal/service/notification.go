@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/domain"
@@ -17,10 +18,10 @@ import (
 const dateLayout = "2006-01-02"
 
 type DigestStarter interface {
-	StartDigest(ctx context.Context, userID uint) error
-	UpsertSchedule(ctx context.Context, userID uint, cfg domain.ScheduleConfig) error
-	DeleteSchedule(ctx context.Context, userID uint) error
-	DescribeSchedule(ctx context.Context, userID uint) (*domain.ScheduleInfo, error)
+	StartDigest(ctx context.Context, userID uuid.UUID) error
+	UpsertSchedule(ctx context.Context, userID uuid.UUID, cfg domain.ScheduleConfig) error
+	DeleteSchedule(ctx context.Context, userID uuid.UUID) error
+	DescribeSchedule(ctx context.Context, userID uuid.UUID) (*domain.ScheduleInfo, error)
 }
 
 type NotificationService struct {
@@ -37,7 +38,7 @@ func RegisterNotificationService(i do.Injector) {
 	})
 }
 
-func (s *NotificationService) GetNotificationConfig(ctx context.Context, userID uint) (*dto.NotificationConfigResponse, error) {
+func (s *NotificationService) GetNotificationConfig(ctx context.Context, userID uuid.UUID) (*dto.NotificationConfigResponse, error) {
 
 	info, err := s.digestStarter.DescribeSchedule(ctx, userID)
 	if err != nil {
@@ -63,7 +64,7 @@ func (s *NotificationService) GetNotificationConfig(ctx context.Context, userID 
 	return resp, nil
 }
 
-func (s *NotificationService) UpdateNotificationConfig(ctx context.Context, userID uint, req *dto.NotificationConfigRequest) error {
+func (s *NotificationService) UpdateNotificationConfig(ctx context.Context, userID uuid.UUID, req *dto.NotificationConfigRequest) error {
 
 	active := req.FromDate != "" && req.ToDate != ""
 
@@ -99,7 +100,7 @@ func (s *NotificationService) UpdateNotificationConfig(ctx context.Context, user
 	return nil
 }
 
-func (s *NotificationService) SendReport(ctx context.Context, userID uint) error {
+func (s *NotificationService) SendReport(ctx context.Context, userID uuid.UUID) error {
 
 	info, err := s.digestStarter.DescribeSchedule(ctx, userID)
 	if err != nil {
