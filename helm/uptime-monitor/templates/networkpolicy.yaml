@@ -38,22 +38,24 @@ spec:
       protocol: TCP
 
 ---
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
+# ipBlock-based rules can't reliably match API server traffic: pods normally
+# reach it via the in-cluster ClusterIP (KUBERNETES_SERVICE_HOST), not the
+# node's external IP. Cilium's reserved "kube-apiserver" entity matches the
+# API server correctly regardless of which address pods use to reach it.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
 metadata:
   name: allow-apiserver
   namespace: {{ $ns }}
 spec:
-  podSelector: {}
-  policyTypes:
-    - Egress
+  endpointSelector: {}
   egress:
-  - to:
-    - ipBlock:
-        cidr: {{ .Values.global.apiserverCIDR }}
-    ports:
-    - port: 6443
-      protocol: TCP
+  - toEntities:
+      - kube-apiserver
+    toPorts:
+    - ports:
+      - port: "6443"
+        protocol: TCP
 
 ---
 apiVersion: networking.k8s.io/v1
@@ -69,13 +71,8 @@ spec:
     - Ingress
     - Egress
   ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          app.kubernetes.io/name: traefik
-    ports:
-    - port: {{ index .Values.apps "server-service" "port" }}
-      protocol: TCP
+  # External ingress traffic from the Gateway API is allowed via the
+  # CiliumNetworkPolicy in templates/gateway/networkpolicy.yaml.
   - from:
     - podSelector:
         matchLabels:
@@ -191,13 +188,8 @@ spec:
     - Ingress
     - Egress
   ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          app.kubernetes.io/name: traefik
-    ports:
-    - port: {{ index .Values.apps "ontime-service" "port" }}
-      protocol: TCP
+  # External ingress traffic from the Gateway API is allowed via the
+  # CiliumNetworkPolicy in templates/gateway/networkpolicy.yaml.
   - from:
     - podSelector:
         matchLabels:
@@ -277,14 +269,10 @@ spec:
   policyTypes:
     - Ingress
     - Egress
-  ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          app.kubernetes.io/name: traefik
-    ports:
-    - port: {{ index .Values.apps "importer-service" "port" }}
-      protocol: TCP
+  # External ingress traffic from the Gateway API is allowed via the
+  # CiliumNetworkPolicy in templates/gateway/networkpolicy.yaml; this
+  # service has no other pod-to-pod ingress.
+  ingress: []
   egress:
   - to:
     - podSelector:
@@ -314,14 +302,10 @@ spec:
   policyTypes:
     - Ingress
     - Egress
-  ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          app.kubernetes.io/name: traefik
-    ports:
-    - port: {{ index .Values.apps "notification-service" "port" }}
-      protocol: TCP
+  # External ingress traffic from the Gateway API is allowed via the
+  # CiliumNetworkPolicy in templates/gateway/networkpolicy.yaml; this
+  # service has no other pod-to-pod ingress.
+  ingress: []
   egress:
   - to:
     - ipBlock:
@@ -355,27 +339,3 @@ spec:
     - port: {{ index .Values.apps "ontime-service" "grpcPort" }}
       protocol: TCP
 
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: traefik
-  namespace: {{ $ns }}
-spec:
-  podSelector:
-    matchLabels:
-      app.kubernetes.io/name: traefik
-  policyTypes:
-    - Ingress
-    - Egress
-  ingress:
-  - from:
-    - ipBlock:
-        cidr: 0.0.0.0/0
-    - ipBlock:
-        cidr: "::/0"
-  egress:
-  - to:
-    - podSelector:
-        matchLabels:
-          app.kubernetes.io/part-of: uptime-monitor

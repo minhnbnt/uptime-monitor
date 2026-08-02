@@ -1,0 +1,28 @@
+{{- if .Values.gateway.enabled }}
+{{- $ns := include "uptime-monitor.namespace" . -}}
+---
+# The Cilium-managed default GatewayClass ("cilium") backs Gateways with a
+# LoadBalancer Service, which stays Pending forever without a cloud LB or
+# MetalLB. This GatewayClass instead uses a NodePort Service, via Cilium's
+# CiliumGatewayClassConfig parametersRef mechanism.
+apiVersion: cilium.io/v2alpha1
+kind: CiliumGatewayClassConfig
+metadata:
+  name: uptime-monitor-nodeport
+  namespace: {{ $ns }}
+spec:
+  service:
+    type: NodePort
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: uptime-monitor
+spec:
+  controllerName: io.cilium/gateway-controller
+  parametersRef:
+    group: cilium.io
+    kind: CiliumGatewayClassConfig
+    name: uptime-monitor-nodeport
+    namespace: {{ $ns }}
+{{- end }}

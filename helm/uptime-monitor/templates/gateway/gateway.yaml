@@ -1,0 +1,25 @@
+{{- if .Values.gateway.enabled }}
+{{- $ns := include "uptime-monitor.namespace" . -}}
+---
+# Cilium (with gatewayAPI.enabled=true) automatically creates and manages a
+# GatewayClass named "cilium" cluster-wide, but that one backs Gateways with
+# a LoadBalancer Service. We use our own GatewayClass instead (defined in
+# gatewayclass.yaml) so it's backed by a NodePort Service, which works
+# without a cloud load balancer or MetalLB.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: uptime-monitor
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: uptime-monitor
+spec:
+  gatewayClassName: uptime-monitor
+  listeners:
+    - name: web
+      protocol: HTTP
+      port: {{ .Values.gateway.httpPort }}
+      allowedRoutes:
+        namespaces:
+          from: Same
+{{- end }}

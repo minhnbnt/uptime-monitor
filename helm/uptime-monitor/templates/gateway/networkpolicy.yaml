@@ -1,0 +1,46 @@
+{{- if .Values.gateway.enabled }}
+{{- $ns := include "uptime-monitor.namespace" . -}}
+{{- range $name, $app := .Values.apps }}
+{{- if $app.ingress }}
+---
+# Traffic from the Cilium Gateway API listener arrives with the special
+# "ingress" identity, not as a pod in this namespace, so a plain
+# networking.k8s.io/v1 NetworkPolicy (podSelector-based) cannot allow it.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ $name }}-allow-gateway
+  namespace: {{ $ns }}
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+  ingress:
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "{{ $app.port }}"
+              protocol: TCP
+{{- end }}
+{{- end }}
+{{- if .Values.gotrue.enabled }}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: gotrue-allow-gateway
+  namespace: {{ $ns }}
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: gotrue
+  ingress:
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "{{ .Values.gotrue.port }}"
+              protocol: TCP
+{{- end }}
+{{- end }}

@@ -7,13 +7,18 @@ global:
 
 namespace: uptime-monitor
 
-traefik:
+gateway:
   enabled: true
-  image: ghcr.io/traefik/traefik:3.7
-  pullPolicy: Always
+  # Must match a listener port Cilium's Gateway API Envoy is actually
+  # exposed on for this Gateway (LoadBalancer/NodePort Service, or
+  # host network mode — see Cilium's gatewayAPI Helm values).
   httpPort: 8080
-  adminPort: 8081
-  serviceType: NodePort
+  # Public URL clients use to reach this Gateway, e.g. http://<node-ip>:<nodePort>.
+  # With the NodePort GatewayClass, the port is assigned by Kubernetes at
+  # install time — check it with:
+  #   kubectl -n uptime-monitor get svc -o jsonpath='{.items[?(@.spec.type=="NodePort")].spec.ports[0].nodePort}'
+  # (or `kubectl -n uptime-monitor get svc` and look for cilium-gateway-uptime-monitor)
+  externalURL: http://192.168.122.1:32546
 
 cors:
   allowOrigins:

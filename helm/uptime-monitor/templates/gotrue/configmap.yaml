@@ -21,7 +21,7 @@ data:
   DB_NAMESPACE: auth
   DATABASE_URL: postgres://supabase_auth_admin:REDACTED@postgres.{{ $ns }}.svc.cluster.local:5432/gotrue?search_path=auth
 
-  API_EXTERNAL_URL: http://{{ .Values.global.externalHost }}:30080
+  API_EXTERNAL_URL: {{ .Values.gateway.externalURL }}
   GOTRUE_SITE_URL: {{ $gotrue.siteUrl | default "http://localhost:3000" }}
   GOTRUE_API_HOST: 0.0.0.0
   PORT: "{{ $gotrue.port }}"

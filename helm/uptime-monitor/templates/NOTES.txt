@@ -1,0 +1,31 @@
+uptime-monitor deployed to namespace {{ include "uptime-monitor.namespace" . }}.
+
+Traffic is now routed through the standard Kubernetes Gateway API
+(Gateway/HTTPRoute), implemented by Cilium — there is no Traefik (or any
+other) proxy deployed by this chart anymore.
+
+The Gateway uses its own GatewayClass ("uptime-monitor") backed by a
+NodePort Service, since the cluster has no LoadBalancer provisioner
+(MetalLB, cloud LB, etc.).
+
+Prerequisites this chart assumes are already satisfied on the cluster
+(one-time, cluster-wide — not managed by this chart):
+
+  1. Gateway API CRDs installed (GatewayClass, Gateway, HTTPRoute, ...).
+     See https://gateway-api.sigs.k8s.io/guides/getting-started/introduction/#installing-gateway-api
+
+  2. Cilium installed with Gateway API AND NodePort support enabled:
+       helm upgrade cilium cilium/cilium --reuse-values \
+         --set kubeProxyReplacement=true \
+         --set gatewayAPI.enabled=true \
+         --set nodePort.enabled=true
+
+  3. Cilium >= 1.20 for native HTTPRoute CORS filter support (used in
+     templates/gateway/httproute.yaml). On older Cilium versions the CORS
+     filter will be accepted but not enforced.
+
+Find the assigned NodePort and hit it on any node's IP (the Service is
+usually named cilium-gateway-uptime-monitor):
+  kubectl -n {{ include "uptime-monitor.namespace" . }} get svc
+  kubectl -n {{ include "uptime-monitor.namespace" . }} describe gateway uptime-monitor
+
