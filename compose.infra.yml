@@ -37,17 +37,6 @@ services:
       postgres:
         condition: service_healthy
 
-  gotrue:
-    image: ghcr.io/supabase/gotrue:v2.194.0
-    env_file:
-      - ./config/gotrue.env
-      - .env.gotrue-es256
-    ports:
-      - "9999:9999"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
   redis:
     image: ghcr.io/valkey-io/valkey:9-alpine
     ports:

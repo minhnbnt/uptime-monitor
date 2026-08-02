@@ -26,4 +26,27 @@ spec:
         - name: cors
 {{- end }}
 {{- end }}
+{{- if .Values.gotrue.enabled }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+
+metadata:
+  name: gotrue
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/name: gotrue
+
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: PathPrefix(`/auth/v1`)
+      kind: Rule
+      services:
+        - name: gotrue
+          port: {{ .Values.gotrue.port }}
+      middlewares:
+        - name: cors
+{{- end }}
 {{- end }}

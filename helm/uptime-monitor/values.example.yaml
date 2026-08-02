@@ -51,10 +51,12 @@ infra:
     enabled: true
     address: 192.168.122.1
     port: 1025
-  gotrue:
-    enabled: true
-    address: 192.168.122.1
-    port: 9999
+
+gotrue:
+  enabled: true
+  image: ghcr.io/supabase/gotrue:v2.194.0
+  port: 9999
+  siteUrl: http://localhost:3000
 
 apps:
   server-service:
@@ -62,6 +64,7 @@ apps:
     port: 8080
     grpcPort: 50051
     replicas: 1
+    serviceAccountName: server-service
     ingress:
       - /api/v1/servers
       - /api/v1/test-endpoint
@@ -74,31 +77,9 @@ apps:
       redis:
         addr: redis.uptime-monitor.svc.cluster.local:6379
         db: 0
-      token:
-        access_ttl: 15m
-        refresh_ttl: 168h
-        access_issuer: uptime-monitor
-        refresh_issuer: uptime-monitor-refresh
-      argon2:
-        memory: 16384
-        iterations: 2
-        parallelism: 1
-        salt_length: 16
-        key_length: 32
-      temporal:
-        host: temporal.uptime-monitor.svc.cluster.local:7233
-        task_queue: ping-task-queue
-        workflow_name: ping-workflow
-        digest_task_queue: digest-task-queue
       grpc:
         ping_addr: ping-service-grpc.uptime-monitor.svc.cluster.local:50053
         event_addr: ontime-service-grpc.uptime-monitor.svc.cluster.local:50052
-      mail:
-        smtp_host: mailpit.uptime-monitor.svc.cluster.local
-        smtp_port: 1025
-        from_address: noreply@uptime.local
-      scheduler:
-        backend: redis
       auth:
         issuer: http://gotrue.uptime-monitor.svc.cluster.local:9999
       log:
@@ -109,6 +90,7 @@ apps:
     port: 8083
     grpcPort: 50053
     replicas: 2
+    serviceAccountName: ping-service
     ingress: []
     config:
       server:
@@ -175,7 +157,6 @@ apps:
   notification-service:
     enabled: true
     port: 8085
-    grpcPort: 50056
     replicas: 1
     ingress:
       - /api/v1/notifications
@@ -185,11 +166,6 @@ apps:
       grpc:
         server_addr: server-service-grpc.uptime-monitor.svc.cluster.local:50051
         event_addr: ontime-service-grpc.uptime-monitor.svc.cluster.local:50052
-      db:
-        host: pgbouncer.uptime-monitor.svc.cluster.local
-        port: 6432
-        user: notification
-        dbname: notification
       temporal:
         host: temporal.uptime-monitor.svc.cluster.local:7233
         task_queue: digest-task-queue
@@ -204,10 +180,6 @@ apps:
       auth:
         issuer: http://gotrue.uptime-monitor.svc.cluster.local:9999
         service_token: CHANGE_ME
-      server_service:
-        addr: http://server-service.uptime-monitor.svc.cluster.local:8080
-      ontime_service:
-        addr: http://ontime-service.uptime-monitor.svc.cluster.local:8084
       digest:
         max_records: 10000
       log:
