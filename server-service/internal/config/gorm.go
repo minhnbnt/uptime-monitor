@@ -130,6 +130,15 @@ func RunMigration(db *gorm.DB) error {
 		return fmt.Errorf("failed to create namespace_object_id index: %w", err)
 	}
 
+	// Non-unique index covering all rows (incl. soft-deleted) so the Unscoped
+	// lookup used for pod-deletion authorization is fast.
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS
+		idx_servers_namespace_object_id ON servers(namespace, object_id)
+	`).Error; err != nil {
+		return fmt.Errorf("failed to create namespace_object_id full index: %w", err)
+	}
+
 	return nil
 }
 
