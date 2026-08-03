@@ -19,13 +19,15 @@ func RegisterEventService(i do.Injector) {
 
 		sched := do.MustInvoke[*scheduler.ZSetScheduleRepository](i)
 		cache := do.MustInvoke[*scheduler.ServerMetaCache](i)
+		offsetStore := do.MustInvoke[*redis.RedisOffsetStore](i)
 
 		eventHandler := &ServerEventHandler{
 			scheduler:   sched,
 			serverCache: cache,
+			offsetStore: offsetStore,
 		}
 
-		httpConfigHandler := &HTTPConfigEventHandler{cache: cache}
+		httpConfigHandler := &HTTPConfigEventHandler{cache: cache, offsetStore: offsetStore}
 
 		consumer := do.MustInvoke[*redis.StreamEventConsumer](i)
 

@@ -3,60 +3,25 @@ package events
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
 )
 
 type ServerEventHandler struct {
 	scheduler   *scheduler.ZSetScheduleRepository
 	serverCache *scheduler.ServerMetaCache
+	offsetStore *redis.RedisOffsetStore
 }
 
-func (e *ServerEventHandler) OnMessage(ctx context.Context, event *dto.DebeziumMessage) error {
-
-	switch event.Operation {
-	case "c", "r":
-		return e.onCreate(ctx, event)
-
-	case "u":
-		return e.onUpdate(ctx, event)
-
-	case "d":
-		return e.onDelete(ctx, event)
-
-	default:
-		return nil
-	}
+func serverKeyFunc(topicName string, id uint) string {
+	return fmt.Sprintf("%s:%d", topicName, id)
 }
 
-func (e *ServerEventHandler) onCreate(ctx context.Context, event *dto.DebeziumMessage) error {
-
-	server := domain.Server{}
-	if err := json.Unmarshal(event.After, &server); err != nil {
-		return err
-	}
-
-	return e.scheduler.Register(ctx, &server)
-}
-
-func (e *ServerEventHandler) onUpdate(ctx context.Context, event *dto.DebeziumMessage) error {
-
-	server := domain.Server{}
-	if err := json.Unmarshal(event.After, &server); err != nil {
-		return err
-	}
-
-	err := e.serverCache.Delete(ctx, server.ID)
-	if err != nil {
-		return err
-	}
-
-	return e.scheduler.Register(ctx, &server)
-}
-
-func (e *ServerEventHandler) onDelete(ctx context.Context, event *dto.DebeziumMessage) error {
+func resolveServer(event *dto.DebeziumMessage) (*domain.Server, error) {
 
 	data := event.Before
 	if len(data) == 0 {
@@ -65,11 +30,80 @@ func (e *ServerEventHandler) onDelete(ctx context.Context, event *dto.DebeziumMe
 
 	server := domain.Server{}
 	if err := json.Unmarshal(data, &server); err != nil {
+		return nil, err
+	}
+
+	return &server, nil
+}
+
+func (e *ServerEventHandler) OnMessage(ctx context.Context, event *dto.DebeziumMessage) error {
+
+	server, err := resolveServer(event)
+	if err != nil {
 		return err
 	}
 
+	key := serverKeyFunc(event.TopicName, server.ID)
+	isStale, err := e.isStale(ctx, key, event.ID)
+	if err != nil {
+		return err
+	}
+
+	if isStale {
+		return nil
+	}
+
+	if err := e.handleEvent(ctx, event.Operation, server); err != nil {
+		return err
+	}
+
+	return e.offsetStore.SetOffset(ctx, key, event.ID)
+}
+
+func (e *ServerEventHandler) handleEvent(ctx context.Context, operation string, server *domain.Server) error {
+
+	switch operation {
+	case "c", "r":
+		return e.onCreate(ctx, server)
+
+	case "u":
+		return e.onUpdate(ctx, server)
+
+	case "d":
+		return e.onDelete(ctx, server)
+
+	default:
+		return fmt.Errorf("unknown operation: %s", operation)
+	}
+}
+
+func (e *ServerEventHandler) isStale(ctx context.Context, key string, eventID string) (bool, error) {
+
+	offset, err := e.offsetStore.GetOffset(ctx, key)
+	if err != nil {
+		return false, err
+	}
+
+	return e.offsetStore.IsNewer(offset, eventID)
+}
+
+func (e *ServerEventHandler) onCreate(ctx context.Context, server *domain.Server) error {
+	return e.scheduler.Register(ctx, server)
+}
+
+func (e *ServerEventHandler) onUpdate(ctx context.Context, server *domain.Server) error {
+
 	err := e.serverCache.Delete(ctx, server.ID)
 	if err != nil {
+		return err
+	}
+
+	return e.scheduler.Register(ctx, server)
+}
+
+func (e *ServerEventHandler) onDelete(ctx context.Context, server *domain.Server) error {
+
+	if err := e.serverCache.Delete(ctx, server.ID); err != nil {
 		return err
 	}
 

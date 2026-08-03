@@ -57,22 +57,22 @@ func (c *OwnershipConsumer) Run(ctx context.Context, handler ServerOwnerHandler)
 	processor := &messageProcessor{
 		handler: handler,
 		logger:  c.logger,
+		offsets: NewRedisOffsetStore(c.client, time.Minute),
+	}
+
+	readArgs := redis.XReadGroupArgs{
+		Group:    consumerGroup,
+		Consumer: consumerName,
+		Streams:  []string{streamKey, ">"},
+		Count:    streamReadCount,
+		Block:    streamBlockTime,
 	}
 
 	for ctx.Err() == nil {
-		streams, err := c.client.XReadGroup(ctx, &redis.XReadGroupArgs{
-			Group:    consumerGroup,
-			Consumer: consumerName,
-			Streams:  []string{streamKey, ">"},
-			Count:    streamReadCount,
-			Block:    streamBlockTime,
-		}).Result()
 
-		if err == redis.Nil {
-			continue
-		}
+		streams, err := c.client.XReadGroup(ctx, &readArgs).Result()
 
-		if err != nil {
+		if err != nil && err != redis.Nil {
 			c.logger.Error("stream read", slog.Any("error", err))
 			time.Sleep(time.Second)
 			continue
@@ -80,13 +80,61 @@ func (c *OwnershipConsumer) Run(ctx context.Context, handler ServerOwnerHandler)
 
 		for _, stream := range streams {
 			for _, msg := range stream.Messages {
-				canAck := processor.ProcessMessage(ctx, msg)
-				if canAck {
+				if processor.ProcessMessage(ctx, msg) {
 					c.ack(ctx, msg.ID)
 				}
 			}
 		}
+
+		claimed, err := c.reclaim(ctx)
+		if err != nil {
+			c.logger.Error("claim pending", slog.Any("error", err))
+			continue
+		}
+
+		for _, msg := range claimed {
+			if processor.ProcessMessage(ctx, msg) {
+				c.ack(ctx, msg.ID)
+			}
+		}
 	}
+}
+
+// reclaim redis overlapping messages left unacked > reclaimIdleTime (e.g. dead workers) back to this consumer.
+func (c *OwnershipConsumer) reclaim(ctx context.Context) ([]redis.XMessage, error) {
+
+	msgID := "0"
+	claimed := []redis.XMessage{}
+
+	args := redis.XAutoClaimArgs{
+		Stream:   streamKey,
+		Group:    consumerGroup,
+		Consumer: consumerName,
+		MinIdle:  time.Minute,
+		Start:    msgID,
+		Count:    streamReadCount,
+	}
+
+	for {
+
+		messages, next, err := c.client.XAutoClaim(ctx, &args).Result()
+		if err != nil {
+			return nil, err
+		}
+
+		claimed = append(claimed, messages...)
+
+		if len(messages) == 0 || next == msgID {
+			break
+		}
+		msgID = next
+
+		if len(messages) < streamReadCount {
+			break
+		}
+	}
+
+	return claimed, nil
 }
 
 func (c *OwnershipConsumer) ack(ctx context.Context, msgID string) {

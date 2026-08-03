@@ -3,54 +3,69 @@ package events
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"slices"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
 )
 
 type HTTPConfigEventHandler struct {
-	cache *scheduler.ServerMetaCache
+	cache       *scheduler.ServerMetaCache
+	offsetStore *redis.RedisOffsetStore
 }
 
 func (h *HTTPConfigEventHandler) OnMessage(ctx context.Context, event *dto.DebeziumMessage) error {
 
-	switch event.Operation {
-	case "c", "r":
-		return h.onCreate(ctx, event)
+	cfg, err := resolveConfig(event)
+	if err != nil {
+		return err
+	}
 
-	case "u":
-		return h.onUpdate(ctx, event)
+	key := serverKeyFunc(event.TopicName, cfg.ServerID)
+	isStale, err := h.isStale(ctx, key, event.ID)
+	if err != nil {
+		return err
+	}
 
-	case "d":
-		return h.onDelete(ctx, event)
-
-	default:
+	if isStale {
 		return nil
 	}
-}
 
-func (h *HTTPConfigEventHandler) onCreate(ctx context.Context, event *dto.DebeziumMessage) error {
-
-	cfg := domain.ServerHTTPConfig{}
-	if err := json.Unmarshal(event.After, &cfg); err != nil {
+	if err := h.handleEvent(ctx, event.Operation, cfg.ServerID); err != nil {
 		return err
 	}
 
-	return h.cache.Delete(ctx, cfg.ServerID)
+	return h.offsetStore.SetOffset(ctx, key, event.ID)
 }
 
-func (h *HTTPConfigEventHandler) onUpdate(ctx context.Context, event *dto.DebeziumMessage) error {
+func (h *HTTPConfigEventHandler) handleEvent(ctx context.Context, operation string, serverID uint) error {
 
-	cfg := domain.ServerHTTPConfig{}
-	if err := json.Unmarshal(event.Before, &cfg); err != nil {
-		return err
+	validEvents := []string{"c", "r", "u", "d"}
+	if !slices.Contains(validEvents, operation) {
+		return fmt.Errorf("unknown operation: %s", operation)
 	}
 
-	return h.cache.Delete(ctx, cfg.ServerID)
+	return h.onChanged(ctx, serverID)
 }
 
-func (h *HTTPConfigEventHandler) onDelete(ctx context.Context, event *dto.DebeziumMessage) error {
+func (h *HTTPConfigEventHandler) isStale(ctx context.Context, key string, eventID string) (bool, error) {
+
+	offset, err := h.offsetStore.GetOffset(ctx, key)
+	if err != nil {
+		return false, err
+	}
+
+	return h.offsetStore.IsNewer(offset, eventID)
+}
+
+func (h *HTTPConfigEventHandler) onChanged(ctx context.Context, serverID uint) error {
+	return h.cache.Delete(ctx, serverID)
+}
+
+func resolveConfig(event *dto.DebeziumMessage) (*domain.ServerHTTPConfig, error) {
 
 	data := event.Before
 	if len(data) == 0 {
@@ -59,8 +74,8 @@ func (h *HTTPConfigEventHandler) onDelete(ctx context.Context, event *dto.Debezi
 
 	cfg := domain.ServerHTTPConfig{}
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return err
+		return nil, err
 	}
 
-	return h.cache.Delete(ctx, cfg.ServerID)
+	return &cfg, nil
 }

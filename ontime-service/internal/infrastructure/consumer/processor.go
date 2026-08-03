@@ -26,6 +26,7 @@ type debeziumMessage struct {
 type messageProcessor struct {
 	handler ServerOwnerHandler
 	logger  *slog.Logger
+	offsets *RedisOffsetStore
 }
 
 func (p *messageProcessor) onDelete(ctx context.Context, event debeziumMessage) error {
@@ -70,51 +71,90 @@ func (p *messageProcessor) ProcessMessage(ctx context.Context, msg redis.XMessag
 		return false
 	}
 
+	serverID, err := resolveServerID(event)
+	if err != nil {
+		p.logger.Warn("stream message no server id", slog.String("id", msg.ID), slog.String("op", event.Op))
+		return false
+	}
+
+	// ponytail: skip stale, out-of-order reprocessed messages (e.g. reclaim brings an
+	// older create back after a newer delete for the same server already applied).
+	// Comparing the ms-seq stream ids is enough; per-server offset is redis-persisted.
+	stale, err := p.isStale(ctx, serverID, msg.ID)
+	if err != nil {
+		p.logger.Warn("check offset", slog.String("id", msg.ID), slog.Any("error", err))
+		return false
+	}
+	if stale {
+		return true
+	}
+
 	switch event.Op {
 	case "c", "r":
-		if err := p.onCreate(ctx, event); err != nil {
-			p.logger.Error("handle server",
-				slog.Uint64("server_id", uint64(event.After.ID)),
-				slog.String("op", event.Op),
-				slog.Any("error", err),
-			)
-			return false
-		}
-
+		err = p.onCreate(ctx, event)
 	case "u":
-		if err := p.onUpdate(ctx, event); err != nil {
-			p.logger.Error("handle server",
-				slog.Uint64("server_id", uint64(event.After.ID)),
-				slog.String("op", event.Op),
-				slog.Any("error", err),
-			)
-			return false
-		}
-
+		err = p.onUpdate(ctx, event)
 	case "d":
-		if err := p.onDelete(ctx, event); err != nil {
-			p.logger.Error("handle server",
-				slog.Uint64("server_id", uint64(event.Before.ID)),
-				slog.String("op", event.Op),
-				slog.Any("error", err),
-			)
-			return false
-		}
-
+		err = p.onDelete(ctx, event)
 	default:
 		p.logger.Warn("unknown operation", slog.String("op", event.Op))
+		return true
+	}
+
+	if err != nil {
+		p.logger.Error("handle server",
+			slog.Uint64("server_id", uint64(serverID)),
+			slog.String("op", event.Op),
+			slog.Any("error", err),
+		)
 		return false
+	}
+
+	// record the last applied id so stale reclaims for this server get skipped
+	if err := p.offsets.SetOffset(ctx, serverID, msg.ID); err != nil {
+		p.logger.Error("set offset", slog.String("id", msg.ID), slog.Any("error", err))
 	}
 
 	return true
 }
 
-func resolveDeletedID(event debeziumMessage) (uint, error) {
-	if event.Before != nil {
-		return event.Before.ID, nil
+// isStale reports whether a message for serverID is older than one already applied.
+func (p *messageProcessor) isStale(ctx context.Context, serverID uint, msgID string) (bool, error) {
+
+	applied, err := p.offsets.GetOffset(ctx, serverID)
+	if err == redis.Nil {
+		return false, nil
 	}
+
+	if err != nil {
+		return false, err
+	}
+
+	return p.offsets.IsNewer(applied, msgID)
+}
+
+func resolveServerID(event debeziumMessage) (uint, error) {
+
 	if event.After != nil {
 		return event.After.ID, nil
 	}
+
+	if event.Before != nil {
+		return event.Before.ID, nil
+	}
+
+	return 0, errors.New("resolveServerID: event has no before or after")
+}
+
+func resolveDeletedID(event debeziumMessage) (uint, error) {
+
+	if event.Before != nil {
+		return event.Before.ID, nil
+	}
+
+	if event.After != nil {
+		return event.After.ID, nil
+	}
+
 	return 0, errors.New("resolveDeletedID: event has no before or after")
 }
