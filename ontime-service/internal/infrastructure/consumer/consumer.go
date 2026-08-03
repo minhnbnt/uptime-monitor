@@ -57,7 +57,7 @@ func (c *OwnershipConsumer) Run(ctx context.Context, handler ServerOwnerHandler)
 	processor := &messageProcessor{
 		handler: handler,
 		logger:  c.logger,
-		offsets: NewRedisOffsetStore(c.client, time.Minute),
+		offsets: NewRedisOffsetStore(c.client, 30*time.Minute),
 	}
 
 	readArgs := redis.XReadGroupArgs{
