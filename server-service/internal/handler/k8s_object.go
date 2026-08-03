@@ -60,7 +60,9 @@ func (h *K8sObjectHandler) DeleteK8sObject(
 		ObjectID:  params.ObjectID,
 	}
 
-	if err := h.k8sObjectService.DeleteK8sObject(ctx, object); err != nil {
+	userID := authclient.GetUserID(ctx)
+
+	if err := h.k8sObjectService.DeleteK8sObject(ctx, userID, object); err != nil {
 		return apperrors.ToAPIError(err)
 	}
 

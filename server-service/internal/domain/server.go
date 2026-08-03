@@ -24,6 +24,9 @@ type Server struct {
 	Interval      time.Duration `gorm:"type:bigint;not null;default:30000000000"`
 	Timeout       time.Duration `gorm:"type:bigint;not null;default:10000000000"`
 	CreatedByID   uuid.UUID     `gorm:"type:uuid;not null;index"`
+	// Managed indicates the backing k8s object was created by this system
+	// (via /k8s-objects) and may therefore be deleted through the API.
+	Managed bool `gorm:"type:boolean;not null;default:false"`
 }
 
 func (Server) TableName() string {

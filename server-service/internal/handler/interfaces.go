@@ -23,7 +23,7 @@ type ServerWriter interface {
 
 type K8sObjectService interface {
 	CreateK8sObject(ctx context.Context, req dto.CreateK8sObjectRequest, createdByID uuid.UUID) (*dto.Server, error)
-	DeleteK8sObject(ctx context.Context, req dto.DeleteK8sObjectRequest) error
+	DeleteK8sObject(ctx context.Context, userID uuid.UUID, req dto.DeleteK8sObjectRequest) error
 }
 
 type EndpointService interface {

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -109,6 +110,27 @@ func (sr *ServerRepository) GetByID(ctx context.Context, id uint) (*domain.Serve
 	return &results[0], nil
 }
 
+// GetByNamespaceObjectIDUnscoped returns the server matching the given
+// namespace/object_id, including soft-deleted rows (Unscoped), so ownership
+// and the managed flag remain readable after the server was soft-deleted.
+func (sr *ServerRepository) GetByNamespaceObjectIDUnscoped(ctx context.Context, namespace, objectID string) (*domain.Server, error) {
+
+	result, err := gorm.G[domain.Server](sr.db).
+		Scopes(func(stmt *gorm.Statement) { stmt.Unscoped = true }).
+		Where("namespace = ? AND object_id = ?", namespace, objectID).
+		First(ctx)
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, apperrors.ErrNotFound
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("get server by namespace/object_id: %w", err)
+	}
+
+	return &result, nil
+}
+
 func (sr *ServerRepository) Update(ctx context.Context, s *domain.Server, config *domain.ServerHttpConfig) error {
 	return sr.db.Transaction(func(tx *gorm.DB) error {
 
@@ -191,14 +213,4 @@ func (sr *ServerRepository) BatchCreateServers(
 	}
 
 	return nil
-}
-
-func (sr *ServerRepository) ExistsByNamespaceObjectID(ctx context.Context, namespace, objectID string) (bool, error) {
-	count, err := gorm.G[domain.Server](sr.db).
-		Where("namespace = ? AND object_id = ?", namespace, objectID).
-		Count(ctx, "id")
-	if err != nil {
-		return false, fmt.Errorf("check server existence: %w", err)
-	}
-	return count > 0, nil
 }

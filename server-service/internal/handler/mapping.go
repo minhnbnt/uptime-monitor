@@ -165,6 +165,7 @@ func ToAPIServer(s *dto.Server) api.ServerObject {
 		Kind:          api.ServerObjectKind(s.Kind),
 		ObjectID:      s.ObjectID,
 		ContainerName: api.NewOptString(s.ContainerName),
+		Managed:       api.NewOptBool(s.Managed),
 		MonitorStatus: monitorStatus,
 		HTTPConfig:    httpConfig,
 		Interval:      api.NewOptInt(int(s.Interval.Seconds())),

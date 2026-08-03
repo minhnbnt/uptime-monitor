@@ -18,6 +18,7 @@ type Server struct {
 	Interval      time.Duration
 	Timeout       time.Duration
 	CreatedByID   uuid.UUID
+	Managed       bool
 	MonitorStatus domain.ServerStatus
 	HttpConfig    *HttpConfig
 	CreatedAt     time.Time
@@ -35,6 +36,7 @@ func ServerFromDomain(s domain.Server) Server {
 		Interval:      s.Interval,
 		Timeout:       s.Timeout,
 		CreatedByID:   s.CreatedByID,
+		Managed:       s.Managed,
 		CreatedAt:     s.CreatedAt,
 		UpdatedAt:     s.UpdatedAt,
 	}

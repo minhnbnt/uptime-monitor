@@ -32,6 +32,9 @@ ServerObject:
       minLength: 1
     container_name:
       type: string
+    managed:
+      type: boolean
+      description: Whether the backing k8s object was created by this system
     monitor_status:
       type: string
       enum:

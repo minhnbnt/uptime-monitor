@@ -37,10 +37,10 @@ func ToAPIError(err error) *api.ErrorResponseStatusCode {
 		}
 	}
 
-	if errors.Is(err, ErrPodMonitored) {
+	if errors.Is(err, ErrNotManaged) {
 		return &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusConflict,
-			Response:   errResponse("CONFLICT", err.Error()),
+			StatusCode: http.StatusForbidden,
+			Response:   errResponse("NOT_MANAGED", err.Error()),
 		}
 	}
 

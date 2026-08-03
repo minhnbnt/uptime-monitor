@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -48,6 +49,7 @@ func (s *K8sObjectService) CreateK8sObject(
 		Interval:      req.Interval,
 		Timeout:       req.Timeout,
 		CreatedByID:   createdByID,
+		Managed:       true,
 	}
 
 	var config *domain.ServerHttpConfig
@@ -75,15 +77,23 @@ func (s *K8sObjectService) CreateK8sObject(
 	return &result, nil
 }
 
-func (s *K8sObjectService) DeleteK8sObject(ctx context.Context, req dto.DeleteK8sObjectRequest) error {
+func (s *K8sObjectService) DeleteK8sObject(ctx context.Context, userID uuid.UUID, req dto.DeleteK8sObjectRequest) error {
 
-	exists, err := s.serverRepo.ExistsByNamespaceObjectID(ctx, req.Namespace, req.ObjectID)
+	server, err := s.serverRepo.GetByNamespaceObjectIDUnscoped(ctx, req.Namespace, req.ObjectID)
+	if errors.Is(err, apperrors.ErrNotFound) {
+		return apperrors.ErrNotFound
+	}
 	if err != nil {
-		s.logger.Error("failed to check server existence", slog.Any("error", err))
+		s.logger.Error("failed to get server by namespace/object_id", slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
-	if exists {
-		return apperrors.ErrPodMonitored
+
+	if server.CreatedByID != userID {
+		return apperrors.ErrForbidden
+	}
+
+	if !server.Managed {
+		return apperrors.ErrNotManaged
 	}
 
 	if err := s.k8sClient.DeletePod(ctx, req.Namespace, req.ObjectID); err != nil {
