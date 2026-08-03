@@ -19,6 +19,7 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 		config.RegisterLogger(dev),
 		config.RegisterGORMDB,
 		config.RegisterRedisClient,
+		config.RegisterCORS,
 
 		k8s.RegisterClientset,
 		k8s.RegisterK8sClient,

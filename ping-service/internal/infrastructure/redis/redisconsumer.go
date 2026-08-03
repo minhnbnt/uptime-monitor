@@ -62,9 +62,7 @@ func (c *StreamEventConsumer) Run(ctx context.Context, streamKeys []string, hand
 	}
 
 	streams := make([]string, 0, 2*len(streamKeys))
-	for _, streamKey := range streamKeys {
-		streams = append(streams, streamKey)
-	}
+	streams = append(streams, streamKeys...)
 	for range streamKeys {
 		streams = append(streams, ">")
 	}

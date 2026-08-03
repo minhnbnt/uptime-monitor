@@ -16,7 +16,28 @@ app.kubernetes.io/part-of: uptime-monitor
 {{- end -}}
 
 {{- define "uptime-monitor.config" -}}
-{{- include "uptime-monitor.toYaml" .config -}}
+{{- if .config -}}{{ toYaml .config }}{{- end -}}
+{{- $cors := .root.Values.cors -}}
+{{- if $cors -}}
+{{- if .config -}}
+{{- "\n" -}}
+{{- end -}}
+cors:
+  allowed_origins:
+{{- range $cors.allowOrigins }}
+    - {{ . | toJson }}
+{{- end }}
+  allowed_methods:
+{{- range $cors.allowMethods }}
+    - {{ . | toJson }}
+{{- end }}
+  allowed_headers:
+{{- range $cors.allowHeaders }}
+    - {{ . | toJson }}
+{{- end }}
+  max_age: {{ $cors.maxAge }}
+  allow_credentials: {{ $cors.allowCredentials }}
+{{- end -}}
 {{- end -}}
 
 {{- define "uptime-monitor.toYaml" -}}

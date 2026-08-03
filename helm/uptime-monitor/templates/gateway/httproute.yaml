@@ -20,23 +20,6 @@ spec:
         - path:
             type: PathPrefix
             value: {{ $path }}
-      filters:
-        - type: CORS
-          cors:
-            allowOrigins:
-              {{- range $.Values.cors.allowOrigins }}
-              - {{ . | quote }}
-              {{- end }}
-            allowMethods:
-              {{- range $.Values.cors.allowMethods }}
-              - {{ . | quote }}
-              {{- end }}
-            allowHeaders:
-              {{- range $.Values.cors.allowHeaders }}
-              - {{ . | quote }}
-              {{- end }}
-            allowCredentials: {{ $.Values.cors.allowCredentials }}
-            maxAge: {{ $.Values.cors.maxAge }}
       backendRefs:
         - name: {{ $name }}
           port: {{ $app.port }}
@@ -67,22 +50,6 @@ spec:
             path:
               type: ReplacePrefixMatch
               replacePrefixMatch: ""
-        - type: CORS
-          cors:
-            allowOrigins:
-              {{- range .Values.cors.allowOrigins }}
-              - {{ . | quote }}
-              {{- end }}
-            allowMethods:
-              {{- range .Values.cors.allowMethods }}
-              - {{ . | quote }}
-              {{- end }}
-            allowHeaders:
-              {{- range .Values.cors.allowHeaders }}
-              - {{ . | quote }}
-              {{- end }}
-            allowCredentials: {{ .Values.cors.allowCredentials }}
-            maxAge: {{ .Values.cors.maxAge }}
       backendRefs:
         - name: gotrue
           port: {{ .Values.gotrue.port }}

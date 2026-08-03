@@ -48,3 +48,17 @@ mail:
   smtp_host: mailpit
   smtp_port: 1025
   from_address: noreply@uptime.local
+
+cors:
+  allowed_origins:
+    - http://localhost:3000
+  allowed_methods:
+    - GET
+    - POST
+    - PUT
+    - PATCH
+    - DELETE
+    - OPTIONS
+  allowed_headers:
+    - Authorization
+    - Content-Type

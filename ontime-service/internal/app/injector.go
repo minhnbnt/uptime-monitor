@@ -20,6 +20,7 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 		config.RegisterGORMDB,
 		config.RegisterRedisClient,
 		config.RegisterGRPCClient,
+		config.RegisterCORS,
 
 		serverclient.RegisterClient,
 

@@ -76,6 +76,12 @@ func setDefaults(v *viper.Viper) {
 		"mail.smtp_user":     "",
 		"mail.smtp_password": "",
 		"mail.from_address":  "noreply@uptime.local",
+
+		"cors.allowed_origins":   []string{"*"},
+		"cors.allowed_methods":   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		"cors.allowed_headers":   []string{"Authorization", "Content-Type"},
+		"cors.max_age":           86400,
+		"cors.allow_credentials": true,
 	}
 
 	for key, value := range defaults {
@@ -117,6 +123,10 @@ func bindEnvVars(v *viper.Viper) error {
 		"mail.smtp_user":     "SMTP_USER",
 		"mail.smtp_password": "SMTP_PASSWORD",
 		"mail.from_address":  "SMTP_FROM",
+
+		"cors.allowed_origins": "CORS_ALLOWED_ORIGINS",
+		"cors.allowed_methods": "CORS_ALLOWED_METHODS",
+		"cors.allowed_headers": "CORS_ALLOWED_HEADERS",
 	}
 
 	for key, env := range envMap {

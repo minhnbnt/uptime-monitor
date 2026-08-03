@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/rs/cors"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/common/authclient"
@@ -33,9 +34,11 @@ func RunWebServer(ctx context.Context, injector do.Injector) {
 	mux := http.NewServeMux()
 	mux.Handle("/", authMW.Middleware(srv))
 
+	corsMiddleware := do.MustInvoke[*cors.Cors](injector)
+
 	httpServer := http.Server{
 		Addr:    ":" + cfg.Server.Port,
-		Handler: mux,
+		Handler: corsMiddleware.Handler(mux),
 	}
 
 	go func() {

@@ -7,6 +7,7 @@ type Config struct {
 	GRPC       GRPCConfig  `mapstructure:"grpc"`
 	Auth       AuthConfig  `mapstructure:"auth"`
 	Kubeconfig string      `mapstructure:"kubeconfig"`
+	CORS       CORSConfig  `mapstructure:"cors"`
 }
 
 type AuthConfig struct {

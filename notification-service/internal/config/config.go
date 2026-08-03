@@ -8,6 +8,7 @@ type Config struct {
 	Auth     AuthConfig   `mapstructure:"auth"`
 	GRPC     GRPCConfig   `mapstructure:"grpc"`
 	Digest   DigestConfig `mapstructure:"digest"`
+	CORS     CORSConfig   `mapstructure:"cors"`
 }
 
 type AuthConfig struct {

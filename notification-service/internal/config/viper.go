@@ -69,6 +69,12 @@ func setDefaults(v *viper.Viper) {
 		"grpc.event_addr":  "localhost:50052",
 
 		"digest.max_records": 10000,
+
+		"cors.allowed_origins":   []string{"*"},
+		"cors.allowed_methods":   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		"cors.allowed_headers":   []string{"Authorization", "Content-Type"},
+		"cors.max_age":           86400,
+		"cors.allow_credentials": true,
 	}
 
 	for key, value := range defaults {
@@ -101,6 +107,10 @@ func bindEnvVars(v *viper.Viper) error {
 		"grpc.event_addr":  "GRPC_EVENT_ADDR",
 
 		"digest.max_records": "DIGEST_MAX_RECORDS",
+
+		"cors.allowed_origins": "CORS_ALLOWED_ORIGINS",
+		"cors.allowed_methods": "CORS_ALLOWED_METHODS",
+		"cors.allowed_headers": "CORS_ALLOWED_HEADERS",
 	}
 
 	for key, env := range envMap {

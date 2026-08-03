@@ -48,6 +48,12 @@ func setDefaults(v *viper.Viper) {
 		"log.level":        "info",
 		"db.port":          "5432",
 		"redis.db":         0,
+
+		"cors.allowed_origins":   []string{"*"},
+		"cors.allowed_methods":   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		"cors.allowed_headers":   []string{"Authorization", "Content-Type"},
+		"cors.max_age":           86400,
+		"cors.allow_credentials": true,
 	}
 
 	for key, value := range defaults {
@@ -69,6 +75,10 @@ func bindEnvVars(v *viper.Viper) error {
 		"redis.addr":       "REDIS_ADDR",
 		"redis.db":         "REDIS_DB",
 		"log.level":        "LOG_LEVEL",
+
+		"cors.allowed_origins": "CORS_ALLOWED_ORIGINS",
+		"cors.allowed_methods": "CORS_ALLOWED_METHODS",
+		"cors.allowed_headers": "CORS_ALLOWED_HEADERS",
 	}
 
 	for key, env := range envMap {

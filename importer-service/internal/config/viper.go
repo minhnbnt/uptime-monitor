@@ -41,10 +41,15 @@ func InitConfig(configPath string) (*Config, error) {
 
 func setDefaults(v *viper.Viper) {
 	defaults := map[string]any{
-		"server.port":      "8086",
-		"grpc.server_addr": "localhost:50051",
-		"auth.issuer":      "http://gotrue:9999",
-		"log.level":        "info",
+		"server.port":            "8086",
+		"grpc.server_addr":       "localhost:50051",
+		"auth.issuer":            "http://gotrue:9999",
+		"log.level":              "info",
+		"cors.allowed_origins":   []string{"*"},
+		"cors.allowed_methods":   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		"cors.allowed_headers":   []string{"Authorization", "Content-Type"},
+		"cors.max_age":           86400,
+		"cors.allow_credentials": true,
 	}
 
 	for key, value := range defaults {
@@ -54,10 +59,13 @@ func setDefaults(v *viper.Viper) {
 
 func bindEnvVars(v *viper.Viper) error {
 	envMap := map[string]string{
-		"server.port":      "PORT",
-		"grpc.server_addr": "GRPC_SERVER_ADDR",
-		"auth.issuer":      "AUTH_ISSUER",
-		"log.level":        "LOG_LEVEL",
+		"server.port":          "PORT",
+		"grpc.server_addr":     "GRPC_SERVER_ADDR",
+		"auth.issuer":          "AUTH_ISSUER",
+		"log.level":            "LOG_LEVEL",
+		"cors.allowed_origins": "CORS_ALLOWED_ORIGINS",
+		"cors.allowed_methods": "CORS_ALLOWED_METHODS",
+		"cors.allowed_headers": "CORS_ALLOWED_HEADERS",
 	}
 
 	for key, env := range envMap {

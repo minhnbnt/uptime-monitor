@@ -5,6 +5,7 @@ type Config struct {
 	GRPC   GRPCConfig   `mapstructure:"grpc"`
 	Auth   AuthConfig   `mapstructure:"auth"`
 	Log    LogConfig    `mapstructure:"log"`
+	CORS   CORSConfig   `mapstructure:"cors"`
 }
 
 type ServerConfig struct {
