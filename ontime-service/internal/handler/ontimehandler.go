@@ -96,7 +96,20 @@ func (h *OntimeHandler) CalculateUptime(
 	params api.CalculateUptimeParams,
 ) (*api.UptimeResponse, error) {
 
-	if err := validateRequest(req); err != nil {
+	from, to := req.From, req.To
+
+	// Do not calculate into the future: clamp the range end (and start) to the
+	// current time so a `to` that exceeds now is capped at the present instead
+	// of being rejected.
+	now := time.Now()
+	if to.After(now) {
+		to = now
+	}
+	if from.After(now) {
+		from = now
+	}
+
+	if err := validateRange(from, to); err != nil {
 		return nil, err
 	}
 
@@ -111,7 +124,7 @@ func (h *OntimeHandler) CalculateUptime(
 
 	result, err := h.ontimeRangeService.CalculateUptime(
 		ctx, uint(params.ID),
-		req.From, req.To,
+		from, to,
 		resolution,
 	)
 
@@ -122,17 +135,13 @@ func (h *OntimeHandler) CalculateUptime(
 	return toAPIUptimeResponse(result)
 }
 
-func validateRequest(req *api.CalculateUptimeRequest) error {
+func validateRange(from, to time.Time) error {
 
-	if req.From.After(req.To) || req.From.Equal(req.To) {
+	if from.After(to) || from.Equal(to) {
 		return apperrors.ErrBadRequest
 	}
 
-	if req.To.After(time.Now()) {
-		return apperrors.ErrBadRequest
-	}
-
-	if req.To.Sub(req.From) > 90*24*time.Hour {
+	if to.Sub(from) > 90*24*time.Hour {
 		return apperrors.ErrBadRequest
 	}
 

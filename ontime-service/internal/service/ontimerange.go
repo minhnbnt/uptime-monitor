@@ -40,6 +40,16 @@ func (s *OntimeRangeService) CalculateUptime(
 	ctx context.Context, serverID uint, from, to time.Time, resolution time.Duration,
 ) (*dto.UptimeResponse, error) {
 
+	// Do not calculate into the future: clamp the range end (and start) to the
+	// current time so a `to` that exceeds now is capped at the present.
+	now := time.Now()
+	if to.After(now) {
+		to = now
+	}
+	if from.After(now) {
+		from = now
+	}
+
 	request := []ontimerepo.BatchGetOntimeRangeRequest{
 		{ServerID: serverID, From: from, To: to},
 	}
