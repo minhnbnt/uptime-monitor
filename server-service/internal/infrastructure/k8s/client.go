@@ -34,7 +34,36 @@ func RegisterK8sClient(i do.Injector) {
 	})
 }
 
+// EnsureNamespace creates the given namespace if it does not already exist.
+// It is a no-op if the namespace already exists or the name is empty.
+func (c *K8sClient) EnsureNamespace(ctx context.Context, namespace string) error {
+	if namespace == "" {
+		return nil
+	}
+
+	_, err := c.clientSet.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+	if err == nil {
+		return nil
+	}
+	if !apierrors.IsNotFound(err) {
+		return fmt.Errorf("get namespace %s: %w", namespace, err)
+	}
+
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{Name: namespace},
+	}
+	if _, err := c.clientSet.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
+		return fmt.Errorf("create namespace %s: %w", namespace, err)
+	}
+
+	return nil
+}
+
 func (c *K8sClient) CreatePod(ctx context.Context, namespace, name string, containers []Container) error {
+	if err := c.EnsureNamespace(ctx, namespace); err != nil {
+		return err
+	}
+
 	podSpec := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,

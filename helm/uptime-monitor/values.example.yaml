@@ -73,6 +73,7 @@ apps:
     ingress:
       - /api/v1/servers
       - /api/v1/test-endpoint
+      - /api/v1/k8s-objects
     config:
       db:
         host: pgbouncer.uptime-monitor.svc.cluster.local
@@ -184,7 +185,6 @@ apps:
         tls_insecure_skip_verify: false
       auth:
         issuer: http://gotrue.uptime-monitor.svc.cluster.local:9999
-        service_token: CHANGE_ME
       digest:
         max_records: 10000
       log:
