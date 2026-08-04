@@ -52,6 +52,10 @@ func parseOffset(offset string) (ms, seq uint64, err error) {
 
 func (s *RedisOffsetStore) IsNewer(a, b string) (bool, error) {
 
+	if a == "" || b == "" {
+		return false, nil
+	}
+
 	msA, seqA, err := parseOffset(a)
 	if err != nil {
 		return false, err

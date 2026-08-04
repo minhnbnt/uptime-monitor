@@ -1,8 +1,10 @@
 package events
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
@@ -23,9 +25,13 @@ func serverKeyFunc(topicName string, id uint) string {
 
 func resolveServer(event *dto.DebeziumMessage) (*domain.Server, error) {
 
-	data := event.Before
-	if len(data) == 0 {
-		data = event.After
+	data := event.After
+	if event.Operation == "d" {
+		data = event.Before
+	}
+
+	if len(data) == 0 || bytes.Equal(data, []byte("null")) {
+		return nil, errors.New("missing server payload")
 	}
 
 	server := domain.Server{}

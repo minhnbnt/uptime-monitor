@@ -1,8 +1,10 @@
 package events
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -67,9 +69,13 @@ func (h *HTTPConfigEventHandler) onChanged(ctx context.Context, serverID uint) e
 
 func resolveConfig(event *dto.DebeziumMessage) (*domain.ServerHTTPConfig, error) {
 
-	data := event.Before
-	if len(data) == 0 {
-		data = event.After
+	data := event.After
+	if event.Operation == "d" {
+		data = event.Before
+	}
+
+	if len(data) == 0 || bytes.Equal(data, []byte("null")) {
+		return nil, errors.New("missing config payload")
 	}
 
 	cfg := domain.ServerHTTPConfig{}
