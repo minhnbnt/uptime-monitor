@@ -43,11 +43,11 @@ func (s *OntimeGRPCServer) GetServersOntime(
 	servers := lo.Map(lo.Keys(ontimeMap), func(id uint, _ int) *eventv1.ServerOntimeStat {
 		return &eventv1.ServerOntimeStat{
 			ServerId: uint64(id),
-			OntimeStats: lo.Map(ontimeMap[id], func(stat dto.OntimeStats, _ int) *eventv1.OntimeDayStat {
+			OntimeStats: lo.Map(ontimeMap[id], func(stat dto.DayStats, _ int) *eventv1.OntimeDayStat {
 				return &eventv1.OntimeDayStat{
 					Date:    stat.Date.Format("2006-01-02"),
-					Stats:   stat.Stats,
-					HasData: stat.HasData,
+					Stats:   stat.Result.Uptime,
+					HasData: stat.Result.HasData,
 				}
 			}),
 		}

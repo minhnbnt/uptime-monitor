@@ -53,7 +53,7 @@ func (h *OntimeHandler) ListServersOntime(ctx context.Context, params api.ListSe
 	data := lo.Map(result, func(item dto.ServerOntime, _ int) api.ServerOntime {
 		return api.ServerOntime{
 			ServerID:    api.NewOptInt(int(item.ServerID)),
-			OntimeStats: toOntimeStats(item.OntimeStats),
+			OntimeStats: toOntimeStats(item.DayStats),
 		}
 	})
 
@@ -71,7 +71,7 @@ func (h *OntimeHandler) GetServerOntime(ctx context.Context, params api.GetServe
 
 	so := api.ServerOntime{
 		ServerID:    api.NewOptInt(int(result.ServerID)),
-		OntimeStats: toOntimeStats(result.OntimeStats),
+		OntimeStats: toOntimeStats(result.DayStats),
 	}
 
 	return &api.ServerOntimeResponse{Data: api.NewOptServerOntime(so)}, nil
@@ -148,12 +148,12 @@ func validateRange(from, to time.Time) error {
 	return nil
 }
 
-func toOntimeStats(stats []dto.OntimeStats) []api.OntimeStats {
-	return lo.Map(stats, func(s dto.OntimeStats, _ int) api.OntimeStats {
+func toOntimeStats(stats []dto.DayStats) []api.OntimeStats {
+	return lo.Map(stats, func(s dto.DayStats, _ int) api.OntimeStats {
 		return api.OntimeStats{
 			Date:    api.NewOptDateTime(s.Date),
-			Stats:   api.NewOptFloat64(s.Stats),
-			HasData: api.NewOptBool(s.HasData),
+			Stats:   api.NewOptFloat64(s.Result.Uptime),
+			HasData: api.NewOptBool(s.Result.HasData),
 		}
 	})
 }

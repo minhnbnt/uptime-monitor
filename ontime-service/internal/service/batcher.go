@@ -57,7 +57,7 @@ type Batcher struct {
 	calculator            OntimeCalculator
 }
 
-func (b *Batcher) BatchGetOntimeUntil(ctx context.Context, req []dto.BatchGetOntimeItem, until time.Time) ([]dto.BatchGetOntimeResponse, error) {
+func (b *Batcher) BatchGetOntimeUntil(ctx context.Context, req []dto.BatchGetOntimeItem, until time.Time) ([]dto.ServerOntime, error) {
 
 	cacheKeys := getCacheKey(req)
 	resultMap := b.resolveCache(ctx, cacheKeys)
@@ -85,7 +85,7 @@ func (b *Batcher) BatchGetOntimeUntil(ctx context.Context, req []dto.BatchGetOnt
 	return b.buildResponse(req, resultMap), nil
 }
 
-func (b *Batcher) BatchGetOntime(ctx context.Context, req []dto.BatchGetOntimeItem) ([]dto.BatchGetOntimeResponse, error) {
+func (b *Batcher) BatchGetOntime(ctx context.Context, req []dto.BatchGetOntimeItem) ([]dto.ServerOntime, error) {
 	return b.BatchGetOntimeUntil(ctx, req, time.Now())
 }
 
@@ -147,22 +147,22 @@ func (b *Batcher) fillMisses(ctx context.Context, missedKeys []dto.BatchGetOntim
 	return toCache
 }
 
-func (b *Batcher) buildResponse(req []dto.BatchGetOntimeItem, resultMap map[dto.BatchGetOntimeItem]dto.DayResult) []dto.BatchGetOntimeResponse {
+func (b *Batcher) buildResponse(req []dto.BatchGetOntimeItem, resultMap map[dto.BatchGetOntimeItem]dto.DayResult) []dto.ServerOntime {
 
 	groups := lo.GroupBy(req, func(item dto.BatchGetOntimeItem) uint {
 		return item.ServerID
 	})
 
-	return lo.MapToSlice(groups, func(serverID uint, items []dto.BatchGetOntimeItem) dto.BatchGetOntimeResponse {
+	return lo.MapToSlice(groups, func(serverID uint, items []dto.BatchGetOntimeItem) dto.ServerOntime {
 
-		result := lo.Map(items, func(item dto.BatchGetOntimeItem, _ int) dto.OntimeStats {
+		result := lo.Map(items, func(item dto.BatchGetOntimeItem, _ int) dto.DayStats {
 			r := resultMap[item] // zero value -> HasData: false, correctly means "no data" if truly absent too
-			return dto.OntimeStats{Date: item.Date, Stats: r.Uptime, HasData: r.HasData}
+			return dto.DayStats{Date: item.Date, Result: r}
 		})
 
-		return dto.BatchGetOntimeResponse{
+		return dto.ServerOntime{
 			ServerID: serverID,
-			Result:   result,
+			DayStats: result,
 		}
 	})
 }

@@ -23,10 +23,10 @@ func TestIntegration_BatchGetOntime_LowerboundON_NoDayEvents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(results) != 1 || len(results[0].Result) != 1 {
+	if len(results) != 1 || len(results[0].DayStats) != 1 {
 		t.Fatalf("unexpected result shape: %+v", results)
 	}
-	got := results[0].Result[0].Stats
+	got := results[0].DayStats[0].Result.Uptime
 	if got != 100 {
 		t.Errorf("Stats = %f, want 100 (lowerbound ON, no events)", got)
 	}
@@ -46,10 +46,10 @@ func TestIntegration_BatchGetOntime_LowerboundOFF_NoDayEvents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(results) != 1 || len(results[0].Result) != 1 {
+	if len(results) != 1 || len(results[0].DayStats) != 1 {
 		t.Fatalf("unexpected result shape: %+v", results)
 	}
-	got := results[0].Result[0].Stats
+	got := results[0].DayStats[0].Result.Uptime
 	if got != 0 {
 		t.Errorf("Stats = %f, want 0 (lowerbound OFF, no events)", got)
 	}
@@ -77,7 +77,7 @@ func TestIntegration_BatchGetOntime_TodaySingleON_PrevDayOFF(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(results) != 1 || len(results[0].Result) != 1 {
+	if len(results) != 1 || len(results[0].DayStats) != 1 {
 		t.Fatalf("unexpected result shape: %+v", results)
 	}
 
@@ -86,7 +86,7 @@ func TestIntegration_BatchGetOntime_TodaySingleON_PrevDayOFF(t *testing.T) {
 	coverage := now.Sub(startTime).Seconds()
 	want := online / coverage * 100
 
-	got := results[0].Result[0].Stats
+	got := results[0].DayStats[0].Result.Uptime
 	if got != want {
 		t.Errorf("Stats = %f, want %f (prev day OFF, today ON at 06:00)", got, want)
 	}
@@ -113,7 +113,7 @@ func TestIntegration_BatchGetOntime_Today_ON_to_OFF(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(results) != 1 || len(results[0].Result) != 1 {
+	if len(results) != 1 || len(results[0].DayStats) != 1 {
 		t.Fatalf("unexpected result shape: %+v", results)
 	}
 
@@ -122,7 +122,7 @@ func TestIntegration_BatchGetOntime_Today_ON_to_OFF(t *testing.T) {
 	coverage := now.Sub(onTime).Seconds()
 	want := online / coverage * 100
 
-	got := results[0].Result[0].Stats
+	got := results[0].DayStats[0].Result.Uptime
 	if got != want {
 		t.Errorf("Stats = %f, want %f (ON 06-10, then OFF)", got, want)
 	}
@@ -157,8 +157,8 @@ func TestIntegration_BatchGetOntime_MultipleServers(t *testing.T) {
 
 	stats := map[uint]float64{}
 	for _, r := range results {
-		if len(r.Result) == 1 {
-			stats[r.ServerID] = r.Result[0].Stats
+		if len(r.DayStats) == 1 {
+			stats[r.ServerID] = r.DayStats[0].Result.Uptime
 		}
 	}
 	if stats[1] != 100 {

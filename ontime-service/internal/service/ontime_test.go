@@ -53,9 +53,9 @@ func TestBuildResponse(t *testing.T) {
 		}
 
 		// Build lookup to verify
-		s1Stats := map[uint][]dto.OntimeStats{}
+		s1Stats := map[uint][]dto.DayStats{}
 		for _, r := range got {
-			s1Stats[r.ServerID] = r.Result
+			s1Stats[r.ServerID] = r.DayStats
 		}
 
 		if len(s1Stats[1]) != 2 {
@@ -67,11 +67,11 @@ func TestBuildResponse(t *testing.T) {
 
 		// Verify values
 		for _, stat := range s1Stats[1] {
-			if stat.Date.Equal(d1) && stat.Stats != 99.5 {
-				t.Errorf("server 1, d1 stats = %f, want 99.5", stat.Stats)
+			if stat.Date.Equal(d1) && stat.Result.Uptime != 99.5 {
+				t.Errorf("server 1, d1 stats = %f, want 99.5", stat.Result.Uptime)
 			}
-			if stat.Date.Equal(d2) && stat.Stats != 100.0 {
-				t.Errorf("server 1, d2 stats = %f, want 100.0", stat.Stats)
+			if stat.Date.Equal(d2) && stat.Result.Uptime != 100.0 {
+				t.Errorf("server 1, d2 stats = %f, want 100.0", stat.Result.Uptime)
 			}
 		}
 	})
@@ -91,13 +91,13 @@ func TestBuildResponse(t *testing.T) {
 		if len(got) != 1 {
 			t.Fatalf("len = %d, want 1", len(got))
 		}
-		if len(got[0].Result) != 1 {
-			t.Fatalf("result len = %d, want 1", len(got[0].Result))
+		if len(got[0].DayStats) != 1 {
+			t.Fatalf("result len = %d, want 1", len(got[0].DayStats))
 		}
-		if got[0].Result[0].Stats != 0 {
-			t.Errorf("Stats = %f, want 0", got[0].Result[0].Stats)
+		if got[0].DayStats[0].Result.Uptime != 0 {
+			t.Errorf("Stats = %f, want 0", got[0].DayStats[0].Result.Uptime)
 		}
-		if got[0].Result[0].HasData {
+		if got[0].DayStats[0].Result.HasData {
 			t.Errorf("HasData = true, want false (missing key is no-data, not 0%%)")
 		}
 	})
@@ -110,18 +110,18 @@ func TestBuildOntimeLookup(t *testing.T) {
 	d2 := oDay(2026, 6, 2)
 
 	t.Run("converts response slice to lookup map", func(t *testing.T) {
-		results := []dto.BatchGetOntimeResponse{
+		results := []dto.ServerOntime{
 			{
 				ServerID: 1,
-				Result: []dto.OntimeStats{
-					{Date: d1, Stats: 99.5},
-					{Date: d2, Stats: 100.0},
+				DayStats: []dto.DayStats{
+					{Date: d1, Result: dto.DayResult{Uptime: 99.5}},
+					{Date: d2, Result: dto.DayResult{Uptime: 100.0}},
 				},
 			},
 			{
 				ServerID: 2,
-				Result: []dto.OntimeStats{
-					{Date: d1, Stats: 50.0},
+				DayStats: []dto.DayStats{
+					{Date: d1, Result: dto.DayResult{Uptime: 50.0}},
 				},
 			},
 		}
@@ -271,11 +271,11 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 		if mSetCalled {
 			t.Error("MSet should not be called when all cached")
 		}
-		if len(got) != 1 || len(got[0].Result) != 1 {
+		if len(got) != 1 || len(got[0].DayStats) != 1 {
 			t.Fatalf("unexpected result shape: %+v", got)
 		}
-		if got[0].Result[0].Stats != 100.0 {
-			t.Errorf("Stats = %f, want 100.0", got[0].Result[0].Stats)
+		if got[0].DayStats[0].Result.Uptime != 100.0 {
+			t.Errorf("Stats = %f, want 100.0", got[0].DayStats[0].Result.Uptime)
 		}
 	})
 
@@ -314,11 +314,11 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 		if !mSetCalled {
 			t.Error("MSet should be called when there are misses")
 		}
-		if len(got) != 1 || len(got[0].Result) != 1 {
+		if len(got) != 1 || len(got[0].DayStats) != 1 {
 			t.Fatalf("unexpected result shape: %+v", got)
 		}
-		if got[0].Result[0].Stats <= 0 {
-			t.Errorf("Stats = %f, want > 0", got[0].Result[0].Stats)
+		if got[0].DayStats[0].Result.Uptime <= 0 {
+			t.Errorf("Stats = %f, want > 0", got[0].DayStats[0].Result.Uptime)
 		}
 		if capturedItems != nil && len(capturedItems) != 1 {
 			t.Errorf("capturedItems len = %d, want 1", len(capturedItems))
@@ -380,7 +380,7 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 		if !capLog.HasWarn() {
 			t.Error("expected Warn to be called on MSet error")
 		}
-		if len(got) != 1 || len(got[0].Result) != 1 {
+		if len(got) != 1 || len(got[0].DayStats) != 1 {
 			t.Fatalf("result should still be returned even if MSet fails: %+v", got)
 		}
 	})
@@ -427,8 +427,8 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 		byServer := map[uint]map[time.Time]dto.DayResult{}
 		for _, r := range got {
 			mp := map[time.Time]dto.DayResult{}
-			for _, s := range r.Result {
-				mp[s.Date] = dto.DayResult{Uptime: s.Stats, HasData: s.HasData}
+			for _, s := range r.DayStats {
+				mp[s.Date] = dto.DayResult{Uptime: s.Result.Uptime, HasData: s.Result.HasData}
 			}
 			byServer[r.ServerID] = mp
 		}
@@ -493,12 +493,12 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 		// Verify server 1 has d1=99 and d2>0
 		for _, r := range got {
 			if r.ServerID == 1 {
-				for _, s := range r.Result {
-					if s.Date.Equal(d1) && s.Stats != 99.0 {
-						t.Errorf("server 1, d1 = %f, want 99.0", s.Stats)
+				for _, s := range r.DayStats {
+					if s.Date.Equal(d1) && s.Result.Uptime != 99.0 {
+						t.Errorf("server 1, d1 = %f, want 99.0", s.Result.Uptime)
 					}
-					if s.Date.Equal(d2) && s.Stats <= 0 {
-						t.Errorf("server 1, d2 = %f, want > 0", s.Stats)
+					if s.Date.Equal(d2) && s.Result.Uptime <= 0 {
+						t.Errorf("server 1, d2 = %f, want > 0", s.Result.Uptime)
 					}
 				}
 			}
@@ -564,10 +564,10 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 
 		// Verify all servers have stats > 0
 		for _, r := range got {
-			for _, s := range r.Result {
-				if s.Stats <= 0 {
+			for _, s := range r.DayStats {
+				if s.Result.Uptime <= 0 {
 					t.Errorf("server %d, date %v: stats = %f, want > 0",
-						r.ServerID, s.Date, s.Stats)
+						r.ServerID, s.Date, s.Result.Uptime)
 				}
 			}
 		}
@@ -627,7 +627,7 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 		if got.ServerID != 1 {
 			t.Errorf("ServerID = %d, want 1", got.ServerID)
 		}
-		if len(got.OntimeStats) == 0 {
+		if len(got.DayStats) == 0 {
 			t.Errorf("expected ontime stats, got none")
 		}
 	})
@@ -691,7 +691,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 		if got[0].ServerID != 1 && got[0].ServerID != 2 {
 			t.Errorf("unexpected server id: %d", got[0].ServerID)
 		}
-		if len(got[0].OntimeStats) == 0 {
+		if len(got[0].DayStats) == 0 {
 			t.Errorf("expected ontime stats for server %d", got[0].ServerID)
 		}
 	})

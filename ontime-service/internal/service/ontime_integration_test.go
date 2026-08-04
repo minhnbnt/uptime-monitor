@@ -98,13 +98,13 @@ func TestIntegration_BatchGetOntime_CacheMiss(t *testing.T) {
 	if len(results) != 1 {
 		t.Fatalf("len(results) = %d, want 1", len(results))
 	}
-	if len(results[0].Result) != 1 {
-		t.Fatalf("len(Result) = %d, want 1", len(results[0].Result))
+	if len(results[0].DayStats) != 1 {
+		t.Fatalf("len(Result) = %d, want 1", len(results[0].DayStats))
 	}
-	if results[0].Result[0].Stats <= 0 {
-		t.Errorf("Stats = %f, want > 0", results[0].Result[0].Stats)
+	if results[0].DayStats[0].Result.Uptime <= 0 {
+		t.Errorf("Stats = %f, want > 0", results[0].DayStats[0].Result.Uptime)
 	}
-	if !results[0].Result[0].HasData {
+	if !results[0].DayStats[0].Result.HasData {
 		t.Error("HasData = false, want true (events exist for this day)")
 	}
 }
@@ -121,10 +121,10 @@ func TestIntegration_BatchGetOntime_NoData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(results) != 1 || len(results[0].Result) != 1 {
+	if len(results) != 1 || len(results[0].DayStats) != 1 {
 		t.Fatalf("unexpected result shape: %+v", results)
 	}
-	if results[0].Result[0].HasData {
+	if results[0].DayStats[0].Result.HasData {
 		t.Error("HasData = true, want false (no data for this server)")
 	}
 }
@@ -143,8 +143,8 @@ func TestIntegration_BatchGetOntime_AllOn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if results[0].Result[0].Stats != 100 {
-		t.Errorf("Stats = %f, want 100", results[0].Result[0].Stats)
+	if results[0].DayStats[0].Result.Uptime != 100 {
+		t.Errorf("Stats = %f, want 100", results[0].DayStats[0].Result.Uptime)
 	}
 }
 
@@ -162,8 +162,8 @@ func TestIntegration_BatchGetOntime_AllOff(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if results[0].Result[0].Stats != 0 {
-		t.Errorf("Stats = %f, want 0", results[0].Result[0].Stats)
+	if results[0].DayStats[0].Result.Uptime != 0 {
+		t.Errorf("Stats = %f, want 0", results[0].DayStats[0].Result.Uptime)
 	}
 }
 
@@ -182,8 +182,8 @@ func TestIntegration_BatchGetOntime_NoEvents(t *testing.T) {
 	if len(results) != 1 {
 		t.Fatalf("len(results) = %d, want 1", len(results))
 	}
-	if results[0].Result[0].Stats != 0 {
-		t.Errorf("Stats = %f, want 0 (no events)", results[0].Result[0].Stats)
+	if results[0].DayStats[0].Result.Uptime != 0 {
+		t.Errorf("Stats = %f, want 0 (no events)", results[0].DayStats[0].Result.Uptime)
 	}
 }
 
@@ -221,11 +221,11 @@ func TestIntegration_BatchGetOntime_CacheHit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(results) != 1 || len(results[0].Result) != 1 {
+	if len(results) != 1 || len(results[0].DayStats) != 1 {
 		t.Fatalf("unexpected result shape: %+v", results)
 	}
-	if results[0].Result[0].Stats != 99.50 {
-		t.Errorf("Stats = %f, want 99.50", results[0].Result[0].Stats)
+	if results[0].DayStats[0].Result.Uptime != 99.50 {
+		t.Errorf("Stats = %f, want 99.50", results[0].DayStats[0].Result.Uptime)
 	}
 }
 
@@ -244,11 +244,11 @@ func TestIntegration_BatchGetOntime_CacheMissThenWarm(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(results) != 1 || len(results[0].Result) != 1 {
+	if len(results) != 1 || len(results[0].DayStats) != 1 {
 		t.Fatalf("unexpected result shape: %+v", results)
 	}
-	if results[0].Result[0].Stats <= 0 {
-		t.Errorf("Stats = %f, want > 0", results[0].Result[0].Stats)
+	if results[0].DayStats[0].Result.Uptime <= 0 {
+		t.Errorf("Stats = %f, want > 0", results[0].DayStats[0].Result.Uptime)
 	}
 
 	key := fmt.Sprintf("ontime:%d:%s:stats", 1, now.Format("2006-01-02"))
@@ -290,17 +290,17 @@ func TestIntegration_BatchGetOntime_PartialCacheHit(t *testing.T) {
 	}
 
 	for _, r := range results {
-		if len(r.Result) != 1 {
-			t.Fatalf("server %d: got %d results, want 1", r.ServerID, len(r.Result))
+		if len(r.DayStats) != 1 {
+			t.Fatalf("server %d: got %d results, want 1", r.ServerID, len(r.DayStats))
 		}
 	}
 
 	for _, r := range results {
-		if r.ServerID == 1 && r.Result[0].Stats != 88.00 {
-			t.Errorf("server 1: Stats = %f, want 88.00", r.Result[0].Stats)
+		if r.ServerID == 1 && r.DayStats[0].Result.Uptime != 88.00 {
+			t.Errorf("server 1: Stats = %f, want 88.00", r.DayStats[0].Result.Uptime)
 		}
-		if r.ServerID == 2 && r.Result[0].Stats <= 0 {
-			t.Errorf("server 2: Stats = %f, want > 0", r.Result[0].Stats)
+		if r.ServerID == 2 && r.DayStats[0].Result.Uptime <= 0 {
+			t.Errorf("server 2: Stats = %f, want > 0", r.DayStats[0].Result.Uptime)
 		}
 	}
 
@@ -335,11 +335,11 @@ func TestIntegration_BatchGetOntime_Today(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(results) != 1 || len(results[0].Result) != 1 {
+	if len(results) != 1 || len(results[0].DayStats) != 1 {
 		t.Fatalf("unexpected result shape: %+v", results)
 	}
 
-	got := results[0].Result[0].Stats
+	got := results[0].DayStats[0].Result.Uptime
 	if got <= 0 {
 		t.Errorf("Stats = %f, want > 0 for today", got)
 	}

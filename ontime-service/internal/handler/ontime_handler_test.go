@@ -20,8 +20,8 @@ func TestGetServerOntime(t *testing.T) {
 			ontimeService: &mockOntimeService{
 				getServerWithOntimeFn: func(_ context.Context, serverID uint, _ uuid.UUID) (*ontimedto.ServerOntime, error) {
 					return &ontimedto.ServerOntime{
-						ServerID:    serverID,
-						OntimeStats: []ontimedto.OntimeStats{},
+						ServerID: serverID,
+						DayStats: []ontimedto.DayStats{},
 					}, nil
 				},
 			},
@@ -59,8 +59,8 @@ func TestListServersOntime(t *testing.T) {
 			ontimeService: &mockOntimeService{
 				listServersWithOntimeFn: func(_ context.Context, _ uuid.UUID, _, _ int) ([]ontimedto.ServerOntime, error) {
 					return []ontimedto.ServerOntime{
-						{ServerID: 1, OntimeStats: []ontimedto.OntimeStats{}},
-						{ServerID: 2, OntimeStats: []ontimedto.OntimeStats{}},
+						{ServerID: 1, DayStats: []ontimedto.DayStats{}},
+						{ServerID: 2, DayStats: []ontimedto.DayStats{}},
 					}, nil
 				},
 			},
@@ -117,9 +117,9 @@ func TestNewError(t *testing.T) {
 	})
 }
 func TestToOntimeStats_MapsHasData(t *testing.T) {
-	in := []ontimedto.OntimeStats{
-		{Date: time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC), Stats: 100, HasData: true},
-		{Date: time.Date(2026, 6, 2, 0, 0, 0, 0, time.UTC), Stats: 0, HasData: false},
+	in := []ontimedto.DayStats{
+		{Date: time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC), Result: ontimedto.DayResult{Uptime: 100, HasData: true}},
+		{Date: time.Date(2026, 6, 2, 0, 0, 0, 0, time.UTC), Result: ontimedto.DayResult{Uptime: 0, HasData: false}},
 	}
 	out := toOntimeStats(in)
 	if len(out) != 2 {
