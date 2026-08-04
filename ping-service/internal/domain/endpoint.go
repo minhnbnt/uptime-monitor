@@ -2,6 +2,11 @@ package domain
 
 import "time"
 
+type K8sRuntime struct {
+	LabelSelector string
+	Domain        string
+}
+
 type Server struct {
 	ID            uint              `json:"id"`
 	Namespace     string            `json:"namespace"`
@@ -12,4 +17,6 @@ type Server struct {
 	Timeout       time.Duration     `json:"timeout"`
 	DeletedAt     *time.Time        `json:"deleted_at"`
 	HTTPConfig    *ServerHTTPConfig `json:"http_config,omitempty"`
+
+	K8s *K8sRuntime `json:"-"`
 }

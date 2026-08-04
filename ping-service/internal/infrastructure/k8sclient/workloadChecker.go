@@ -25,32 +25,49 @@ func newWorkloadChecker(clientSet kubernetes.Interface, labelSelector *k8sLabelS
 	}
 }
 
+func IsWorkloadKind(kind string) bool {
+	switch kind {
+	case "Deployment", "StatefulSet", "DaemonSet", "ReplicaSet":
+		return true
+
+	default:
+		return false
+	}
+}
+
 func (c *k8sWorkloadChecker) CheckObject(ctx context.Context, params *dto.K8sObjectCheckParams) (bool, error) {
 
 	switch params.Kind {
 	case "Pod":
 		return c.checkPod(ctx, params)
 
-	case "Deployment", "StatefulSet", "DaemonSet", "ReplicaSet":
-		return c.checkWorkload(ctx, params)
-
 	default:
-		return false, fmt.Errorf("unsupported kind: %s", params.Kind)
+		if !IsWorkloadKind(params.Kind) {
+			return false, fmt.Errorf("unsupported kind: %s", params.Kind)
+		}
+		return c.checkWorkload(ctx, params)
 	}
 }
 
 func (c *k8sWorkloadChecker) checkWorkload(ctx context.Context, params *dto.K8sObjectCheckParams) (bool, error) {
 
-	selector, err := c.labelSelector.getWorkloadLabelSelector(
-		ctx, params.Namespace,
-		params.Kind, params.ObjectID,
-	)
-
-	if err != nil {
-		return false, err
+	selector := ""
+	if params.K8s != nil {
+		selector = params.K8s.LabelSelector
 	}
+
 	if selector == "" {
-		return false, nil
+		selector, err := c.labelSelector.getWorkloadLabelSelector(
+			ctx, params.Namespace,
+			params.Kind, params.ObjectID,
+		)
+
+		if err != nil {
+			return false, err
+		}
+		if selector == "" {
+			return false, nil
+		}
 	}
 
 	option := metav1.ListOptions{LabelSelector: selector}

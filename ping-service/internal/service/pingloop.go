@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/url"
 
@@ -16,12 +17,15 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/utils"
 )
 
+var errStaleDomain = errors.New("stale cached domain, invalidated; skipping event")
+
 type pingWorker interface {
 	CheckObjectStatus(ctx context.Context, params *dto.K8sObjectCheckParams) (bool, error)
 }
 
 type urlResolver interface {
 	ResolveURL(ctx context.Context, params *dto.CheckParams) (*url.URL, error)
+	ResolveDomain(ctx context.Context, params *dto.K8sObjectCheckParams) (string, error)
 }
 
 type recordWorker interface {
@@ -32,6 +36,10 @@ type scoreUpdater interface {
 	Update(ctx context.Context, serverID uint, nextScore int64) error
 }
 
+type domainCache interface {
+	Delete(ctx context.Context, id uint) error
+}
+
 type PingLoopService struct {
 	pingWorker         pingWorker
 	recordStatusWorker recordWorker
@@ -39,6 +47,7 @@ type PingLoopService struct {
 	urlResolver        urlResolver
 	pingClient         *infrastructure.PingClient
 	responseChecker    *ResponseChecker
+	metaCache          domainCache
 	logger             *slog.Logger
 }
 
@@ -51,6 +60,7 @@ func RegisterPingService(i do.Injector) {
 			urlResolver:        do.MustInvoke[*URLResolverService](i),
 			pingClient:         do.MustInvoke[*infrastructure.PingClient](i),
 			responseChecker:    do.MustInvoke[*ResponseChecker](i),
+			metaCache:          do.MustInvoke[*scheduler.ServerMetaCache](i),
 			logger:             do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
@@ -63,6 +73,7 @@ func (s *PingLoopService) checkServer(ctx context.Context, sv *domain.Server) (b
 		Kind:          sv.Kind,
 		ObjectID:      sv.ObjectID,
 		ContainerName: sv.ContainerName,
+		K8s:           sv.K8s,
 	}
 
 	if sv.HTTPConfig != nil {
@@ -92,16 +103,45 @@ func (s *PingLoopService) checkHTTPDNS(ctx context.Context, k8sParams *dto.K8sOb
 		return false, err
 	}
 
-	resp, err := s.pingClient.Ping(ctx, sv.Timeout, httpParams.Method, url.String())
-	if err != nil {
-		return false, err
+	resp, pingErr := s.pingClient.Ping(ctx, sv.Timeout, httpParams.Method, url.String())
+	if pingErr == nil {
+		if cErr := s.responseChecker.CheckResponse(httpParams, *resp); cErr == nil {
+			return true, nil
+		} else {
+			pingErr = cErr
+		}
 	}
 
-	if err := s.responseChecker.CheckResponse(httpParams, *resp); err != nil {
-		return false, err
+	if k8sParams.K8s == nil || k8sParams.Kind != "Pod" || k8sParams.K8s.Domain == "" {
+		return false, pingErr
 	}
 
-	return true, nil
+	if _, cErr := s.pingWorker.CheckObjectStatus(ctx, k8sParams); cErr != nil {
+		return false, cErr
+	}
+
+	freshParams := *k8sParams
+	freshK8s := *k8sParams.K8s
+	freshK8s.Domain = ""
+	freshParams.K8s = &freshK8s
+	freshDomain, rErr := s.urlResolver.ResolveDomain(ctx, &freshParams)
+	if rErr != nil {
+		return false, rErr
+	}
+
+	if freshDomain == k8sParams.K8s.Domain {
+		return false, pingErr
+	}
+
+	if dErr := s.metaCache.Delete(ctx, sv.ID); dErr != nil {
+		s.logger.Error(
+			"failed to invalidate stale domain cache",
+			slog.Uint64("server_id", uint64(sv.ID)),
+			slog.Any("error", dErr),
+		)
+	}
+
+	return false, errStaleDomain
 }
 
 func (s *PingLoopService) pingAndRecordServer(ctx context.Context, task PingTask) {
@@ -115,6 +155,16 @@ func (s *PingLoopService) pingAndRecordServer(ctx context.Context, task PingTask
 	}()
 
 	isUp, pingErr := s.checkServer(ctx, sv)
+	if errors.Is(pingErr, errStaleDomain) {
+		s.logger.Info(
+			"stale cached domain, invalidated; skipping event",
+			slog.String("namespace", sv.Namespace),
+			slog.String("kind", sv.Kind),
+			slog.String("object_id", sv.ObjectID),
+			slog.Uint64("server_id", uint64(sv.ID)),
+		)
+		return
+	}
 	if pingErr != nil {
 		s.logger.Warn(
 			"ping failed",

@@ -21,6 +21,10 @@ func newDomainResolver(clientSet kubernetes.Interface) *k8sDomainNameResolver {
 
 func (r *k8sDomainNameResolver) ResolveDomainName(ctx context.Context, params *dto.K8sObjectCheckParams) (string, error) {
 
+	if params.K8s != nil && params.K8s.Domain != "" {
+		return params.K8s.Domain, nil
+	}
+
 	switch params.Kind {
 	case "Service":
 		return fmt.Sprintf(

@@ -39,6 +39,10 @@ func (s *URLResolverService) ResolveURL(ctx context.Context, params *dto.CheckPa
 	return buildURL(host, params.HTTPCheckParams), nil
 }
 
+func (s *URLResolverService) ResolveDomain(ctx context.Context, params *dto.K8sObjectCheckParams) (string, error) {
+	return s.k8sClient.ResolveDomainName(ctx, params)
+}
+
 func buildURL(host string, httpParams *dto.HTTPCheckParams) *url.URL {
 	return &url.URL{
 		Scheme: "http",

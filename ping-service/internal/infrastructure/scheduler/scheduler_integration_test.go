@@ -518,3 +518,48 @@ func TestSingleShardBehaviorIsUnchanged(t *testing.T) {
 		t.Error("expected hasNext=true (future task exists)")
 	}
 }
+
+func TestServerMetaCacheRoundTrip(t *testing.T) {
+	testcontainers.SkipIfShort(t)
+	client := testcontainers.NewTestRedis(t, testRedisAddr)
+	cache := NewServerMetaCache(client)
+	ctx := context.Background()
+
+	sv := &domain.Server{
+		ID:            42,
+		Namespace:     "default",
+		Kind:          "Deployment",
+		ObjectID:      "web",
+		ContainerName: "app",
+		Interval:      30 * time.Second,
+		Timeout:       5 * time.Second,
+		K8s: &domain.K8sRuntime{
+			LabelSelector: "app=web",
+			Domain:        "10.0.0.1",
+		},
+		HTTPConfig: &domain.ServerHTTPConfig{
+			Port:         8080,
+			EndpointPath: "/health",
+			ExpectedCode: 200,
+			Method:       "GET",
+		},
+	}
+
+	if err := cache.Set(ctx, sv); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	got, err := cache.Get(ctx, sv.ID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if got.K8s == nil {
+		t.Fatal("expected K8s runtime to be set")
+	}
+	if got.K8s.LabelSelector != sv.K8s.LabelSelector {
+		t.Errorf("LabelSelector = %q, want %q", got.K8s.LabelSelector, sv.K8s.LabelSelector)
+	}
+	if got.K8s.Domain != sv.K8s.Domain {
+		t.Errorf("Domain = %q, want %q", got.K8s.Domain, sv.K8s.Domain)
+	}
+}

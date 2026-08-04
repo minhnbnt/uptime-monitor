@@ -37,3 +37,9 @@ func (c *K8sClient) CheckObjectStatus(ctx context.Context, params *dto.K8sObject
 func (c *K8sClient) ResolveDomainName(ctx context.Context, params *dto.K8sObjectCheckParams) (string, error) {
 	return c.domainResolver.ResolveDomainName(ctx, params)
 }
+
+func (c *K8sClient) ResolveLabelSelector(ctx context.Context, params *dto.K8sObjectCheckParams) (string, error) {
+	return c.workloadChecker.labelSelector.getWorkloadLabelSelector(
+		ctx, params.Namespace, params.Kind, params.ObjectID,
+	)
+}

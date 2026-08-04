@@ -24,11 +24,30 @@ func (m *mockPingWorker) CheckObjectStatus(ctx context.Context, params *dto.K8sO
 }
 
 type mockURLResolver struct {
-	resolveFn func(ctx context.Context, params *dto.CheckParams) (*url.URL, error)
+	resolveFn       func(ctx context.Context, params *dto.CheckParams) (*url.URL, error)
+	resolveDomainFn func(ctx context.Context, params *dto.K8sObjectCheckParams) (string, error)
 }
 
 func (m *mockURLResolver) ResolveURL(ctx context.Context, params *dto.CheckParams) (*url.URL, error) {
 	return m.resolveFn(ctx, params)
+}
+
+func (m *mockURLResolver) ResolveDomain(ctx context.Context, params *dto.K8sObjectCheckParams) (string, error) {
+	if m.resolveDomainFn == nil {
+		return "", nil
+	}
+	return m.resolveDomainFn(ctx, params)
+}
+
+type mockDomainCache struct {
+	deleteFn func(ctx context.Context, id uint) error
+}
+
+func (m *mockDomainCache) Delete(ctx context.Context, id uint) error {
+	if m.deleteFn != nil {
+		return m.deleteFn(ctx, id)
+	}
+	return nil
 }
 
 type mockRecordWorker struct {
@@ -272,6 +291,217 @@ func TestPingAndRecordServer(t *testing.T) {
 		}
 		if updatedScore <= 0 {
 			t.Errorf("expected positive updated score, got %d", updatedScore)
+		}
+	})
+
+	t.Run("http-dns stale pod ip changed invalidates cache and skips event", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		sv := &domain.Server{
+			ID:        7,
+			Namespace: "default",
+			Kind:      "Pod",
+			ObjectID:  "web-app",
+			K8s:      &domain.K8sRuntime{Domain: "10.0.0.1"},
+			Interval:  30 * time.Second,
+			HTTPConfig: &domain.ServerHTTPConfig{
+				Port:         8080,
+				EndpointPath: "/health",
+				ExpectedCode: 200,
+				Method:       "GET",
+			},
+		}
+
+		var recordedEvent *domain.ServerEvent
+		var scoreUpdated bool
+		deletedIDs := make([]uint, 0)
+
+		s := &PingLoopService{
+			pingWorker: &mockPingWorker{
+				checkObjectStatusFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (bool, error) {
+					return true, nil
+				},
+			},
+			urlResolver: &mockURLResolver{
+				resolveFn: func(_ context.Context, _ *dto.CheckParams) (*url.URL, error) {
+					u, err := url.Parse(server.URL)
+					if err != nil {
+						t.Fatalf("parse server url: %v", err)
+					}
+					return u, nil
+				},
+				resolveDomainFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (string, error) {
+					return "10.0.0.2", nil
+				},
+			},
+			pingClient:      infrastructure.NewPingClient(&http.Client{}),
+			responseChecker: &ResponseChecker{bodyChecker: &infrastructure.BodyChecker{}},
+			metaCache: &mockDomainCache{
+				deleteFn: func(_ context.Context, id uint) error {
+					deletedIDs = append(deletedIDs, id)
+					return nil
+				},
+			},
+			recordStatusWorker: &mockRecordWorker{
+				recordFn: func(_ context.Context, event *domain.ServerEvent) error {
+					recordedEvent = event
+					return nil
+				},
+			},
+			scoreUpdater: &mockScoreUpdater{
+				updateFn: func(_ context.Context, _ uint, _ int64) error {
+					scoreUpdated = true
+					return nil
+				},
+			},
+			logger: logger.NewMockLogger(),
+		}
+
+		s.pingAndRecordServer(t.Context(), PingTask{Server: sv})
+		if recordedEvent != nil {
+			t.Errorf("expected no event to be recorded, got %+v", recordedEvent)
+		}
+		if scoreUpdated {
+			t.Error("expected score not to be updated")
+		}
+		if len(deletedIDs) != 1 || deletedIDs[0] != 7 {
+			t.Errorf("expected metaCache.Delete(7), got %v", deletedIDs)
+		}
+	})
+
+	t.Run("http-dns stale pod ip but pod gone records off", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		sv := &domain.Server{
+			ID:        8,
+			Namespace: "default",
+			Kind:      "Pod",
+			ObjectID:  "web-app",
+			K8s:      &domain.K8sRuntime{Domain: "10.0.0.1"},
+			Interval:  30 * time.Second,
+			HTTPConfig: &domain.ServerHTTPConfig{
+				Port:         8080,
+				EndpointPath: "/health",
+				ExpectedCode: 200,
+				Method:       "GET",
+			},
+		}
+
+		var recordedEvent *domain.ServerEvent
+		var resolveDomainCalled bool
+
+		s := &PingLoopService{
+			pingWorker: &mockPingWorker{
+				checkObjectStatusFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (bool, error) {
+					return false, errors.New("pod not found")
+				},
+			},
+			urlResolver: &mockURLResolver{
+				resolveFn: func(_ context.Context, _ *dto.CheckParams) (*url.URL, error) {
+					u, err := url.Parse(server.URL)
+					if err != nil {
+						t.Fatalf("parse server url: %v", err)
+					}
+					return u, nil
+				},
+				resolveDomainFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (string, error) {
+					resolveDomainCalled = true
+					return "10.0.0.2", nil
+				},
+			},
+			pingClient:      infrastructure.NewPingClient(&http.Client{}),
+			responseChecker: &ResponseChecker{bodyChecker: &infrastructure.BodyChecker{}},
+			recordStatusWorker: &mockRecordWorker{
+				recordFn: func(_ context.Context, event *domain.ServerEvent) error {
+					recordedEvent = event
+					return nil
+				},
+			},
+			scoreUpdater: &mockScoreUpdater{
+				updateFn: func(_ context.Context, _ uint, _ int64) error { return nil },
+			},
+			logger: logger.NewMockLogger(),
+		}
+
+		s.pingAndRecordServer(t.Context(), PingTask{Server: sv})
+		if recordedEvent == nil {
+			t.Fatal("expected event to be recorded")
+		}
+		if recordedEvent.Status != domain.StatusOff {
+			t.Errorf("status = %q, want %q", recordedEvent.Status, domain.StatusOff)
+		}
+		if resolveDomainCalled {
+			t.Error("expected no domain re-resolution when pod is gone")
+		}
+	})
+
+	t.Run("http-dns stale pod ip unchanged records off", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		sv := &domain.Server{
+			ID:        9,
+			Namespace: "default",
+			Kind:      "Pod",
+			ObjectID:  "web-app",
+			K8s:      &domain.K8sRuntime{Domain: "10.0.0.1"},
+			Interval:  30 * time.Second,
+			HTTPConfig: &domain.ServerHTTPConfig{
+				Port:         8080,
+				EndpointPath: "/health",
+				ExpectedCode: 200,
+				Method:       "GET",
+			},
+		}
+
+		var recordedEvent *domain.ServerEvent
+
+		s := &PingLoopService{
+			pingWorker: &mockPingWorker{
+				checkObjectStatusFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (bool, error) {
+					return true, nil
+				},
+			},
+			urlResolver: &mockURLResolver{
+				resolveFn: func(_ context.Context, _ *dto.CheckParams) (*url.URL, error) {
+					u, err := url.Parse(server.URL)
+					if err != nil {
+						t.Fatalf("parse server url: %v", err)
+					}
+					return u, nil
+				},
+				resolveDomainFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (string, error) {
+					return "10.0.0.1", nil
+				},
+			},
+			pingClient:      infrastructure.NewPingClient(&http.Client{}),
+			responseChecker: &ResponseChecker{bodyChecker: &infrastructure.BodyChecker{}},
+			recordStatusWorker: &mockRecordWorker{
+				recordFn: func(_ context.Context, event *domain.ServerEvent) error {
+					recordedEvent = event
+					return nil
+				},
+			},
+			scoreUpdater: &mockScoreUpdater{
+				updateFn: func(_ context.Context, _ uint, _ int64) error { return nil },
+			},
+			logger: logger.NewMockLogger(),
+		}
+
+		s.pingAndRecordServer(t.Context(), PingTask{Server: sv})
+		if recordedEvent == nil {
+			t.Fatal("expected event to be recorded")
+		}
+		if recordedEvent.Status != domain.StatusOff {
+			t.Errorf("status = %q, want %q", recordedEvent.Status, domain.StatusOff)
 		}
 	})
 }
