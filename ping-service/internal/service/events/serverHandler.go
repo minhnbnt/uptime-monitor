@@ -94,10 +94,19 @@ func (e *ServerEventHandler) isStale(ctx context.Context, key string, eventID st
 }
 
 func (e *ServerEventHandler) onCreate(ctx context.Context, server *domain.Server) error {
+
+	if server.DeletedAt != nil {
+		return e.onDelete(ctx, server)
+	}
+
 	return e.scheduler.Register(ctx, server)
 }
 
 func (e *ServerEventHandler) onUpdate(ctx context.Context, server *domain.Server) error {
+
+	if server.DeletedAt != nil {
+		return e.onDelete(ctx, server)
+	}
 
 	err := e.serverCache.Delete(ctx, server.ID)
 	if err != nil {

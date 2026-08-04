@@ -10,5 +10,6 @@ type Server struct {
 	ContainerName string            `json:"container_name"`
 	Interval      time.Duration     `json:"interval"`
 	Timeout       time.Duration     `json:"timeout"`
+	DeletedAt     *time.Time        `json:"deleted_at"`
 	HTTPConfig    *ServerHTTPConfig `json:"http_config,omitempty"`
 }
