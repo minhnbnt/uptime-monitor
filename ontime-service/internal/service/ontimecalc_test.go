@@ -4,11 +4,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/domain"
 	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
 )
 
-func e(anchor, t time.Time, status string) ontimerepo.Event {
-	return ontimerepo.Event{AnchorTime: anchor, Time: t, Status: status, Src: "test"}
+func e(anchor, t time.Time, status domain.ServerStatus) ontimerepo.Event {
+	return ontimerepo.Event{AnchorTime: anchor, Time: t, Status: string(status), Src: "test"}
 }
 
 func day(y, m, d int) time.Time {
@@ -19,462 +20,170 @@ func tm(y, m, d, h, mn int) time.Time {
 	return time.Date(y, time.Month(m), d, h, mn, 0, 0, time.UTC)
 }
 
-func TestCalculateDayOntime(t *testing.T) {
-	d := day(2026, 6, 4)
-	tomorrow := d.Add(24 * time.Hour)
-
-	tests := []struct {
-		name   string
-		events []ontimerepo.Event
-		today  time.Time
-		now    time.Time
-		want   float64
-	}{
-		{
-			name:   "no events",
-			events: nil,
-			want:   0,
-		},
-		{
-			name:   "single ON in past",
-			events: []ontimerepo.Event{e(d, tm(2026, 6, 4, 6, 0), "ON")},
-			today:  tomorrow,
-			now:    tomorrow.Add(1 * time.Hour),
-			want:   100,
-		},
-		{
-			name:   "single OFF in past",
-			events: []ontimerepo.Event{e(d, tm(2026, 6, 4, 6, 0), "OFF")},
-			today:  tomorrow,
-			now:    tomorrow.Add(1 * time.Hour),
-			want:   0,
-		},
-		{
-			name: "alternating ON/OFF full day",
-			events: []ontimerepo.Event{
-				e(d, tm(2026, 6, 4, 6, 0), "ON"),
-				e(d, tm(2026, 6, 4, 12, 0), "OFF"),
-				e(d, tm(2026, 6, 4, 18, 0), "ON"),
-			},
-			today: tomorrow,
-			now:   tomorrow.Add(1 * time.Hour),
-			want:  100 * 18.0 / 24.0,
-		},
-		{
-			name: "today still ON from earlier event",
-			events: []ontimerepo.Event{
-				e(d, tm(2026, 6, 4, 3, 0), "ON"),
-			},
-			today: d,
-			now:   tm(2026, 6, 4, 12, 0),
-			want:  100,
-		},
-		{
-			name: "today ON then OFF",
-			events: []ontimerepo.Event{
-				e(d, tm(2026, 6, 4, 3, 0), "ON"),
-				e(d, tm(2026, 6, 4, 9, 0), "OFF"),
-			},
-			today: d,
-			now:   tm(2026, 6, 4, 12, 0),
-			want:  100 * 6.0 / 9.0,
-		},
-		{
-			name: "all OFF",
-			events: []ontimerepo.Event{
-				e(d, tm(2026, 6, 4, 6, 0), "OFF"),
-				e(d, tm(2026, 6, 4, 12, 0), "OFF"),
-				e(d, tm(2026, 6, 4, 18, 0), "OFF"),
-			},
-			today: tomorrow,
-			now:   tomorrow.Add(1 * time.Hour),
-			want:  0,
-		},
-		{
-			name: "all ON",
-			events: []ontimerepo.Event{
-				e(d, tm(2026, 6, 4, 6, 0), "ON"),
-				e(d, tm(2026, 6, 4, 12, 0), "ON"),
-				e(d, tm(2026, 6, 4, 18, 0), "ON"),
-			},
-			today: tomorrow,
-			now:   tomorrow.Add(1 * time.Hour),
-			want:  100,
-		},
-		{
-			name: "adjacent ON-ON then OFF",
-			events: []ontimerepo.Event{
-				e(d, tm(2026, 6, 4, 6, 0), "ON"),
-				e(d, tm(2026, 6, 4, 12, 0), "ON"),
-				e(d, tm(2026, 6, 4, 18, 0), "OFF"),
-			},
-			today: tomorrow,
-			now:   tomorrow.Add(1 * time.Hour),
-			want:  100 * 18.0 / 24.0,
-		},
-		{
-			name: "adjacent OFF-OFF then ON",
-			events: []ontimerepo.Event{
-				e(d, tm(2026, 6, 4, 6, 0), "OFF"),
-				e(d, tm(2026, 6, 4, 12, 0), "OFF"),
-				e(d, tm(2026, 6, 4, 18, 0), "ON"),
-			},
-			today: tomorrow,
-			now:   tomorrow.Add(1 * time.Hour),
-			want:  100 * 6.0 / 24.0,
-		},
-		{
-			name: "with lowerbound ON, event OFF at 10",
-			events: []ontimerepo.Event{
-				e(d, tm(2026, 6, 3, 23, 0), "ON"),
-				e(d, tm(2026, 6, 4, 10, 0), "OFF"),
-			},
-			today: tomorrow,
-			now:   tomorrow.Add(1 * time.Hour),
-			want:  100 * 10.0 / 24.0,
-		},
-		{
-			name: "with lowerbound OFF, event ON at 8 OFF at 16",
-			events: []ontimerepo.Event{
-				e(d, tm(2026, 6, 3, 23, 0), "OFF"),
-				e(d, tm(2026, 6, 4, 8, 0), "ON"),
-				e(d, tm(2026, 6, 4, 16, 0), "OFF"),
-			},
-			today: tomorrow,
-			now:   tomorrow.Add(1 * time.Hour),
-			want:  100 * 8.0 / 24.0,
-		},
-		{
-			name: "today ON since lowerbound, then OFF",
-			events: []ontimerepo.Event{
-				e(d, tm(2026, 6, 3, 23, 0), "ON"),
-				e(d, tm(2026, 6, 4, 10, 0), "OFF"),
-			},
-			today: d,
-			now:   tm(2026, 6, 4, 12, 0),
-			want:  100 * 11.0 / 13.0,
-		},
-		{
-			name: "dedup adjacent same-time events",
-			events: []ontimerepo.Event{
-				e(d, tm(2026, 6, 4, 6, 0), "ON"),
-				e(d, tm(2026, 6, 4, 6, 0), "ON"),
-				e(d, tm(2026, 6, 4, 12, 0), "OFF"),
-			},
-			today: tomorrow,
-			now:   tomorrow.Add(1 * time.Hour),
-			want:  50,
-		},
+func approx(a, b float64) bool {
+	diff := a - b
+	if diff < 0 {
+		diff = -diff
 	}
+	return diff < 1e-9
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := OntimeCalculator{}.CalculateDayOntime(tt.events, tt.today, tt.now)
-			diff := got - tt.want
-			if diff < 0 {
-				diff = -diff
-			}
-			if diff > 1e-9 {
-				t.Errorf("CalculateDayOntime = %v, want %v", got, tt.want)
-			}
-		})
+func TestCalculateOntime_NoData(t *testing.T) {
+	d := day(2026, 6, 4)
+	res := OntimeCalculator{}.CalculateOntime(nil, d, d.Add(24*time.Hour))
+	if res.HasData {
+		t.Error("HasData = true, want false")
+	}
+	if res.Partial {
+		t.Error("Partial = true, want false")
+	}
+	if res.TotalSeconds != 24*3600 {
+		t.Errorf("TotalSeconds = %v, want 86400", res.TotalSeconds)
 	}
 }
 
-func TestCalculateOnlineDuration(t *testing.T) {
-	d := day(2026, 6, 4)
-
-	tests := []struct {
-		name     string
-		timeline Timeline
-		want     float64
-	}{
-		{
-			name: "start ON, no events",
-			timeline: Timeline{
-				StartTime:   d,
-				EndTime:     d.Add(24 * time.Hour),
-				StartStatus: "ON",
-			},
-			want: 86400,
-		},
-		{
-			name: "start OFF, no events",
-			timeline: Timeline{
-				StartTime:   d,
-				EndTime:     d.Add(24 * time.Hour),
-				StartStatus: "OFF",
-			},
-			want: 0,
-		},
-		{
-			name: "start ON, event OFF at noon",
-			timeline: Timeline{
-				StartTime:   d,
-				EndTime:     d.Add(24 * time.Hour),
-				StartStatus: "ON",
-				Events:      []ontimerepo.Event{{Time: tm(2026, 6, 4, 12, 0), Status: "OFF"}},
-			},
-			want: 43200,
-		},
-		{
-			name: "multi segment: ON→OFF→ON→OFF",
-			timeline: Timeline{
-				StartTime:   d,
-				EndTime:     d.Add(24 * time.Hour),
-				StartStatus: "ON",
-				Events: []ontimerepo.Event{
-					{Time: tm(2026, 6, 4, 8, 0), Status: "OFF"},
-					{Time: tm(2026, 6, 4, 16, 0), Status: "ON"},
-					{Time: tm(2026, 6, 4, 20, 0), Status: "OFF"},
-				},
-			},
-			want: 8*3600 + 4*3600,
-		},
-		{
-			name: "start OFF, event ON then OFF",
-			timeline: Timeline{
-				StartTime:   d,
-				EndTime:     d.Add(24 * time.Hour),
-				StartStatus: "OFF",
-				Events: []ontimerepo.Event{
-					{Time: tm(2026, 6, 4, 10, 0), Status: "ON"},
-					{Time: tm(2026, 6, 4, 18, 0), Status: "OFF"},
-				},
-			},
-			want: 8 * 3600,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := OntimeCalculator{}.onlineSeconds(tt.timeline)
-			if got != tt.want {
-				t.Errorf("CalculateOnlineDuration = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestBuildTimelinePastDay(t *testing.T) {
+func TestCalculateOntime_NoKnownState(t *testing.T) {
+	// NULL-joined placeholder rows (empty status) count as unknown — data
+	// exists nowhere, so the result is no-data, never silently 0%.
 	d := day(2026, 6, 4)
 	events := []ontimerepo.Event{
-		e(d, tm(2026, 6, 4, 6, 0), "ON"),
-		e(d, tm(2026, 6, 4, 12, 0), "OFF"),
+		e(d, tm(2026, 6, 4, 6, 0), domain.ServerStatus("")),
+		e(d, tm(2026, 6, 4, 12, 0), domain.ServerStatus("")),
 	}
-
-	tl := OntimeCalculator{}.newTimeline(events, d, d.Add(24*time.Hour))
-
-	if !tl.Day.Equal(d) {
-		t.Errorf("Day = %v, want %v", tl.Day, d)
-	}
-	if !tl.StartTime.Equal(d) {
-		t.Errorf("StartTime = %v, want %v", tl.StartTime, d)
-	}
-	if !tl.EndTime.Equal(d.Add(24 * time.Hour)) {
-		t.Errorf("EndTime = %v, want %v", tl.EndTime, d.Add(24*time.Hour))
-	}
-	if tl.StartStatus != "ON" {
-		t.Errorf("StartStatus = %v, want ON", tl.StartStatus)
-	}
-	if len(tl.Events) != 2 {
-		t.Errorf("len(Events) = %d, want 2", len(tl.Events))
+	res := OntimeCalculator{}.CalculateOntime(events, d, d.Add(24*time.Hour))
+	if res.HasData {
+		t.Error("HasData = true, want false")
 	}
 }
 
-func TestBuildTimelineToday(t *testing.T) {
+func TestCalculateOntime_KnownBoundary(t *testing.T) {
 	d := day(2026, 6, 4)
-	now := tm(2026, 6, 4, 14, 0)
+	// An ON event exactly at the window start anchors the whole window.
+	events := []ontimerepo.Event{e(d, d, domain.StatusOn)}
+	res := OntimeCalculator{}.CalculateOntime(events, d, d.Add(24*time.Hour))
+	if !res.HasData {
+		t.Fatal("HasData = false, want true")
+	}
+	if res.Partial {
+		t.Error("Partial = true, want false (known at boundary)")
+	}
+	if !res.ObservedFrom.Equal(d) {
+		t.Errorf("ObservedFrom = %v, want %v", res.ObservedFrom, d)
+	}
+	if !approx(res.Uptime, 100) {
+		t.Errorf("Uptime = %v, want 100", res.Uptime)
+	}
+	if !approx(res.OnlineSeconds, 24*3600) {
+		t.Errorf("OnlineSeconds = %v, want 86400", res.OnlineSeconds)
+	}
+	if !approx(res.TotalSeconds, 24*3600) {
+		t.Errorf("TotalSeconds = %v, want 86400", res.TotalSeconds)
+	}
+}
+
+func TestCalculateOntime_PartialNoBoundary(t *testing.T) {
+	d := day(2026, 6, 4)
+	// No event before the window; first known event at 06:00 → window
+	// shrinks to start at 06:00, flagged Partial, ObservedFrom = 06:00.
+	events := []ontimerepo.Event{e(d, tm(2026, 6, 4, 6, 0), domain.StatusOn)}
+	res := OntimeCalculator{}.CalculateOntime(events, d, d.Add(24*time.Hour))
+	if !res.HasData {
+		t.Fatal("HasData = false, want true")
+	}
+	if !res.Partial {
+		t.Error("Partial = false, want true")
+	}
+	if !res.ObservedFrom.Equal(tm(2026, 6, 4, 6, 0)) {
+		t.Errorf("ObservedFrom = %v, want 06:00", res.ObservedFrom)
+	}
+	if !approx(res.Uptime, 100) {
+		t.Errorf("Uptime = %v, want 100", res.Uptime)
+	}
+	if !approx(res.TotalSeconds, 18*3600) {
+		t.Errorf("TotalSeconds = %v, want %v (18h observed sub-window)", res.TotalSeconds, 18*3600)
+	}
+}
+
+func TestCalculateOntime_PartialFullDayUptimeWithStatusChanges(t *testing.T) {
+	d := day(2026, 6, 4)
+	// No boundary: ON at 06:00, OFF at 12:00 → observed 06:00–24:00, 6h online.
 	events := []ontimerepo.Event{
-		e(d, tm(2026, 6, 4, 6, 0), "ON"),
-		e(d, tm(2026, 6, 4, 12, 0), "OFF"),
+		e(d, tm(2026, 6, 4, 6, 0), domain.StatusOn),
+		e(d, tm(2026, 6, 4, 12, 0), domain.StatusOff),
 	}
-
-	tl := OntimeCalculator{}.newTimeline(events, d, now)
-
-	if !tl.StartTime.Equal(d) {
-		t.Errorf("StartTime = %v, want %v", tl.StartTime, d)
+	res := OntimeCalculator{}.CalculateOntime(events, d, d.Add(24*time.Hour))
+	if !res.HasData || !res.Partial {
+		t.Fatalf("HasData=%v Partial=%v, want true/true", res.HasData, res.Partial)
 	}
-	if !tl.EndTime.Equal(now) {
-		t.Errorf("EndTime = %v, want %v", tl.EndTime, now)
+	if !approx(res.Uptime, 100*6.0/18.0) {
+		t.Errorf("Uptime = %v, want %v", res.Uptime, 100*6.0/18.0)
 	}
 }
-
-func TestBuildTimelineTodayWithPrevEvents(t *testing.T) {
-	prev := day(2026, 6, 3)
+func TestCalculateDayOntime_PastDayComputedOverOwnDay(t *testing.T) {
+	// A past day whose events live entirely inside that day must be computed
+	// over its own 24h window — NOT over today's window (which would exclude
+	// these events and report no-data).
 	d := day(2026, 6, 4)
-	now := tm(2026, 6, 4, 14, 0)
-	events := []ontimerepo.Event{
-		e(prev, tm(2026, 6, 3, 23, 0), "ON"),
-		e(d, tm(2026, 6, 4, 10, 0), "OFF"),
+	now := tm(2026, 6, 10, 12, 0)
+	events := []ontimerepo.Event{e(d, tm(2026, 6, 4, 6, 0), domain.StatusOn)}
+	res := OntimeCalculator{}.CalculateDayOntime(events, d, now)
+	if !res.HasData {
+		t.Fatal("HasData = false, want true — past day must compute over its own window")
 	}
-
-	tl := OntimeCalculator{}.newTimeline(events, prev, now)
-
-	if !tl.StartTime.Equal(prev) {
-		t.Errorf("StartTime = %v, want %v", tl.StartTime, prev)
-	}
-	if tl.StartStatus != "ON" {
-		t.Errorf("StartStatus = %v, want ON", tl.StartStatus)
+	if !approx(res.Uptime, 100) {
+		t.Errorf("Uptime = %v, want 100", res.Uptime)
 	}
 }
 
-func TestSplitEventsByRange(t *testing.T) {
+func TestCalculateDayOntime_CurrentDayClampedToNow(t *testing.T) {
 	d := day(2026, 6, 4)
-
-	tests := []struct {
-		name       string
-		events     []ontimerepo.Event
-		startTime  time.Time
-		endTime    time.Time
-		wantPrev   int
-		wantInside int
-	}{
-		{
-			name: "all inside",
-			events: []ontimerepo.Event{
-				e(d, tm(2026, 6, 4, 6, 0), "ON"),
-				e(d, tm(2026, 6, 4, 12, 0), "OFF"),
-			},
-			startTime:  d,
-			endTime:    d.Add(24 * time.Hour),
-			wantPrev:   0,
-			wantInside: 2,
-		},
-		{
-			name: "mixed",
-			events: []ontimerepo.Event{
-				e(d.Add(-24*time.Hour), tm(2026, 6, 3, 23, 0), "ON"),
-				e(d, tm(2026, 6, 4, 6, 0), "ON"),
-				e(d, tm(2026, 6, 4, 12, 0), "OFF"),
-			},
-			startTime:  d,
-			endTime:    d.Add(24 * time.Hour),
-			wantPrev:   1,
-			wantInside: 2,
-		},
-		{
-			name: "all before",
-			events: []ontimerepo.Event{
-				e(d.Add(-48*time.Hour), tm(2026, 6, 2, 12, 0), "ON"),
-				e(d.Add(-24*time.Hour), tm(2026, 6, 3, 6, 0), "OFF"),
-			},
-			startTime:  d,
-			endTime:    d.Add(24 * time.Hour),
-			wantPrev:   2,
-			wantInside: 0,
-		},
-		{
-			name: "sub-range",
-			events: []ontimerepo.Event{
-				e(d, tm(2026, 6, 4, 2, 0), "ON"),
-				e(d, tm(2026, 6, 4, 6, 0), "OFF"),
-				e(d, tm(2026, 6, 4, 10, 0), "ON"),
-			},
-			startTime:  d.Add(4 * time.Hour),
-			endTime:    d.Add(8 * time.Hour),
-			wantPrev:   1,
-			wantInside: 1,
-		},
+	now := tm(2026, 6, 4, 12, 0)
+	events := []ontimerepo.Event{e(d, d, domain.StatusOn)}
+	res := OntimeCalculator{}.CalculateDayOntime(events, d, now)
+	if !res.HasData {
+		t.Fatal("HasData = false, want true")
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			prev, inside := OntimeCalculator{}.splitByRange(tt.events, tt.startTime, tt.endTime)
-			if len(prev) != tt.wantPrev {
-				t.Errorf("len(prev) = %d, want %d", len(prev), tt.wantPrev)
-			}
-			if len(inside) != tt.wantInside {
-				t.Errorf("len(inside) = %d, want %d", len(inside), tt.wantInside)
-			}
-		})
+	if !approx(res.TotalSeconds, 12*3600) {
+		t.Errorf("TotalSeconds = %v, want %v (clamped to now)", res.TotalSeconds, 12*3600)
+	}
+	if !approx(res.Uptime, 100) {
+		t.Errorf("Uptime = %v, want 100", res.Uptime)
 	}
 }
 
-func TestDedupEvents(t *testing.T) {
+func TestDedupExact(t *testing.T) {
+	d := day(2026, 6, 4)
 	t06 := tm(2026, 6, 4, 6, 0)
 	t12 := tm(2026, 6, 4, 12, 0)
-	t18 := tm(2026, 6, 4, 18, 0)
 
-	tests := []struct {
-		name   string
-		input  []ontimerepo.Event
-		output int
-	}{
-		{
-			name:   "empty",
-			input:  nil,
-			output: 0,
-		},
-		{
-			name:   "single",
-			input:  []ontimerepo.Event{{Time: t06}},
-			output: 1,
-		},
-		{
-			name: "no duplicates",
-			input: []ontimerepo.Event{
-				{Time: t06}, {Time: t12}, {Time: t18},
-			},
-			output: 3,
-		},
-		{
-			name: "adjacent duplicates",
-			input: []ontimerepo.Event{
-				{Time: t06}, {Time: t06}, {Time: t12}, {Time: t12}, {Time: t18},
-			},
-			output: 3,
-		},
-		{
-			name: "non-adjacent duplicates",
-			input: []ontimerepo.Event{
-				{Time: t06}, {Time: t12}, {Time: t06},
-			},
-			output: 3,
-		},
-	}
+	t.Run("drops same-time same-status", func(t *testing.T) {
+		events := []ontimerepo.Event{e(d, t06, domain.StatusOn), e(d, t06, domain.StatusOn)}
+		if got := dedupExact(events); len(got) != 1 {
+			t.Errorf("len = %d, want 1", len(got))
+		}
+	})
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := OntimeCalculator{}.dedupEvents(tt.input)
-			if len(got) != tt.output {
-				t.Errorf("len(got) = %d, want %d", len(got), tt.output)
-			}
-		})
-	}
+	t.Run("keeps same-time different-status", func(t *testing.T) {
+		events := []ontimerepo.Event{
+			e(d, t06, domain.StatusOn), e(d, t06, domain.StatusOff),
+			e(d, t12, domain.StatusOn),
+		}
+		if got := dedupExact(events); len(got) != 3 {
+			t.Errorf("len = %d, want 3 (conflicting same-timestamp kept)", len(got))
+		}
+	})
 }
 
-func TestApplyStartState(t *testing.T) {
-	tests := []struct {
-		name       string
-		prevEvents []ontimerepo.Event
-		dayEvents  []ontimerepo.Event
-		wantStatus string
-	}{
-		{
-			name:       "prev present",
-			prevEvents: []ontimerepo.Event{{Time: tm(2026, 6, 3, 23, 0), Status: "OFF"}},
-			wantStatus: "OFF",
-		},
-		{
-			name:       "no prev, use first day event",
-			dayEvents:  []ontimerepo.Event{{Time: tm(2026, 6, 4, 8, 0), Status: "ON"}},
-			wantStatus: "ON",
-		},
-		{
-			name:       "no prev, no day events",
-			wantStatus: "",
-		},
+func TestAsStatus(t *testing.T) {
+	if s, ok := asStatus(string(domain.StatusOn)); !ok || s != domain.StatusOn {
+		t.Errorf("asStatus(ON) = %v,%v", s, ok)
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tl := &Timeline{}
-			OntimeCalculator{}.applyStartState(tl, tt.prevEvents, tt.dayEvents)
-
-			if tl.StartStatus != tt.wantStatus {
-				t.Errorf("StartStatus = %v, want %v", tl.StartStatus, tt.wantStatus)
-			}
-		})
+	if s, ok := asStatus(string(domain.StatusOff)); !ok || s != domain.StatusOff {
+		t.Errorf("asStatus(OFF) = %v,%v", s, ok)
+	}
+	for _, raw := range []string{"", "UNKNOWN", "up"} {
+		if _, ok := asStatus(raw); ok {
+			t.Errorf("asStatus(%q) = known, want unknown", raw)
+		}
 	}
 }

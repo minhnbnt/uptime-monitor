@@ -56,6 +56,12 @@ func (s *DigestService) buildReport(servers []domain.Server, ontimeMap map[uint]
 		stats := make(map[time.Time]float64)
 
 		for _, stat := range ontimeMap[sv.ID] {
+			// Only days with data are recorded. No-data days stay absent from
+			// the map so the Excel renderer's "-" fallback displays "no data"
+			// instead of a misleading 0%.
+			if !stat.HasData {
+				continue
+			}
 			stats[utils.TruncateDay(stat.Date)] = stat.Stats
 		}
 

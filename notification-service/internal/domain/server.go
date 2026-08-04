@@ -8,6 +8,7 @@ type Server struct {
 }
 
 type OntimeStats struct {
-	Date  time.Time
-	Stats float64
+	Date    time.Time
+	Stats   float64
+	HasData bool
 }

@@ -103,6 +103,8 @@ components:
         stats:
           type: number
           format: double
+        has_data:
+          type: boolean
 
     ServerOntime:
       type: object
@@ -172,6 +174,10 @@ components:
         online_seconds:
           type: number
           format: double
+        has_data:
+          type: boolean
+        partial:
+          type: boolean
         intervals:
           type: array
           items:
@@ -189,3 +195,5 @@ components:
         uptime:
           type: number
           format: double
+        has_data:
+          type: boolean

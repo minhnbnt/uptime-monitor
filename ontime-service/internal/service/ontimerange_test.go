@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
 	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/utils"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/logger"
@@ -104,16 +105,72 @@ func TestCalculateRangeOntime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := OntimeCalculator{}.CalculateOntime(tt.events, tt.from, tt.to)
-			diff := got - tt.want
+			res := OntimeCalculator{}.CalculateOntime(tt.events, tt.from, tt.to)
+			diff := res.Uptime - tt.want
 			if diff < 0 {
 				diff = -diff
 			}
 			if diff > 1e-9 {
-				t.Errorf("CalculateRangeOntime() = %v, want %v", got, tt.want)
+				t.Errorf("CalculateRangeOntime() = %v, want %v", res.Uptime, tt.want)
+			}
+			// Every case here carries known status (ON/OFF boundary rows), so
+			// HasData must be true and Partial false (known at the boundary).
+			if tt.name != "no events" && !res.HasData {
+				t.Errorf("HasData = false, want true for %q", tt.name)
 			}
 		})
 	}
+}
+
+func TestCalculateRangeOntime_NoData(t *testing.T) {
+	base := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	res := OntimeCalculator{}.CalculateOntime(nil, base, base.Add(time.Hour))
+	if res.HasData {
+		t.Error("HasData = true, want false")
+	}
+	if res.Uptime != 0 {
+		t.Errorf("Uptime = %v, want 0 (no data, not 0%% uptime)", res.Uptime)
+	}
+	if res.TotalSeconds != 3600 {
+		t.Errorf("TotalSeconds = %v, want 3600", res.TotalSeconds)
+	}
+}
+
+func TestMergeIntervals_NoDataVsZero(t *testing.T) {
+	base := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	iv := func(i int, uptime float64, hasData bool) dto.IntervalResult {
+		return dto.IntervalResult{
+			From:    base.Add(time.Duration(i) * time.Hour).Format(time.RFC3339),
+			To:      base.Add(time.Duration(i+1) * time.Hour).Format(time.RFC3339),
+			Uptime:  uptime,
+			HasData: hasData,
+		}
+	}
+
+	t.Run("no-data adjacent to 0% is not merged", func(t *testing.T) {
+		in := []dto.IntervalResult{
+			iv(0, 0, true),  // 0% uptime with data
+			iv(1, 0, false), // no data
+			iv(2, 0, false), // no data
+		}
+		got := mergeIntervals(in)
+		if len(got) != 2 {
+			t.Fatalf("len = %d, want 2 (0%% bucket kept separate from no-data)", len(got))
+		}
+		if !got[0].HasData || got[1].HasData {
+			t.Errorf("wrong HasData split: %+v", got)
+		}
+	})
+
+	t.Run("adjacent 0% buckets merge", func(t *testing.T) {
+		in := []dto.IntervalResult{
+			iv(0, 0, true),
+			iv(1, 0, true),
+		}
+		if got := mergeIntervals(in); len(got) != 1 {
+			t.Errorf("len = %d, want 1 (0%% buckets merge)", len(got))
+		}
+	})
 }
 
 func TestCalculateIntervals(t *testing.T) {
@@ -128,6 +185,13 @@ func TestCalculateIntervals(t *testing.T) {
 
 	if len(intervals) != 4 {
 		t.Fatalf("len(intervals) = %d, want 4", len(intervals))
+	}
+
+	// Every interval is anchored by the ON boundary event, so each carries data.
+	for i, iv := range intervals {
+		if !iv.HasData {
+			t.Errorf("interval %d HasData = false, want true", i)
+		}
 	}
 
 	// First interval: ON for 15min = 100%

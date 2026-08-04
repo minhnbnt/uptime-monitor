@@ -44,18 +44,25 @@ A no-data bucket never collapses into a `0%` bucket.
 ### D7. Deterministic ordering for same-timestamp events (repository layer)
 Keep same-timestamp/different-status events in the calculation (zero-width interval preserves the final state) but make their relative order deterministic at the source: add event `id` as a secondary `ORDER BY` key in `rangeEventSQL`/`dayEventSQL`, and add `WHERE status IS NOT NULL` to `rangeEventSQL`'s `lowerbound` to match `dayEventSQL`.
 
+### D8. `HasData` surfaces at both HTTP and gRPC boundaries
+The public HTTP API (ogen) adds `has_data` to `OntimeStats`, `UptimeResponse`, and `IntervalResult`, plus `partial` on `UptimeResponse`; the handler maps the `dto` fields into the regenerated `api` responses. The gRPC `OntimeDayStat` appends `bool has_data = 3` (backward-compatible — existing consumers ignore the new field), threaded from `ontime_grpc.go`. On the consumer side, `notification-service` carries `HasData` through its `domain.OntimeStats` and `ontimeclient`, and `digest.buildReport` drops no-data days from the per-day map so the existing Excel `-` fallback renders "no data" instead of `0%`.
+- Alternative rejected: leaving the gRPC digest on numeric-only stats — a fresh server would keep rendering `0%` in the digest, the same bug this change removes elsewhere.
+
 ## Risks / Trade-offs
 
 - **Old cache keys hold numeric `0.00` from the no-data bug** → after deploy these decode as `HasData:true, 0%`. TTLs are 1h (past days) / 10s (today), so this self-heals quickly; acceptable transient.
 - **`mergeIntervals` compares uptime with `==`** → adjacent buckets are produced by the same event slice over identical sub-patterns, so float results are bit-identical in practice. If that ever diverges, the trade is a missed merge, not a wrong number.
 - **`Partial` windows report `TotalSeconds` for the observed sub-window while `From`/`To` reflect the requested range** → internal consistency is preserved (`Uptime = OnlineSeconds/TotalSeconds`); the `partial` flag exists precisely so clients don't mistake the shorter window for the full request. The range response intentionally does not expose `ObservedFrom` yet — revisit if a client needs the exact data-start.
-- **Signature changes break callers and tests** → the change updates `ontime.go`, `ontimerange.go`, `batcher.go`, cache repo, and five test files in the same change so the package compiles and `go test ./...` passes.
+- **Signature changes break callers and tests** → the change updates `ontime.go`, `ontimerange.go`, `batcher.go`, cache repo, handler, generated API, proto, notification-service, and the affected test files in the same change so each module compiles and `go test ./...` passes.
+- **Proto/API regeneration drift** → both `generated/api` (ogen) and `common/proto/generated` are checked in; the change regenerates them from `ontime-service/api/spec.yaml` and `common/proto/event/v1` respectively so no hand-edited stub diverges.
+- **Rolling deploy of the proto field** → `has_data = 3` is appended, so an old `notification-service` binary ignores it; both modules must still ship together to actually surface the flag in the digest.
 
 ## Migration Plan
 
-1. Land calculator + DTO + cache + batcher + service changes as one commit so the module stays compilable.
-2. Deploy; Redis keys self-heal via TTL.
-3. Rollback: revert the single commit; old numeric cache values are still parseable by the old decoder.
+1. Land calculator + DTO + cache + batcher + service + handler + proto + notification-service changes as one commit so every module stays compilable.
+2. Regenerate `generated/api` (ogen) and `common/proto/generated` (buf) as part of that commit.
+3. Deploy; Redis keys self-heal via TTL.
+4. Rollback: revert the single commit; old numeric cache values are still parseable by the old decoder.
 
 ## Open Questions
 

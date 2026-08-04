@@ -151,8 +151,9 @@ func validateRange(from, to time.Time) error {
 func toOntimeStats(stats []dto.OntimeStats) []api.OntimeStats {
 	return lo.Map(stats, func(s dto.OntimeStats, _ int) api.OntimeStats {
 		return api.OntimeStats{
-			Date:  api.NewOptDateTime(s.Date),
-			Stats: api.NewOptFloat64(s.Stats),
+			Date:    api.NewOptDateTime(s.Date),
+			Stats:   api.NewOptFloat64(s.Stats),
+			HasData: api.NewOptBool(s.HasData),
 		}
 	})
 }
@@ -169,9 +170,10 @@ func toAPIUptimeResponse(r *dto.UptimeResponse) (*api.UptimeResponse, error) {
 			return nil, err
 		}
 		intervals[i] = api.IntervalResult{
-			From:   api.NewOptDateTime(from),
-			To:     api.NewOptDateTime(to),
-			Uptime: api.NewOptFloat64(iv.Uptime),
+			From:    api.NewOptDateTime(from),
+			To:      api.NewOptDateTime(to),
+			Uptime:  api.NewOptFloat64(iv.Uptime),
+			HasData: api.NewOptBool(iv.HasData),
 		}
 	}
 
@@ -191,6 +193,8 @@ func toAPIUptimeResponse(r *dto.UptimeResponse) (*api.UptimeResponse, error) {
 		To:            api.NewOptDateTime(to),
 		TotalSeconds:  api.NewOptFloat64(r.TotalSeconds),
 		OnlineSeconds: api.NewOptFloat64(r.OnlineSeconds),
+		HasData:       api.NewOptBool(r.HasData),
+		Partial:       api.NewOptBool(r.Partial),
 		Intervals:     intervals,
 	}, nil
 }

@@ -104,6 +104,29 @@ func TestIntegration_BatchGetOntime_CacheMiss(t *testing.T) {
 	if results[0].Result[0].Stats <= 0 {
 		t.Errorf("Stats = %f, want > 0", results[0].Result[0].Stats)
 	}
+	if !results[0].Result[0].HasData {
+		t.Error("HasData = false, want true (events exist for this day)")
+	}
+}
+
+func TestIntegration_BatchGetOntime_NoData(t *testing.T) {
+	testcontainers.SkipIfShort(t)
+	db := initTestDB(t)
+
+	// No events for server 1 at all → day carries no data, not 0%.
+	req := []dto.BatchGetOntimeItem{{ServerID: 1, Date: oDay(2026, 6, 1)}}
+
+	b := newBatcher(t, db)
+	results, err := b.BatchGetOntime(t.Context(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 1 || len(results[0].Result) != 1 {
+		t.Fatalf("unexpected result shape: %+v", results)
+	}
+	if results[0].Result[0].HasData {
+		t.Error("HasData = true, want false (no data for this server)")
+	}
 }
 
 func TestIntegration_BatchGetOntime_AllOn(t *testing.T) {

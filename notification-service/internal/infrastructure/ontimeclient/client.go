@@ -94,8 +94,9 @@ func (a *Client) GetServersOntimeForDates(
 				continue
 			}
 			stats = append(stats, domain.OntimeStats{
-				Date:  parsed,
-				Stats: st.Stats,
+				Date:    parsed,
+				Stats:   st.Stats,
+				HasData: st.HasData,
 			})
 		}
 

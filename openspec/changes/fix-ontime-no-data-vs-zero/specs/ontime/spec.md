@@ -74,6 +74,13 @@ Responses for both the range uptime endpoint and per-day server statistics SHALL
 - **WHEN** per-day server statistics are returned
 - **THEN** each day carries `has_data` so the client can distinguish no-data days from genuinely `0%` days
 
+### Requirement: gRPC per-day stats carry data-absence
+The gRPC `GetServersOntime` per-day response SHALL carry a `has_data` flag on each day so the notification-service digest can distinguish "no data" from `0%`. A no-data day SHALL round-trip through the proto unchanged and SHALL NOT be reported as a numeric `0` to the consumer.
+
+#### Scenario: No-data day over gRPC
+- **WHEN** a day has no recorded state and the per-day stats are returned over gRPC
+- **THEN** that day carries `has_data: false`, and the digest treats it as "no data" (renders the no-data marker) rather than `0%`
+
 ### Requirement: Interval merging preserves no-data buckets
 When consecutive interval buckets are merged for presentation, a bucket with no data SHALL NOT be merged into a bucket reporting `0%` uptime, because the two mean different things.
 

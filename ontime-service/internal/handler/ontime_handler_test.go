@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -114,4 +115,52 @@ func TestNewError(t *testing.T) {
 			t.Errorf("status = %d, want %d", err.StatusCode, http.StatusInternalServerError)
 		}
 	})
+}
+func TestToOntimeStats_MapsHasData(t *testing.T) {
+	in := []ontimedto.OntimeStats{
+		{Date: time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC), Stats: 100, HasData: true},
+		{Date: time.Date(2026, 6, 2, 0, 0, 0, 0, time.UTC), Stats: 0, HasData: false},
+	}
+	out := toOntimeStats(in)
+	if len(out) != 2 {
+		t.Fatalf("len = %d, want 2", len(out))
+	}
+	if !out[0].HasData.IsSet() || !out[0].HasData.Value {
+		t.Errorf("server day1 HasData = %v, want true", out[0].HasData)
+	}
+	if out[1].HasData.Value {
+		t.Errorf("server day2 HasData = true, want false")
+	}
+}
+
+func TestToAPIUptimeResponse_MapsHasDataPartial(t *testing.T) {
+	from := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(time.Hour)
+	r := &ontimedto.UptimeResponse{
+		ServerID:      1,
+		Uptime:        50,
+		HasData:       true,
+		Partial:       true,
+		From:          from.Format(time.RFC3339),
+		To:            to.Format(time.RFC3339),
+		TotalSeconds:  3600,
+		OnlineSeconds: 1800,
+		Intervals: []ontimedto.IntervalResult{
+			{From: from.Format(time.RFC3339), To: to.Format(time.RFC3339), Uptime: 50, HasData: true},
+		},
+	}
+
+	out, err := toAPIUptimeResponse(r)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !out.HasData.Value {
+		t.Error("HasData = false, want true")
+	}
+	if !out.Partial.Value {
+		t.Error("Partial = false, want true")
+	}
+	if len(out.Intervals) != 1 || !out.Intervals[0].HasData.Value {
+		t.Errorf("interval has_data = %+v, want true", out.Intervals)
+	}
 }

@@ -21,8 +21,8 @@ type OntineRepository interface {
 }
 
 type OntimeCacheRepository interface {
-	MGet(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error)
-	MSet(ctx context.Context, items map[dto.BatchGetOntimeItem]float64) error
+	MGet(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]dto.DayResult, error)
+	MSet(ctx context.Context, items map[dto.BatchGetOntimeItem]dto.DayResult) error
 }
 
 func NewBatcher(repo OntineRepository, cache *ontimerepo.OntimeCacheRepository, l *slog.Logger) *Batcher {
@@ -102,22 +102,22 @@ func getCacheKey(req []dto.BatchGetOntimeItem) []dto.BatchGetOntimeItem {
 	return slices.Collect(cacheKeys)
 }
 
-func (b *Batcher) resolveCache(ctx context.Context, keys []dto.BatchGetOntimeItem) map[dto.BatchGetOntimeItem]float64 {
+func (b *Batcher) resolveCache(ctx context.Context, keys []dto.BatchGetOntimeItem) map[dto.BatchGetOntimeItem]dto.DayResult {
 
 	if b.ontimeCacheRepository == nil {
-		return make(map[dto.BatchGetOntimeItem]float64, len(keys))
+		return make(map[dto.BatchGetOntimeItem]dto.DayResult, len(keys))
 	}
 
 	cached, err := b.ontimeCacheRepository.MGet(ctx, keys)
 	if err != nil {
 		b.logger.Warn("ontime cache MGet failed, falling back to DB", slog.Any("error", err))
-		return make(map[dto.BatchGetOntimeItem]float64, len(keys))
+		return make(map[dto.BatchGetOntimeItem]dto.DayResult, len(keys))
 	}
 
 	return cached
 }
 
-func (b *Batcher) fillMisses(ctx context.Context, missedKeys []dto.BatchGetOntimeItem, until time.Time) map[dto.BatchGetOntimeItem]float64 {
+func (b *Batcher) fillMisses(ctx context.Context, missedKeys []dto.BatchGetOntimeItem, until time.Time) map[dto.BatchGetOntimeItem]dto.DayResult {
 
 	requests := lo.Map(missedKeys, func(key dto.BatchGetOntimeItem, _ int) ontimerepo.BatchGetOntimeRequest {
 		return ontimerepo.BatchGetOntimeRequest{ServerID: key.ServerID, Date: key.Date}
@@ -126,28 +126,28 @@ func (b *Batcher) fillMisses(ctx context.Context, missedKeys []dto.BatchGetOntim
 	rows, err := b.ontineRepository.BatchGetOntime(ctx, requests)
 	if err != nil {
 		b.logger.Warn("failed to get missed ontime keys", slog.Any("error", err))
-		return make(map[dto.BatchGetOntimeItem]float64)
+		return make(map[dto.BatchGetOntimeItem]dto.DayResult)
 	}
 
 	groups := lo.GroupBy(rows, func(row ontimerepo.ServerEvent) serverDayKey {
 		return serverDayKey{ServerID: row.ServerID, Day: row.Event.AnchorTime}
 	})
 
-	dayUntil := utils.TruncateDay(until)
-	toCache := lo.SliceToMap(missedKeys, func(key dto.BatchGetOntimeItem) (dto.BatchGetOntimeItem, float64) {
+	toCache := lo.SliceToMap(missedKeys, func(key dto.BatchGetOntimeItem) (dto.BatchGetOntimeItem, dto.DayResult) {
 
 		serverEvents := groups[serverDayKey{ServerID: key.ServerID, Day: key.Date}]
 		events := lo.Map(serverEvents, func(se ontimerepo.ServerEvent, _ int) ontimerepo.Event {
 			return se.Event
 		})
 
-		return key, b.calculator.CalculateDayOntime(events, dayUntil, until)
+		result := b.calculator.CalculateDayOntime(events, utils.TruncateDay(key.Date), until)
+		return key, dto.DayResult{HasData: result.HasData, Uptime: result.Uptime}
 	})
 
 	return toCache
 }
 
-func (b *Batcher) buildResponse(req []dto.BatchGetOntimeItem, resultMap map[dto.BatchGetOntimeItem]float64) []dto.BatchGetOntimeResponse {
+func (b *Batcher) buildResponse(req []dto.BatchGetOntimeItem, resultMap map[dto.BatchGetOntimeItem]dto.DayResult) []dto.BatchGetOntimeResponse {
 
 	groups := lo.GroupBy(req, func(item dto.BatchGetOntimeItem) uint {
 		return item.ServerID
@@ -156,7 +156,8 @@ func (b *Batcher) buildResponse(req []dto.BatchGetOntimeItem, resultMap map[dto.
 	return lo.MapToSlice(groups, func(serverID uint, items []dto.BatchGetOntimeItem) dto.BatchGetOntimeResponse {
 
 		result := lo.Map(items, func(item dto.BatchGetOntimeItem, _ int) dto.OntimeStats {
-			return dto.OntimeStats{Date: item.Date, Stats: resultMap[item]}
+			r := resultMap[item] // zero value -> HasData: false, correctly means "no data" if truly absent too
+			return dto.OntimeStats{Date: item.Date, Stats: r.Uptime, HasData: r.HasData}
 		})
 
 		return dto.BatchGetOntimeResponse{

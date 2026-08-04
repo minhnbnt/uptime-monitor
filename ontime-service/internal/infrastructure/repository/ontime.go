@@ -80,40 +80,42 @@ const dayEventSQL = `
 			r.server_id,
 			r.date::timestamp AS anchor_time,
 			se.status,
-			se.time
+			se.time,
+			se.id
 		FROM requested r
 		LEFT JOIN server_events se ON se.server_id = r.server_id
 			AND se.time < r.date
-		ORDER BY r.server_id, r.date, se.time DESC
+		ORDER BY r.server_id, r.date, se.time DESC, se.id DESC
 	),
 	upperbound AS (
 		SELECT DISTINCT ON (r.server_id, r.date)
 			r.server_id,
 			r.date::timestamp AS anchor_time,
 			se.status,
-			se.time
+			se.time,
+			se.id
 		FROM requested r
 		LEFT JOIN server_events se ON se.server_id = r.server_id
 			AND se.time < r.date + interval '1 day'
-		ORDER BY r.server_id, r.date, se.time DESC
+		ORDER BY r.server_id, r.date, se.time DESC, se.id DESC
 	),
 	day_events AS (
-		SELECT r.server_id, r.date::timestamp AS anchor_time, se.status, se.time
+		SELECT r.server_id, r.date::timestamp AS anchor_time, se.status, se.time, se.id
 		FROM requested r
 		JOIN server_events se ON se.server_id = r.server_id
 			AND se.time >= r.date
 			AND se.time < r.date + interval '1 day'
 	),
 	combined AS (
-		SELECT server_id, anchor_time, status, time, 'lowerbound' AS src FROM lowerbound WHERE status IS NOT NULL
+		SELECT server_id, anchor_time, status, time, id, 'lowerbound' AS src FROM lowerbound WHERE status IS NOT NULL
 		UNION ALL
-		SELECT server_id, anchor_time, status, time, 'upperbound' AS src FROM upperbound WHERE status IS NOT NULL
+		SELECT server_id, anchor_time, status, time, id, 'upperbound' AS src FROM upperbound WHERE status IS NOT NULL
 		UNION ALL
-		SELECT server_id, anchor_time, status, time, 'day_event' AS src FROM day_events
+		SELECT server_id, anchor_time, status, time, id, 'day_event' AS src FROM day_events
 	)
-	SELECT server_id, anchor_time, status, time, src
+	SELECT server_id, anchor_time, status, time, id, src
 	FROM combined
-	ORDER BY server_id, anchor_time, time ASC
+	ORDER BY server_id, anchor_time, time ASC, id ASC
 `
 
 const rangeEventSQL = `
@@ -127,21 +129,23 @@ const rangeEventSQL = `
 			r.server_id,
 			r.from_time   AS anchor_time,
 			se.status,
-			r.from_time   AS time
+			r.from_time   AS time,
+			se.id
 		FROM requested r
 		LEFT JOIN server_events se ON se.server_id = r.server_id
 			AND se.time < r.from_time
-		ORDER BY r.server_id, se.time DESC
+		WHERE se.status IS NOT NULL
+		ORDER BY r.server_id, se.time DESC, se.id DESC
 	),
 	range_events AS (
-		SELECT r.server_id, r.from_time AS anchor_time, se.status, se.time
+		SELECT r.server_id, r.from_time AS anchor_time, se.status, se.time, se.id
 		FROM requested r
 		JOIN server_events se ON se.server_id = r.server_id
 			AND se.time >= r.from_time
 			AND se.time <= r.to_time
 	)
-	SELECT server_id, anchor_time, status, time, 'lowerbound' AS src FROM lowerbound
+	SELECT server_id, anchor_time, status, time, id, 'lowerbound' AS src FROM lowerbound
 	UNION ALL
-	SELECT server_id, anchor_time, status, time, 'event' AS src FROM range_events
-	ORDER BY server_id, time ASC
+	SELECT server_id, anchor_time, status, time, id, 'event' AS src FROM range_events
+	ORDER BY server_id, time ASC, id ASC
 `

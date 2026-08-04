@@ -71,16 +71,15 @@ func (s *OntimeRangeService) CalculateUptime(
 	intervalResults := s.calc.CalculateIntervals(events, intervals)
 	intervalResults = mergeIntervals(intervalResults)
 
-	totalSeconds := to.Sub(from).Seconds()
-	onlineSeconds := uptime / 100 * totalSeconds
-
 	return &dto.UptimeResponse{
 		ServerID:      serverID,
-		Uptime:        uptime,
+		Uptime:        uptime.Uptime,
+		HasData:       uptime.HasData,
+		Partial:       uptime.Partial,
 		From:          from.Format(time.RFC3339),
 		To:            to.Format(time.RFC3339),
-		TotalSeconds:  totalSeconds,
-		OnlineSeconds: onlineSeconds,
+		TotalSeconds:  uptime.TotalSeconds,
+		OnlineSeconds: uptime.OnlineSeconds,
 		Intervals:     intervalResults,
 	}, nil
 }
@@ -96,8 +95,9 @@ func mergeIntervals(intervals []dto.IntervalResult) []dto.IntervalResult {
 	for i := 1; i < len(intervals); i++ {
 
 		last, cur := &merged[len(merged)-1], intervals[i]
+		sameBucket := last.HasData == cur.HasData && (!cur.HasData || last.Uptime == cur.Uptime)
 
-		if last.To == cur.From && last.Uptime == cur.Uptime {
+		if last.To == cur.From && sameBucket {
 			last.To = cur.To
 		} else {
 			merged = append(merged, cur)
@@ -109,10 +109,12 @@ func mergeIntervals(intervals []dto.IntervalResult) []dto.IntervalResult {
 
 func (o OntimeCalculator) CalculateIntervals(events []ontimerepo.Event, intervals []utils.Interval) []dto.IntervalResult {
 	return lo.Map(intervals, func(iv utils.Interval, _ int) dto.IntervalResult {
+		result := o.CalculateOntime(events, iv.Start, iv.End)
 		return dto.IntervalResult{
-			From:   iv.Start.Format(time.RFC3339),
-			To:     iv.End.Format(time.RFC3339),
-			Uptime: o.CalculateOntime(events, iv.Start, iv.End),
+			From:    iv.Start.Format(time.RFC3339),
+			To:      iv.End.Format(time.RFC3339),
+			Uptime:  result.Uptime,
+			HasData: result.HasData,
 		}
 	})
 }

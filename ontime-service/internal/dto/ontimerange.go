@@ -11,6 +11,8 @@ type CalculateUptimeRequest struct {
 type UptimeResponse struct {
 	ServerID      uint             `json:"server_id"`
 	Uptime        float64          `json:"uptime"`
+	HasData       bool             `json:"has_data"`
+	Partial       bool             `json:"partial"`
 	From          string           `json:"from"`
 	To            string           `json:"to"`
 	TotalSeconds  float64          `json:"total_seconds"`
@@ -19,7 +21,8 @@ type UptimeResponse struct {
 }
 
 type IntervalResult struct {
-	From   string  `json:"from"`
-	To     string  `json:"to"`
-	Uptime float64 `json:"uptime"`
+	From    string  `json:"from"`
+	To      string  `json:"to"`
+	Uptime  float64 `json:"uptime"`
+	HasData bool    `json:"has_data"`
 }

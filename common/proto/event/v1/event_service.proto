@@ -41,6 +41,7 @@ message GetServersOntimeRequest {
 message OntimeDayStat {
   string date = 1;
   double stats = 2;
+  bool has_data = 3;
 }
 
 message ServerOntimeStat {

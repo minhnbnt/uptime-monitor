@@ -21,18 +21,18 @@ func (m *mockOntineRepo) BatchGetOntime(ctx context.Context, req []ontimerepo.Ba
 var _ OntineRepository = (*mockOntineRepo)(nil)
 
 type mockOntimeCacheRepo struct {
-	mGetFn func(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error)
-	mSetFn func(ctx context.Context, items map[dto.BatchGetOntimeItem]float64) error
+	mGetFn func(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]dto.DayResult, error)
+	mSetFn func(ctx context.Context, items map[dto.BatchGetOntimeItem]dto.DayResult) error
 }
 
-func (m *mockOntimeCacheRepo) MGet(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error) {
+func (m *mockOntimeCacheRepo) MGet(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]dto.DayResult, error) {
 	if m.mGetFn != nil {
 		return m.mGetFn(ctx, keys)
 	}
-	return make(map[dto.BatchGetOntimeItem]float64), nil
+	return make(map[dto.BatchGetOntimeItem]dto.DayResult), nil
 }
 
-func (m *mockOntimeCacheRepo) MSet(ctx context.Context, items map[dto.BatchGetOntimeItem]float64) error {
+func (m *mockOntimeCacheRepo) MSet(ctx context.Context, items map[dto.BatchGetOntimeItem]dto.DayResult) error {
 	if m.mSetFn == nil {
 		return nil
 	}
