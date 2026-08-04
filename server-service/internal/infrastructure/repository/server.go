@@ -110,14 +110,16 @@ func (sr *ServerRepository) GetByID(ctx context.Context, id uint) (*domain.Serve
 	return &results[0], nil
 }
 
-// GetByNamespaceObjectIDUnscoped returns the server matching the given
-// namespace/object_id, including soft-deleted rows (Unscoped), so ownership
-// and the managed flag remain readable after the server was soft-deleted.
-func (sr *ServerRepository) GetByNamespaceObjectIDUnscoped(ctx context.Context, namespace, objectID string) (*domain.Server, error) {
+// GetByNamespaceObjectIDUnscoped returns the active-or-soft-deleted server
+// owned by userID matching the given namespace/object_id (Unscoped, so ownership
+// and the managed flag remain readable after the server was soft-deleted).
+func (sr *ServerRepository) GetByNamespaceObjectIDUnscoped(ctx context.Context, userID uuid.UUID, namespace, objectID string) (*domain.Server, error) {
 
 	result, err := gorm.G[domain.Server](sr.db).
 		Scopes(func(stmt *gorm.Statement) { stmt.Unscoped = true }).
-		Where("namespace = ? AND object_id = ?", namespace, objectID).
+		Where("created_by_id = ?", userID).
+		Where("namespace = ?", namespace).
+		Where("object_id = ?", objectID).
 		First(ctx)
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {

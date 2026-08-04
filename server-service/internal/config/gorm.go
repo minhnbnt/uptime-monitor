@@ -119,15 +119,16 @@ func RunMigration(db *gorm.DB) error {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
-	// Partial unique index: a pod (namespace+object_id) may be monitored by at
-	// most one active server, but soft-deleted rows are excluded so the same
-	// object can be re-registered after a server is deleted.
+	// Partial unique index: each user may monitor a (namespace+object_id) via at
+	// most one active server, while multiple users may monitor the same object.
+	// Soft-deleted rows are excluded so the object can be re-registered after a
+	// server is deleted.
 	if err := db.Exec(`
 		CREATE UNIQUE INDEX IF NOT EXISTS
-		idx_servers_namespace_object_id_active ON servers(namespace, object_id)
+		idx_servers_user_namespace_object_id_active ON servers(created_by_id, namespace, object_id)
 		WHERE deleted_at IS NULL
 	`).Error; err != nil {
-		return fmt.Errorf("failed to create namespace_object_id index: %w", err)
+		return fmt.Errorf("failed to create user_namespace_object_id index: %w", err)
 	}
 
 	// Non-unique index covering all rows (incl. soft-deleted) so the Unscoped

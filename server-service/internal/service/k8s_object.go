@@ -79,7 +79,7 @@ func (s *K8sObjectService) CreateK8sObject(
 
 func (s *K8sObjectService) DeleteK8sObject(ctx context.Context, userID uuid.UUID, req dto.DeleteK8sObjectRequest) error {
 
-	server, err := s.serverRepo.GetByNamespaceObjectIDUnscoped(ctx, req.Namespace, req.ObjectID)
+	server, err := s.serverRepo.GetByNamespaceObjectIDUnscoped(ctx, userID, req.Namespace, req.ObjectID)
 	if errors.Is(err, apperrors.ErrNotFound) {
 		return apperrors.ErrNotFound
 	}
