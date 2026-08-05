@@ -197,7 +197,7 @@ services:
     volumes:
       - redis_data:/data
 
-    command: redis-server --appendonly yes
+    command: --appendonly yes --appendfsync always --maxmemory-policy volatile-lru --protected-mode no
 
   postgres:
     image: registry.access.redhat.com/hi/postgresql:18
