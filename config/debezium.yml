@@ -4,9 +4,7 @@ debezium:
       class: io.debezium.connector.postgresql.PostgresConnector
 
     offset:
-      storage:
-        file:
-          filename: /debezium/data/offsets.dat
+      storage: io.debezium.storage.redis.offset.RedisOffsetBackingStore
       flush:
         interval:
           ms: 0
