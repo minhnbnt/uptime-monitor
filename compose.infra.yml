@@ -38,12 +38,14 @@ services:
         condition: service_healthy
 
   redis:
-    image: ghcr.io/valkey-io/valkey:9-alpine
+    image: registry.access.redhat.com/hi/valkey:9
     ports:
       - 6379:6379
+
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+
+    command: --appendonly yes --appendfsync always --maxmemory-policy volatile-lru --protected-mode no
 
   temporal:
     image: temporalio/temporal:1.7.2

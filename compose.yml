@@ -186,7 +186,7 @@ services:
     volumes:
       - redis_data:/data
 
-    command: --appendonly yes --protected-mode no --maxmemory-policy volatile-lru
+    command: --appendonly yes --appendfsync always --maxmemory-policy volatile-lru --protected-mode no
 
   postgres:
     image: paradedb/paradedb:pg18
