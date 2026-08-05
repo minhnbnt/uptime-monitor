@@ -81,7 +81,9 @@ func TestIntegration_BatchGetOntime_TodaySingleON_PrevDayOFF(t *testing.T) {
 		t.Fatalf("unexpected result shape: %+v", results)
 	}
 
-	startTime := yesterday.Add(23 * time.Hour)
+	// The lowerbound event (OFF yesterday 23:00) only establishes the
+	// start-of-day state; the daily window itself covers [today 00:00, now].
+	startTime := today
 	online := now.Sub(onTime).Seconds()
 	coverage := now.Sub(startTime).Seconds()
 	want := online / coverage * 100
