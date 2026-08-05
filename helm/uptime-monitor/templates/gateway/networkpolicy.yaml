@@ -42,22 +42,26 @@ spec:
         - ports:
             - port: "{{ .Values.gotrue.port }}"
               protocol: TCP
-          # Cilium L7 is allow-list: only signup/login/token/user/logout are
-          # exposed to the internet. GoTrue's Admin API (/admin/*) and
-          # everything else stay reachable only in-cluster (notification-service).
+          # L7 allow-list of GoTrue public endpoints. Paths are regexes, not
+          # literals: a plain literal like "/token" is compiled to an Envoy
+          # exact-match against :path, which includes the query string, so
+          # "/token?grant_type=password" would be denied. The "(\\?.*)?$"
+          # suffix keeps the regex anchored while tolerating a query string.
+          # /admin/* and everything else stay reachable only in-cluster
+          # (notification-service).
           rules:
             http:
               - method: POST
-                path: /signup
+                path: ^/signup(\?.*)?$
               - method: POST
-                path: /token
+                path: ^/token(\?.*)?$
               - method: GET
-                path: /user
+                path: ^/user(\?.*)?$
               - method: PUT
-                path: /user
+                path: ^/user(\?.*)?$
               - method: PATCH
-                path: /user
+                path: ^/user(\?.*)?$
               - method: POST
-                path: /logout
+                path: ^/logout(\?.*)?$
 {{- end }}
 {{- end }}
