@@ -105,11 +105,11 @@ func (s *PingLoopService) checkHTTPDNS(ctx context.Context, k8sParams *dto.K8sOb
 
 	resp, pingErr := s.pingClient.Ping(ctx, sv.Timeout, httpParams.Method, url.String())
 	if pingErr == nil {
-		if cErr := s.responseChecker.CheckResponse(httpParams, *resp); cErr == nil {
+		cErr := s.responseChecker.CheckResponse(httpParams, *resp)
+		if cErr == nil {
 			return true, nil
-		} else {
-			pingErr = cErr
 		}
+		pingErr = cErr
 	}
 
 	if k8sParams.K8s == nil || k8sParams.Kind != "Pod" || k8sParams.K8s.Domain == "" {

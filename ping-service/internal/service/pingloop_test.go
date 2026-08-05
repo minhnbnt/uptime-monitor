@@ -305,7 +305,7 @@ func TestPingAndRecordServer(t *testing.T) {
 			Namespace: "default",
 			Kind:      "Pod",
 			ObjectID:  "web-app",
-			K8s:      &domain.K8sRuntime{Domain: "10.0.0.1"},
+			K8s:       &domain.K8sRuntime{Domain: "10.0.0.1"},
 			Interval:  30 * time.Second,
 			HTTPConfig: &domain.ServerHTTPConfig{
 				Port:         8080,
@@ -383,7 +383,7 @@ func TestPingAndRecordServer(t *testing.T) {
 			Namespace: "default",
 			Kind:      "Pod",
 			ObjectID:  "web-app",
-			K8s:      &domain.K8sRuntime{Domain: "10.0.0.1"},
+			K8s:       &domain.K8sRuntime{Domain: "10.0.0.1"},
 			Interval:  30 * time.Second,
 			HTTPConfig: &domain.ServerHTTPConfig{
 				Port:         8080,
@@ -452,7 +452,7 @@ func TestPingAndRecordServer(t *testing.T) {
 			Namespace: "default",
 			Kind:      "Pod",
 			ObjectID:  "web-app",
-			K8s:      &domain.K8sRuntime{Domain: "10.0.0.1"},
+			K8s:       &domain.K8sRuntime{Domain: "10.0.0.1"},
 			Interval:  30 * time.Second,
 			HTTPConfig: &domain.ServerHTTPConfig{
 				Port:         8080,
