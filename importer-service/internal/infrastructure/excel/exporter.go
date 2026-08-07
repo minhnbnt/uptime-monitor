@@ -3,8 +3,10 @@ package excel
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/samber/do/v2"
+	"github.com/samber/lo"
 	"github.com/xuri/excelize/v2"
 
 	serverdto "github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/dto"
@@ -12,104 +14,45 @@ import (
 
 type Exporter struct{}
 
+const sheetName = "Servers"
+
 func RegisterExporter(i do.Injector) {
 	do.Provide(i, func(_ do.Injector) (*Exporter, error) {
 		return &Exporter{}, nil
 	})
 }
 
-func fillTemplate(xl *excelize.File) error {
-
-	headers := []string{
-		"server_name",
-		"namespace", "kind", "object_id", "container_name",
-		"interval_sec",
-		"timeout_sec",
-	}
-
-	if err := setHeader(xl, "Sheet1", headers); err != nil {
-		return fmt.Errorf("failed to set header: %w", err)
-	}
-
-	if err := xl.SetCellValue("Sheet1", "A2", "My Server"); err != nil {
-		return fmt.Errorf("failed to set cell value: %w", err)
-	}
-	if err := xl.SetCellValue("Sheet1", "B2", "default"); err != nil {
-		return fmt.Errorf("failed to set cell value: %w", err)
-	}
-	if err := xl.SetCellValue("Sheet1", "C2", "Pod"); err != nil {
-		return fmt.Errorf("failed to set cell value: %w", err)
-	}
-	if err := xl.SetCellValue("Sheet1", "D2", "my-pod"); err != nil {
-		return fmt.Errorf("failed to set cell value: %w", err)
-	}
-
-	return nil
-}
-
 func (g *Exporter) GenerateTemplate() (io.ReadCloser, error) {
 
-	xl := excelize.NewFile()
+	examples := []serverdto.Server{{
 
-	if err := fillTemplate(xl); err != nil {
-		_ = xl.Close()
-		return nil, fmt.Errorf("failed to fill template: %w", err)
-	}
+		Name:      "My Server",
+		Namespace: "default",
+		Kind:      "Pod",
+		ObjectID:  "my-pod",
+		Interval:  30 * time.Second,
+		Timeout:   10 * time.Second,
 
-	pr, pw := io.Pipe()
-	go func() {
+		HTTPConfig: &serverdto.HTTPConfig{
+			Port:         8080,
+			EndpointPath: "/healthz",
+			ExpectedCode: 200,
+			Method:       "GET",
+		},
+	}}
 
-		defer xl.Close()
-
-		if err := xl.Write(pw); err != nil {
-			pw.CloseWithError(fmt.Errorf("failed to write Excel file: %w", err))
-		} else {
-			pw.Close()
-		}
-
-	}()
-
-	return pr, nil
+	return g.GenerateExportFile(examples)
 }
 
-func fillExportFile(xl *excelize.File, servers []serverdto.Server) error {
+func fillServers(xl *excelize.File, servers []serverdto.Server) error {
 
-	headers := []string{
-		"server_name",
-		"namespace", "kind", "object_id", "container_name",
-		"interval_sec",
-		"timeout_sec",
-	}
-
-	if err := setHeader(xl, "Sheet1", headers); err != nil {
+	if err := setHeader(xl, sheetName, headers); err != nil {
 		return fmt.Errorf("failed to set header: %w", err)
 	}
 
 	for i, sv := range servers {
-
-		interval := 30
-		if sec := int(sv.Interval.Seconds()); sec >= 30 {
-			interval = sec
-		}
-
-		timeout := 10
-		if sec := int(sv.Timeout.Seconds()); sec >= 10 {
-			timeout = sec
-		}
-
-		row := i + 2
-		values := map[string]string{
-			fmt.Sprintf("A%d", row): sv.Name,
-			fmt.Sprintf("B%d", row): sv.Namespace,
-			fmt.Sprintf("C%d", row): sv.Kind,
-			fmt.Sprintf("D%d", row): sv.ObjectID,
-			fmt.Sprintf("E%d", row): sv.ContainerName,
-			fmt.Sprintf("F%d", row): fmt.Sprintf("%d", interval),
-			fmt.Sprintf("G%d", row): fmt.Sprintf("%d", timeout),
-		}
-
-		for cell, value := range values {
-			if err := xl.SetCellValue("Sheet1", cell, value); err != nil {
+		for cell, value := range toRowMap(i+2, sv) {
+			if err := xl.SetCellValue(sheetName, cell, value); err != nil {
 				return fmt.Errorf("failed to set cell value: %w", err)
 			}
 		}
@@ -118,21 +61,31 @@ func fillExportFile(xl *excelize.File, servers []serverdto.Server) error {
 	return nil
 }
 
-func (g *Exporter) GenerateExportFile(
-	servers []serverdto.Server,
-) (io.ReadCloser, error) {
+func (g *Exporter) fillExportFile(xl *excelize.File, servers []serverdto.Server) error {
 
-	xl := excelize.NewFile()
-
-	if err := fillExportFile(xl, servers); err != nil {
-		_ = xl.Close()
-		return nil, fmt.Errorf("failed to fill export file: %w", err)
+	if err := xl.SetSheetName("Sheet1", sheetName); err != nil {
+		return fmt.Errorf("failed to rename sheet: %w", err)
 	}
+
+	if err := fillServers(xl, servers); err != nil {
+		return fmt.Errorf("failed to fill export file: %w", err)
+	}
+
+	return nil
+}
+
+func (g *Exporter) GenerateExportFile(servers []serverdto.Server) (io.ReadCloser, error) {
 
 	pr, pw := io.Pipe()
 	go func() {
 
+		xl := excelize.NewFile()
 		defer func() { _ = xl.Close() }()
+
+		if err := g.fillExportFile(xl, servers); err != nil {
+			_ = pw.CloseWithError(err)
+			return
+		}
 
 		if err := xl.Write(pw); err != nil {
 			err = fmt.Errorf("failed to write Excel file: %w", err)
@@ -160,4 +113,61 @@ func setHeader(f *excelize.File, sheet string, headers []string) error {
 	}
 
 	return nil
+}
+
+func cellRef(header string, rowIndex int) string {
+
+	cell, err := excelize.CoordinatesToCellName(headerColumns[header], rowIndex)
+	if err != nil {
+		return ""
+	}
+
+	return cell
+}
+
+func toRowMap(rowIndex int, sv serverdto.Server) map[string]string {
+
+	cellMap := lo.SliceToMap(headers, func(label string) (string, string) {
+		return label, cellRef(label, rowIndex)
+	})
+
+	values := map[string]string{
+		cellMap["server_name"]:    sv.Name,
+		cellMap["namespace"]:      sv.Namespace,
+		cellMap["kind"]:           sv.Kind,
+		cellMap["object_id"]:      sv.ObjectID,
+		cellMap["container_name"]: sv.ContainerName,
+	}
+
+	interval := int(sv.Interval.Seconds())
+	if interval >= 1 {
+		values[cellMap["interval_sec"]] = fmt.Sprintf("%d", interval)
+	}
+
+	timeout := int(sv.Timeout.Seconds())
+	if timeout >= 1 {
+		values[cellMap["timeout_sec"]] = fmt.Sprintf("%d", timeout)
+	}
+
+	if sv.HTTPConfig == nil {
+		return values
+	}
+
+	if sv.HTTPConfig.Port > 0 {
+		values[cellMap["http_port"]] = fmt.Sprintf("%d", sv.HTTPConfig.Port)
+	}
+	if sv.HTTPConfig.EndpointPath != "" {
+		values[cellMap["http_path"]] = sv.HTTPConfig.EndpointPath
+	}
+	if sv.HTTPConfig.ExpectedCode > 0 {
+		values[cellMap["http_expected_code"]] = fmt.Sprintf("%d", sv.HTTPConfig.ExpectedCode)
+	}
+	if sv.HTTPConfig.BodyCheckExpr != "" {
+		values[cellMap["http_body_check"]] = sv.HTTPConfig.BodyCheckExpr
+	}
+	if sv.HTTPConfig.Method != "" {
+		values[cellMap["http_method"]] = sv.HTTPConfig.Method
+	}
+
+	return values
 }

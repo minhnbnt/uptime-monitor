@@ -71,13 +71,6 @@ func (p *Parser) ParseImportFile(file io.Reader) ([]dto.ImportRow, []dto.ImportR
 	return valid, rowErrors, nil
 }
 
-var expectedHeaders = []string{
-	"server_name",
-	"namespace", "kind", "object_id",
-	"interval_sec",
-	"timeout_sec",
-}
-
 func validateHeaders(colMap map[string]int) error {
 
 	missing := lo.Filter(expectedHeaders, func(h string, _ int) bool {
@@ -118,33 +111,58 @@ func getCellByHeader(row []string, colMap map[string]int, header string) string 
 
 func parseRow(rowNum int, row []string, colMap map[string]int) (dto.ImportRow, []error) {
 
+	cellValueMap := lo.SliceToMap(headers, func(label string) (string, string) {
+		return label, getCellByHeader(row, colMap, label)
+	})
+
 	errs, err := []error{}, error(nil)
 	r := dto.ImportRow{}
 
 	r.Row = rowNum
 
-	r.Name, err = parseServerName(getCellByHeader(row, colMap, "server_name"))
+	r.Name, err = parseServerName(cellValueMap["server_name"])
 	if err != nil {
 		errs = append(errs, err)
 	}
 
-	r.Namespace = strings.TrimSpace(getCellByHeader(row, colMap, "namespace"))
+	r.Namespace = strings.TrimSpace(cellValueMap["namespace"])
 
-	r.Kind, err = parseKind(getCellByHeader(row, colMap, "kind"))
+	r.Kind, err = parseKind(cellValueMap["kind"])
 	if err != nil {
 		errs = append(errs, err)
 	}
 
-	r.ObjectID = strings.TrimSpace(getCellByHeader(row, colMap, "object_id"))
+	r.ObjectID = strings.TrimSpace(cellValueMap["object_id"])
+	r.ContainerName = strings.TrimSpace(cellValueMap["container_name"])
 
-	r.ContainerName = strings.TrimSpace(getCellByHeader(row, colMap, "container_name"))
-
-	r.Interval, err = parseInterval(getCellByHeader(row, colMap, "interval_sec"))
+	r.Interval, err = parseInterval(cellValueMap["interval_sec"])
 	if err != nil {
 		errs = append(errs, err)
 	}
 
-	r.Timeout, err = parseTimeout(getCellByHeader(row, colMap, "timeout_sec"))
+	r.Timeout, err = parseTimeout(cellValueMap["timeout_sec"])
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	r.HTTPPort, err = parseIntCell(cellValueMap["http_port"], "http_port", 0, utils.ValidatePort)
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	r.HTTPPath = strings.TrimSpace(cellValueMap["http_path"])
+
+	r.HTTPExpectedCode, err = parseIntCell(
+		cellValueMap["http_expected_code"],
+		"http_expected_code", 0, utils.ValidateExpectedCode,
+	)
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	r.HTTPBodyCheck = strings.TrimSpace(cellValueMap["http_body_check"])
+
+	r.HTTPMethod, err = parseHTTPMethod(cellValueMap["http_method"])
 	if err != nil {
 		errs = append(errs, err)
 	}
@@ -163,12 +181,14 @@ func parseServerName(v string) (string, error) {
 }
 
 func parseKind(v string) (string, error) {
-	v = strings.TrimSpace(v)
-	switch v {
+
+	switch strings.TrimSpace(v) {
 	case "Pod", "Deployment", "StatefulSet", "DaemonSet", "ReplicaSet":
 		return v, nil
+
 	case "":
 		return "Pod", nil
+
 	default:
 		return "", fmt.Errorf("invalid kind: %s (must be Pod, Deployment, StatefulSet, DaemonSet, or ReplicaSet)", v)
 	}
@@ -199,4 +219,8 @@ func parseInterval(v string) (int, error) {
 
 func parseTimeout(v string) (int, error) {
 	return parseIntCell(v, "timeout_sec", 10, utils.ValidateTimeout)
+}
+
+func parseHTTPMethod(v string) (string, error) {
+	return utils.ValidateMethod(v)
 }

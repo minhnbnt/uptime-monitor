@@ -62,6 +62,7 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uuid.UUID, fil
 			IntervalMs:    int64(r.Interval) * 1000,
 			TimeoutMs:     int64(r.Timeout) * 1000,
 			UserId:        userID.String(),
+			HttpConfig:    httpConfigFromRow(r),
 		}
 	})
 
@@ -80,9 +81,9 @@ func (s *ImportService) ImportServers(ctx context.Context, userID uuid.UUID, fil
 	for _, r := range resp.Results {
 		if r.Error == "" {
 			successes = append(successes, dto.ImportSuccess{
+				ServerID: uint(r.ServerId),
 				Row:      int(r.Row),
 				Name:     r.Name,
-				ServerID: uint(r.ServerId),
 			})
 		} else {
 			batchErrors = append(batchErrors, dto.ImportError{Message: r.Error})
@@ -146,6 +147,42 @@ func protoToExportServers(in []*serverv1.ServerWithEndpoint) []dto.Server {
 			Kind:          p.Kind,
 			ObjectID:      p.ObjectId,
 			ContainerName: p.ContainerName,
+			HTTPConfig:    dtoHTTPConfig(p.HttpConfig),
 		}
 	})
+}
+
+func dtoHTTPConfig(in *serverv1.HttpConfigInput) *dto.HTTPConfig {
+
+	if in == nil {
+		return nil
+	}
+
+	return &dto.HTTPConfig{
+		Port:          int(in.Port),
+		EndpointPath:  in.EndpointPath,
+		ExpectedCode:  int(in.ExpectedCode),
+		BodyCheckExpr: in.BodyCheckExpr,
+		Method:        in.Method,
+	}
+}
+
+func httpConfigFromRow(r dto.ImportRow) *serverv1.HttpConfigInput {
+
+	if r.HTTPPort == 0 &&
+		r.HTTPPath == "" &&
+		r.HTTPMethod == "" &&
+
+		r.HTTPBodyCheck == "" &&
+		r.HTTPExpectedCode == 0 {
+		return nil
+	}
+
+	return &serverv1.HttpConfigInput{
+		Port:          int32(r.HTTPPort),
+		EndpointPath:  r.HTTPPath,
+		ExpectedCode:  int32(r.HTTPExpectedCode),
+		BodyCheckExpr: r.HTTPBodyCheck,
+		Method:        r.HTTPMethod,
+	}
 }

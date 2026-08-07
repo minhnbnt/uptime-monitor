@@ -15,30 +15,38 @@ var (
 	ErrIntervalInvalid = errors.New("interval_sec must be a positive integer")
 	ErrTimeoutInvalid  = errors.New("timeout_sec must be a positive integer")
 	ErrCodeOutOfRange  = errors.New("expected_code must be between 100 and 599")
+	ErrPortOutOfRange  = errors.New("http_port must be between 1 and 65535")
 )
 
 func ValidateServerName(name string) error {
+
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return ErrNameRequired
 	}
+
 	if len(name) > 255 {
 		return ErrNameTooLong
 	}
+
 	return nil
 }
 
 func ValidateURL(u string) error {
+
 	u = strings.TrimSpace(u)
 	if u == "" {
 		return nil
 	}
+
 	if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
 		return ErrURLInvalid
 	}
+
 	if _, err := url.Parse(u); err != nil {
 		return ErrURLParse
 	}
+
 	return nil
 }
 
@@ -48,13 +56,16 @@ var validMethods = map[string]bool{
 }
 
 func ValidateMethod(method string) (string, error) {
+
 	if method == "" {
 		return "GET", nil
 	}
+
 	m := strings.ToUpper(method)
 	if !validMethods[m] {
 		return "", fmt.Errorf("method '%s' is not supported", method)
 	}
+
 	return m, nil
 }
 
@@ -73,8 +84,19 @@ func ValidateTimeout(sec int) error {
 }
 
 func ValidateExpectedCode(code int) error {
+
 	if code < 100 || code > 599 {
 		return ErrCodeOutOfRange
 	}
+
+	return nil
+}
+
+func ValidatePort(port int) error {
+
+	if port < 1 || port > 65535 {
+		return ErrPortOutOfRange
+	}
+
 	return nil
 }
