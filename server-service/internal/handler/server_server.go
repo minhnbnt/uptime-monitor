@@ -187,7 +187,7 @@ func serverBriefFromDTO(sv dto.Server) *serverv1.ServerBrief {
 }
 
 func mapServerToProto(sv dto.Server) *serverv1.ServerWithEndpoint {
-	return &serverv1.ServerWithEndpoint{
+	out := &serverv1.ServerWithEndpoint{
 		Id:            uint64(sv.ID),
 		Name:          sv.Name,
 		Namespace:     sv.Namespace,
@@ -198,4 +198,16 @@ func mapServerToProto(sv dto.Server) *serverv1.ServerWithEndpoint {
 		TimeoutMs:     sv.Timeout.Milliseconds(),
 		CreatedAt:     sv.CreatedAt.UnixMilli(),
 	}
+
+	if sv.HttpConfig != nil {
+		out.HttpConfig = &serverv1.HttpConfigInput{
+			Port:          int32(sv.HttpConfig.Port),
+			EndpointPath:  sv.HttpConfig.EndpointPath,
+			ExpectedCode:  int32(sv.HttpConfig.ExpectedCode),
+			BodyCheckExpr: sv.HttpConfig.BodyCheckExpr,
+			Method:        sv.HttpConfig.Method,
+		}
+	}
+
+	return out
 }

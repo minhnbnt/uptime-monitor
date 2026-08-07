@@ -39,6 +39,15 @@ message ServerWithEndpoint {
   int64 interval_ms = 7;
   int64 timeout_ms = 8;
   int64 created_at = 9;
+  optional HttpConfigInput http_config = 10;
+}
+
+message HttpConfigInput {
+  int32 port = 1;
+  string endpoint_path = 2;
+  int32 expected_code = 3;
+  string body_check_expr = 4;
+  string method = 5;
 }
 
 message SearchServersRequest {
@@ -64,6 +73,7 @@ message ServerWithEndpointInput {
   int64 interval_ms = 7;
   int64 timeout_ms = 8;
   string user_id = 9;
+  optional HttpConfigInput http_config = 10;
 }
 
 message BatchCreateServerResult {

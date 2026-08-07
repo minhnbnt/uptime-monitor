@@ -41,7 +41,7 @@ func (s *ServerBatchService) BatchCreateServers(
 
 	for chunk := range it.Chunk(slices.Values(inputs), batchChunkSize) {
 
-		servers, err := buildDomainServers(chunk)
+		servers, configs, err := buildDomainServers(chunk)
 		if err != nil {
 
 			s.logger.Error("batch create servers failed", slog.Any("error", err))
@@ -62,7 +62,7 @@ func (s *ServerBatchService) BatchCreateServers(
 			continue
 		}
 
-		err = s.serverRepo.BatchCreateServers(ctx, servers)
+		err = s.serverRepo.BatchCreateServers(ctx, servers, configs)
 		if err != nil {
 
 			s.logger.Error("batch create servers failed", slog.Any("error", err))
@@ -96,14 +96,15 @@ func (s *ServerBatchService) BatchCreateServers(
 	return results, nil
 }
 
-func buildDomainServers(inputs []*serverv1.ServerWithEndpointInput) ([]domain.Server, error) {
+func buildDomainServers(inputs []*serverv1.ServerWithEndpointInput) ([]domain.Server, []*domain.ServerHttpConfig, error) {
 
 	servers := make([]domain.Server, 0, len(inputs))
+	configs := make([]*domain.ServerHttpConfig, 0, len(inputs))
 	for _, in := range inputs {
 
 		userID, err := uuid.Parse(in.UserId)
 		if err != nil {
-			return nil, fmt.Errorf("row %d: invalid user id %q: %w", in.Row, in.UserId, err)
+			return nil, nil, fmt.Errorf("row %d: invalid user id %q: %w", in.Row, in.UserId, err)
 		}
 
 		servers = append(servers, domain.Server{
@@ -116,7 +117,24 @@ func buildDomainServers(inputs []*serverv1.ServerWithEndpointInput) ([]domain.Se
 			Timeout:       time.Duration(in.TimeoutMs) * time.Millisecond,
 			CreatedByID:   userID,
 		})
+
+		configs = append(configs, httpConfigFromInput(in.HttpConfig))
 	}
 
-	return servers, nil
+	return servers, configs, nil
+}
+
+func httpConfigFromInput(in *serverv1.HttpConfigInput) *domain.ServerHttpConfig {
+
+	if in == nil {
+		return nil
+	}
+
+	return &domain.ServerHttpConfig{
+		Port:          int(in.Port),
+		EndpointPath:  in.EndpointPath,
+		ExpectedCode:  int(in.ExpectedCode),
+		BodyCheckExpr: in.BodyCheckExpr,
+		Method:        defaultHttpMethod(in.Method),
+	}
 }

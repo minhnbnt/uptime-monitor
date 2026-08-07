@@ -205,14 +205,27 @@ func (sr *ServerRepository) CountByStatus(
 }
 
 func (sr *ServerRepository) BatchCreateServers(
-	ctx context.Context, servers []domain.Server,
+	ctx context.Context, servers []domain.Server, configs []*domain.ServerHttpConfig,
 ) error {
 
-	result := sr.db.WithContext(ctx).Create(&servers)
+	return sr.db.Transaction(func(tx *gorm.DB) error {
 
-	if err := result.Error; err != nil {
-		return fmt.Errorf("failed to batch create servers: %w", err)
-	}
+		if err := tx.Create(&servers).Error; err != nil {
+			return fmt.Errorf("failed to batch create servers: %w", err)
+		}
 
-	return nil
+		for i, config := range configs {
+
+			if config == nil {
+				continue
+			}
+
+			config.ServerID = servers[i].ID
+			if err := gorm.G[domain.ServerHttpConfig](tx).Create(ctx, config); err != nil {
+				return fmt.Errorf("failed to create http config for server %d: %w", servers[i].ID, err)
+			}
+		}
+
+		return nil
+	})
 }
