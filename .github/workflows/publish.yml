@@ -25,6 +25,8 @@ jobs:
             image: ontime-service
           - service: notification-service
             image: notification-service
+          - service: server-test
+            image: server-test
     steps:
       - uses: actions/checkout@v4
 
