@@ -6,6 +6,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/handler"
 	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/infrastructure/excel"
+	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/infrastructure/serverclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/importer-service/internal/service"
 )
 
@@ -15,11 +16,13 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 
 		config.RegisterConfigPath(configPath),
 		config.RegisterLogger(dev),
-		config.RegisterServerClient,
+		config.RegisterGRPCClient,
 		config.RegisterCORS,
 
 		excel.RegisterExporter,
 		excel.RegisterParser,
+
+		serverclient.RegisterServerClient,
 
 		service.RegisterImportService,
 

@@ -22,9 +22,9 @@ type ImportHandler struct {
 }
 
 type ImportService interface {
+	ExportServers(ctx context.Context, userID uuid.UUID, params dto.SearchServersParams) (io.ReadCloser, error)
 	ImportServers(ctx context.Context, userID uuid.UUID, file io.Reader) (*dto.ImportResult, error)
 	GenerateTemplate() (io.ReadCloser, error)
-	ExportServers(ctx context.Context, userID uuid.UUID, q string, from, to int, sortBy, sortOrder string) (io.ReadCloser, error)
 }
 
 func RegisterImportHandler(i do.Injector) {
@@ -50,28 +50,8 @@ func (h *ImportHandler) ImportServers(ctx context.Context, req *api.ImportServer
 		return nil, apperrors.ToAPIError(err)
 	}
 
-	successes := lo.Map(result.Successes, func(s dto.ImportSuccess, _ int) api.ImportServerSuccess {
-		return api.ImportServerSuccess{
-			Row:      api.NewOptInt(s.Row),
-			Name:     api.NewOptString(s.Name),
-			ServerID: api.NewOptInt(int(s.ServerID)),
-		}
-	})
-
-	failed := make([]api.ImportServerRowError, 0, len(result.RowErrors)+len(result.BatchErrors))
-
-	for _, e := range result.RowErrors {
-		failed = append(failed, api.ImportServerRowError{
-			Row:     api.NewOptInt(e.Row),
-			Message: api.NewOptString(e.Message),
-		})
-	}
-
-	for _, e := range result.BatchErrors {
-		failed = append(failed, api.ImportServerRowError{
-			Message: api.NewOptString(e.Message),
-		})
-	}
+	failed := toAPIRowErrors(result)
+	successes := lo.Map(result.Successes, toAPISuccesses)
 
 	return &api.ImportServersResponse{
 		SuccessCount: len(result.Successes),
@@ -96,15 +76,15 @@ func (h *ImportHandler) DownloadImportTemplate(_ context.Context) (api.DownloadI
 func (h *ImportHandler) ExportServers(ctx context.Context, params api.ExportServersParams) (*api.ExportServersOKHeaders, error) {
 
 	userID := authclient.GetUserID(ctx)
+	searchParams := dto.SearchServersParams{
+		Q:         params.Q.Or(""),
+		From:      params.From.Or(0),
+		To:        params.To.Or(100),
+		SortBy:    string(params.SortBy.Or(api.ExportServersSortByName)),
+		SortOrder: string(params.SortOrder.Or(api.ExportServersSortOrderAsc)),
+	}
 
-	reader, err := h.importService.ExportServers(
-		ctx, userID,
-		params.Q.Or(""),
-		params.From.Or(0),
-		params.To.Or(100),
-		string(params.SortBy.Or(api.ExportServersSortByName)),
-		string(params.SortOrder.Or(api.ExportServersSortOrderAsc)),
-	)
+	reader, err := h.importService.ExportServers(ctx, userID, searchParams)
 	if err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}
