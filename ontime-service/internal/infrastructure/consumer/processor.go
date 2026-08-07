@@ -2,8 +2,10 @@ package consumer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -12,6 +14,7 @@ type messageProcessor struct {
 	handler ServerOwnerHandler
 	logger  *slog.Logger
 	offsets *RedisOffsetStore
+	client  *redis.Client
 }
 
 func (p *messageProcessor) onDelete(ctx context.Context, event debeziumMessage) error {
@@ -59,7 +62,7 @@ func (p *messageProcessor) handleMessage(ctx context.Context, event debeziumMess
 		return p.onDelete(ctx, event)
 
 	default:
-		return fmt.Errorf("unexpected operation: %s", event.Op)
+		return permanent(fmt.Errorf("unexpected operation %q", event.Op))
 	}
 }
 
@@ -67,14 +70,12 @@ func (p *messageProcessor) ProcessMessage(ctx context.Context, msg redis.XMessag
 
 	event, err := unmarshalDebeziumMessage(msg)
 	if err != nil {
-		p.logger.Warn("unmarshal message", slog.String("id", msg.ID), slog.Any("error", err))
-		return false
+		return p.deadLetterOrRetry(ctx, msg, err)
 	}
 
 	serverID, err := resolveServerID(event)
 	if err != nil {
-		p.logger.Warn("resolve server id", slog.String("id", msg.ID), slog.Any("error", err))
-		return false
+		return p.deadLetterOrRetry(ctx, msg, err)
 	}
 
 	// ponytail: skip stale, out-of-order reprocessed messages (e.g. reclaim brings an
@@ -91,12 +92,7 @@ func (p *messageProcessor) ProcessMessage(ctx context.Context, msg redis.XMessag
 	}
 
 	if err := p.handleMessage(ctx, event); err != nil {
-		p.logger.Error("handle server",
-			slog.Uint64("server_id", uint64(serverID)),
-			slog.String("op", event.Op),
-			slog.Any("error", err),
-		)
-		return false
+		return p.deadLetterOrRetry(ctx, msg, err)
 	}
 
 	if err := p.offsets.SetOffset(ctx, serverID, msg.ID); err != nil {
@@ -104,6 +100,51 @@ func (p *messageProcessor) ProcessMessage(ctx context.Context, msg redis.XMessag
 	}
 
 	return true
+}
+
+// deadLetterOrRetry acks permanent failures into the DLQ stream; transient errors
+// are returned for retry via reclaim. A failed DLQ write is NOT acked so the
+// message is never lost.
+func (p *messageProcessor) deadLetterOrRetry(ctx context.Context, msg redis.XMessage, err error) bool {
+
+	if !errors.Is(err, ErrPermanent) {
+		p.logger.Error("handle message",
+			slog.String("id", msg.ID),
+			slog.Any("error", err),
+		)
+		return false
+	}
+
+	if dlqErr := p.sendToDLQ(ctx, msg, err); dlqErr != nil {
+		p.logger.Error("write dlq",
+			slog.String("id", msg.ID),
+			slog.Any("error", dlqErr),
+		)
+		return false
+	}
+
+	p.logger.Error(
+		"dead-lettered",
+		slog.String("id", msg.ID),
+		slog.Any("error", err),
+	)
+
+	return true
+}
+
+func (p *messageProcessor) sendToDLQ(ctx context.Context, msg redis.XMessage, err error) error {
+
+	values := maps.Clone(msg.Values)
+
+	values["error"] = err.Error()
+	values["original_id"] = msg.ID
+
+	args := redis.XAddArgs{
+		Stream: dlqStreamKey,
+		Values: values,
+	}
+
+	return p.client.XAdd(ctx, &args).Err()
 }
 
 // isStale reports whether a message for serverID is older than one already applied.

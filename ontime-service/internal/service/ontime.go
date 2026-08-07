@@ -60,10 +60,7 @@ func (s *OntimeService) ListServersWithOntime(ctx context.Context, userID uuid.U
 	}
 
 	out := lo.Map(servers, func(server serverclient.ServerBrief, _ int) dto.ServerOntime {
-		return dto.ServerOntime{
-			ServerID: server.ID,
-			DayStats: ontimeMap[server.ID],
-		}
+		return dto.ServerOntime{ServerID: server.ID, DayStats: ontimeMap[server.ID]}
 	})
 
 	return out, nil

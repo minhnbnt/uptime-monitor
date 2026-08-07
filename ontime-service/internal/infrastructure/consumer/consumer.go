@@ -14,6 +14,7 @@ import (
 
 const (
 	streamKey       = "uptime.public.servers"
+	dlqStreamKey    = streamKey + ".dlq"
 	consumerGroup   = "ontime-service-owners"
 	consumerName    = "worker-1"
 	streamReadCount = 10
@@ -58,6 +59,7 @@ func (c *OwnershipConsumer) Run(ctx context.Context, handler ServerOwnerHandler)
 		handler: handler,
 		logger:  c.logger,
 		offsets: NewRedisOffsetStore(c.client, 30*time.Minute),
+		client:  c.client,
 	}
 
 	readArgs := redis.XReadGroupArgs{
