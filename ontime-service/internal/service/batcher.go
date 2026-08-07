@@ -156,14 +156,11 @@ func (b *Batcher) buildResponse(req []dto.BatchGetOntimeItem, resultMap map[dto.
 	return lo.MapToSlice(groups, func(serverID uint, items []dto.BatchGetOntimeItem) dto.ServerOntime {
 
 		result := lo.Map(items, func(item dto.BatchGetOntimeItem, _ int) dto.DayStats {
-			r := resultMap[item] // zero value -> HasData: false, correctly means "no data" if truly absent too
-			return dto.DayStats{Date: item.Date, Result: r}
+			// zero value -> HasData: false, correctly means "no data" if truly absent too
+			return dto.DayStats{Date: item.Date, Result: resultMap[item]}
 		})
 
-		return dto.ServerOntime{
-			ServerID: serverID,
-			DayStats: result,
-		}
+		return dto.ServerOntime{ServerID: serverID, DayStats: result}
 	})
 }
 

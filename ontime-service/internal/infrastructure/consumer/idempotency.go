@@ -57,5 +57,13 @@ func (s *RedisOffsetStore) IsNewer(a, b string) (bool, error) {
 		return false, err
 	}
 
-	return msA > msB || (msA == msB && seqA > seqB), nil
+	if msA > msB {
+		return true, nil
+	}
+
+	if msA < msB {
+		return false, nil
+	}
+
+	return seqA > seqB, nil
 }

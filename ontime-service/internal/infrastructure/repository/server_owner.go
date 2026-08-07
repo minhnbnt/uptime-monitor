@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -52,17 +51,9 @@ func (r *ServerOwnerRepository) Upsert(
 
 func (r *ServerOwnerRepository) Delete(ctx context.Context, serverID uint) error {
 
-	rowAffected, err := gorm.G[domain.ServerOwner](r.db).
+	_, err := gorm.G[domain.ServerOwner](r.db).
 		Where("server_id = ?", serverID).
 		Delete(ctx)
 
-	if err != nil {
-		return fmt.Errorf("delete server owner: %w", err)
-	}
-
-	if rowAffected == 0 {
-		return fmt.Errorf("no server owner found with server_id = %d", serverID)
-	}
-
-	return nil
+	return err
 }

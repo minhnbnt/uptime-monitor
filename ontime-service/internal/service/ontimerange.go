@@ -109,7 +109,9 @@ func mergeIntervals(intervals []dto.IntervalResult) []dto.IntervalResult {
 
 func (o OntimeCalculator) CalculateIntervals(events []ontimerepo.Event, intervals []utils.Interval) []dto.IntervalResult {
 	return lo.Map(intervals, func(iv utils.Interval, _ int) dto.IntervalResult {
+
 		result := o.CalculateOntime(events, iv.Start, iv.End)
+
 		return dto.IntervalResult{
 			From:    iv.Start.Format(time.RFC3339),
 			To:      iv.End.Format(time.RFC3339),

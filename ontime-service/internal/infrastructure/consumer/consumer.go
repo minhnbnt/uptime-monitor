@@ -22,7 +22,7 @@ const (
 
 type ServerOwnerHandler interface {
 	OnCreate(ctx context.Context, serverID uint, userID uuid.UUID) error
-	OnUpdate(ctx context.Context, serverID uint, userID uuid.UUID, deletedAt *time.Time) error
+	OnUpdate(ctx context.Context, serverID uint, userID uuid.UUID) error
 	OnDelete(ctx context.Context, serverID uint) error
 }
 

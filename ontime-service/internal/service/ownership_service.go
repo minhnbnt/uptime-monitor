@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/samber/do/v2"
@@ -29,8 +28,8 @@ func (s *OwnershipService) OnCreate(ctx context.Context, serverID uint, userID u
 	return s.repo.Upsert(ctx, serverID, userID, nil)
 }
 
-func (s *OwnershipService) OnUpdate(ctx context.Context, serverID uint, userID uuid.UUID, deletedAt *time.Time) error {
-	return s.repo.Upsert(ctx, serverID, userID, deletedAt)
+func (s *OwnershipService) OnUpdate(ctx context.Context, serverID uint, userID uuid.UUID) error {
+	return s.repo.Upsert(ctx, serverID, userID, nil)
 }
 
 func (s *OwnershipService) OnDelete(ctx context.Context, serverID uint) error {

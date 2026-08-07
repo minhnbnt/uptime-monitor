@@ -174,16 +174,19 @@ func TestDedupExact(t *testing.T) {
 	})
 }
 
-func TestAsStatus(t *testing.T) {
-	if s, ok := asStatus(string(domain.StatusOn)); !ok || s != domain.StatusOn {
-		t.Errorf("asStatus(ON) = %v,%v", s, ok)
+func TestToServerStatus(t *testing.T) {
+
+	if s, ok := domain.ToServerStatus(string(domain.StatusOn)); !ok || s != domain.StatusOn {
+		t.Errorf("ToServerStatus(ON) = %v,%v", s, ok)
 	}
-	if s, ok := asStatus(string(domain.StatusOff)); !ok || s != domain.StatusOff {
-		t.Errorf("asStatus(OFF) = %v,%v", s, ok)
+
+	if s, ok := domain.ToServerStatus(string(domain.StatusOff)); !ok || s != domain.StatusOff {
+		t.Errorf("ToServerStatus(OFF) = %v,%v", s, ok)
 	}
+
 	for _, raw := range []string{"", "UNKNOWN", "up"} {
-		if _, ok := asStatus(raw); ok {
-			t.Errorf("asStatus(%q) = known, want unknown", raw)
+		if _, ok := domain.ToServerStatus(raw); ok {
+			t.Errorf("ToServerStatus(%q) = known, want unknown", raw)
 		}
 	}
 }

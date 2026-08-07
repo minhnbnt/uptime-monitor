@@ -59,13 +59,12 @@ func (s *OntimeService) ListServersWithOntime(ctx context.Context, userID uuid.U
 		return nil, err
 	}
 
-	out := make([]dto.ServerOntime, 0, len(servers))
-	for _, sv := range servers {
-		out = append(out, dto.ServerOntime{
-			ServerID: sv.ID,
-			DayStats: ontimeMap[sv.ID],
-		})
-	}
+	out := lo.Map(servers, func(server serverclient.ServerBrief, _ int) dto.ServerOntime {
+		return dto.ServerOntime{
+			ServerID: server.ID,
+			DayStats: ontimeMap[server.ID],
+		}
+	})
 
 	return out, nil
 }
@@ -98,10 +97,7 @@ func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID uint, 
 		return nil, err
 	}
 
-	return &dto.ServerOntime{
-		ServerID: serverID,
-		DayStats: ontimeMap[serverID],
-	}, nil
+	return &dto.ServerOntime{ServerID: serverID, DayStats: ontimeMap[serverID]}, nil
 }
 
 func (s *OntimeService) getServersOntime(ctx context.Context, servers []serverclient.ServerBrief) (map[uint][]dto.DayStats, error) {
@@ -157,17 +153,12 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []servercl
 }
 
 func buildOntimeLookup(results []dto.ServerOntime) map[uint]map[time.Time]dto.DayResult {
+	return lo.SliceToMap(results, func(result dto.ServerOntime) (uint, map[time.Time]dto.DayResult) {
 
-	lookup := make(map[uint]map[time.Time]dto.DayResult, len(results))
-
-	for _, r := range results {
-
-		mp := lo.SliceToMap(r.DayStats, func(stat dto.DayStats) (time.Time, dto.DayResult) {
+		mp := lo.SliceToMap(result.DayStats, func(stat dto.DayStats) (time.Time, dto.DayResult) {
 			return utils.TruncateDay(stat.Date), stat.Result
 		})
 
-		lookup[r.ServerID] = mp
-	}
-
-	return lookup
+		return result.ServerID, mp
+	})
 }

@@ -30,19 +30,6 @@ type OntimeResult struct {
 
 type OntimeCalculator struct{}
 
-// asStatus converts a raw DB status string into a known ServerStatus.
-// Anything other than exactly "ON"/"OFF" — including the empty string that
-// comes back from a LEFT JOIN with no matching row — is reported unknown.
-// This is the single place that decides what counts as "real" status.
-func asStatus(raw string) (domain.ServerStatus, bool) {
-	switch domain.ServerStatus(raw) {
-	case domain.StatusOn, domain.StatusOff:
-		return domain.ServerStatus(raw), true
-	default:
-		return "", false
-	}
-}
-
 type timeline struct {
 	StartTime   time.Time
 	EndTime     time.Time
@@ -100,7 +87,7 @@ func (o OntimeCalculator) newTimeline(events []ontimerepo.Event, from, to time.T
 	prevEvents, dayEvents := splitByRange(events, from, to)
 
 	if len(prevEvents) > 0 {
-		t.StartStatus, t.HasStart = asStatus(prevEvents[len(prevEvents)-1].Status)
+		t.StartStatus, t.HasStart = domain.ToServerStatus(prevEvents[len(prevEvents)-1].Status)
 		t.Events = dedupExact(dayEvents)
 		return t
 	}
@@ -111,7 +98,7 @@ func (o OntimeCalculator) newTimeline(events []ontimerepo.Event, from, to time.T
 	// state before that point is genuinely unknown, so the window shrinks
 	// to start there and gets flagged Partial.
 	for i, e := range dayEvents {
-		status, known := asStatus(e.Status)
+		status, known := domain.ToServerStatus(e.Status)
 		if !known {
 			continue
 		}
@@ -155,11 +142,13 @@ func dedupExact(events []ontimerepo.Event) []ontimerepo.Event {
 
 	unique := events[:1]
 	for i := 1; i < len(events); i++ {
+
 		prev := unique[len(unique)-1]
-		if events[i].Time.Equal(prev.Time) && events[i].Status == prev.Status {
-			continue
+		isSame := events[i].Time.Equal(prev.Time) && events[i].Status == prev.Status
+
+		if !isSame {
+			unique = append(unique, events[i])
 		}
-		unique = append(unique, events[i])
 	}
 
 	return unique
@@ -172,7 +161,7 @@ func onlineSeconds(t timeline) float64 {
 
 	for _, e := range t.Events {
 
-		status, known := asStatus(e.Status)
+		status, known := domain.ToServerStatus(e.Status)
 
 		// Unknown status (e.g. an empty/NULL no-data row) is intentionally
 		// skipped WITHOUT advancing the boundary time: the server's known

@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/samber/do/v2"
+	"github.com/samber/lo"
 
 	serverv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/server/v1"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/config"
@@ -69,14 +70,13 @@ func (c *Client) ListServers(
 		return nil, fmt.Errorf("list servers: %w", err)
 	}
 
-	servers := make([]ServerBrief, 0, len(resp.Servers))
-	for _, s := range resp.Servers {
-		servers = append(servers, ServerBrief{
-			ID:        uint(s.Id),
-			Name:      s.Name,
-			CreatedAt: time.UnixMilli(s.CreatedAt),
-		})
-	}
+	servers := lo.Map(resp.Servers, func(server *serverv1.ServerBrief, _ int) ServerBrief {
+		return ServerBrief{
+			ID:        uint(server.Id),
+			Name:      server.Name,
+			CreatedAt: time.UnixMilli(server.CreatedAt),
+		}
+	})
 
 	return servers, nil
 }
