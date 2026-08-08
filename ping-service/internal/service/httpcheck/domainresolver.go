@@ -86,7 +86,15 @@ func (d *DomainResolver) resolveDomainCached(ctx context.Context, params *dto.K8
 	}
 
 	if domain != "" {
-		_ = d.domainCache.Set(ctx, key, domain)
+		if err := d.domainCache.Set(ctx, key, domain); err != nil {
+			d.logger.Warn(
+				"failed to set domain cache",
+				slog.String("namespace", key.Namespace),
+				slog.String("kind", key.Kind),
+				slog.String("object_id", key.ObjectID),
+				slog.Any("error", err),
+			)
+		}
 	}
 
 	return domain, nil
