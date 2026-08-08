@@ -9,6 +9,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
+	scheduler "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis/scheduler"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/service"
 )
 
@@ -21,19 +22,21 @@ type LoopRunner interface {
 }
 
 type ZSetWorkerRunner struct {
-	loopService LoopRunner
-	pingService PingService
-	logger      *slog.Logger
-	config      *config.Config
+	loopService      LoopRunner
+	pingService      PingService
+	lazyScoreUpdater *scheduler.LazyScoreUpdater
+	logger           *slog.Logger
+	config           *config.Config
 }
 
 func RegisterZSetWorkerRunner(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ZSetWorkerRunner, error) {
 		return &ZSetWorkerRunner{
-			loopService: do.MustInvoke[*service.ZsetLoopService](i),
-			pingService: do.MustInvoke[*service.PingLoopService](i),
-			logger:      do.MustInvoke[*slog.Logger](i),
-			config:      do.MustInvoke[*config.Config](i),
+			loopService:      do.MustInvoke[*service.ZsetLoopService](i),
+			pingService:      do.MustInvoke[*service.PingLoopService](i),
+			lazyScoreUpdater: do.MustInvoke[*scheduler.LazyScoreUpdater](i),
+			logger:           do.MustInvoke[*slog.Logger](i),
+			config:           do.MustInvoke[*config.Config](i),
 		}, nil
 	})
 }
@@ -56,6 +59,8 @@ func (r *ZSetWorkerRunner) RunZSetWorker(ctx context.Context) {
 
 	waitgroup := sync.WaitGroup{}
 	defer waitgroup.Wait()
+
+	waitgroup.Go(func() { r.lazyScoreUpdater.Run(ctx) })
 
 	workers := r.config.Redis.SchedulerWorkers
 	if workers < 1 {

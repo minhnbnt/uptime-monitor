@@ -46,7 +46,7 @@ func RegisterPingService(i do.Injector) {
 		return &PingLoopService{
 			pingWorker:         do.MustInvoke[*k8sclient.K8sClient](i),
 			recordStatusWorker: do.MustInvoke[*infrastructure.RecordStatusWorker](i),
-			scoreUpdater:       do.MustInvoke[*scheduler.ScoreUpdater](i),
+			scoreUpdater:       do.MustInvoke[*scheduler.LazyScoreUpdater](i),
 			httpChecker:        do.MustInvoke[*httpcheck.HTTPChecker](i),
 			logger:             do.MustInvoke[*slog.Logger](i),
 		}, nil

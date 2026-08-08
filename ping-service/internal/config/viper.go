@@ -43,16 +43,17 @@ func initConfig(configPath string) (*Config, error) {
 func setDefaults(v *viper.Viper) {
 
 	defaults := map[string]any{
-		"log.level":                   "info",
-		"redis.db":                    0,
-		"redis.scheduler_shards":      1,
-		"redis.scheduler_claim_limit": 10,
-		"redis.scheduler_workers":     10,
-		"server.port":                 "8083",
-		"grpc.server_addr":            "server:50051",
-		"grpc.event_addr":             "ontime:50052",
-		"k8s.qps":                     float32(400),
-		"k8s.burst":                   500,
+		"log.level":                    "info",
+		"redis.db":                     0,
+		"redis.scheduler_shards":       1,
+		"redis.scheduler_claim_limit":  10,
+		"redis.scheduler_workers":      10,
+		"redis.scheduler_update_batch": 50,
+		"server.port":                  "8083",
+		"grpc.server_addr":             "server:50051",
+		"grpc.event_addr":              "ontime:50052",
+		"k8s.qps":                      float32(400),
+		"k8s.burst":                    500,
 	}
 
 	for key, value := range defaults {
@@ -63,12 +64,13 @@ func setDefaults(v *viper.Viper) {
 func bindEnvVars(v *viper.Viper) error {
 
 	envMap := map[string]string{
-		"redis.addr":                  "REDIS_ADDR",
-		"redis.password":              "REDIS_PASSWORD",
-		"redis.db":                    "REDIS_DB",
-		"redis.scheduler_shards":      "REDIS_SCHEDULER_SHARDS",
-		"redis.scheduler_claim_limit": "REDIS_SCHEDULER_CLAIM_LIMIT",
-		"redis.scheduler_workers":     "REDIS_SCHEDULER_WORKERS",
+		"redis.addr":                   "REDIS_ADDR",
+		"redis.password":               "REDIS_PASSWORD",
+		"redis.db":                     "REDIS_DB",
+		"redis.scheduler_shards":       "REDIS_SCHEDULER_SHARDS",
+		"redis.scheduler_claim_limit":  "REDIS_SCHEDULER_CLAIM_LIMIT",
+		"redis.scheduler_workers":      "REDIS_SCHEDULER_WORKERS",
+		"redis.scheduler_update_batch": "REDIS_SCHEDULER_UPDATE_BATCH",
 
 		"server.port": "PING_SERVICE_PORT",
 
