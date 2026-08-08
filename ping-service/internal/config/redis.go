@@ -23,6 +23,7 @@ type RedisConfig struct {
 	DB                  int    `mapstructure:"db"`
 	SchedulerShards     int    `mapstructure:"scheduler_shards"`
 	SchedulerClaimLimit int    `mapstructure:"scheduler_claim_limit"`
+	SchedulerWorkers    int    `mapstructure:"scheduler_workers"`
 }
 
 func RegisterRedisClient(i do.Injector) {

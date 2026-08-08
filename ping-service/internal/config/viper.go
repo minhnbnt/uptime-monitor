@@ -47,6 +47,7 @@ func setDefaults(v *viper.Viper) {
 		"redis.db":                    0,
 		"redis.scheduler_shards":      1,
 		"redis.scheduler_claim_limit": 10,
+		"redis.scheduler_workers":     10,
 		"server.port":                 "8083",
 		"grpc.server_addr":            "server:50051",
 		"grpc.event_addr":             "ontime:50052",
@@ -67,6 +68,7 @@ func bindEnvVars(v *viper.Viper) error {
 		"redis.db":                    "REDIS_DB",
 		"redis.scheduler_shards":      "REDIS_SCHEDULER_SHARDS",
 		"redis.scheduler_claim_limit": "REDIS_SCHEDULER_CLAIM_LIMIT",
+		"redis.scheduler_workers":     "REDIS_SCHEDULER_WORKERS",
 
 		"server.port": "PING_SERVICE_PORT",
 

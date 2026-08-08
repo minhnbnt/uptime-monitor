@@ -57,7 +57,12 @@ func (r *ZSetWorkerRunner) RunZSetWorker(ctx context.Context) {
 	waitgroup := sync.WaitGroup{}
 	defer waitgroup.Wait()
 
-	for range 10 {
+	workers := r.config.Redis.SchedulerWorkers
+	if workers < 1 {
+		workers = 10
+	}
+
+	for range workers {
 		waitgroup.Go(func() { r.pingService.Run(ctx, channel) })
 	}
 
