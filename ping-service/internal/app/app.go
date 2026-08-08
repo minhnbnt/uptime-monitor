@@ -13,6 +13,7 @@ import (
 	pingsched "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
 	pingservice "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/service"
 	pingevents "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/service/events"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/service/httpcheck"
 )
 
 func providers(dev bool) []func(do.Injector) {
@@ -42,12 +43,14 @@ func providers(dev bool) []func(do.Injector) {
 		config.RegisterK8sClient,
 		pingk8s.RegisterK8sClient,
 
-		pingservice.RegisterResponseChecker,
-		pingservice.RegisterURLResolverService,
-		pinghandler.RegisterPingServer,
-
 		pingservice.RegisterPingService,
 		pingservice.RegisterLoopService,
+
+		pinghandler.RegisterPingServer,
+
+		httpcheck.RegisterResponseChecker,
+		httpcheck.RegisterDomainResolver,
+		httpcheck.RegisterHTTPChecker,
 
 		pingredis.RegisterStreamEventConsumer,
 		pingevents.RegisterEventService,

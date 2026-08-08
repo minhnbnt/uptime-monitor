@@ -1,9 +1,10 @@
-package service
+package httpcheck
 
 import (
 	"context"
 	"testing"
 
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
 )
 
@@ -16,12 +17,14 @@ func (m *mockDomainResolver) ResolveDomainName(ctx context.Context, params *dto.
 }
 
 type mockDomainStore struct {
-	getFn   func(ctx context.Context, key dto.K8sObjectKey) (string, bool, error)
-	setFn   func(ctx context.Context, key dto.K8sObjectKey, domain string) error
-	setKeys []struct {
+	getFn     func(ctx context.Context, key dto.K8sObjectKey) (string, bool, error)
+	setFn     func(ctx context.Context, key dto.K8sObjectKey, domain string) error
+	deleteFn  func(ctx context.Context, key dto.K8sObjectKey) error
+	setKeys   []struct {
 		key    dto.K8sObjectKey
 		domain string
 	}
+	deleted []dto.K8sObjectKey
 }
 
 func (m *mockDomainStore) Get(ctx context.Context, key dto.K8sObjectKey) (string, bool, error) {
@@ -37,6 +40,16 @@ func (m *mockDomainStore) Set(ctx context.Context, key dto.K8sObjectKey, domain 
 	}
 	if m.setFn != nil {
 		return m.setFn(ctx, key, domain)
+	}
+	return nil
+}
+
+func (m *mockDomainStore) Delete(ctx context.Context, key dto.K8sObjectKey) error {
+	if m.deleted != nil {
+		m.deleted = append(m.deleted, key)
+	}
+	if m.deleteFn != nil {
+		return m.deleteFn(ctx, key)
 	}
 	return nil
 }
@@ -85,11 +98,8 @@ func TestBuildURL(t *testing.T) {
 }
 
 func TestResolveURLCaching(t *testing.T) {
-	makeSvc := func(resolver *mockDomainResolver, store *mockDomainStore) *URLResolverService {
-		return &URLResolverService{
-			k8sClient:   resolver,
-			domainCache: store,
-		}
+	makeSvc := func(resolver *mockDomainResolver, store *mockDomainStore) *DomainResolver {
+		return NewDomainResolver(resolver, store, nil)
 	}
 
 	makeParams := func(kind string) *dto.CheckParams {
@@ -262,6 +272,78 @@ func TestResolveURLCaching(t *testing.T) {
 		}
 		if resolveCalls != 1 {
 			t.Errorf("expected 1 resolve after cache error, got %d", resolveCalls)
+		}
+	})
+}
+
+func TestCheckStale(t *testing.T) {
+
+	makeServer := func() *domain.Server {
+		return &domain.Server{
+			ID:        1,
+			Namespace: "default",
+			Kind:      "Pod",
+			ObjectID:  "web-app",
+		}
+	}
+
+	t.Run("domain unchanged returns nil and keeps cache", func(t *testing.T) {
+		store := &mockDomainStore{deleted: []dto.K8sObjectKey{}}
+		d := NewDomainResolver(
+			&mockDomainResolver{
+				resolveDomainNameFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (string, error) {
+					return "10.0.0.5", nil
+				},
+			},
+			store,
+			nil,
+		)
+
+		err := d.CheckStale(t.Context(), makeServer(), "10.0.0.5")
+		if err != nil {
+			t.Errorf("CheckStale = %v, want nil", err)
+		}
+		if len(store.deleted) != 0 {
+			t.Errorf("expected no cache delete, got %+v", store.deleted)
+		}
+	})
+
+	t.Run("domain changed deletes cache and returns ErrStaleDomain", func(t *testing.T) {
+		store := &mockDomainStore{deleted: []dto.K8sObjectKey{}}
+		d := NewDomainResolver(
+			&mockDomainResolver{
+				resolveDomainNameFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (string, error) {
+					return "10.0.0.2", nil
+				},
+			},
+			store,
+			nil,
+		)
+
+		err := d.CheckStale(t.Context(), makeServer(), "10.0.0.5")
+		if err != ErrStaleDomain {
+			t.Errorf("CheckStale = %v, want ErrStaleDomain", err)
+		}
+		wantKey := dto.K8sObjectKey{Namespace: "default", Kind: "Pod", ObjectID: "web-app"}
+		if len(store.deleted) != 1 || store.deleted[0] != wantKey {
+			t.Errorf("expected delete %+v, got %+v", wantKey, store.deleted)
+		}
+	})
+
+	t.Run("resolve error is returned", func(t *testing.T) {
+		d := NewDomainResolver(
+			&mockDomainResolver{
+				resolveDomainNameFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (string, error) {
+					return "", context.Canceled
+				},
+			},
+			&mockDomainStore{},
+			nil,
+		)
+
+		err := d.CheckStale(t.Context(), makeServer(), "10.0.0.5")
+		if err != context.Canceled {
+			t.Errorf("CheckStale = %v, want context.Canceled", err)
 		}
 	})
 }

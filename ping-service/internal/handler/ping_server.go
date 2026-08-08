@@ -11,24 +11,24 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/k8sclient"
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/service"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/service/httpcheck"
 )
 
 type PingServer struct {
 	pingv1.UnimplementedPingServiceServer
 	k8sClient       *k8sclient.K8sClient
-	urlResolver     *service.URLResolverService
+	urlResolver     *httpcheck.DomainResolver
 	pingClient      *infrastructure.PingClient
-	responseChecker *service.ResponseChecker
+	responseChecker *httpcheck.ResponseChecker
 }
 
 func RegisterPingServer(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*PingServer, error) {
 		return &PingServer{
 			k8sClient:       do.MustInvoke[*k8sclient.K8sClient](i),
-			urlResolver:     do.MustInvoke[*service.URLResolverService](i),
+			urlResolver:     do.MustInvoke[*httpcheck.DomainResolver](i),
 			pingClient:      do.MustInvoke[*infrastructure.PingClient](i),
-			responseChecker: do.MustInvoke[*service.ResponseChecker](i),
+			responseChecker: do.MustInvoke[*httpcheck.ResponseChecker](i),
 		}, nil
 	})
 }
@@ -62,7 +62,7 @@ func (s *PingServer) Ping(ctx context.Context, req *pingv1.PingRequest) (*pingv1
 	return &pingv1.PingResponse{Running: running}, nil
 }
 
-func (s *PingServer) doPing(ctx context.Context, k8sParams *dto.K8sObjectCheckParams, req *pingv1.PingRequest) (bool, error) {
+func (s *PingServer) doPing(ctx context.Context, k8sParams *dto.K8sObjectCheckParams, req *pingv1.PingRequest) (running bool, err error) {
 
 	switch req.PingType {
 
@@ -74,7 +74,7 @@ func (s *PingServer) doPing(ctx context.Context, k8sParams *dto.K8sObjectCheckPa
 	}
 }
 
-func (s *PingServer) checkHTTPDNS(ctx context.Context, k8sParams *dto.K8sObjectCheckParams, cfg *pingv1.HttpDnsConfig) (bool, error) {
+func (s *PingServer) checkHTTPDNS(ctx context.Context, k8sParams *dto.K8sObjectCheckParams, cfg *pingv1.HttpDnsConfig) (running bool, err error) {
 
 	if cfg == nil {
 		return false, fmt.Errorf("http-dns config required")

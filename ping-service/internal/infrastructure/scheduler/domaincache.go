@@ -36,7 +36,7 @@ func RegisterDomainCache(i do.Injector) {
 	})
 }
 
-func (c *DomainCache) Get(ctx context.Context, key dto.K8sObjectKey) (string, bool, error) {
+func (c *DomainCache) Get(ctx context.Context, key dto.K8sObjectKey) (domain string, ok bool, err error) {
 
 	val, err := c.client.Get(ctx, domainCacheKey(key)).Result()
 	if errors.Is(err, redis.Nil) {

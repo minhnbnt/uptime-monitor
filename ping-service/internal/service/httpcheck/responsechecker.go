@@ -1,4 +1,4 @@
-package service
+package httpcheck
 
 import (
 	"fmt"
@@ -13,9 +13,13 @@ type ResponseChecker struct {
 	bodyChecker *infra.BodyChecker
 }
 
+func NewResponseChecker(bodyChecker *infra.BodyChecker) *ResponseChecker {
+	return &ResponseChecker{bodyChecker: bodyChecker}
+}
+
 func RegisterResponseChecker(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ResponseChecker, error) {
-		return &ResponseChecker{bodyChecker: do.MustInvoke[*infra.BodyChecker](i)}, nil
+		return NewResponseChecker(do.MustInvoke[*infra.BodyChecker](i)), nil
 	})
 }
 
