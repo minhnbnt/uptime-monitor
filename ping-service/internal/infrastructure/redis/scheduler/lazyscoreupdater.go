@@ -65,7 +65,6 @@ func (l *LazyScoreUpdater) Update(ctx context.Context, serverID uint, nextScore 
 	}
 }
 
-
 func (l *LazyScoreUpdater) flush(ctx context.Context, items []scoreUpdate) {
 
 	scoreMap := lo.SliceToMap(items, func(it scoreUpdate) (uint, int64) {
@@ -85,7 +84,7 @@ func (l *LazyScoreUpdater) Run(ctx context.Context) {
 		cancel()
 
 		if len(items) > 0 {
-			l.flush(context.Background(), items)
+			l.flush(ctx, items)
 		}
 
 		if !ok {

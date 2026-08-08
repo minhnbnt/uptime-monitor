@@ -19,7 +19,7 @@ func newLazyScoreUpdater(tb testing.TB, client *redis.Client, batchSize int) *La
 	return NewLazyScoreUpdater(updater, batchSize, logger)
 }
 
-func waitForScore(tb testing.TB, ctx context.Context, client *redis.Client, member string, want int64) {
+func waitForScore(ctx context.Context, tb testing.TB, client *redis.Client, member string, want int64) {
 	tb.Helper()
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
@@ -49,8 +49,8 @@ func TestLazyScoreUpdaterFlushesFullBatch(t *testing.T) {
 		t.Fatalf("Update: %v", err)
 	}
 
-	waitForScore(t, ctx, client, "1", 100)
-	waitForScore(t, ctx, client, "2", 200)
+	waitForScore(ctx, t, client, "1", 100)
+	waitForScore(ctx, t, client, "2", 200)
 }
 
 func TestLazyScoreUpdaterFlushesOnTimeout(t *testing.T) {
@@ -67,5 +67,5 @@ func TestLazyScoreUpdaterFlushesOnTimeout(t *testing.T) {
 		t.Fatalf("Update: %v", err)
 	}
 
-	waitForScore(t, ctx, client, "1", 300)
+	waitForScore(ctx, t, client, "1", 300)
 }
