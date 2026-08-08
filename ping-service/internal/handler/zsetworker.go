@@ -8,11 +8,12 @@ import (
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/service"
 )
 
 type PingService interface {
-	Run(ctx context.Context, channel <-chan service.PingTask)
+	Run(ctx context.Context, channel <-chan dto.PingTask)
 }
 
 type LoopRunner interface {
@@ -39,10 +40,10 @@ func RegisterZSetWorkerRunner(i do.Injector) {
 
 func (r *ZSetWorkerRunner) RunZSetWorker(ctx context.Context) {
 
-	channel := make(chan service.PingTask, 20)
+	channel := make(chan dto.PingTask, 20)
 	defer close(channel)
 
-	handler := func(_ context.Context, tasks []service.PingTask) {
+	handler := func(_ context.Context, tasks []dto.PingTask) {
 		for _, t := range tasks {
 			channel <- t
 		}

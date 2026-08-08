@@ -73,7 +73,7 @@ func TestRunIteration(t *testing.T) {
 				},
 			},
 		}
-		err := s.runIteration(t.Context(), nil, func(_ context.Context, _ []PingTask) {
+		err := s.runIteration(t.Context(), nil, func(_ context.Context, _ []dto.PingTask) {
 			handlerCalled = true
 		})
 		if err != nil {
@@ -100,7 +100,7 @@ func TestRunIteration(t *testing.T) {
 			{ServerID: 1},
 		}
 
-		err := s.runIteration(t.Context(), due, func(_ context.Context, tasks []PingTask) {
+		err := s.runIteration(t.Context(), due, func(_ context.Context, tasks []dto.PingTask) {
 			for _, t := range tasks {
 				gotServers = append(gotServers, t.Server)
 			}
@@ -127,7 +127,7 @@ func TestRunIteration(t *testing.T) {
 			},
 		}
 
-		err := s.runIteration(t.Context(), []scheduler.ScheduledTask{{ServerID: 1}}, func(_ context.Context, _ []PingTask) {})
+		err := s.runIteration(t.Context(), []scheduler.ScheduledTask{{ServerID: 1}}, func(_ context.Context, _ []dto.PingTask) {})
 		if err != wantErr {
 			t.Errorf("got %v, want %v", err, wantErr)
 		}

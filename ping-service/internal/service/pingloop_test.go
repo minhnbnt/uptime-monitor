@@ -73,7 +73,7 @@ func TestPingAndRecordServer(t *testing.T) {
 			},
 		}
 
-		task := PingTask{Server: dto.NewServer(sv)}
+		task := dto.PingTask{Server: dto.NewServer(sv)}
 		s.pingAndRecordServer(t.Context(), task)
 		if recordedEvent == nil {
 			t.Fatal("expected event to be recorded")
@@ -108,7 +108,7 @@ func TestPingAndRecordServer(t *testing.T) {
 			updateFn: func(_ context.Context, _ uint, _ int64) error { return nil },
 		}
 
-		s.pingAndRecordServer(t.Context(), PingTask{Server: dto.NewServer(sv)})
+		s.pingAndRecordServer(t.Context(), dto.PingTask{Server: dto.NewServer(sv)})
 		if recordedEvent == nil {
 			t.Fatal("expected event to be recorded")
 		}
@@ -137,7 +137,7 @@ func TestPingAndRecordServer(t *testing.T) {
 			updateFn: func(_ context.Context, _ uint, _ int64) error { return nil },
 		}
 
-		s.pingAndRecordServer(t.Context(), PingTask{Server: dto.NewServer(sv)})
+		s.pingAndRecordServer(t.Context(), dto.PingTask{Server: dto.NewServer(sv)})
 		if recordedEvent == nil {
 			t.Fatal("expected event to be recorded")
 		}
@@ -163,7 +163,7 @@ func TestPingAndRecordServer(t *testing.T) {
 			updateFn: func(_ context.Context, _ uint, _ int64) error { return nil },
 		}
 
-		s.pingAndRecordServer(t.Context(), PingTask{Server: dto.NewServer(sv)})
+		s.pingAndRecordServer(t.Context(), dto.PingTask{Server: dto.NewServer(sv)})
 		if !capLog.HasError() {
 			t.Error("expected error log for record failure")
 		}
@@ -186,7 +186,7 @@ func TestPingAndRecordServer(t *testing.T) {
 			},
 		}
 
-		s.pingAndRecordServer(t.Context(), PingTask{Server: dto.NewServer(sv)})
+		s.pingAndRecordServer(t.Context(), dto.PingTask{Server: dto.NewServer(sv)})
 		if !capLog.HasError() {
 			t.Error("expected error log for score update failure")
 		}
@@ -220,7 +220,7 @@ func TestPingAndRecordServer(t *testing.T) {
 			updateFn: func(_ context.Context, _ uint, _ int64) error { return nil },
 		}
 
-		s.pingAndRecordServer(t.Context(), PingTask{Server: dto.NewServer(sv)})
+		s.pingAndRecordServer(t.Context(), dto.PingTask{Server: dto.NewServer(sv)})
 		if recordedEvent != nil {
 			t.Errorf("expected no event to be recorded, got %+v", recordedEvent)
 		}

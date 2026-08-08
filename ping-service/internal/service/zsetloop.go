@@ -17,7 +17,7 @@ const (
 	defaultSleepDuration = 5 * time.Second
 )
 
-type DueHandler func(ctx context.Context, tasks []PingTask)
+type DueHandler func(ctx context.Context, tasks []dto.PingTask)
 
 type serverProvider interface {
 	GetBatch(ctx context.Context, ids []uint) (map[uint]*domain.Server, error)
@@ -73,7 +73,7 @@ func (s *ZsetLoopService) runIteration(ctx context.Context, due []scheduler.Sche
 		return err
 	}
 
-	tasks := make([]PingTask, 0, len(due))
+	tasks := make([]dto.PingTask, 0, len(due))
 	for _, task := range due {
 
 		sv, ok := serverMap[task.ServerID]
@@ -81,7 +81,7 @@ func (s *ZsetLoopService) runIteration(ctx context.Context, due []scheduler.Sche
 			continue
 		}
 
-		task := PingTask{
+		task := dto.PingTask{
 			Server:    dto.NewServer(sv),
 			PrevScore: task.Score,
 		}

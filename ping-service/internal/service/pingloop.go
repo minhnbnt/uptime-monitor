@@ -62,7 +62,7 @@ func (s *PingLoopService) checkServer(ctx context.Context, sv *dto.Server) (runn
 	return s.pingWorker.CheckObjectStatus(ctx, &sv.K8sObjectCheckParams)
 }
 
-func (s *PingLoopService) pingAndRecordServer(ctx context.Context, task PingTask) {
+func (s *PingLoopService) pingAndRecordServer(ctx context.Context, task dto.PingTask) {
 
 	sv := task.Server
 
@@ -146,7 +146,7 @@ func (s *PingLoopService) Record(ctx context.Context, event *domain.ServerEvent)
 	return s.recordStatusWorker.Record(ctx, event)
 }
 
-func (s *PingLoopService) Run(ctx context.Context, channel <-chan PingTask) {
+func (s *PingLoopService) Run(ctx context.Context, channel <-chan dto.PingTask) {
 
 	for {
 		select {
