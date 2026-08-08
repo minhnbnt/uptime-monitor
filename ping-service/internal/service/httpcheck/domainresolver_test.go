@@ -278,13 +278,13 @@ func TestResolveURLCaching(t *testing.T) {
 
 func TestCheckStale(t *testing.T) {
 
-	makeServer := func() *domain.Server {
-		return &domain.Server{
+	makeServer := func() *dto.Server {
+		return dto.NewServer(&domain.Server{
 			ID:        1,
 			Namespace: "default",
 			Kind:      "Pod",
 			ObjectID:  "web-app",
-		}
+		})
 	}
 
 	t.Run("domain unchanged returns nil and keeps cache", func(t *testing.T) {

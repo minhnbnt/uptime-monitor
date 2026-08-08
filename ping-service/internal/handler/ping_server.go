@@ -9,26 +9,21 @@ import (
 
 	pingv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/ping/v1"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/k8sclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/service/httpcheck"
 )
 
 type PingServer struct {
 	pingv1.UnimplementedPingServiceServer
-	k8sClient       *k8sclient.K8sClient
-	urlResolver     *httpcheck.DomainResolver
-	pingClient      *infrastructure.PingClient
-	responseChecker *httpcheck.ResponseChecker
+	k8sClient   *k8sclient.K8sClient
+	httpChecker *httpcheck.HTTPChecker
 }
 
 func RegisterPingServer(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*PingServer, error) {
 		return &PingServer{
-			k8sClient:       do.MustInvoke[*k8sclient.K8sClient](i),
-			urlResolver:     do.MustInvoke[*httpcheck.DomainResolver](i),
-			pingClient:      do.MustInvoke[*infrastructure.PingClient](i),
-			responseChecker: do.MustInvoke[*httpcheck.ResponseChecker](i),
+			k8sClient:   do.MustInvoke[*k8sclient.K8sClient](i),
+			httpChecker: do.MustInvoke[*httpcheck.HTTPChecker](i),
 		}, nil
 	})
 }
@@ -93,19 +88,5 @@ func (s *PingServer) checkHTTPDNS(ctx context.Context, k8sParams *dto.K8sObjectC
 		HTTPCheckParams:      httpParams,
 	}
 
-	url, err := s.urlResolver.ResolveURL(ctx, params)
-	if err != nil {
-		return false, err
-	}
-
-	resp, err := s.pingClient.Ping(ctx, 0, httpParams.Method, url.String())
-	if err != nil {
-		return false, err
-	}
-
-	if err := s.responseChecker.CheckResponse(httpParams, *resp); err != nil {
-		return false, err
-	}
-
-	return true, nil
+	return s.httpChecker.PingOnce(ctx, params)
 }

@@ -10,7 +10,6 @@ import (
 
 	"github.com/samber/do/v2"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/k8sclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
@@ -95,11 +94,9 @@ func (d *DomainResolver) resolveDomainCached(ctx context.Context, params *dto.K8
 
 // CheckStale re-resolves the domain; if it changed from the cached domain,
 // invalidates the cache and returns ErrStaleDomain. Returns nil if unchanged.
-func (d *DomainResolver) CheckStale(ctx context.Context, sv *domain.Server, cachedDomain string) error {
+func (d *DomainResolver) CheckStale(ctx context.Context, sv *dto.Server, cachedDomain string) error {
 
-	k8sParams := dto.NewK8sObjectCheckParams(sv)
-
-	freshDomain, err := d.k8sClient.ResolveDomainName(ctx, k8sParams)
+	freshDomain, err := d.k8sClient.ResolveDomainName(ctx, &sv.K8sObjectCheckParams)
 	if err != nil {
 		return err
 	}
@@ -108,7 +105,7 @@ func (d *DomainResolver) CheckStale(ctx context.Context, sv *domain.Server, cach
 		return nil
 	}
 
-	if dErr := d.domainCache.Delete(ctx, k8sParams.K8sObjectKey); dErr != nil {
+	if dErr := d.domainCache.Delete(ctx, sv.K8sObjectKey); dErr != nil {
 		d.logger.Error(
 			"failed to invalidate stale domain cache",
 			slog.Uint64("server_id", uint64(sv.ID)),

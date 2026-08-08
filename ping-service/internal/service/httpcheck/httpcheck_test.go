@@ -89,6 +89,106 @@ func setServerPort(server *httptest.Server, cfg *domain.ServerHTTPConfig) {
 	cfg.Port = port
 }
 
+func TestPingOnce(t *testing.T) {
+
+	makeParams := func(cfg *domain.ServerHTTPConfig) *dto.CheckParams {
+		return &dto.CheckParams{
+			K8sObjectCheckParams: dto.K8sObjectCheckParams{
+				K8sObjectKey: dto.K8sObjectKey{
+					Namespace: "default",
+					Kind:      "Pod",
+					ObjectID:  "web-app",
+				},
+			},
+			HTTPCheckParams: &dto.HTTPCheckParams{
+				Method:        cfg.Method,
+				Port:          cfg.Port,
+				EndpointPath:  cfg.EndpointPath,
+				ExpectedCode:  cfg.ExpectedCode,
+				BodyCheckExpr: cfg.BodyCheckExpr,
+			},
+		}
+	}
+
+	t.Run("ok response returns true", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ok"}`))
+		}))
+		defer server.Close()
+
+		cfg := &domain.ServerHTTPConfig{
+			EndpointPath:  "/health",
+			ExpectedCode:  200,
+			BodyCheckExpr: `status == "ok"`,
+			Method:        "GET",
+		}
+		setServerPort(server, cfg)
+
+		c := newChecker(&mockPingWorker{
+			checkObjectStatusFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (bool, error) {
+				t.Fatal("pod status check should not run for one-shot ping")
+				return false, nil
+			},
+		}, httpResolver(server), newStore())
+
+		ok, err := c.PingOnce(t.Context(), makeParams(cfg))
+		if err != nil {
+			t.Fatalf("PingOnce: %v", err)
+		}
+		if !ok {
+			t.Error("expected ok=true")
+		}
+	})
+
+	t.Run("bad status returns error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		cfg := &domain.ServerHTTPConfig{EndpointPath: "/health", ExpectedCode: 200, Method: "GET"}
+		setServerPort(server, cfg)
+
+		c := newChecker(&mockPingWorker{
+			checkObjectStatusFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (bool, error) {
+				t.Fatal("pod status check should not run for one-shot ping")
+				return false, nil
+			},
+		}, httpResolver(server), newStore())
+
+		ok, err := c.PingOnce(t.Context(), makeParams(cfg))
+		if err == nil {
+			t.Fatal("expected error for bad status")
+		}
+		if ok {
+			t.Error("expected ok=false")
+		}
+	})
+
+	t.Run("resolve error is returned", func(t *testing.T) {
+		c := newChecker(&mockPingWorker{
+			checkObjectStatusFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (bool, error) {
+				t.Fatal("pod status check should not run for one-shot ping")
+				return false, nil
+			},
+		}, &mockDomainResolver{
+			resolveDomainNameFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (string, error) {
+				return "", context.Canceled
+			},
+		}, newStore())
+
+		cfg := &domain.ServerHTTPConfig{EndpointPath: "/health", Method: "GET"}
+		ok, err := c.PingOnce(t.Context(), makeParams(cfg))
+		if err != context.Canceled {
+			t.Errorf("PingOnce = %v, want context.Canceled", err)
+		}
+		if ok {
+			t.Error("expected ok=false")
+		}
+	})
+}
+
 func TestCheck(t *testing.T) {
 
 	t.Run("service pings HTTP endpoint and checks response", func(t *testing.T) {
@@ -120,7 +220,7 @@ func TestCheck(t *testing.T) {
 			},
 		}, httpResolver(server), newStore())
 
-		ok, err := c.Check(t.Context(), sv)
+		ok, err := c.Check(t.Context(), dto.NewServer(sv))
 		if err != nil {
 			t.Fatalf("Check: %v", err)
 		}
@@ -156,7 +256,7 @@ func TestCheck(t *testing.T) {
 			},
 		}, staleResolver(server, "10.0.0.2"), store)
 
-		ok, err := c.Check(t.Context(), sv)
+		ok, err := c.Check(t.Context(), dto.NewServer(sv))
 		if err != ErrStaleDomain {
 			t.Errorf("error = %v, want ErrStaleDomain", err)
 		}
@@ -195,7 +295,7 @@ func TestCheck(t *testing.T) {
 			},
 		}, httpResolver(server), newStore())
 
-		ok, err := c.Check(t.Context(), sv)
+		ok, err := c.Check(t.Context(), dto.NewServer(sv))
 		if err == nil {
 			t.Fatal("expected error when pod is gone")
 		}
@@ -231,7 +331,7 @@ func TestCheck(t *testing.T) {
 			},
 		}, httpResolver(server), store)
 
-		ok, err := c.Check(t.Context(), sv)
+		ok, err := c.Check(t.Context(), dto.NewServer(sv))
 		if err == nil {
 			t.Fatal("expected error when ip unchanged")
 		}

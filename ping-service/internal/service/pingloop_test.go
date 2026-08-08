@@ -29,10 +29,10 @@ func (m *mockRecordWorker) Record(ctx context.Context, event *domain.ServerEvent
 }
 
 type mockHTTPChecker struct {
-	checkFn func(ctx context.Context, sv *domain.Server) (bool, error)
+	checkFn func(ctx context.Context, sv *dto.Server) (bool, error)
 }
 
-func (m *mockHTTPChecker) Check(ctx context.Context, sv *domain.Server) (bool, error) {
+func (m *mockHTTPChecker) Check(ctx context.Context, sv *dto.Server) (bool, error) {
 	return m.checkFn(ctx, sv)
 }
 
@@ -73,7 +73,7 @@ func TestPingAndRecordServer(t *testing.T) {
 			},
 		}
 
-		task := PingTask{Server: sv}
+		task := PingTask{Server: dto.NewServer(sv)}
 		s.pingAndRecordServer(t.Context(), task)
 		if recordedEvent == nil {
 			t.Fatal("expected event to be recorded")
@@ -108,7 +108,7 @@ func TestPingAndRecordServer(t *testing.T) {
 			updateFn: func(_ context.Context, _ uint, _ int64) error { return nil },
 		}
 
-		s.pingAndRecordServer(t.Context(), PingTask{Server: sv})
+		s.pingAndRecordServer(t.Context(), PingTask{Server: dto.NewServer(sv)})
 		if recordedEvent == nil {
 			t.Fatal("expected event to be recorded")
 		}
@@ -137,7 +137,7 @@ func TestPingAndRecordServer(t *testing.T) {
 			updateFn: func(_ context.Context, _ uint, _ int64) error { return nil },
 		}
 
-		s.pingAndRecordServer(t.Context(), PingTask{Server: sv})
+		s.pingAndRecordServer(t.Context(), PingTask{Server: dto.NewServer(sv)})
 		if recordedEvent == nil {
 			t.Fatal("expected event to be recorded")
 		}
@@ -163,7 +163,7 @@ func TestPingAndRecordServer(t *testing.T) {
 			updateFn: func(_ context.Context, _ uint, _ int64) error { return nil },
 		}
 
-		s.pingAndRecordServer(t.Context(), PingTask{Server: sv})
+		s.pingAndRecordServer(t.Context(), PingTask{Server: dto.NewServer(sv)})
 		if !capLog.HasError() {
 			t.Error("expected error log for record failure")
 		}
@@ -186,7 +186,7 @@ func TestPingAndRecordServer(t *testing.T) {
 			},
 		}
 
-		s.pingAndRecordServer(t.Context(), PingTask{Server: sv})
+		s.pingAndRecordServer(t.Context(), PingTask{Server: dto.NewServer(sv)})
 		if !capLog.HasError() {
 			t.Error("expected error log for score update failure")
 		}
@@ -199,7 +199,7 @@ func TestPingAndRecordServer(t *testing.T) {
 				return true, nil
 			},
 		})
-		s.httpChecker = &mockHTTPChecker{checkFn: func(_ context.Context, _ *domain.Server) (bool, error) {
+		s.httpChecker = &mockHTTPChecker{checkFn: func(_ context.Context, _ *dto.Server) (bool, error) {
 			return false, httpcheck.ErrStaleDomain
 		}}
 		sv := &domain.Server{
@@ -220,7 +220,7 @@ func TestPingAndRecordServer(t *testing.T) {
 			updateFn: func(_ context.Context, _ uint, _ int64) error { return nil },
 		}
 
-		s.pingAndRecordServer(t.Context(), PingTask{Server: sv})
+		s.pingAndRecordServer(t.Context(), PingTask{Server: dto.NewServer(sv)})
 		if recordedEvent != nil {
 			t.Errorf("expected no event to be recorded, got %+v", recordedEvent)
 		}

@@ -1,8 +1,8 @@
 package service
 
-import "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
+import "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
 
 type PingTask struct {
-	Server    *domain.Server
+	Server    *dto.Server
 	PrevScore int64
 }

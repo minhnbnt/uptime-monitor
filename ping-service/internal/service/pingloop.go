@@ -30,7 +30,7 @@ type scoreUpdater interface {
 }
 
 type httpChecker interface {
-	Check(ctx context.Context, sv *domain.Server) (ok bool, err error)
+	Check(ctx context.Context, sv *dto.Server) (ok bool, err error)
 }
 
 type PingLoopService struct {
@@ -53,13 +53,13 @@ func RegisterPingService(i do.Injector) {
 	})
 }
 
-func (s *PingLoopService) checkServer(ctx context.Context, sv *domain.Server) (running bool, err error) {
+func (s *PingLoopService) checkServer(ctx context.Context, sv *dto.Server) (running bool, err error) {
 
-	if sv.HTTPConfig != nil {
+	if sv.HTTPCheckParams != nil {
 		return s.httpChecker.Check(ctx, sv)
 	}
 
-	return s.pingWorker.CheckObjectStatus(ctx, dto.NewK8sObjectCheckParams(sv))
+	return s.pingWorker.CheckObjectStatus(ctx, &sv.K8sObjectCheckParams)
 }
 
 func (s *PingLoopService) pingAndRecordServer(ctx context.Context, task PingTask) {

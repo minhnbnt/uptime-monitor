@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/logger"
 )
@@ -84,7 +85,7 @@ func TestRunIteration(t *testing.T) {
 	})
 
 	t.Run("happy path", func(t *testing.T) {
-		var gotServers []*domain.Server
+		var gotServers []*dto.Server
 
 		s := &ZsetLoopService{
 			logger: logger.NewMockLogger(),
