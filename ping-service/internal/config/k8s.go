@@ -26,6 +26,12 @@ func RegisterK8sClient(i do.Injector) {
 			}
 		}
 
+		// 10k k8s API requests per 30s ping cycle = 334 req/s sustained.
+		// QPS is the token fill rate, Burst the bucket capacity; oversize
+		// both so the workloop never blocks on client-side throttling.
+		config.QPS = cfg.K8s.QPS
+		config.Burst = cfg.K8s.Burst
+
 		clientset, err := kubernetes.NewForConfig(config)
 		if err != nil {
 			return nil, fmt.Errorf("k8s clientset: %w", err)

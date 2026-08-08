@@ -50,6 +50,8 @@ func setDefaults(v *viper.Viper) {
 		"server.port":                 "8083",
 		"grpc.server_addr":            "server:50051",
 		"grpc.event_addr":             "ontime:50052",
+		"k8s.qps":                     float32(400),
+		"k8s.burst":                   500,
 	}
 
 	for key, value := range defaults {
@@ -72,6 +74,9 @@ func bindEnvVars(v *viper.Viper) error {
 		"grpc.event_addr":  "GRPC_EVENT_ADDR",
 
 		"kubeconfig": "KUBECONFIG",
+
+		"k8s.qps":   "K8S_QPS",
+		"k8s.burst": "K8S_BURST",
 
 		"log.level": "LOG_LEVEL",
 	}

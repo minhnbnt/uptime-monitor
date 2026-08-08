@@ -6,6 +6,12 @@ type Config struct {
 	Log        LogConfig   `mapstructure:"log"`
 	GRPC       GRPCConfig  `mapstructure:"grpc"`
 	Kubeconfig string      `mapstructure:"kubeconfig"`
+	K8s        K8sConfig   `mapstructure:"k8s"`
+}
+
+type K8sConfig struct {
+	QPS   float32 `mapstructure:"qps"`
+	Burst int     `mapstructure:"burst"`
 }
 
 type GRPCConfig struct {
