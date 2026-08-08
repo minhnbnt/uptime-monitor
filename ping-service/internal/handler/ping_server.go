@@ -43,9 +43,11 @@ func (s *PingServer) Ping(ctx context.Context, req *pingv1.PingRequest) (*pingv1
 	}
 
 	k8sParams := &dto.K8sObjectCheckParams{
-		Namespace:     req.Namespace,
-		Kind:          req.Kind,
-		ObjectID:      req.ObjectId,
+		K8sObjectKey: dto.K8sObjectKey{
+			Namespace: req.Namespace,
+			Kind:      req.Kind,
+			ObjectID:  req.ObjectId,
+		},
 		ContainerName: req.ContainerName,
 	}
 

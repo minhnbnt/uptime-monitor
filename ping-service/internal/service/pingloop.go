@@ -37,7 +37,7 @@ type scoreUpdater interface {
 }
 
 type domainCache interface {
-	Delete(ctx context.Context, id uint) error
+	Delete(ctx context.Context, key dto.K8sObjectKey) error
 }
 
 type PingLoopService struct {
@@ -47,7 +47,7 @@ type PingLoopService struct {
 	urlResolver        urlResolver
 	pingClient         *infrastructure.PingClient
 	responseChecker    *ResponseChecker
-	metaCache          domainCache
+	domainCache        domainCache
 	logger             *slog.Logger
 }
 
@@ -60,7 +60,7 @@ func RegisterPingService(i do.Injector) {
 			urlResolver:        do.MustInvoke[*URLResolverService](i),
 			pingClient:         do.MustInvoke[*infrastructure.PingClient](i),
 			responseChecker:    do.MustInvoke[*ResponseChecker](i),
-			metaCache:          do.MustInvoke[*scheduler.ServerMetaCache](i),
+			domainCache:        do.MustInvoke[*scheduler.DomainCache](i),
 			logger:             do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
@@ -69,9 +69,11 @@ func RegisterPingService(i do.Injector) {
 func (s *PingLoopService) checkServer(ctx context.Context, sv *domain.Server) (bool, error) {
 
 	k8sParams := &dto.K8sObjectCheckParams{
-		Namespace:     sv.Namespace,
-		Kind:          sv.Kind,
-		ObjectID:      sv.ObjectID,
+		K8sObjectKey: dto.K8sObjectKey{
+			Namespace: sv.Namespace,
+			Kind:      sv.Kind,
+			ObjectID:  sv.ObjectID,
+		},
 		ContainerName: sv.ContainerName,
 		K8s:           sv.K8s,
 	}
@@ -102,6 +104,7 @@ func (s *PingLoopService) checkHTTPDNS(ctx context.Context, k8sParams *dto.K8sOb
 	if err != nil {
 		return false, err
 	}
+	cachedDomain := url.Hostname()
 
 	resp, pingErr := s.pingClient.Ping(ctx, sv.Timeout, httpParams.Method, url.String())
 	if pingErr == nil {
@@ -112,7 +115,7 @@ func (s *PingLoopService) checkHTTPDNS(ctx context.Context, k8sParams *dto.K8sOb
 		pingErr = cErr
 	}
 
-	if k8sParams.K8s == nil || k8sParams.Kind != "Pod" || k8sParams.K8s.Domain == "" {
+	if k8sParams.Kind != "Pod" {
 		return false, pingErr
 	}
 
@@ -120,20 +123,16 @@ func (s *PingLoopService) checkHTTPDNS(ctx context.Context, k8sParams *dto.K8sOb
 		return false, cErr
 	}
 
-	freshParams := *k8sParams
-	freshK8s := *k8sParams.K8s
-	freshK8s.Domain = ""
-	freshParams.K8s = &freshK8s
-	freshDomain, rErr := s.urlResolver.ResolveDomain(ctx, &freshParams)
+	freshDomain, rErr := s.urlResolver.ResolveDomain(ctx, k8sParams)
 	if rErr != nil {
 		return false, rErr
 	}
 
-	if freshDomain == k8sParams.K8s.Domain {
+	if freshDomain == cachedDomain {
 		return false, pingErr
 	}
 
-	if dErr := s.metaCache.Delete(ctx, sv.ID); dErr != nil {
+	if dErr := s.domainCache.Delete(ctx, k8sParams.K8sObjectKey); dErr != nil {
 		s.logger.Error(
 			"failed to invalidate stale domain cache",
 			slog.Uint64("server_id", uint64(sv.ID)),

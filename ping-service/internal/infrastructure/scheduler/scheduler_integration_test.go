@@ -11,6 +11,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/testcontainers"
 )
 
@@ -533,10 +534,6 @@ func TestServerMetaCacheRoundTrip(t *testing.T) {
 		ContainerName: "app",
 		Interval:      30 * time.Second,
 		Timeout:       5 * time.Second,
-		K8s: &domain.K8sRuntime{
-			LabelSelector: "app=web",
-			Domain:        "10.0.0.1",
-		},
 		HTTPConfig: &domain.ServerHTTPConfig{
 			Port:         8080,
 			EndpointPath: "/health",
@@ -553,13 +550,49 @@ func TestServerMetaCacheRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
-	if got.K8s == nil {
-		t.Fatal("expected K8s runtime to be set")
+	if got.K8s != nil {
+		t.Errorf("expected no K8s runtime in meta cache, got %+v", got.K8s)
 	}
-	if got.K8s.LabelSelector != sv.K8s.LabelSelector {
-		t.Errorf("LabelSelector = %q, want %q", got.K8s.LabelSelector, sv.K8s.LabelSelector)
+	if got.Kind != sv.Kind || got.ObjectID != sv.ObjectID || got.ContainerName != sv.ContainerName {
+		t.Errorf("identity mismatch: got %+v", got)
 	}
-	if got.K8s.Domain != sv.K8s.Domain {
-		t.Errorf("Domain = %q, want %q", got.K8s.Domain, sv.K8s.Domain)
+	if got.HTTPConfig == nil || got.HTTPConfig.Port != 8080 || got.HTTPConfig.EndpointPath != "/health" {
+		t.Errorf("HTTPConfig mismatch: got %+v", got.HTTPConfig)
+	}
+}
+
+func TestDomainCacheRoundTrip(t *testing.T) {
+	testcontainers.SkipIfShort(t)
+	client := testcontainers.NewTestRedis(t, testRedisAddr)
+	cache := NewDomainCache(client)
+	ctx := context.Background()
+
+	key := dto.K8sObjectKey{Namespace: "default", Kind: "Pod", ObjectID: "web-app"}
+	domain := "10.0.0.5"
+
+	if got, ok, err := cache.Get(ctx, key); err != nil || ok {
+		t.Errorf("expected miss on empty cache, got %q ok=%v err=%v", got, ok, err)
+	}
+
+	if err := cache.Set(ctx, key, ""); err != nil {
+		t.Fatalf("Set empty: %v", err)
+	}
+	if got, ok, err := cache.Get(ctx, key); err != nil || ok {
+		t.Errorf("empty Set should not write, got %q ok=%v err=%v", got, ok, err)
+	}
+
+	if err := cache.Set(ctx, key, domain); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	got, ok, err := cache.Get(ctx, key)
+	if err != nil || !ok || got != domain {
+		t.Errorf("Get = %q ok=%v err=%v, want %q", got, ok, err, domain)
+	}
+
+	if err := cache.Delete(ctx, key); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if got, ok, err := cache.Get(ctx, key); err != nil || ok {
+		t.Errorf("expected miss after delete, got %q ok=%v err=%v", got, ok, err)
 	}
 }

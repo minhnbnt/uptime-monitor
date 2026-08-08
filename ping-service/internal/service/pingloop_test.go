@@ -40,12 +40,12 @@ func (m *mockURLResolver) ResolveDomain(ctx context.Context, params *dto.K8sObje
 }
 
 type mockDomainCache struct {
-	deleteFn func(ctx context.Context, id uint) error
+	deleteFn func(ctx context.Context, key dto.K8sObjectKey) error
 }
 
-func (m *mockDomainCache) Delete(ctx context.Context, id uint) error {
+func (m *mockDomainCache) Delete(ctx context.Context, key dto.K8sObjectKey) error {
 	if m.deleteFn != nil {
-		return m.deleteFn(ctx, id)
+		return m.deleteFn(ctx, key)
 	}
 	return nil
 }
@@ -305,7 +305,6 @@ func TestPingAndRecordServer(t *testing.T) {
 			Namespace: "default",
 			Kind:      "Pod",
 			ObjectID:  "web-app",
-			K8s:       &domain.K8sRuntime{Domain: "10.0.0.1"},
 			Interval:  30 * time.Second,
 			HTTPConfig: &domain.ServerHTTPConfig{
 				Port:         8080,
@@ -317,7 +316,7 @@ func TestPingAndRecordServer(t *testing.T) {
 
 		var recordedEvent *domain.ServerEvent
 		var scoreUpdated bool
-		deletedIDs := make([]uint, 0)
+		deleted := make([]dto.K8sObjectKey, 0)
 
 		s := &PingLoopService{
 			pingWorker: &mockPingWorker{
@@ -339,9 +338,9 @@ func TestPingAndRecordServer(t *testing.T) {
 			},
 			pingClient:      infrastructure.NewPingClient(&http.Client{}),
 			responseChecker: &ResponseChecker{bodyChecker: &infrastructure.BodyChecker{}},
-			metaCache: &mockDomainCache{
-				deleteFn: func(_ context.Context, id uint) error {
-					deletedIDs = append(deletedIDs, id)
+			domainCache: &mockDomainCache{
+				deleteFn: func(_ context.Context, key dto.K8sObjectKey) error {
+					deleted = append(deleted, key)
 					return nil
 				},
 			},
@@ -367,8 +366,9 @@ func TestPingAndRecordServer(t *testing.T) {
 		if scoreUpdated {
 			t.Error("expected score not to be updated")
 		}
-		if len(deletedIDs) != 1 || deletedIDs[0] != 7 {
-			t.Errorf("expected metaCache.Delete(7), got %v", deletedIDs)
+		wantKey := dto.K8sObjectKey{Namespace: "default", Kind: "Pod", ObjectID: "web-app"}
+		if len(deleted) != 1 || deleted[0] != wantKey {
+			t.Errorf("expected domainCache.Delete(%+v), got %+v", wantKey, deleted)
 		}
 	})
 
@@ -383,7 +383,6 @@ func TestPingAndRecordServer(t *testing.T) {
 			Namespace: "default",
 			Kind:      "Pod",
 			ObjectID:  "web-app",
-			K8s:       &domain.K8sRuntime{Domain: "10.0.0.1"},
 			Interval:  30 * time.Second,
 			HTTPConfig: &domain.ServerHTTPConfig{
 				Port:         8080,
@@ -452,7 +451,6 @@ func TestPingAndRecordServer(t *testing.T) {
 			Namespace: "default",
 			Kind:      "Pod",
 			ObjectID:  "web-app",
-			K8s:       &domain.K8sRuntime{Domain: "10.0.0.1"},
 			Interval:  30 * time.Second,
 			HTTPConfig: &domain.ServerHTTPConfig{
 				Port:         8080,
@@ -463,6 +461,7 @@ func TestPingAndRecordServer(t *testing.T) {
 		}
 
 		var recordedEvent *domain.ServerEvent
+		var deleted bool
 
 		s := &PingLoopService{
 			pingWorker: &mockPingWorker{
@@ -479,11 +478,21 @@ func TestPingAndRecordServer(t *testing.T) {
 					return u, nil
 				},
 				resolveDomainFn: func(_ context.Context, _ *dto.K8sObjectCheckParams) (string, error) {
-					return "10.0.0.1", nil
+					u, err := url.Parse(server.URL)
+					if err != nil {
+						t.Fatalf("parse server url: %v", err)
+					}
+					return u.Hostname(), nil
 				},
 			},
 			pingClient:      infrastructure.NewPingClient(&http.Client{}),
 			responseChecker: &ResponseChecker{bodyChecker: &infrastructure.BodyChecker{}},
+			domainCache: &mockDomainCache{
+				deleteFn: func(_ context.Context, _ dto.K8sObjectKey) error {
+					deleted = true
+					return nil
+				},
+			},
 			recordStatusWorker: &mockRecordWorker{
 				recordFn: func(_ context.Context, event *domain.ServerEvent) error {
 					recordedEvent = event
@@ -502,6 +511,9 @@ func TestPingAndRecordServer(t *testing.T) {
 		}
 		if recordedEvent.Status != domain.StatusOff {
 			t.Errorf("status = %q, want %q", recordedEvent.Status, domain.StatusOff)
+		}
+		if deleted {
+			t.Error("expected domain cache not to be invalidated when ip unchanged")
 		}
 	})
 }

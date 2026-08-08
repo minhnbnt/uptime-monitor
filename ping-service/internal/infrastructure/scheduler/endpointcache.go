@@ -117,13 +117,6 @@ func (c *ServerMetaCache) SetMulti(ctx context.Context, servers []*domain.Server
 			"timeout_ns", fmt.Sprint(sv.Timeout.Nanoseconds()),
 		}
 
-		if sv.K8s != nil {
-			values = append(values,
-				"label_selector", sv.K8s.LabelSelector,
-				"domain", sv.K8s.Domain,
-			)
-		}
-
 		if sv.HTTPConfig != nil {
 			values = append(values, httpConfigHashValues(sv.HTTPConfig)...)
 		}
@@ -189,13 +182,6 @@ func mapToServer(id uint, data map[string]string) (*domain.Server, error) {
 		ContainerName: data["container_name"],
 		Interval:      time.Duration(intervalNs),
 		Timeout:       time.Duration(timeoutNs),
-	}
-
-	if data["label_selector"] != "" || data["domain"] != "" {
-		sv.K8s = &domain.K8sRuntime{
-			LabelSelector: data["label_selector"],
-			Domain:        data["domain"],
-		}
 	}
 
 	if data["http_config"] == "1" {

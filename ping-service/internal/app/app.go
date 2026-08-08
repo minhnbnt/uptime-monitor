@@ -32,6 +32,7 @@ func providers(dev bool) []func(do.Injector) {
 		pingredis.RegisterRedisOffsetStore,
 		pingsched.RegisterScoreUpdater,
 		pingsched.RegisterServerMetaCache,
+		pingsched.RegisterDomainCache,
 		pingsched.RegisterServerProvider,
 
 		pinginfra.RegisterPingWorker,
