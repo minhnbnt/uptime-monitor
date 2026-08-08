@@ -8,7 +8,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis/scheduler"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/logger"
 )
 

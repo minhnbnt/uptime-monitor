@@ -8,9 +8,9 @@ import (
 	pinginfra "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/grpcclient"
 	pingk8s "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/k8sclient"
-	pingredis "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis"
-	pingrepo "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/repository"
-	pingsched "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
+	pingrepo "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis/cache"
+	pingredis "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis/consumer"
+	pingsched "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis/scheduler"
 	pingservice "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/service"
 	pingevents "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/service/events"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/service/httpcheck"
@@ -32,9 +32,8 @@ func providers(dev bool) []func(do.Injector) {
 		pingsched.RegisterZSetTaskClaimer,
 		pingredis.RegisterRedisOffsetStore,
 		pingsched.RegisterScoreUpdater,
-		pingsched.RegisterServerMetaCache,
-		pingsched.RegisterDomainCache,
-		pingsched.RegisterServerProvider,
+		pingrepo.RegisterServerMetaCache,
+		pingrepo.RegisterDomainCache,
 
 		pinginfra.RegisterPingWorker,
 		pinginfra.RegisterBodyChecker,
@@ -45,6 +44,7 @@ func providers(dev bool) []func(do.Injector) {
 
 		pingservice.RegisterPingService,
 		pingservice.RegisterLoopService,
+		pingservice.RegisterServerProvider,
 
 		pinghandler.RegisterPingServer,
 

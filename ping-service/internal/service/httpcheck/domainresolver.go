@@ -12,7 +12,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/k8sclient"
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis/cache"
 )
 
 type domainResolver interface {
@@ -47,7 +47,7 @@ func RegisterDomainResolver(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*DomainResolver, error) {
 		return NewDomainResolver(
 			do.MustInvoke[*k8sclient.K8sClient](i),
-			do.MustInvoke[*scheduler.DomainCache](i),
+			do.MustInvoke[*cache.DomainCache](i),
 			do.MustInvoke[*slog.Logger](i),
 		), nil
 	})

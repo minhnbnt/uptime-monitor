@@ -69,8 +69,7 @@ func RegisterZSetScheduleRepository(i do.Injector) {
 
 		return NewZSetScheduleRepository(
 			wrapper.GetClient(),
-			scoreUpdater,
-			claimer,
+			scoreUpdater, claimer,
 			cfg.Redis.SchedulerShards,
 		), nil
 	})

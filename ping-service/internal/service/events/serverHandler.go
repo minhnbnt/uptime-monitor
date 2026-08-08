@@ -9,14 +9,15 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis"
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis/cache"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis/consumer"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis/scheduler"
 )
 
 type ServerEventHandler struct {
 	scheduler   *scheduler.ZSetScheduleRepository
-	serverCache *scheduler.ServerMetaCache
-	offsetStore *redis.RedisOffsetStore
+	serverCache *cache.ServerMetaCache
+	offsetStore *consumer.RedisOffsetStore
 }
 
 func serverKeyFunc(topicName string, id uint) string {

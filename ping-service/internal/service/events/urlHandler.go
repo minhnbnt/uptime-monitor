@@ -10,13 +10,13 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis"
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis/cache"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis/consumer"
 )
 
 type HTTPConfigEventHandler struct {
-	cache       *scheduler.ServerMetaCache
-	offsetStore *redis.RedisOffsetStore
+	cache       *cache.ServerMetaCache
+	offsetStore *consumer.RedisOffsetStore
 }
 
 func (h *HTTPConfigEventHandler) OnMessage(ctx context.Context, event *dto.DebeziumMessage) error {

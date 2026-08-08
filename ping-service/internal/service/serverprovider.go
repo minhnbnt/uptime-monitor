@@ -1,4 +1,4 @@
-package scheduler
+package service
 
 import (
 	"context"
@@ -11,11 +11,12 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/grpcclient"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis/cache"
 )
 
 type ServerProvider struct {
 	client *grpcclient.EndpointClient
-	cache  *ServerMetaCache
+	cache  *cache.ServerMetaCache
 	logger *slog.Logger
 }
 
@@ -23,7 +24,7 @@ func RegisterServerProvider(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ServerProvider, error) {
 		return &ServerProvider{
 			client: do.MustInvoke[*grpcclient.EndpointClient](i),
-			cache:  do.MustInvoke[*ServerMetaCache](i),
+			cache:  do.MustInvoke[*cache.ServerMetaCache](i),
 			logger: do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})

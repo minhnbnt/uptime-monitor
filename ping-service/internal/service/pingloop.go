@@ -12,7 +12,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/k8sclient"
-	scheduler "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
+	scheduler "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis/scheduler"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/service/httpcheck"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/utils"
 )

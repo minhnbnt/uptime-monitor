@@ -10,7 +10,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
-	scheduler "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
+	scheduler "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis/scheduler"
 )
 
 const (
@@ -34,7 +34,7 @@ func RegisterLoopService(i do.Injector) {
 		return &ZsetLoopService{
 			logger:           do.MustInvoke[*slog.Logger](i),
 			schedulerStorage: do.MustInvoke[*scheduler.ZSetScheduleRepository](i),
-			serverProvider:   do.MustInvoke[*scheduler.ServerProvider](i),
+			serverProvider:   do.MustInvoke[*ServerProvider](i),
 		}, nil
 	})
 }

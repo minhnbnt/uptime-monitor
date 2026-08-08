@@ -7,7 +7,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis/consumer"
 )
 
 type EventHandler interface {
@@ -15,7 +15,7 @@ type EventHandler interface {
 }
 
 type EventMultiplexer struct {
-	consumer *redis.StreamEventConsumer
+	consumer *consumer.StreamEventConsumer
 	Handlers map[string]EventHandler
 }
 
