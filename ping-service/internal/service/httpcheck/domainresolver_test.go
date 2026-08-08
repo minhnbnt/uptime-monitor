@@ -17,10 +17,10 @@ func (m *mockDomainResolver) ResolveDomainName(ctx context.Context, params *dto.
 }
 
 type mockDomainStore struct {
-	getFn     func(ctx context.Context, key dto.K8sObjectKey) (string, bool, error)
-	setFn     func(ctx context.Context, key dto.K8sObjectKey, domain string) error
-	deleteFn  func(ctx context.Context, key dto.K8sObjectKey) error
-	setKeys   []struct {
+	getFn    func(ctx context.Context, key dto.K8sObjectKey) (string, bool, error)
+	setFn    func(ctx context.Context, key dto.K8sObjectKey, domain string) error
+	deleteFn func(ctx context.Context, key dto.K8sObjectKey) error
+	setKeys  []struct {
 		key    dto.K8sObjectKey
 		domain string
 	}

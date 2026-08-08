@@ -203,11 +203,11 @@ func TestPingAndRecordServer(t *testing.T) {
 			return false, httpcheck.ErrStaleDomain
 		}}
 		sv := &domain.Server{
-			ID:        1,
-			Namespace: "default",
-			Kind:      "Pod",
-			ObjectID:  "web-app",
-			Interval:  30 * time.Second,
+			ID:         1,
+			Namespace:  "default",
+			Kind:       "Pod",
+			ObjectID:   "web-app",
+			Interval:   30 * time.Second,
 			HTTPConfig: &domain.ServerHTTPConfig{},
 		}
 		s.recordStatusWorker = &mockRecordWorker{

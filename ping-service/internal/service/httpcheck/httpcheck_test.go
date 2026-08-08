@@ -236,7 +236,7 @@ func TestCheck(t *testing.T) {
 		defer server.Close()
 
 		sv := &domain.Server{
-			ID:       7,
+			ID:        7,
 			Namespace: "default",
 			Kind:      "Pod",
 			ObjectID:  "web-app",
@@ -276,7 +276,7 @@ func TestCheck(t *testing.T) {
 		defer server.Close()
 
 		sv := &domain.Server{
-			ID:       8,
+			ID:        8,
 			Namespace: "default",
 			Kind:      "Pod",
 			ObjectID:  "web-app",
@@ -311,7 +311,7 @@ func TestCheck(t *testing.T) {
 		defer server.Close()
 
 		sv := &domain.Server{
-			ID:       9,
+			ID:        9,
 			Namespace: "default",
 			Kind:      "Pod",
 			ObjectID:  "web-app",
