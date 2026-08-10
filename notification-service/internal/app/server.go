@@ -49,7 +49,7 @@ func RunWebServer(ctx context.Context, i do.Injector) {
 
 	cfg := do.MustInvoke[*config.Config](i)
 
-	authMW, err := authclient.NewAuthMiddleware(ctx, cfg.Auth.Issuer, log)
+	authMW, err := authclient.NewAuthMiddleware(ctx, cfg.Auth.Issuer)
 	if err != nil {
 		log.Error("failed to create auth middleware", slog.Any("error", err))
 		panic(err)

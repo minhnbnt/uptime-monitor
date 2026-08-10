@@ -27,7 +27,7 @@ func RunWebServer(ctx context.Context, injector do.Injector) {
 	cfg := do.MustInvoke[*config.Config](injector)
 	log := do.MustInvoke[*slog.Logger](injector)
 
-	middleWare, err := authclient.NewAuthMiddleware(ctx, cfg.Auth.Issuer, log)
+	middleWare, err := authclient.NewAuthMiddleware(ctx, cfg.Auth.Issuer)
 	if err != nil {
 		panic(err)
 	}
