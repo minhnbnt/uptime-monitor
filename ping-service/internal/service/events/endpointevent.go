@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"sync"
 
 	"github.com/samber/do/v2"
 
@@ -13,6 +14,7 @@ import (
 type EndpointEventService struct {
 	consumer    *consumer.StreamEventConsumer
 	multiplexer *EventMultiplexer
+	acker       *LazyAckBatcher
 }
 
 func RegisterEventService(i do.Injector) {
@@ -31,9 +33,10 @@ func RegisterEventService(i do.Injector) {
 		httpConfigHandler := &HTTPConfigEventHandler{cache: cache, offsetStore: offsetStore}
 
 		streamConsumer := do.MustInvoke[*consumer.StreamEventConsumer](i)
+		lazyAcker := do.MustInvoke[*LazyAckBatcher](i)
 
 		multiplexer := &EventMultiplexer{
-			consumer: streamConsumer,
+			AckClient: lazyAcker,
 			Handlers: map[string]EventHandler{
 				"uptime.public.servers":             eventHandler,
 				"uptime.public.server_http_configs": httpConfigHandler,
@@ -43,10 +46,16 @@ func RegisterEventService(i do.Injector) {
 		return &EndpointEventService{
 			consumer:    streamConsumer,
 			multiplexer: multiplexer,
+			acker:       lazyAcker,
 		}, nil
 	})
 }
 
 func (s *EndpointEventService) Run(ctx context.Context) {
-	s.consumer.Run(ctx, s.multiplexer.GetTopics(), s.multiplexer)
+
+	waitgroup := sync.WaitGroup{}
+	defer waitgroup.Wait()
+
+	waitgroup.Go(func() { s.acker.Run(ctx) })
+	waitgroup.Go(func() { s.consumer.Run(ctx, s.multiplexer.GetTopics(), s.multiplexer) })
 }

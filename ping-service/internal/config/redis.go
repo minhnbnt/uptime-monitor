@@ -25,6 +25,7 @@ type RedisConfig struct {
 	SchedulerClaimLimit      int    `mapstructure:"scheduler_claim_limit"`
 	SchedulerWorkers         int    `mapstructure:"scheduler_workers"`
 	SchedulerUpdateBatchSize int    `mapstructure:"scheduler_update_batch"`
+	StreamAckBatchSize       int    `mapstructure:"stream_ack_batch"`
 }
 
 func RegisterRedisClient(i do.Injector) {

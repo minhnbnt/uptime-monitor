@@ -54,6 +54,7 @@ func providers(dev bool) []func(do.Injector) {
 		httpcheck.RegisterHTTPChecker,
 
 		pingredis.RegisterStreamEventConsumer,
+		pingevents.RegisterLazyAckBatcher,
 		pingevents.RegisterEventService,
 		pinghandler.RegisterEndpointEventWorker,
 		pinghandler.RegisterZSetWorkerRunner,

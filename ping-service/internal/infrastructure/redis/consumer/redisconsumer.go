@@ -9,6 +9,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/samber/do/v2"
+	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
@@ -88,10 +89,6 @@ func (c *StreamEventConsumer) claim(ctx context.Context, args *redis.XReadGroupA
 		return
 	}
 
-	if ctx.Err() != nil {
-		return
-	}
-
 	if err != nil {
 		c.logger.Error("stream read", slog.Any("error", err))
 		time.Sleep(time.Second)
@@ -107,9 +104,8 @@ func (c *StreamEventConsumer) claim(ctx context.Context, args *redis.XReadGroupA
 
 func (c *StreamEventConsumer) reclaimIdle(ctx context.Context, streamKeys []string, processor *messageProcessor) {
 
-	for _, streamKey := range streamKeys {
-
-		args := redis.XAutoClaimArgs{
+	claimArgs := lo.Map(streamKeys, func(streamKey string, _ int) redis.XAutoClaimArgs {
+		return redis.XAutoClaimArgs{
 			Stream:   streamKey,
 			Group:    consumerGroup,
 			Consumer: consumerName,
@@ -117,6 +113,9 @@ func (c *StreamEventConsumer) reclaimIdle(ctx context.Context, streamKeys []stri
 			Start:    "0",
 			Count:    streamReadCount,
 		}
+	})
+
+	for _, args := range claimArgs {
 
 		claimed, _, err := c.client.XAutoClaim(ctx, &args).Result()
 
@@ -124,7 +123,7 @@ func (c *StreamEventConsumer) reclaimIdle(ctx context.Context, streamKeys []stri
 
 			c.logger.Warn(
 				"reclaim idle messages",
-				slog.String("stream", streamKey),
+				slog.String("stream", args.Stream),
 				slog.Any("error", err),
 			)
 
@@ -132,12 +131,24 @@ func (c *StreamEventConsumer) reclaimIdle(ctx context.Context, streamKeys []stri
 		}
 
 		for _, msg := range claimed {
-			processor.ProcessMessage(ctx, streamKey, msg)
+			processor.ProcessMessage(ctx, args.Stream, msg)
 		}
 	}
 }
 
-func (c *StreamEventConsumer) Ack(ctx context.Context, message *dto.DebeziumMessage) error {
-	cmd := c.client.XAck(ctx, message.TopicName, consumerGroup, message.ID)
-	return cmd.Err()
+func (c *StreamEventConsumer) AckBatch(ctx context.Context, messages []*dto.DebeziumMessage) error {
+
+	groups := lo.GroupByMap(messages, func(msg *dto.DebeziumMessage) (string, string) {
+		return msg.TopicName, msg.ID
+	})
+
+	pipe := c.client.Pipeline()
+
+	for streamKey, msgIDs := range groups {
+		pipe.XAck(ctx, streamKey, consumerGroup, msgIDs...)
+	}
+
+	_, err := pipe.Exec(ctx)
+
+	return err
 }

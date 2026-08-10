@@ -7,16 +7,19 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/dto"
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis/consumer"
 )
 
 type EventHandler interface {
 	OnMessage(ctx context.Context, event *dto.DebeziumMessage) error
 }
 
+type AckClient interface {
+	Ack(ctx context.Context, event *dto.DebeziumMessage) error
+}
+
 type EventMultiplexer struct {
-	consumer *consumer.StreamEventConsumer
-	Handlers map[string]EventHandler
+	Handlers  map[string]EventHandler
+	AckClient AckClient
 }
 
 func (m *EventMultiplexer) OnMessage(ctx context.Context, event *dto.DebeziumMessage) error {
@@ -30,7 +33,7 @@ func (m *EventMultiplexer) OnMessage(ctx context.Context, event *dto.DebeziumMes
 		return err
 	}
 
-	return m.consumer.Ack(ctx, event)
+	return m.AckClient.Ack(ctx, event)
 }
 
 func (m *EventMultiplexer) GetTopics() []string {
