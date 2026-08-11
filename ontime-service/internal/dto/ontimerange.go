@@ -1,11 +1,23 @@
 package dto
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type CalculateUptimeRequest struct {
 	From       time.Time `json:"from"`
 	To         time.Time `json:"to"`
 	Resolution *string   `json:"resolution,omitempty"`
+}
+
+type CalculateUptimeInput struct {
+	ServerID   uint
+	UserID     uuid.UUID
+	From       time.Time
+	To         time.Time
+	Resolution time.Duration
 }
 
 type UptimeResponse struct {

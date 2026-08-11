@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
 	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/serverclient"
@@ -65,3 +66,13 @@ func (m *mockRangeRepo) BatchGetOntimeRange(ctx context.Context, req []ontimerep
 }
 
 var _ OntineRangeRepository = (*mockRangeRepo)(nil)
+
+type mockOwnerRepo struct {
+	getByServerIDFn func(ctx context.Context, serverID uint) (*domain.ServerOwner, error)
+}
+
+func (m *mockOwnerRepo) GetByServerID(ctx context.Context, serverID uint) (*domain.ServerOwner, error) {
+	return m.getByServerIDFn(ctx, serverID)
+}
+
+var _ ServerOwnerRepository = (*mockOwnerRepo)(nil)

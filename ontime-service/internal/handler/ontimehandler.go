@@ -22,7 +22,7 @@ type OntimeService interface {
 }
 
 type OntimeRangeService interface {
-	CalculateUptime(ctx context.Context, serverID uint, from, to time.Time, resolution time.Duration) (*dto.UptimeResponse, error)
+	CalculateUptime(ctx context.Context, in dto.CalculateUptimeInput) (*dto.UptimeResponse, error)
 }
 
 type OntimeHandler struct {
@@ -96,22 +96,7 @@ func (h *OntimeHandler) CalculateUptime(
 	params api.CalculateUptimeParams,
 ) (*api.UptimeResponse, error) {
 
-	from, to := req.From, req.To
-
-	// Do not calculate into the future: clamp the range end (and start) to the
-	// current time so a `to` that exceeds now is capped at the present instead
-	// of being rejected.
-	now := time.Now()
-	if to.After(now) {
-		to = now
-	}
-	if from.After(now) {
-		from = now
-	}
-
-	if err := validateRange(from, to); err != nil {
-		return nil, err
-	}
+	userID := authclient.GetUserID(ctx)
 
 	resolution := time.Duration(15 * time.Minute)
 	if req.Resolution.IsSet() {
@@ -122,30 +107,21 @@ func (h *OntimeHandler) CalculateUptime(
 		resolution = d
 	}
 
-	result, err := h.ontimeRangeService.CalculateUptime(
-		ctx, uint(params.ID),
-		from, to,
-		resolution,
-	)
+	input := dto.CalculateUptimeInput{
+		ServerID:   uint(params.ID),
+		UserID:     userID,
+		From:       req.From,
+		To:         req.To,
+		Resolution: resolution,
+	}
+
+	result, err := h.ontimeRangeService.CalculateUptime(ctx, input)
 
 	if err != nil {
 		return nil, err
 	}
 
 	return toAPIUptimeResponse(result)
-}
-
-func validateRange(from, to time.Time) error {
-
-	if from.After(to) || from.Equal(to) {
-		return apperrors.ErrBadRequest
-	}
-
-	if to.Sub(from) > 90*24*time.Hour {
-		return apperrors.ErrBadRequest
-	}
-
-	return nil
 }
 
 func toOntimeStats(stats []dto.DayStats) []api.OntimeStats {

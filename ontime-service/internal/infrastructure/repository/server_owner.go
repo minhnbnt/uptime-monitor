@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/domain"
+	apperrors "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/errors"
 )
 
 type ServerOwnerRepository struct {
@@ -39,7 +41,10 @@ func (r *ServerOwnerRepository) Upsert(
 	}
 
 	if deletedAt != nil {
-		owner.DeletedAt = gorm.DeletedAt{Time: *deletedAt, Valid: true}
+		owner.DeletedAt = gorm.DeletedAt{
+			Time:  *deletedAt,
+			Valid: true,
+		}
 	}
 
 	result := r.db.WithContext(ctx).
@@ -56,4 +61,21 @@ func (r *ServerOwnerRepository) Delete(ctx context.Context, serverID uint) error
 		Delete(ctx)
 
 	return err
+}
+
+func (r *ServerOwnerRepository) GetByServerID(ctx context.Context, serverID uint) (*domain.ServerOwner, error) {
+
+	owner, err := gorm.G[domain.ServerOwner](r.db).
+		Where("server_id = ?", serverID).
+		First(ctx)
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, apperrors.ErrNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &owner, nil
 }

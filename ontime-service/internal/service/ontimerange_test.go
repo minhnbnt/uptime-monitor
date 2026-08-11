@@ -6,7 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
+	apperrors "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/errors"
 	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/utils"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/logger"
@@ -267,10 +271,15 @@ func TestOntimeRangeService_CalculateUptime(t *testing.T) {
 					}, nil
 				},
 			},
+			ownerRepo: &mockOwnerRepo{
+				getByServerIDFn: func(_ context.Context, _ uint) (*domain.ServerOwner, error) {
+					return &domain.ServerOwner{ServerID: 1, UserID: uuid.UUID{}}, nil
+				},
+			},
 			logger: logger.NewMockLogger(),
 		}
 
-		result, err := svc.CalculateUptime(t.Context(), 1, base, end, 15*time.Minute)
+		result, err := svc.CalculateUptime(t.Context(), dto.CalculateUptimeInput{ServerID: 1, UserID: uuid.UUID{}, From: base, To: end, Resolution: 15 * time.Minute})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -292,12 +301,51 @@ func TestOntimeRangeService_CalculateUptime(t *testing.T) {
 					return nil, errors.New("db error")
 				},
 			},
+			ownerRepo: &mockOwnerRepo{
+				getByServerIDFn: func(_ context.Context, _ uint) (*domain.ServerOwner, error) {
+					return &domain.ServerOwner{ServerID: 1, UserID: uuid.UUID{}}, nil
+				},
+			},
 			logger: logger.NewMockLogger(),
 		}
 
-		_, err := svc.CalculateUptime(t.Context(), 1, base, end, 15*time.Minute)
+		_, err := svc.CalculateUptime(t.Context(), dto.CalculateUptimeInput{ServerID: 1, UserID: uuid.UUID{}, From: base, To: end, Resolution: 15 * time.Minute})
 		if err == nil {
 			t.Fatal("expected error")
+		}
+	})
+
+	t.Run("forbidden when not owner", func(t *testing.T) {
+		svc := &OntimeRangeService{
+			repo: &mockRangeRepo{},
+			ownerRepo: &mockOwnerRepo{
+				getByServerIDFn: func(_ context.Context, _ uint) (*domain.ServerOwner, error) {
+					return &domain.ServerOwner{ServerID: 1, UserID: uuid.New()}, nil
+				},
+			},
+			logger: logger.NewMockLogger(),
+		}
+
+		_, err := svc.CalculateUptime(t.Context(), dto.CalculateUptimeInput{ServerID: 1, UserID: uuid.UUID{}, From: base, To: end, Resolution: 15 * time.Minute})
+		if !errors.Is(err, apperrors.ErrForbidden) {
+			t.Fatalf("err = %v, want ErrForbidden", err)
+		}
+	})
+
+	t.Run("not found when no owner record", func(t *testing.T) {
+		svc := &OntimeRangeService{
+			repo: &mockRangeRepo{},
+			ownerRepo: &mockOwnerRepo{
+				getByServerIDFn: func(_ context.Context, _ uint) (*domain.ServerOwner, error) {
+					return nil, apperrors.ErrNotFound
+				},
+			},
+			logger: logger.NewMockLogger(),
+		}
+
+		_, err := svc.CalculateUptime(t.Context(), dto.CalculateUptimeInput{ServerID: 1, UserID: uuid.UUID{}, From: base, To: end, Resolution: 15 * time.Minute})
+		if !errors.Is(err, apperrors.ErrNotFound) {
+			t.Fatalf("err = %v, want ErrNotFound", err)
 		}
 	})
 }

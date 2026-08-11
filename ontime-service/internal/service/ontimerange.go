@@ -8,7 +8,9 @@ import (
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
+	apperrors "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/errors"
 	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/utils"
 )
@@ -17,37 +19,61 @@ type OntineRangeRepository interface {
 	BatchGetOntimeRange(ctx context.Context, req []ontimerepo.BatchGetOntimeRangeRequest) ([]ontimerepo.ServerEvent, error)
 }
 
-type OntimeRangeService struct {
-	repo   OntineRangeRepository
-	calc   OntimeCalculator
-	logger *slog.Logger
+type ServerOwnerRepository interface {
+	GetByServerID(ctx context.Context, serverID uint) (*domain.ServerOwner, error)
 }
 
-func NewOntimeRangeService(repo OntineRangeRepository, l *slog.Logger) *OntimeRangeService {
-	return &OntimeRangeService{repo: repo, calc: OntimeCalculator{}, logger: l}
+type OntimeRangeService struct {
+	repo      OntineRangeRepository
+	ownerRepo ServerOwnerRepository
+	calc      OntimeCalculator
+	logger    *slog.Logger
+}
+
+func NewOntimeRangeService(repo OntineRangeRepository, ownerRepo ServerOwnerRepository, l *slog.Logger) *OntimeRangeService {
+	return &OntimeRangeService{repo: repo, ownerRepo: ownerRepo, calc: OntimeCalculator{}, logger: l}
 }
 
 func RegisterOntimeRangeService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*OntimeRangeService, error) {
 		return NewOntimeRangeService(
 			do.MustInvoke[*ontimerepo.OntineRepository](i),
+			do.MustInvoke[*ontimerepo.ServerOwnerRepository](i),
 			do.MustInvoke[*slog.Logger](i),
 		), nil
 	})
 }
 
 func (s *OntimeRangeService) CalculateUptime(
-	ctx context.Context, serverID uint, from, to time.Time, resolution time.Duration,
+	ctx context.Context, in dto.CalculateUptimeInput,
 ) (*dto.UptimeResponse, error) {
+
+	serverID := in.ServerID
+	resolution := in.Resolution
+
+	// verify the caller owns the server before computing uptime
+	owner, err := s.ownerRepo.GetByServerID(ctx, serverID)
+	if err != nil {
+		return nil, err // ErrNotFound if the server has no owner record
+	}
+	if owner.UserID != in.UserID {
+		return nil, apperrors.ErrForbidden
+	}
 
 	// Do not calculate into the future: clamp the range end (and start) to the
 	// current time so a `to` that exceeds now is capped at the present.
+	from, to := in.From, in.To
+
 	now := time.Now()
 	if to.After(now) {
 		to = now
 	}
 	if from.After(now) {
 		from = now
+	}
+
+	if err := validateRange(from, to); err != nil {
+		return nil, err
 	}
 
 	request := []ontimerepo.BatchGetOntimeRangeRequest{
@@ -82,6 +108,19 @@ func (s *OntimeRangeService) CalculateUptime(
 		OnlineSeconds: uptime.OnlineSeconds,
 		Intervals:     intervalResults,
 	}, nil
+}
+
+func validateRange(from, to time.Time) error {
+
+	if from.After(to) || from.Equal(to) {
+		return apperrors.ErrBadRequest
+	}
+
+	if to.Sub(from) > 90*24*time.Hour {
+		return apperrors.ErrBadRequest
+	}
+
+	return nil
 }
 
 func mergeIntervals(intervals []dto.IntervalResult) []dto.IntervalResult {
