@@ -103,7 +103,9 @@ func (ds *TemporalDigestStarter) DescribeSchedule(ctx context.Context, userID uu
 
 func (ds *TemporalDigestStarter) UpsertSchedule(ctx context.Context, userID uuid.UUID, cfg domain.ScheduleConfig) error {
 
-	scheduleID := getScheduleID(userID)
+	if len(cfg.DigestTime) != 5 {
+		return fmt.Errorf("invalid digest time format %q, want HH:MM", cfg.DigestTime)
+	}
 
 	hour, err := strconv.Atoi(cfg.DigestTime[:2])
 	if err != nil {
@@ -129,13 +131,23 @@ func (ds *TemporalDigestStarter) UpsertSchedule(ctx context.Context, userID uuid
 		Args:      []any{userID, cfg.FromDate},
 	}
 
+	scheduleID := getScheduleID(userID)
 	handle := ds.scheduleClient.GetHandle(ctx, scheduleID)
-	if _, err := handle.Describe(ctx); err != nil {
-		_, err = ds.scheduleClient.Create(ctx, temporalclient.ScheduleOptions{
+
+	_, err = handle.Describe(ctx)
+	if _, ok := errors.AsType[*serviceerror.NotFound](err); ok {
+
+		options := temporalclient.ScheduleOptions{
 			ID:     scheduleID,
 			Spec:   spec,
 			Action: action,
-		})
+		}
+
+		_, err = ds.scheduleClient.Create(ctx, options)
+		return err
+	}
+
+	if err != nil {
 		return err
 	}
 
