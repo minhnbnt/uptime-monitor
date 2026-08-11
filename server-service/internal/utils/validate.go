@@ -14,6 +14,7 @@ var (
 	ErrURLParse        = errors.New("url is invalid")
 	ErrIntervalInvalid = errors.New("interval_sec must be a positive integer")
 	ErrTimeoutInvalid  = errors.New("timeout_sec must be a positive integer")
+	ErrTimeoutTooLong  = errors.New("timeout_sec must be at most 10 seconds")
 	ErrCodeOutOfRange  = errors.New("expected_code must be between 100 and 599")
 )
 
@@ -75,6 +76,9 @@ func ValidateInterval(sec int) error {
 func ValidateTimeout(sec int) error {
 	if sec < 1 {
 		return ErrTimeoutInvalid
+	}
+	if sec > 10 {
+		return ErrTimeoutTooLong
 	}
 	return nil
 }
