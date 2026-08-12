@@ -19,8 +19,7 @@ type ServerConfig struct {
 }
 
 type GRPCConfig struct {
-	Port       string `mapstructure:"port"`
-	ServerAddr string `mapstructure:"server_addr"`
+	Port string `mapstructure:"port"`
 }
 
 type DBConfig struct {

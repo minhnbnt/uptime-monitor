@@ -53,22 +53,20 @@ func TestGetServerOntime(t *testing.T) {
 	})
 }
 
-func TestListServersOntime(t *testing.T) {
+func TestGetServersOntimeBatch(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		h := &OntimeHandler{
 			ontimeService: &mockOntimeService{
-				listServersWithOntimeFn: func(_ context.Context, _ uuid.UUID, _, _ int) ([]ontimedto.ServerOntime, error) {
-					return []ontimedto.ServerOntime{
-						{ServerID: 1, DayStats: []ontimedto.DayStats{}},
-						{ServerID: 2, DayStats: []ontimedto.DayStats{}},
-					}, nil
+				getServersWithOntimeFn: func(_ context.Context, _ uuid.UUID, ids []uint) ([]ontimedto.ServerOntime, error) {
+					out := make([]ontimedto.ServerOntime, 0, len(ids))
+					for _, id := range ids {
+						out = append(out, ontimedto.ServerOntime{ServerID: id, DayStats: []ontimedto.DayStats{}})
+					}
+					return out, nil
 				},
 			},
 		}
-		resp, err := h.ListServersOntime(t.Context(), api.ListServersOntimeParams{
-			Page:    api.NewOptInt(1),
-			PerPage: api.NewOptInt(10),
-		})
+		resp, err := h.GetServersOntimeBatch(t.Context(), &api.BatchOntimeRequest{Ids: []int{1, 2}})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -80,12 +78,12 @@ func TestListServersOntime(t *testing.T) {
 	t.Run("service error", func(t *testing.T) {
 		h := &OntimeHandler{
 			ontimeService: &mockOntimeService{
-				listServersWithOntimeFn: func(_ context.Context, _ uuid.UUID, _, _ int) ([]ontimedto.ServerOntime, error) {
-					return nil, errors.New("db error")
+				getServersWithOntimeFn: func(_ context.Context, _ uuid.UUID, _ []uint) ([]ontimedto.ServerOntime, error) {
+					return nil, errors.New("boom")
 				},
 			},
 		}
-		_, err := h.ListServersOntime(t.Context(), api.ListServersOntimeParams{})
+		_, err := h.GetServersOntimeBatch(t.Context(), &api.BatchOntimeRequest{Ids: []int{1}})
 		if err == nil {
 			t.Fatal("expected error")
 		}

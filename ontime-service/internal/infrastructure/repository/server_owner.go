@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/samber/do/v2"
+	"github.com/samber/lo"
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/config"
@@ -78,4 +79,71 @@ func (r *ServerOwnerRepository) GetByServerID(ctx context.Context, serverID uint
 	}
 
 	return &owner, nil
+}
+
+func (r *ServerOwnerRepository) ListByUserID(
+	ctx context.Context, userID uuid.UUID, page, perPage int,
+) ([]domain.ServerOwner, error) {
+
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 {
+		perPage = 20
+	}
+
+	owners, err := gorm.G[domain.ServerOwner](r.db).
+		Where("user_id = ?", userID).
+		Order("server_id ASC").
+		Offset((page - 1) * perPage).
+		Limit(perPage).
+		Find(ctx)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return owners, nil
+}
+
+// ListByUserAndServerIDs returns the ownership rows for the given server IDs
+// that belong to userID. The returned set is the intersection of the requested
+// IDs and what the user actually owns, so callers can compare lengths to detect
+// unowned (or non-existent) servers.
+func (r *ServerOwnerRepository) ListByUserAndServerIDs(
+	ctx context.Context, userID uuid.UUID, serverIDs []uint,
+) ([]domain.ServerOwner, error) {
+
+	serverIDs = lo.Uniq(serverIDs)
+	if len(serverIDs) == 0 {
+		return nil, nil
+	}
+
+	owners, err := gorm.G[domain.ServerOwner](r.db).
+		Where("user_id = ? AND server_id IN ?", userID, serverIDs).
+		Find(ctx)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return owners, nil
+}
+
+// GetByServerAndUser returns the ownership row for a single server owned by the
+// user, or ErrNotFound when the user does not own it.
+func (r *ServerOwnerRepository) GetByServerAndUser(
+	ctx context.Context, serverID uint, userID uuid.UUID,
+) (*domain.ServerOwner, error) {
+
+	owners, err := r.ListByUserAndServerIDs(ctx, userID, []uint{serverID})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(owners) == 0 {
+		return nil, apperrors.ErrNotFound
+	}
+
+	return &owners[0], nil
 }

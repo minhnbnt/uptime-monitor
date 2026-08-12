@@ -8,9 +8,10 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
+	apperrors "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/errors"
 	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
-	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/serverclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/logger"
 )
 
@@ -597,9 +598,9 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		svc := &OntimeService{
-			serverClient: &mockServerClient{
-				getServerFn: func(_ context.Context, serverID uint, _ uuid.UUID) (*serverclient.ServerBrief, error) {
-					return &serverclient.ServerBrief{ID: serverID, Name: "server-a", CreatedAt: createdAt}, nil
+			ownerRepo: &mockOwnerRepo{
+				getByServerAndUserFn: func(_ context.Context, serverID uint, _ uuid.UUID) (*domain.ServerOwner, error) {
+					return &domain.ServerOwner{ServerID: serverID, UserID: testUserID, CreatedAt: createdAt}, nil
 				},
 			},
 			batcher: &Batcher{
@@ -632,11 +633,11 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 		}
 	})
 
-	t.Run("server not found", func(t *testing.T) {
+	t.Run("forbidden when not owned", func(t *testing.T) {
 		svc := &OntimeService{
-			serverClient: &mockServerClient{
-				getServerFn: func(_ context.Context, _ uint, _ uuid.UUID) (*serverclient.ServerBrief, error) {
-					return nil, errors.New("not found")
+			ownerRepo: &mockOwnerRepo{
+				getByServerAndUserFn: func(_ context.Context, _ uint, _ uuid.UUID) (*domain.ServerOwner, error) {
+					return nil, apperrors.ErrNotFound
 				},
 			},
 			batcher: &Batcher{},
@@ -644,92 +645,82 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 		}
 
 		_, err := svc.GetServerWithOntime(t.Context(), 99, testUserID)
-		if err == nil {
-			t.Fatal("expected error for non-existent server")
+		if !errors.Is(err, apperrors.ErrForbidden) {
+			t.Fatalf("err = %v, want ErrForbidden", err)
 		}
 	})
 }
 
-// ---------- ListServersWithOntime ----------
+// ---------- GetServersWithOntime (batch) ----------
 
-func TestOntimeService_ListServersWithOntime(t *testing.T) {
+func TestOntimeService_GetServersWithOntime(t *testing.T) {
 	now := time.Date(2026, 6, 10, 12, 0, 0, 0, time.UTC)
 	createdAt := now.AddDate(0, 0, -30)
 
 	t.Run("success", func(t *testing.T) {
-		svc := &OntimeService{
-			serverClient: &mockServerClient{
-				listServersFn: func(_ context.Context, _ uuid.UUID, _, _ int) ([]serverclient.ServerBrief, error) {
-					return []serverclient.ServerBrief{
-						{ID: 1, Name: "server-a", CreatedAt: createdAt},
-						{ID: 2, Name: "server-b", CreatedAt: createdAt},
-					}, nil
-				},
-			},
-			batcher: &Batcher{
-				ontimeCacheRepository: &mockOntimeCacheRepo{
-					mGetFn: func(_ context.Context, batchKeys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]dto.DayResult, error) {
-						result := make(map[dto.BatchGetOntimeItem]dto.DayResult, len(batchKeys))
-						for _, k := range batchKeys {
-							result[k] = dto.DayResult{HasData: true, Uptime: 100.0}
-						}
-						return result, nil
-					},
-				},
-				logger: logger.NewMockLogger(),
-			},
-			logger: logger.NewMockLogger(),
-		}
+		svc := newBatchService(t, []domain.ServerOwner{
+			{ServerID: 1, UserID: testUserID, CreatedAt: createdAt},
+			{ServerID: 2, UserID: testUserID, CreatedAt: createdAt},
+		})
 
-		got, err := svc.ListServersWithOntime(t.Context(), testUserID, 1, 10)
+		got, err := svc.GetServersWithOntime(t.Context(), testUserID, []uint{1, 2})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if len(got) != 2 {
 			t.Fatalf("len(got) = %d, want 2", len(got))
 		}
-		if got[0].ServerID != 1 && got[0].ServerID != 2 {
-			t.Errorf("unexpected server id: %d", got[0].ServerID)
+	})
+
+	t.Run("rejects more than 100 ids", func(t *testing.T) {
+		svc := &OntimeService{ownerRepo: &mockOwnerRepo{}, logger: logger.NewMockLogger()}
+
+		ids := make([]uint, batchServerCap+1)
+		for i := range ids {
+			ids[i] = uint(i + 1)
 		}
-		if len(got[0].DayStats) == 0 {
-			t.Errorf("expected ontime stats for server %d", got[0].ServerID)
+
+		_, err := svc.GetServersWithOntime(t.Context(), testUserID, ids)
+		if !errors.Is(err, apperrors.ErrBadRequest) {
+			t.Fatalf("err = %v, want ErrBadRequest", err)
 		}
 	})
 
-	t.Run("empty server list", func(t *testing.T) {
-		svc := &OntimeService{
-			serverClient: &mockServerClient{
-				listServersFn: func(_ context.Context, _ uuid.UUID, _, _ int) ([]serverclient.ServerBrief, error) {
-					return nil, nil
-				},
-			},
-			batcher: &Batcher{},
-			logger:  logger.NewMockLogger(),
-		}
+	t.Run("drops ids the user does not own", func(t *testing.T) {
+		svc := newBatchService(t, []domain.ServerOwner{
+			{ServerID: 1, UserID: testUserID, CreatedAt: createdAt},
+		})
 
-		got, err := svc.ListServersWithOntime(t.Context(), testUserID, 1, 10)
+		got, err := svc.GetServersWithOntime(t.Context(), testUserID, []uint{1, 2})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(got) != 0 {
-			t.Errorf("len(got) = %d, want 0", len(got))
+		if len(got) != 1 || got[0].ServerID != 1 {
+			t.Fatalf("got = %+v, want only server 1", got)
 		}
 	})
+}
 
-	t.Run("server client error", func(t *testing.T) {
-		svc := &OntimeService{
-			serverClient: &mockServerClient{
-				listServersFn: func(_ context.Context, _ uuid.UUID, _, _ int) ([]serverclient.ServerBrief, error) {
-					return nil, errors.New("db error")
+func newBatchService(t *testing.T, owners []domain.ServerOwner) *OntimeService {
+	t.Helper()
+	return &OntimeService{
+		ownerRepo: &mockOwnerRepo{
+			listByUserAndServerIDsFn: func(_ context.Context, _ uuid.UUID, _ []uint) ([]domain.ServerOwner, error) {
+				return owners, nil
+			},
+		},
+		batcher: &Batcher{
+			ontimeCacheRepository: &mockOntimeCacheRepo{
+				mGetFn: func(_ context.Context, batchKeys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]dto.DayResult, error) {
+					result := make(map[dto.BatchGetOntimeItem]dto.DayResult, len(batchKeys))
+					for _, k := range batchKeys {
+						result[k] = dto.DayResult{HasData: true, Uptime: 100.0}
+					}
+					return result, nil
 				},
 			},
-			batcher: &Batcher{},
-			logger:  logger.NewMockLogger(),
-		}
-
-		_, err := svc.ListServersWithOntime(t.Context(), testUserID, 1, 10)
-		if err == nil {
-			t.Fatal("expected error")
-		}
-	})
+			logger: logger.NewMockLogger(),
+		},
+		logger: logger.NewMockLogger(),
+	}
 }

@@ -17,8 +17,8 @@ import (
 )
 
 type OntimeService interface {
-	ListServersWithOntime(ctx context.Context, createdByID uuid.UUID, page, perPage int) ([]dto.ServerOntime, error)
 	GetServerWithOntime(ctx context.Context, serverID uint, userID uuid.UUID) (*dto.ServerOntime, error)
+	GetServersWithOntime(ctx context.Context, userID uuid.UUID, ids []uint) ([]dto.ServerOntime, error)
 }
 
 type OntimeRangeService interface {
@@ -39,27 +39,6 @@ func RegisterOntimeHandler(i do.Injector) {
 	})
 }
 
-func (h *OntimeHandler) ListServersOntime(ctx context.Context, params api.ListServersOntimeParams) (*api.ServerOntimeListResponse, error) {
-
-	userID := authclient.GetUserID(ctx)
-	page := params.Page.Or(1)
-	perPage := params.PerPage.Or(20)
-
-	result, err := h.ontimeService.ListServersWithOntime(ctx, userID, page, perPage)
-	if err != nil {
-		return nil, err
-	}
-
-	data := lo.Map(result, func(item dto.ServerOntime, _ int) api.ServerOntime {
-		return api.ServerOntime{
-			ServerID:    api.NewOptInt(int(item.ServerID)),
-			OntimeStats: toOntimeStats(item.DayStats),
-		}
-	})
-
-	return &api.ServerOntimeListResponse{Data: data}, nil
-}
-
 func (h *OntimeHandler) GetServerOntime(ctx context.Context, params api.GetServerOntimeParams) (*api.ServerOntimeResponse, error) {
 
 	userID := authclient.GetUserID(ctx)
@@ -75,6 +54,29 @@ func (h *OntimeHandler) GetServerOntime(ctx context.Context, params api.GetServe
 	}
 
 	return &api.ServerOntimeResponse{Data: api.NewOptServerOntime(so)}, nil
+}
+
+func (h *OntimeHandler) GetServersOntimeBatch(ctx context.Context, req *api.BatchOntimeRequest) (*api.ServerOntimeListResponse, error) {
+
+	userID := authclient.GetUserID(ctx)
+
+	ids := lo.Map(req.Ids, func(id int, _ int) uint {
+		return uint(id)
+	})
+
+	result, err := h.ontimeService.GetServersWithOntime(ctx, userID, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	data := lo.Map(result, func(item dto.ServerOntime, _ int) api.ServerOntime {
+		return api.ServerOntime{
+			ServerID:    api.NewOptInt(int(item.ServerID)),
+			OntimeStats: toOntimeStats(item.DayStats),
+		}
+	})
+
+	return &api.ServerOntimeListResponse{Data: data}, nil
 }
 
 func (h *OntimeHandler) NewError(_ context.Context, err error) *api.ErrorResponseStatusCode {

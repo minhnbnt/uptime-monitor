@@ -8,7 +8,6 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
 	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
-	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/serverclient"
 )
 
 type mockOntineRepo struct {
@@ -42,21 +41,6 @@ func (m *mockOntimeCacheRepo) MSet(ctx context.Context, items map[dto.BatchGetOn
 
 var _ OntimeCacheRepository = (*mockOntimeCacheRepo)(nil)
 
-type mockServerClient struct {
-	listServersFn func(ctx context.Context, userID uuid.UUID, page, perPage int) ([]serverclient.ServerBrief, error)
-	getServerFn   func(ctx context.Context, serverID uint, userID uuid.UUID) (*serverclient.ServerBrief, error)
-}
-
-func (m *mockServerClient) ListServers(ctx context.Context, userID uuid.UUID, page, perPage int) ([]serverclient.ServerBrief, error) {
-	return m.listServersFn(ctx, userID, page, perPage)
-}
-
-func (m *mockServerClient) GetServer(ctx context.Context, serverID uint, userID uuid.UUID) (*serverclient.ServerBrief, error) {
-	return m.getServerFn(ctx, serverID, userID)
-}
-
-var _ ServerClient = (*mockServerClient)(nil)
-
 type mockRangeRepo struct {
 	batchGetOntimeRangeFn func(ctx context.Context, req []ontimerepo.BatchGetOntimeRangeRequest) ([]ontimerepo.ServerEvent, error)
 }
@@ -68,11 +52,26 @@ func (m *mockRangeRepo) BatchGetOntimeRange(ctx context.Context, req []ontimerep
 var _ OntineRangeRepository = (*mockRangeRepo)(nil)
 
 type mockOwnerRepo struct {
-	getByServerIDFn func(ctx context.Context, serverID uint) (*domain.ServerOwner, error)
+	listByUserIDFn           func(ctx context.Context, userID uuid.UUID, page, perPage int) ([]domain.ServerOwner, error)
+	listByUserAndServerIDsFn func(ctx context.Context, userID uuid.UUID, serverIDs []uint) ([]domain.ServerOwner, error)
+	getByServerIDFn          func(ctx context.Context, serverID uint) (*domain.ServerOwner, error)
+	getByServerAndUserFn     func(ctx context.Context, serverID uint, userID uuid.UUID) (*domain.ServerOwner, error)
+}
+
+func (m *mockOwnerRepo) ListByUserID(ctx context.Context, userID uuid.UUID, page, perPage int) ([]domain.ServerOwner, error) {
+	return m.listByUserIDFn(ctx, userID, page, perPage)
+}
+
+func (m *mockOwnerRepo) ListByUserAndServerIDs(ctx context.Context, userID uuid.UUID, serverIDs []uint) ([]domain.ServerOwner, error) {
+	return m.listByUserAndServerIDsFn(ctx, userID, serverIDs)
 }
 
 func (m *mockOwnerRepo) GetByServerID(ctx context.Context, serverID uint) (*domain.ServerOwner, error) {
 	return m.getByServerIDFn(ctx, serverID)
+}
+
+func (m *mockOwnerRepo) GetByServerAndUser(ctx context.Context, serverID uint, userID uuid.UUID) (*domain.ServerOwner, error) {
+	return m.getByServerAndUserFn(ctx, serverID, userID)
 }
 
 var _ ServerOwnerRepository = (*mockOwnerRepo)(nil)

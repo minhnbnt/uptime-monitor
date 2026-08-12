@@ -41,13 +41,12 @@ func InitConfig(configPath string) (*Config, error) {
 
 func setDefaults(v *viper.Viper) {
 	defaults := map[string]any{
-		"server.port":      "8084",
-		"grpc.port":        "50052",
-		"grpc.server_addr": "server:50051",
-		"auth.issuer":      "http://gotrue:9999",
-		"log.level":        "info",
-		"db.port":          "5432",
-		"redis.db":         0,
+		"server.port": "8084",
+		"grpc.port":   "50052",
+		"auth.issuer": "http://gotrue:9999",
+		"log.level":   "info",
+		"db.port":     "5432",
+		"redis.db":    0,
 
 		"cors.allowed_origins":   []string{"*"},
 		"cors.allowed_methods":   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -63,18 +62,17 @@ func setDefaults(v *viper.Viper) {
 
 func bindEnvVars(v *viper.Viper) error {
 	envMap := map[string]string{
-		"server.port":      "PORT",
-		"grpc.port":        "GRPC_PORT",
-		"grpc.server_addr": "GRPC_SERVER_ADDR",
-		"auth.issuer":      "AUTH_ISSUER",
-		"db.host":          "DB_HOST",
-		"db.port":          "DB_PORT",
-		"db.user":          "DB_USER",
-		"db.password":      "DB_PASSWORD",
-		"db.dbname":        "DB_NAME",
-		"redis.addr":       "REDIS_ADDR",
-		"redis.db":         "REDIS_DB",
-		"log.level":        "LOG_LEVEL",
+		"server.port": "PORT",
+		"grpc.port":   "GRPC_PORT",
+		"auth.issuer": "AUTH_ISSUER",
+		"db.host":     "DB_HOST",
+		"db.port":     "DB_PORT",
+		"db.user":     "DB_USER",
+		"db.password": "DB_PASSWORD",
+		"db.dbname":   "DB_NAME",
+		"redis.addr":  "REDIS_ADDR",
+		"redis.db":    "REDIS_DB",
+		"log.level":   "LOG_LEVEL",
 
 		"cors.allowed_origins": "CORS_ALLOWED_ORIGINS",
 		"cors.allowed_methods": "CORS_ALLOWED_METHODS",

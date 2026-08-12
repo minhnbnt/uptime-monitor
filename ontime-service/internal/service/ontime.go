@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"slices"
 	"sort"
@@ -12,58 +13,45 @@ import (
 	"github.com/samber/lo"
 	"github.com/samber/lo/it"
 
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
-	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/serverclient"
+	apperrors "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/errors"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/utils"
 )
 
-type ServerClient interface {
-	ListServers(ctx context.Context, userID uuid.UUID, page, perPage int) ([]serverclient.ServerBrief, error)
-	GetServer(ctx context.Context, serverID uint, userID uuid.UUID) (*serverclient.ServerBrief, error)
+// OwnerRepository reads ownership from the local server_owners table
+// (replicated via the ownership Redis Stream consumer), so ontime lookups
+// never need to call out to the server-service over gRPC.
+type OwnerRepository interface {
+	ListByUserID(ctx context.Context, userID uuid.UUID, page, perPage int) ([]domain.ServerOwner, error)
+	ListByUserAndServerIDs(ctx context.Context, userID uuid.UUID, serverIDs []uint) ([]domain.ServerOwner, error)
+	GetByServerID(ctx context.Context, serverID uint) (*domain.ServerOwner, error)
+	GetByServerAndUser(ctx context.Context, serverID uint, userID uuid.UUID) (*domain.ServerOwner, error)
 }
 
 type OntimeService struct {
-	serverClient ServerClient
-	batcher      *Batcher
-	logger       *slog.Logger
+	ownerRepo OwnerRepository
+	logger    *slog.Logger
+	batcher   *Batcher
 }
 
-func NewOntimeService(sc ServerClient, b *Batcher, l *slog.Logger) *OntimeService {
+func NewOntimeService(ownerRepo OwnerRepository, b *Batcher, l *slog.Logger) *OntimeService {
 	return &OntimeService{
-		serverClient: sc,
-		batcher:      b,
-		logger:       l,
+		ownerRepo: ownerRepo,
+		batcher:   b,
+		logger:    l,
 	}
 }
 
 func RegisterOntimeService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*OntimeService, error) {
 		return NewOntimeService(
-			do.MustInvoke[*serverclient.Client](i),
+			do.MustInvoke[*repository.ServerOwnerRepository](i),
 			do.MustInvoke[*Batcher](i),
 			do.MustInvoke[*slog.Logger](i),
 		), nil
 	})
-}
-
-func (s *OntimeService) ListServersWithOntime(ctx context.Context, userID uuid.UUID, page, perPage int) ([]dto.ServerOntime, error) {
-
-	servers, err := s.serverClient.ListServers(ctx, userID, page, perPage)
-	if err != nil {
-		s.logger.Error("failed to list servers", slog.Any("error", err))
-		return nil, err
-	}
-
-	ontimeMap, err := s.getServersOntime(ctx, servers)
-	if err != nil {
-		return nil, err
-	}
-
-	out := lo.Map(servers, func(server serverclient.ServerBrief, _ int) dto.ServerOntime {
-		return dto.ServerOntime{ServerID: server.ID, DayStats: ontimeMap[server.ID]}
-	})
-
-	return out, nil
 }
 
 func (s *OntimeService) GetServersOntime(ctx context.Context, userID uuid.UUID, maxRecords int) (map[uint][]dto.DayStats, error) {
@@ -73,7 +61,7 @@ func (s *OntimeService) GetServersOntime(ctx context.Context, userID uuid.UUID, 
 		perPage = 10000
 	}
 
-	servers, err := s.serverClient.ListServers(ctx, userID, 1, perPage)
+	servers, err := s.ownerRepo.ListByUserID(ctx, userID, 1, perPage)
 	if err != nil {
 		s.logger.Error("failed to list servers for ontime", slog.String("user_id", userID.String()), slog.Any("error", err))
 		return nil, err
@@ -84,12 +72,15 @@ func (s *OntimeService) GetServersOntime(ctx context.Context, userID uuid.UUID, 
 
 func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID uint, userID uuid.UUID) (*dto.ServerOntime, error) {
 
-	server, err := s.serverClient.GetServer(ctx, serverID, userID)
+	owner, err := s.ownerRepo.GetByServerAndUser(ctx, serverID, userID)
+	if errors.Is(err, apperrors.ErrNotFound) {
+		return nil, apperrors.ErrForbidden
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	ontimeMap, err := s.getServersOntime(ctx, []serverclient.ServerBrief{*server})
+	ontimeMap, err := s.getServersOntime(ctx, []domain.ServerOwner{*owner})
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +88,42 @@ func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID uint, 
 	return &dto.ServerOntime{ServerID: serverID, DayStats: ontimeMap[serverID]}, nil
 }
 
-func (s *OntimeService) getServersOntime(ctx context.Context, servers []serverclient.ServerBrief) (map[uint][]dto.DayStats, error) {
+// batchServerCap is the maximum number of server IDs accepted by a single
+// batch ontime request. Beyond this the request is rejected with 400.
+const batchServerCap = 100
+
+// GetServersWithOntime returns ontime stats for the requested server IDs that
+// the caller actually owns; unowned (or unknown) IDs are silently dropped from
+// the result. Requests with more than batchServerCap IDs are rejected with
+// ErrBadRequest.
+func (s *OntimeService) GetServersWithOntime(ctx context.Context, userID uuid.UUID, ids []uint) ([]dto.ServerOntime, error) {
+
+	if len(ids) > batchServerCap {
+		return nil, apperrors.ErrBadRequest
+	}
+
+	owned, err := s.ownerRepo.ListByUserAndServerIDs(ctx, userID, ids)
+	if err != nil {
+		s.logger.Error("failed to check server ownership", slog.String("user_id", userID.String()), slog.Any("error", err))
+		return nil, err
+	}
+
+	ontimeMap, err := s.getServersOntime(ctx, owned)
+	if err != nil {
+		return nil, err
+	}
+
+	out := lo.Map(owned, func(owner domain.ServerOwner, _ int) dto.ServerOntime {
+		return dto.ServerOntime{
+			DayStats: ontimeMap[owner.ServerID],
+			ServerID: owner.ServerID,
+		}
+	})
+
+	return out, nil
+}
+
+func (s *OntimeService) getServersOntime(ctx context.Context, servers []domain.ServerOwner) (map[uint][]dto.DayStats, error) {
 
 	dates := utils.Last30Days()
 	items := make([]dto.BatchGetOntimeItem, 0, len(servers)*len(dates))
@@ -114,11 +140,11 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []servercl
 
 		datesIter := slices.Values(dates)
 		newItems := it.Map(datesIter, func(d time.Time) dto.BatchGetOntimeItem {
-			return dto.BatchGetOntimeItem{ServerID: sv.ID, Date: d}
+			return dto.BatchGetOntimeItem{ServerID: sv.ServerID, Date: d}
 		})
 
 		items = slices.AppendSeq(items, newItems)
-		serverDates[sv.ID] = dates
+		serverDates[sv.ServerID] = dates
 	}
 
 	if len(items) == 0 {
@@ -136,12 +162,12 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []servercl
 	out := make(map[uint][]dto.DayStats, len(servers))
 	for _, sv := range servers {
 
-		stats, ok := lookup[sv.ID]
+		stats, ok := lookup[sv.ServerID]
 		if !ok {
 			stats = make(map[time.Time]dto.DayResult)
 		}
 
-		out[sv.ID] = lo.Map(serverDates[sv.ID], func(d time.Time, _ int) dto.DayStats {
+		out[sv.ServerID] = lo.Map(serverDates[sv.ServerID], func(d time.Time, _ int) dto.DayStats {
 			return dto.DayStats{Date: d, Result: stats[d]}
 		})
 	}
