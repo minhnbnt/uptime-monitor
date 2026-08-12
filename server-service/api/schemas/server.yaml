@@ -147,8 +147,10 @@ UpdateServerRequest:
         - DaemonSet
         - ReplicaSet
         - Service
+      description: Immutable when the server is managed (created via /k8s-objects)
     object_id:
       type: string
+      description: Immutable when the server is managed (created via /k8s-objects)
     container_name:
       type: string
     interval:

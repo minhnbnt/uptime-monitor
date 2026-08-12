@@ -44,6 +44,13 @@ func ToAPIError(err error) *api.ErrorResponseStatusCode {
 		}
 	}
 
+	if errors.Is(err, ErrManagedImmutable) {
+		return &api.ErrorResponseStatusCode{
+			StatusCode: http.StatusBadRequest,
+			Response:   errResponse("MANAGED_IMMUTABLE", err.Error()),
+		}
+	}
+
 	return &api.ErrorResponseStatusCode{
 		StatusCode: http.StatusInternalServerError,
 		Response:   errResponse("INTERNAL_ERROR", err.Error()),

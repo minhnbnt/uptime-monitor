@@ -89,6 +89,18 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uint, userID uuid.
 		return nil, apperrors.ErrForbidden
 	}
 
+	if server.Managed {
+		if req.Kind != nil && *req.Kind != server.Kind {
+			return nil, apperrors.ErrManagedImmutable
+		}
+		if req.Namespace != nil && *req.Namespace != server.Namespace {
+			return nil, apperrors.ErrManagedImmutable
+		}
+		if req.ObjectID != nil && *req.ObjectID != server.ObjectID {
+			return nil, apperrors.ErrManagedImmutable
+		}
+	}
+
 	applyUpdateServer(server, req)
 
 	var config *domain.ServerHttpConfig
