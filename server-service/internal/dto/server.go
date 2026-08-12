@@ -54,6 +54,7 @@ type CreateServerRequest struct {
 }
 
 type UpdateServerRequest struct {
+	ID            uint
 	Name          *string
 	Namespace     *string
 	Kind          *string

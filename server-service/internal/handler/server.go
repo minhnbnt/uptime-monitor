@@ -71,7 +71,9 @@ func (h *ServerHandler) UpdateServer(
 ) (*api.ServerResponse, error) {
 
 	userID := authclient.GetUserID(ctx)
-	result, err := h.serverWriter.UpdateServer(ctx, uint(params.ID), userID, ToUpdateServerRequest(req))
+
+	request := ToUpdateServerRequest(req, uint(params.ID))
+	result, err := h.serverWriter.UpdateServer(ctx, userID, request)
 	if err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}

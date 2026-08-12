@@ -17,7 +17,7 @@ type ServerReader interface {
 
 type ServerWriter interface {
 	CreateServer(ctx context.Context, req dto.CreateServerRequest, createdByID uuid.UUID) (*dto.Server, error)
-	UpdateServer(ctx context.Context, id uint, userID uuid.UUID, req dto.UpdateServerRequest) (*dto.Server, error)
+	UpdateServer(ctx context.Context, userID uuid.UUID, req dto.UpdateServerRequest) (*dto.Server, error)
 	DeleteServer(ctx context.Context, id uint, userID uuid.UUID) error
 }
 

@@ -55,8 +55,8 @@ func ToCreateServerRequest(req *api.CreateServerRequest) dto.CreateServerRequest
 	return dtoReq
 }
 
-func ToUpdateServerRequest(req *api.UpdateServerRequest) dto.UpdateServerRequest {
-	dtoReq := dto.UpdateServerRequest{}
+func ToUpdateServerRequest(req *api.UpdateServerRequest, id uint) dto.UpdateServerRequest {
+	dtoReq := dto.UpdateServerRequest{ID: id}
 	if name, ok := req.Name.Get(); ok {
 		dtoReq.Name = &name
 	}

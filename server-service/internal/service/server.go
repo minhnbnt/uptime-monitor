@@ -74,9 +74,9 @@ func (ss *ServerService) CreateServer(
 	return &result, nil
 }
 
-func (ss *ServerService) UpdateServer(ctx context.Context, id uint, userID uuid.UUID, req dto.UpdateServerRequest) (*dto.Server, error) {
+func (ss *ServerService) UpdateServer(ctx context.Context, userID uuid.UUID, req dto.UpdateServerRequest) (*dto.Server, error) {
 
-	server, err := ss.serverWriter.GetByID(ctx, id)
+	server, err := ss.serverWriter.GetByID(ctx, req.ID)
 	if errors.Is(err, apperrors.ErrNotFound) {
 		return nil, apperrors.ErrNotFound
 	}
