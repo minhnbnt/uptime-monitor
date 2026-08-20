@@ -84,8 +84,9 @@ func (h *OntimeHandler) NewError(_ context.Context, err error) *api.ErrorRespons
 func toOntimeStats(stats []dto.OntimeStats) []api.OntimeStats {
 	return lo.Map(stats, func(s dto.OntimeStats, _ int) api.OntimeStats {
 		return api.OntimeStats{
-			Date:  api.NewOptDateTime(s.Date),
-			Stats: api.NewOptFloat64(s.Stats),
+			Date:    api.NewOptDateTime(s.Date),
+			Stats:   api.NewOptFloat64(s.Stats),
+			HasData: api.NewOptBool(s.HasData),
 		}
 	})
 }

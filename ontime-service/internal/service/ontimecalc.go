@@ -1,110 +1,152 @@
 package service
 
 import (
+	"sort"
 	"time"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/domain"
 	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/utils"
 )
 
-type Timeline struct {
-	Day         time.Time
-	StartTime   time.Time
-	EndTime     time.Time
-	StartStatus string
-	Events      []ontimerepo.RawEvent
+// OntimeResult is the outcome of computing uptime over a requested window.
+//
+// HasData reports whether the server's state was actually known at some
+// point in the window. When false, Uptime/OnlineSeconds carry no meaning
+// and must not be shown as "0%".
+//
+// Partial reports that the window had to be shrunk because state was
+// unknown at the very start (no event happened before it) — ObservedFrom
+// is where real data begins. Callers should surface this so a user isn't
+// shown a number that silently ignores part of the requested range.
+type OntimeResult struct {
+	Uptime        float64
+	OnlineSeconds float64
+	TotalSeconds  float64
+	HasData       bool
+	Partial       bool
+	ObservedFrom  time.Time
 }
 
 type OntimeCalculator struct{}
 
-func (OntimeCalculator) CalculateDayOntime(events []ontimerepo.RawEvent, today time.Time, now time.Time) float64 {
-	if len(events) == 0 {
-		return 0
+type timeline struct {
+	StartTime   time.Time
+	EndTime     time.Time
+	StartStatus domain.ServerStatus
+	HasStart    bool
+	Partial     bool
+	Events      []ontimerepo.RawEvent
+}
+
+func (o OntimeCalculator) CalculateOntime(events []ontimerepo.RawEvent, from, to time.Time) OntimeResult {
+
+	t := o.newTimeline(events, from, to)
+
+	if !t.HasStart {
+		return OntimeResult{TotalSeconds: to.Sub(from).Seconds()}
 	}
 
-	t := OntimeCalculator{}.BuildTimeline(events, today, now)
-	online := OntimeCalculator{}.CalculateOnlineDuration(t)
-	coverage := t.EndTime.Sub(t.StartTime).Seconds()
+	online := onlineSeconds(t)
+	total := t.EndTime.Sub(t.StartTime).Seconds()
 
-	if coverage > 0 {
-		return online / coverage * 100
+	return OntimeResult{
+		Uptime:        calcUptimePercent(online, total),
+		OnlineSeconds: online,
+		TotalSeconds:  total,
+		HasData:       true,
+		Partial:       t.Partial,
+		ObservedFrom:  t.StartTime,
+	}
+}
+
+// CalculateDayOntime is now a thin wrapper around CalculateOntime — no more
+// special-cased fallback that peeked at events[0] (the earliest event ever
+// recorded for the server, unrelated to "today").
+func (o OntimeCalculator) CalculateDayOntime(events []ontimerepo.RawEvent, today, now time.Time) OntimeResult {
+
+	dayEnd := today.Add(24 * time.Hour)
+	if today.Equal(utils.TruncateDay(now)) {
+		dayEnd = now
 	}
 
-	if domain.ServerStatus(t.StartStatus) == domain.StatusOn {
-		return 100
+	return o.CalculateOntime(events, today, dayEnd)
+}
+
+func calcUptimePercent(online, total float64) float64 {
+	if total > 0 {
+		return online / total * 100
 	}
 	return 0
 }
 
-func (o OntimeCalculator) BuildTimeline(events []ontimerepo.RawEvent, today time.Time, now time.Time) Timeline {
-	day := events[0].Day
+func (o OntimeCalculator) newTimeline(events []ontimerepo.RawEvent, from, to time.Time) timeline {
 
-	t := Timeline{
-		Day:       day,
-		StartTime: day,
-		EndTime:   day.Add(24 * time.Hour),
-	}
+	t := timeline{StartTime: from, EndTime: to}
 
-	if day.Equal(today) {
-		t.EndTime = now
-	}
+	prevEvents, dayEvents := splitByRange(events, from, to)
 
-	prevEvents, dayEvents := o.splitByDayBoundary(events, day)
-	o.applyStartState(&t, prevEvents, dayEvents, events, day.Equal(today))
-	t.Events = o.dedupEvents(dayEvents)
-
-	return t
-}
-
-func (o OntimeCalculator) splitByDayBoundary(events []ontimerepo.RawEvent, day time.Time) (prev, inside []ontimerepo.RawEvent) {
-	dayEnd := day.Add(24 * time.Hour)
-
-	for _, e := range events {
-		if e.Time.Before(day) {
-			prev = append(prev, e)
-		} else if e.Time.Before(dayEnd) {
-			inside = append(inside, e)
-		}
-	}
-
-	return
-}
-
-func (o OntimeCalculator) applyStartState(t *Timeline, prevEvents, dayEvents, allEvents []ontimerepo.RawEvent, isToday bool) {
 	if len(prevEvents) > 0 {
-		last := prevEvents[len(prevEvents)-1]
-		t.StartStatus = last.Status
-		if isToday {
-			t.StartTime = last.Time
+		t.StartStatus, t.HasStart = domain.ToServerStatus(prevEvents[len(prevEvents)-1].Status)
+		t.Events = dedupExact(dayEvents)
+		return t
+	}
+
+	// No real event happened before `from` (or the repository's boundary
+	// row was a NULL-joined placeholder with no status). Scan forward for
+	// the first event in range with a known status instead of guessing —
+	// state before that point is genuinely unknown, so the window shrinks
+	// to start there and gets flagged Partial.
+	for i, e := range dayEvents {
+		status, known := domain.ToServerStatus(e.Status)
+		if !known {
+			continue
 		}
-		return
+
+		t.StartTime = e.Time
+		t.StartStatus = status
+		t.HasStart = true
+		t.Partial = !e.Time.Equal(from)
+		t.Events = dedupExact(dayEvents[i+1:])
+		return t
 	}
 
-	if len(allEvents) == 0 {
-		return
-	}
-
-	fallback := allEvents[0]
-
-	switch {
-	case len(dayEvents) > 0:
-		fallback = dayEvents[0]
-	}
-
-	t.StartStatus = fallback.Status
-	if isToday {
-		t.StartTime = fallback.Time
-	}
+	return t // HasStart stays false: no data anywhere in the range
 }
 
-func (o OntimeCalculator) dedupEvents(events []ontimerepo.RawEvent) []ontimerepo.RawEvent {
+func splitByRange(events []ontimerepo.RawEvent, from, to time.Time) (prev, inside []ontimerepo.RawEvent) {
+
+	firstInside := sort.Search(len(events), func(i int) bool {
+		return !events[i].Time.Before(from)
+	})
+
+	pastEnd := sort.Search(len(events), func(i int) bool {
+		return events[i].Time.After(to)
+	})
+
+	return events[:firstInside], events[firstInside:pastEnd]
+}
+
+// dedupExact merges consecutive events identical in both time and status —
+// true duplicates. Events sharing a timestamp but disagreeing on status are
+// kept, not dropped: that pattern is a sign of a race between two ping
+// workers upstream, contributes a harmless zero-width interval here, and
+// stays visible for debugging rather than vanishing silently. Deterministic
+// ordering for that case should ultimately come from a secondary sort key
+// (event id) added to the repository's SQL, not from this function.
+func dedupExact(events []ontimerepo.RawEvent) []ontimerepo.RawEvent {
+
 	if len(events) <= 1 {
 		return events
 	}
 
-	unique := []ontimerepo.RawEvent{events[0]}
+	unique := events[:1]
 	for i := 1; i < len(events); i++ {
-		if !events[i].Time.Equal(events[i-1].Time) {
+
+		prev := unique[len(unique)-1]
+		isSame := events[i].Time.Equal(prev.Time) && events[i].Status == prev.Status
+
+		if !isSame {
 			unique = append(unique, events[i])
 		}
 	}
@@ -112,22 +154,35 @@ func (o OntimeCalculator) dedupEvents(events []ontimerepo.RawEvent) []ontimerepo
 	return unique
 }
 
-func (o OntimeCalculator) CalculateOnlineDuration(t Timeline) float64 {
-	prevTime := t.StartTime
-	prevStatus := t.StartStatus
-	var total float64
+func onlineSeconds(t timeline) float64 {
+
+	total := 0.0
+	prevTime, prevStatus := t.StartTime, t.StartStatus
 
 	for _, e := range t.Events {
-		if domain.ServerStatus(prevStatus) == domain.StatusOn {
+
+		status, known := domain.ToServerStatus(e.Status)
+
+		// Unknown status (e.g. an empty/NULL no-data row) is intentionally
+		// skipped WITHOUT advancing the boundary time: the server's known
+		// state must not change on a meaningless row, or uptime would be
+		// skewed. The next known event still measures from the last known
+		// boundary. (ToServerStatus is the single gate deciding what is
+		// "known", so unknown here always means no-data, never a typo'd
+		// status.)
+		if !known {
+			continue
+		}
+
+		if prevStatus == domain.StatusOn {
 			total += e.Time.Sub(prevTime).Seconds()
 		}
-		prevStatus = e.Status
-		prevTime = e.Time
+
+		prevTime, prevStatus = e.Time, status
 	}
 
-	if domain.ServerStatus(prevStatus) == domain.StatusOn {
-		dur := t.EndTime.Sub(prevTime).Seconds()
-		if dur > 0 {
+	if prevStatus == domain.StatusOn {
+		if dur := t.EndTime.Sub(prevTime).Seconds(); dur > 0 {
 			total += dur
 		}
 	}

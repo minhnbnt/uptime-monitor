@@ -138,24 +138,25 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []servercl
 	for _, sv := range servers {
 		stats, ok := lookup[sv.ID]
 		if !ok {
-			stats = make(map[time.Time]float64)
+			stats = make(map[time.Time]dto.DayResult)
 		}
 		out[sv.ID] = lo.Map(serverDates[sv.ID], func(d time.Time, _ int) dto.OntimeStats {
-			return dto.OntimeStats{Date: d, Stats: stats[d]}
+			dr := stats[d]
+			return dto.OntimeStats{Date: d, Stats: dr.Uptime, HasData: dr.HasData}
 		})
 	}
 
 	return out, nil
 }
 
-func buildOntimeLookup(results []dto.BatchGetOntimeResponse) map[uint]map[time.Time]float64 {
+func buildOntimeLookup(results []dto.BatchGetOntimeResponse) map[uint]map[time.Time]dto.DayResult {
 
-	lookup := make(map[uint]map[time.Time]float64, len(results))
+	lookup := make(map[uint]map[time.Time]dto.DayResult, len(results))
 
 	for _, r := range results {
 
-		mp := lo.SliceToMap(r.Result, func(stat dto.OntimeStats) (time.Time, float64) {
-			return utils.TruncateDay(stat.Date), stat.Stats
+		mp := lo.SliceToMap(r.Result, func(stat dto.OntimeStats) (time.Time, dto.DayResult) {
+			return utils.TruncateDay(stat.Date), dto.DayResult{HasData: stat.HasData, Uptime: stat.Stats}
 		})
 
 		lookup[r.EndpointID] = mp

@@ -36,10 +36,10 @@ func TestBuildResponse(t *testing.T) {
 			{EndpointID: 1, Date: d2},
 			{EndpointID: 2, Date: d1},
 		}
-		resultMap := map[dto.BatchGetOntimeItem]float64{
-			{EndpointID: 1, Date: d1}: 99.5,
-			{EndpointID: 1, Date: d2}: 100.0,
-			{EndpointID: 2, Date: d1}: 50.0,
+		resultMap := map[dto.BatchGetOntimeItem]dto.DayResult{
+			{EndpointID: 1, Date: d1}: {HasData: true, Uptime: 99.5},
+			{EndpointID: 1, Date: d2}: {HasData: true, Uptime: 100.0},
+			{EndpointID: 2, Date: d1}: {HasData: true, Uptime: 50.0},
 		}
 
 		got := b.buildResponse(req, resultMap)
@@ -124,14 +124,14 @@ func TestBuildOntimeLookup(t *testing.T) {
 		if len(got) != 2 {
 			t.Fatalf("len = %d, want 2", len(got))
 		}
-		if got[1][d1] != 99.5 {
-			t.Errorf("server 1, day 1 = %f, want 99.5", got[1][d1])
+		if got[1][d1].Uptime != 99.5 {
+			t.Errorf("server 1, day 1 = %f, want 99.5", got[1][d1].Uptime)
 		}
-		if got[1][d2] != 100.0 {
-			t.Errorf("server 1, day 2 = %f, want 100.0", got[1][d2])
+		if got[1][d2].Uptime != 100.0 {
+			t.Errorf("server 1, day 2 = %f, want 100.0", got[1][d2].Uptime)
 		}
-		if got[2][d1] != 50.0 {
-			t.Errorf("server 2, day 1 = %f, want 50.0", got[2][d1])
+		if got[2][d1].Uptime != 50.0 {
+			t.Errorf("server 2, day 1 = %f, want 50.0", got[2][d1].Uptime)
 		}
 	})
 
@@ -154,14 +154,14 @@ func TestResolveCache(t *testing.T) {
 			{EndpointID: 1, Date: d1},
 			{EndpointID: 1, Date: d2},
 		}
-		cached := map[dto.BatchGetOntimeItem]float64{
-			{EndpointID: 1, Date: d1}: 99.0,
-			{EndpointID: 1, Date: d2}: 100.0,
+		cached := map[dto.BatchGetOntimeItem]dto.DayResult{
+			{EndpointID: 1, Date: d1}: {HasData: true, Uptime: 99.0},
+			{EndpointID: 1, Date: d2}: {HasData: true, Uptime: 100.0},
 		}
 
 		b := &Batcher{
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mGetFn: func(_ context.Context, _ []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error) {
+				mGetFn: func(_ context.Context, _ []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]dto.DayResult, error) {
 					return cached, nil
 				},
 			},
@@ -173,8 +173,8 @@ func TestResolveCache(t *testing.T) {
 		if len(got) != 2 {
 			t.Fatalf("len = %d, want 2", len(got))
 		}
-		if got[keys[0]] != 99.0 {
-			t.Errorf("key %+v = %f, want 99.0", keys[0], got[keys[0]])
+		if got[keys[0]].Uptime != 99.0 {
+			t.Errorf("key %+v = %f, want 99.0", keys[0], got[keys[0]].Uptime)
 		}
 	})
 
@@ -186,7 +186,7 @@ func TestResolveCache(t *testing.T) {
 
 		b := &Batcher{
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mGetFn: func(_ context.Context, _ []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error) {
+				mGetFn: func(_ context.Context, _ []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]dto.DayResult, error) {
 					return nil, errors.New("redis down")
 				},
 			},
@@ -206,7 +206,7 @@ func TestResolveCache(t *testing.T) {
 	t.Run("empty keys returns nil", func(t *testing.T) {
 		b := &Batcher{
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mGetFn: func(_ context.Context, _ []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error) {
+				mGetFn: func(_ context.Context, _ []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]dto.DayResult, error) {
 					return nil, nil
 				},
 			},
@@ -229,8 +229,8 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 
 	t.Run("all cached", func(t *testing.T) {
 		req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: d1}}
-		cacheResult := map[dto.BatchGetOntimeItem]float64{
-			{EndpointID: 1, Date: d1}: 100.0,
+		cacheResult := map[dto.BatchGetOntimeItem]dto.DayResult{
+			{EndpointID: 1, Date: d1}: {HasData: true, Uptime: 100.0},
 		}
 		var dbCalled bool
 		var mSetCalled bool
@@ -243,10 +243,10 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 				},
 			},
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mGetFn: func(_ context.Context, _ []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error) {
+				mGetFn: func(_ context.Context, _ []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]dto.DayResult, error) {
 					return cacheResult, nil
 				},
-				mSetFn: func(_ context.Context, _ map[dto.BatchGetOntimeItem]float64) error {
+				mSetFn: func(_ context.Context, _ map[dto.BatchGetOntimeItem]dto.DayResult) error {
 					mSetCalled = true
 					return nil
 				},
@@ -275,7 +275,7 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 	t.Run("all miss - fills from DB", func(t *testing.T) {
 		req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: d1}}
 		var mSetCalled bool
-		var capturedItems map[dto.BatchGetOntimeItem]float64
+		var capturedItems map[dto.BatchGetOntimeItem]dto.DayResult
 
 		b := &Batcher{
 			ontineRepository: &mockOntineRepo{
@@ -286,7 +286,7 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 				},
 			},
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mSetFn: func(_ context.Context, items map[dto.BatchGetOntimeItem]float64) error {
+				mSetFn: func(_ context.Context, items map[dto.BatchGetOntimeItem]dto.DayResult) error {
 					mSetCalled = true
 					capturedItems = items
 					return nil
@@ -349,7 +349,7 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 				},
 			},
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mSetFn: func(_ context.Context, _ map[dto.BatchGetOntimeItem]float64) error {
+				mSetFn: func(_ context.Context, _ map[dto.BatchGetOntimeItem]dto.DayResult) error {
 					return errors.New("redis set error")
 				},
 			},
@@ -383,15 +383,15 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 	}
 
 	t.Run("all cached", func(t *testing.T) {
-		cacheResult := map[dto.BatchGetOntimeItem]float64{
-			{EndpointID: 1, Date: d1}: 99.0,
-			{EndpointID: 1, Date: d2}: 100.0,
-			{EndpointID: 2, Date: d3}: 50.0,
+		cacheResult := map[dto.BatchGetOntimeItem]dto.DayResult{
+			{EndpointID: 1, Date: d1}: {HasData: true, Uptime: 99.0},
+			{EndpointID: 1, Date: d2}: {HasData: true, Uptime: 100.0},
+			{EndpointID: 2, Date: d3}: {HasData: true, Uptime: 50.0},
 		}
 
 		b := &Batcher{
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mGetFn: func(_ context.Context, _ []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error) {
+				mGetFn: func(_ context.Context, _ []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]dto.DayResult, error) {
 					return cacheResult, nil
 				},
 			},
@@ -407,29 +407,29 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 		}
 
 		// Group by server for verification
-		byServer := map[uint]map[time.Time]float64{}
+		byServer := map[uint]map[time.Time]dto.DayResult{}
 		for _, r := range got {
-			mp := map[time.Time]float64{}
+			mp := map[time.Time]dto.DayResult{}
 			for _, s := range r.Result {
-				mp[s.Date] = s.Stats
+				mp[s.Date] = dto.DayResult{HasData: s.HasData, Uptime: s.Stats}
 			}
 			byServer[r.EndpointID] = mp
 		}
 
-		if byServer[1][d1] != 99.0 {
-			t.Errorf("server 1, d1 = %f, want 99.0", byServer[1][d1])
+		if byServer[1][d1].Uptime != 99.0 {
+			t.Errorf("server 1, d1 = %f, want 99.0", byServer[1][d1].Uptime)
 		}
-		if byServer[1][d2] != 100.0 {
-			t.Errorf("server 1, d2 = %f, want 100.0", byServer[1][d2])
+		if byServer[1][d2].Uptime != 100.0 {
+			t.Errorf("server 1, d2 = %f, want 100.0", byServer[1][d2].Uptime)
 		}
-		if byServer[2][d3] != 50.0 {
-			t.Errorf("server 2, d3 = %f, want 50.0", byServer[2][d3])
+		if byServer[2][d3].Uptime != 50.0 {
+			t.Errorf("server 2, d3 = %f, want 50.0", byServer[2][d3].Uptime)
 		}
 	})
 
 	t.Run("partially cached", func(t *testing.T) {
-		cacheResult := map[dto.BatchGetOntimeItem]float64{
-			{EndpointID: 1, Date: d1}: 99.0,
+		cacheResult := map[dto.BatchGetOntimeItem]dto.DayResult{
+			{EndpointID: 1, Date: d1}: {HasData: true, Uptime: 99.0},
 		}
 
 		b := &Batcher{
@@ -455,10 +455,10 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 				},
 			},
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mGetFn: func(_ context.Context, _ []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error) {
+				mGetFn: func(_ context.Context, _ []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]dto.DayResult, error) {
 					return cacheResult, nil
 				},
-				mSetFn: func(_ context.Context, _ map[dto.BatchGetOntimeItem]float64) error {
+				mSetFn: func(_ context.Context, _ map[dto.BatchGetOntimeItem]dto.DayResult) error {
 					return nil
 				},
 			},
@@ -504,10 +504,10 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 				},
 			},
 			ontimeCacheRepository: &mockOntimeCacheRepo{
-				mGetFn: func(_ context.Context, _ []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error) {
+				mGetFn: func(_ context.Context, _ []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]dto.DayResult, error) {
 					return nil, errors.New("redis down")
 				},
-				mSetFn: func(_ context.Context, _ map[dto.BatchGetOntimeItem]float64) error {
+				mSetFn: func(_ context.Context, _ map[dto.BatchGetOntimeItem]dto.DayResult) error {
 					return nil
 				},
 			},
@@ -567,10 +567,10 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 			},
 			batcher: &Batcher{
 				ontimeCacheRepository: &mockOntimeCacheRepo{
-					mGetFn: func(_ context.Context, batchKeys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error) {
-						result := make(map[dto.BatchGetOntimeItem]float64, len(batchKeys))
+					mGetFn: func(_ context.Context, batchKeys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]dto.DayResult, error) {
+						result := make(map[dto.BatchGetOntimeItem]dto.DayResult, len(batchKeys))
 						for _, k := range batchKeys {
-							result[k] = 100.0
+							result[k] = dto.DayResult{HasData: true, Uptime: 100.0}
 						}
 						return result, nil
 					},
@@ -631,10 +631,10 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 			},
 			batcher: &Batcher{
 				ontimeCacheRepository: &mockOntimeCacheRepo{
-					mGetFn: func(_ context.Context, batchKeys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error) {
-						result := make(map[dto.BatchGetOntimeItem]float64, len(batchKeys))
+					mGetFn: func(_ context.Context, batchKeys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]dto.DayResult, error) {
+						result := make(map[dto.BatchGetOntimeItem]dto.DayResult, len(batchKeys))
 						for _, k := range batchKeys {
-							result[k] = 100.0
+							result[k] = dto.DayResult{HasData: true, Uptime: 100.0}
 						}
 						return result, nil
 					},

@@ -20,6 +20,11 @@ const (
 	ontimeKeySuffix = ":stats"
 	ontimeTTL       = 1 * time.Hour
 	todayTTL        = 10 * time.Second
+
+	// noDataSentinel is the cache value for a [endpoint, day] with no known
+	// uptime — distinct from "0%" so the consumer can tell "server was down
+	// all day" apart from "we have no data yet".
+	noDataSentinel = "__NULL__"
 )
 
 func isToday(t time.Time) bool {
@@ -52,7 +57,7 @@ func redisKey(endpointID uint, day time.Time) string {
 	)
 }
 
-func (r *OntimeCacheRepository) MGet(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]float64, error) {
+func (r *OntimeCacheRepository) MGet(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]dto.DayResult, error) {
 
 	if len(keys) == 0 {
 		return nil, nil
@@ -67,7 +72,7 @@ func (r *OntimeCacheRepository) MGet(ctx context.Context, keys []dto.BatchGetOnt
 		return nil, err
 	}
 
-	result := make(map[dto.BatchGetOntimeItem]float64, len(keys))
+	result := make(map[dto.BatchGetOntimeItem]dto.DayResult, len(keys))
 	for i, val := range values {
 
 		if val == nil {
@@ -79,18 +84,23 @@ func (r *OntimeCacheRepository) MGet(ctx context.Context, keys []dto.BatchGetOnt
 			continue
 		}
 
-		ontimePercent, err := strconv.ParseFloat(str, 64)
+		if str == noDataSentinel {
+			result[keys[i]] = dto.DayResult{HasData: false}
+			continue
+		}
+
+		uptime, err := strconv.ParseFloat(str, 64)
 		if err != nil {
 			continue
 		}
 
-		result[keys[i]] = ontimePercent
+		result[keys[i]] = dto.DayResult{HasData: true, Uptime: uptime}
 	}
 
 	return result, nil
 }
 
-func (r *OntimeCacheRepository) MSet(ctx context.Context, items map[dto.BatchGetOntimeItem]float64) error {
+func (r *OntimeCacheRepository) MSet(ctx context.Context, items map[dto.BatchGetOntimeItem]dto.DayResult) error {
 
 	if len(items) == 0 {
 		return nil
@@ -104,9 +114,14 @@ func (r *OntimeCacheRepository) MSet(ctx context.Context, items map[dto.BatchGet
 			ttl = todayTTL
 		}
 
+		payload := noDataSentinel
+		if stats.HasData {
+			payload = fmt.Sprintf("%.2f", stats.Uptime)
+		}
+
 		pipe.Set(
 			ctx, redisKey(key.EndpointID, key.Date),
-			fmt.Sprintf("%.2f", stats), ttl,
+			payload, ttl,
 		)
 	}
 

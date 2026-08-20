@@ -73,6 +73,8 @@ components:
         stats:
           type: number
           format: double
+        has_data:
+          type: boolean
 
     ServerOntime:
       type: object
