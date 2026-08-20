@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"iter"
 	"testing"
 	"time"
 
@@ -695,4 +696,39 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 			t.Fatal("expected error")
 		}
 	})
+}
+
+// ---------- fillMisses: stream error must not poison the cache ----------
+
+// errStreamRepo yields one valid event then a mid-stream error, simulating a
+// DB failure partway through scanning the result cursor.
+type errStreamRepo struct{}
+
+func (errStreamRepo) BatchGetOntime(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) (iter.Seq2[ontimerepo.RawEvent, error], error) {
+	d1 := oDay(2026, 6, 1)
+	return func(yield func(ontimerepo.RawEvent, error) bool) {
+		if !yield(ontimerepo.RawEvent{EndpointID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)}, nil) {
+			return
+		}
+		yield(ontimerepo.RawEvent{}, errors.New("stream broke mid-way"))
+	}, nil
+}
+
+func TestFillMisses_StreamErrorDoesNotPoisonCache(t *testing.T) {
+	d1 := oDay(2026, 6, 1)
+	until := oTm(2026, 6, 1, 14, 0)
+
+	b := &Batcher{
+		ontineRepository: errStreamRepo{},
+		logger:           logger.NewMockLogger(),
+	}
+
+	missed := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: d1}}
+	got := b.fillMisses(t.Context(), missed, until)
+
+	// On a mid-stream error fillMisses must return an empty map, so the caller
+	// caches nothing — never the pre-seeded zero results for unread days.
+	if len(got) != 0 {
+		t.Fatalf("on stream error fillMisses returned %d entries; want 0 (no poison): %+v", len(got), got)
+	}
 }

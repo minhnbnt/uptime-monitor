@@ -91,14 +91,17 @@ func (b *Batcher) BatchGetOntime(ctx context.Context, req []dto.BatchGetOntimeIt
 }
 
 func getCacheKey(req []dto.BatchGetOntimeItem) []dto.BatchGetOntimeItem {
+
 	reqIter := slices.Values(req)
 	cacheKeys := it.Map(reqIter, func(item dto.BatchGetOntimeItem) dto.BatchGetOntimeItem {
 		item.Date = utils.TruncateDay(item.Date)
 		return item
 	})
+
 	cacheKeys = it.Uniq(cacheKeys)
 	return slices.Collect(cacheKeys)
 }
+
 func (b *Batcher) resolveCache(ctx context.Context, keys []dto.BatchGetOntimeItem) map[dto.BatchGetOntimeItem]dto.DayResult {
 
 	if b.ontimeCacheRepository == nil {
@@ -152,7 +155,11 @@ func (b *Batcher) fillMisses(ctx context.Context, missedKeys []dto.BatchGetOntim
 
 		if err != nil {
 			b.logger.Warn("failed to stream missed ontime rows", slog.Any("error", err))
-			return toCache
+			// Return an empty map, not toCache: toCache is pre-seeded with zero
+			// results for every missed key, so returning it would poison the
+			// cache with bogus no-data/0% for days we never finished reading.
+			// Caller just re-fetches them next time.
+			return make(map[dto.BatchGetOntimeItem]dto.DayResult)
 		}
 
 		k := endpointDayKey{EndpointID: row.EndpointID, Day: row.Day}
