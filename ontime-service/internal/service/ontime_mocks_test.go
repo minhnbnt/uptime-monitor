@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"iter"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
 	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
@@ -12,8 +13,20 @@ type mockOntineRepo struct {
 	batchGetOntimeFn func(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error)
 }
 
-func (m *mockOntineRepo) BatchGetOntime(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
-	return m.batchGetOntimeFn(ctx, req)
+func (m *mockOntineRepo) BatchGetOntime(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) (iter.Seq2[ontimerepo.RawEvent, error], error) {
+
+	rows, err := m.batchGetOntimeFn(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(yield func(ontimerepo.RawEvent, error) bool) {
+		for _, e := range rows {
+			if !yield(e, nil) {
+				return
+			}
+		}
+	}, nil
 }
 
 var _ OntineRepository = (*mockOntineRepo)(nil)

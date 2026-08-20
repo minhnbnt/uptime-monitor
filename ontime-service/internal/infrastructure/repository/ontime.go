@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"iter"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -39,14 +40,42 @@ func RegisterOntineRepository(i do.Injector) {
 	})
 }
 
-func (r *OntineRepository) BatchGetOntime(ctx context.Context, req []BatchGetOntimeRequest) ([]RawEvent, error) {
+func (r *OntineRepository) BatchGetOntime(ctx context.Context, req []BatchGetOntimeRequest) (iter.Seq2[RawEvent, error], error) {
 
 	payload, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
 
-	return gorm.G[RawEvent](r.db).Raw(rawEventSQL, string(payload)).Find(ctx)
+	rows, err := r.db.WithContext(ctx).Raw(rawEventSQL, string(payload)).Rows()
+	if err != nil {
+		return nil, err
+	}
+
+	// ponytail: stream row-by-row so the caller can discard each (endpoint,day)
+	// group after processing; keeps peak RAM at one day instead of the whole result.
+	return func(yield func(RawEvent, error) bool) {
+
+		defer rows.Close()
+
+		event := RawEvent{}
+		for rows.Next() {
+
+			if err := r.db.ScanRows(rows, &event); err != nil {
+				yield(event, err)
+				return
+			}
+
+			if !yield(event, nil) {
+				return
+			}
+		}
+
+		if err := rows.Err(); err != nil {
+			yield(event, err)
+		}
+
+	}, nil
 }
 
 const rawEventSQL = `

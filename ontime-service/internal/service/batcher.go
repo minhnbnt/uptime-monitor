@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"iter"
 	"log/slog"
 	"maps"
 	"slices"
@@ -17,7 +18,7 @@ import (
 )
 
 type OntineRepository interface {
-	BatchGetOntime(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error)
+	BatchGetOntime(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) (iter.Seq2[ontimerepo.RawEvent, error], error)
 }
 
 type OntimeCacheRepository interface {
@@ -58,6 +59,7 @@ type Batcher struct {
 }
 
 func (b *Batcher) BatchGetOntimeUntil(ctx context.Context, req []dto.BatchGetOntimeItem, until time.Time) ([]dto.BatchGetOntimeResponse, error) {
+
 	cacheKeys := getCacheKey(req)
 	resultMap := b.resolveCache(ctx, cacheKeys)
 
@@ -118,22 +120,54 @@ func (b *Batcher) fillMisses(ctx context.Context, missedKeys []dto.BatchGetOntim
 		return ontimerepo.BatchGetOntimeRequest{EndpointID: key.EndpointID, Date: key.Date}
 	})
 
-	rows, err := b.ontineRepository.BatchGetOntime(ctx, requests)
+	seq, err := b.ontineRepository.BatchGetOntime(ctx, requests)
 	if err != nil {
 		b.logger.Warn("failed to get missed ontime keys", slog.Any("error", err))
 		return make(map[dto.BatchGetOntimeItem]dto.DayResult)
 	}
 
-	groups := lo.GroupBy(rows, func(row ontimerepo.RawEvent) endpointDayKey {
-		return endpointDayKey{EndpointID: row.EndpointID, Day: row.Day}
+	// Pre-seed every missed key with a zero result so days with no events are
+	// still cached (otherwise they'd be re-fetched on every request).
+	toCache := lo.SliceToMap(missedKeys, func(key dto.BatchGetOntimeItem) (dto.BatchGetOntimeItem, dto.DayResult) {
+		return key, dto.DayResult{}
 	})
 
-	dayUntil := utils.TruncateDay(until)
-	toCache := lo.SliceToMap(missedKeys, func(key dto.BatchGetOntimeItem) (dto.BatchGetOntimeItem, dto.DayResult) {
-		events := groups[endpointDayKey{EndpointID: key.EndpointID, Day: key.Date}]
-		result := b.calculator.CalculateDayOntime(events, dayUntil, until)
-		return key, dto.DayResult{HasData: result.HasData, Uptime: result.Uptime}
-	})
+	// ponytail: the SQL orders by (endpoint_id, day, time), so we finalize a
+	// group the instant the key changes and discard its events — peak RAM is one
+	// day, not the whole result set. Each group is computed over its OWN day
+	// window (utils.TruncateDay(k.Day)), not "today" — otherwise past days
+	// resolve against the wrong 24h window and report 0%.
+	var curEvents []ontimerepo.RawEvent
+	flush := func(k endpointDayKey, events []ontimerepo.RawEvent) {
+
+		today := utils.TruncateDay(k.Day)
+		result := b.calculator.CalculateDayOntime(events, today, until)
+
+		itemKey := dto.BatchGetOntimeItem{EndpointID: k.EndpointID, Date: k.Day}
+		toCache[itemKey] = dto.DayResult{HasData: result.HasData, Uptime: result.Uptime}
+	}
+
+	curKey := endpointDayKey{}
+	for row, err := range seq {
+
+		if err != nil {
+			b.logger.Warn("failed to stream missed ontime rows", slog.Any("error", err))
+			return toCache
+		}
+
+		k := endpointDayKey{EndpointID: row.EndpointID, Day: row.Day}
+		if k != curKey && len(curEvents) > 0 {
+			flush(curKey, curEvents)
+			curEvents = nil
+		}
+
+		curKey = k
+		curEvents = append(curEvents, row)
+	}
+
+	if len(curEvents) > 0 {
+		flush(curKey, curEvents)
+	}
 
 	return toCache
 }
