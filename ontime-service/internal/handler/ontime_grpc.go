@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 
@@ -28,7 +29,12 @@ func (s *OntimeGRPCServer) GetServersOntime(
 	ctx context.Context, req *eventv1.GetServersOntimeRequest,
 ) (*eventv1.GetServersOntimeResponse, error) {
 
-	ontimeMap, err := s.ontimeService.GetServersOntime(ctx, uint(req.UserId), int(req.MaxRecords))
+	userID, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, err
+	}
+
+	ontimeMap, err := s.ontimeService.GetServersOntime(ctx, userID, int(req.MaxRecords))
 	if err != nil {
 		return nil, err
 	}
@@ -38,8 +44,9 @@ func (s *OntimeGRPCServer) GetServersOntime(
 			ServerId: uint64(id),
 			OntimeStats: lo.Map(ontimeMap[id], func(stat dto.OntimeStats, _ int) *eventv1.OntimeDayStat {
 				return &eventv1.OntimeDayStat{
-					Date:  stat.Date.Format("2006-01-02"),
-					Stats: stat.Stats,
+					Date:    stat.Date.Format("2006-01-02"),
+					Stats:   stat.Stats,
+					HasData: stat.HasData,
 				}
 			}),
 		}

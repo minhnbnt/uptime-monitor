@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/domain"
@@ -51,7 +52,7 @@ func toDomainEndpoint(serverID uint, req dto.SetCheckMethodRequest) domain.Endpo
 	}
 }
 
-func (es *EndpointService) SetCheckMethod(ctx context.Context, serverID uint, userID uint, req dto.SetCheckMethodRequest) error {
+func (es *EndpointService) SetCheckMethod(ctx context.Context, serverID uint, userID uuid.UUID, req dto.SetCheckMethodRequest) error {
 
 	server, err := es.serverRepository.GetByID(ctx, serverID)
 	if errors.Is(err, apperrors.ErrNotFound) {

@@ -42,6 +42,9 @@ grpc:
   ping_addr: ping-service:50053
   event_addr: ontime-service:50052
 
+auth:
+  issuer: http://gotrue:9999
+
 mail:
   smtp_host: mailpit
   smtp_port: 1025

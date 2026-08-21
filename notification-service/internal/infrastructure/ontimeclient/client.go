@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 
 	eventv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/event/v1"
@@ -57,26 +58,26 @@ func (a *Client) Shutdown() error {
 }
 
 func (a *Client) GetServersOntimeForDates(
-	ctx context.Context, userID uint,
+	ctx context.Context, userID uuid.UUID,
 	servers []domain.Server, dates []time.Time,
 ) (map[uint][]domain.OntimeStats, error) {
 
 	a.logger.Debug(
 		"ontimeclient.GetServersOntimeForDates: sending gRPC request",
-		slog.Uint64("user_id", uint64(userID)),
+		slog.String("user_id", userID.String()),
 		slog.Int("servers", len(servers)),
 		slog.Int("dates", len(dates)),
 	)
 
 	request := eventv1.GetServersOntimeRequest{
-		UserId:     uint64(userID),
+		UserId:     userID.String(),
 		MaxRecords: int64(a.maxRecords),
 	}
 	resp, err := a.client.GetServersOntime(ctx, &request)
 	if err != nil {
 		a.logger.Error(
 			"ontimeclient.GetServersOntimeForDates: rpc failed",
-			slog.Uint64("user_id", uint64(userID)),
+			slog.String("user_id", userID.String()),
 			slog.Any("error", err),
 		)
 		return nil, fmt.Errorf("get servers ontime: %w", err)
@@ -93,8 +94,9 @@ func (a *Client) GetServersOntimeForDates(
 				continue
 			}
 			stats = append(stats, domain.OntimeStats{
-				Date:  parsed,
-				Stats: st.Stats,
+				Date:    parsed,
+				Stats:   st.Stats,
+				HasData: st.HasData,
 			})
 		}
 

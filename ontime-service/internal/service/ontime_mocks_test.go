@@ -4,6 +4,8 @@ import (
 	"context"
 	"iter"
 
+	"github.com/google/uuid"
+
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
 	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/serverclient"
@@ -53,15 +55,15 @@ func (m *mockOntimeCacheRepo) MSet(ctx context.Context, items map[dto.BatchGetOn
 var _ OntimeCacheRepository = (*mockOntimeCacheRepo)(nil)
 
 type mockServerClient struct {
-	listServersFn func(ctx context.Context, userID uint, page, perPage int) ([]serverclient.ServerBrief, error)
-	getServerFn   func(ctx context.Context, serverID uint, userID uint) (*serverclient.ServerBrief, error)
+	listServersFn func(ctx context.Context, userID uuid.UUID, page, perPage int) ([]serverclient.ServerBrief, error)
+	getServerFn   func(ctx context.Context, serverID uint, userID uuid.UUID) (*serverclient.ServerBrief, error)
 }
 
-func (m *mockServerClient) ListServers(ctx context.Context, userID uint, page, perPage int) ([]serverclient.ServerBrief, error) {
+func (m *mockServerClient) ListServers(ctx context.Context, userID uuid.UUID, page, perPage int) ([]serverclient.ServerBrief, error) {
 	return m.listServersFn(ctx, userID, page, perPage)
 }
 
-func (m *mockServerClient) GetServer(ctx context.Context, serverID uint, userID uint) (*serverclient.ServerBrief, error) {
+func (m *mockServerClient) GetServer(ctx context.Context, serverID uint, userID uuid.UUID) (*serverclient.ServerBrief, error) {
 	return m.getServerFn(ctx, serverID, userID)
 }
 

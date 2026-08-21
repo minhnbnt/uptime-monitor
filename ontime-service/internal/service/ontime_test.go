@@ -7,11 +7,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
 	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/serverclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/logger"
 )
+
+var testUserID = uuid.MustParse("00000000-0000-0000-0000-000000000001")
 
 // ---------- helpers ----------
 
@@ -562,7 +566,7 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		svc := &OntimeService{
 			serverClient: &mockServerClient{
-				getServerFn: func(_ context.Context, serverID, _ uint) (*serverclient.ServerBrief, error) {
+				getServerFn: func(_ context.Context, serverID uint, _ uuid.UUID) (*serverclient.ServerBrief, error) {
 					return &serverclient.ServerBrief{ID: serverID, Name: "server-a", CreatedAt: createdAt}, nil
 				},
 			},
@@ -581,7 +585,7 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		got, err := svc.GetServerWithOntime(t.Context(), 1, 1)
+		got, err := svc.GetServerWithOntime(t.Context(), 1, testUserID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -599,7 +603,7 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 	t.Run("server not found", func(t *testing.T) {
 		svc := &OntimeService{
 			serverClient: &mockServerClient{
-				getServerFn: func(_ context.Context, _, _ uint) (*serverclient.ServerBrief, error) {
+				getServerFn: func(_ context.Context, _ uint, _ uuid.UUID) (*serverclient.ServerBrief, error) {
 					return nil, errors.New("not found")
 				},
 			},
@@ -607,7 +611,7 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 			logger:  logger.NewMockLogger(),
 		}
 
-		_, err := svc.GetServerWithOntime(t.Context(), 99, 1)
+		_, err := svc.GetServerWithOntime(t.Context(), 99, testUserID)
 		if err == nil {
 			t.Fatal("expected error for non-existent server")
 		}
@@ -623,7 +627,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		svc := &OntimeService{
 			serverClient: &mockServerClient{
-				listServersFn: func(_ context.Context, _ uint, _, _ int) ([]serverclient.ServerBrief, error) {
+				listServersFn: func(_ context.Context, _ uuid.UUID, _, _ int) ([]serverclient.ServerBrief, error) {
 					return []serverclient.ServerBrief{
 						{ID: 1, Name: "server-a", CreatedAt: createdAt},
 						{ID: 2, Name: "server-b", CreatedAt: createdAt},
@@ -645,7 +649,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		got, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
+		got, err := svc.ListServersWithOntime(t.Context(), testUserID, 1, 10)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -663,7 +667,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 	t.Run("empty server list", func(t *testing.T) {
 		svc := &OntimeService{
 			serverClient: &mockServerClient{
-				listServersFn: func(_ context.Context, _ uint, _, _ int) ([]serverclient.ServerBrief, error) {
+				listServersFn: func(_ context.Context, _ uuid.UUID, _, _ int) ([]serverclient.ServerBrief, error) {
 					return nil, nil
 				},
 			},
@@ -671,7 +675,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 			logger:  logger.NewMockLogger(),
 		}
 
-		got, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
+		got, err := svc.ListServersWithOntime(t.Context(), testUserID, 1, 10)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -683,7 +687,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 	t.Run("server client error", func(t *testing.T) {
 		svc := &OntimeService{
 			serverClient: &mockServerClient{
-				listServersFn: func(_ context.Context, _ uint, _, _ int) ([]serverclient.ServerBrief, error) {
+				listServersFn: func(_ context.Context, _ uuid.UUID, _, _ int) ([]serverclient.ServerBrief, error) {
 					return nil, errors.New("db error")
 				},
 			},
@@ -691,7 +695,7 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 			logger:  logger.NewMockLogger(),
 		}
 
-		_, err := svc.ListServersWithOntime(t.Context(), 1, 1, 10)
+		_, err := svc.ListServersWithOntime(t.Context(), testUserID, 1, 10)
 		if err == nil {
 			t.Fatal("expected error")
 		}

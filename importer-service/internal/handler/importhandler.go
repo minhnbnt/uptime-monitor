@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/common/authclient"
@@ -20,9 +21,9 @@ type ImportHandler struct {
 }
 
 type ImportService interface {
-	ImportServers(ctx context.Context, userID uint, file io.Reader) (*dto.ImportResult, error)
+	ImportServers(ctx context.Context, userID uuid.UUID, file io.Reader) (*dto.ImportResult, error)
 	GenerateTemplate() (io.ReadCloser, error)
-	ExportServers(ctx context.Context, userID uint, q string, from, to int, sortBy, sortOrder string) (io.ReadCloser, error)
+	ExportServers(ctx context.Context, userID uuid.UUID, q string, from, to int, sortBy, sortOrder string) (io.ReadCloser, error)
 }
 
 func RegisterImportHandler(i do.Injector) {

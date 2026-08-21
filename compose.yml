@@ -20,31 +20,22 @@ services:
       traefik.http.middlewares.cors.headers.accessControlAllowHeaders: "*"
       traefik.http.middlewares.cors.headers.accessControlMaxAge: 86400
 
-  auth-service:
-    build:
-      context: .
-      dockerfile: auth-service/Dockerfile
+  gotrue:
+    image: ghcr.io/supabase/gotrue:v2.196.0
+
+    env_file:
+      - ./config/gotrue.env
+      - .env.gotrue-es256
 
     ports:
-      - 8081:8081
-
-    command: --config=/config.yml
-
-    volumes:
-      - ./config/auth-service.yaml:/config.yml
+      - "9999:9999"
 
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_started
 
     labels:
-      traefik.enable: true
-      traefik.http.routers.auth.rule: PathPrefix(`/api/v1/auth`)
-      traefik.http.routers.auth.service: auth-service
-      traefik.http.routers.auth.middlewares: cors
-      traefik.http.services.auth-service.loadbalancer.server.port: 8081
+      traefik.enable: "false"
 
   server-service:
     build:
@@ -68,9 +59,7 @@ services:
       traefik.http.routers.server.priority: 10
       traefik.http.routers.server.service: server-service
       traefik.http.services.server-service.loadbalancer.server.port: 8080
-      traefik.http.routers.server.middlewares: cors, forward-auth
-      traefik.http.middlewares.forward-auth.forwardauth.address: http://auth-service:8081/auth/verify
-      traefik.http.middlewares.forward-auth.forwardauth.authResponseHeaders: X-User-ID
+      traefik.http.routers.server.middlewares: cors
 
   importer-service:
     build:
@@ -95,7 +84,7 @@ services:
       traefik.http.routers.importer.priority: 30
       traefik.http.routers.importer.service: importer-service
       traefik.http.services.importer-service.loadbalancer.server.port: 8086
-      traefik.http.routers.importer.middlewares: cors, forward-auth
+      traefik.http.routers.importer.middlewares: cors
 
   ping-service:
     build:
@@ -141,7 +130,7 @@ services:
       traefik.http.routers.ontime.priority: 20
       traefik.http.routers.ontime.service: ontime-service
       traefik.http.services.ontime-service.loadbalancer.server.port: 8084
-      traefik.http.routers.ontime.middlewares: cors, forward-auth
+      traefik.http.routers.ontime.middlewares: cors
 
   notification-service:
     build:
@@ -163,7 +152,7 @@ services:
       traefik.enable: true
       traefik.http.routers.notification.rule: PathPrefix(`/api/v1/notifications`)
       traefik.http.routers.notification.service: notification-service
-      traefik.http.routers.notification.middlewares: cors, forward-auth
+      traefik.http.routers.notification.middlewares: cors
       traefik.http.services.notification-service.loadbalancer.server.port: 8085
 
   pgbouncer:

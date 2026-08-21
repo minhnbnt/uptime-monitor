@@ -6,6 +6,7 @@ type Config struct {
 	Log    LogConfig    `mapstructure:"log"`
 	Server ServerConfig `mapstructure:"server"`
 	GRPC   GRPCConfig   `mapstructure:"grpc"`
+	Auth   AuthConfig   `mapstructure:"auth"`
 }
 
 type ServerConfig struct {
@@ -33,4 +34,8 @@ type RedisConfig struct {
 
 type LogConfig struct {
 	Level string `mapstructure:"level"`
+}
+
+type AuthConfig struct {
+	Issuer string `mapstructure:"issuer"`
 }

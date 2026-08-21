@@ -3,6 +3,8 @@ package dto
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/domain"
 )
 
@@ -36,7 +38,7 @@ func EndpointFromDomain(e *domain.Endpoint) *Endpoint {
 type Server struct {
 	ID            uint
 	Name          string
-	CreatedByID   uint
+	CreatedByID   uuid.UUID
 	Endpoint      *Endpoint
 	MonitorStatus domain.ServerStatus
 	CreatedAt     time.Time

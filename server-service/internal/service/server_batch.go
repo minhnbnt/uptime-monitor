@@ -6,6 +6,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 	"github.com/samber/lo/it"
@@ -41,8 +42,14 @@ func (s *ServerBatchService) BatchCreateServers(
 	var results []*serverv1.BatchCreateServerResult
 
 	for chunk := range it.Chunk(slices.Values(inputs), batchChunkSize) {
-		servers := buildDomainServers(chunk)
+
+		servers, err := buildDomainServers(chunk)
+		if err != nil {
+			return nil, err
+		}
+
 		if err := s.serverRepo.BatchCreateServers(ctx, servers); err != nil {
+
 			s.logger.Error("batch create servers failed", slog.Any("error", err))
 			for _, input := range chunk {
 				results = append(results, &serverv1.BatchCreateServerResult{
@@ -52,6 +59,7 @@ func (s *ServerBatchService) BatchCreateServers(
 					Error: err.Error(),
 				})
 			}
+
 			continue
 		}
 
@@ -80,17 +88,25 @@ func (s *ServerBatchService) BatchCreateServers(
 	return results, nil
 }
 
-func buildDomainServers(inputs []*serverv1.ServerWithEndpointInput) []domain.Server {
-	return lo.Map(inputs, func(in *serverv1.ServerWithEndpointInput, _ int) domain.Server {
+func buildDomainServers(inputs []*serverv1.ServerWithEndpointInput) ([]domain.Server, error) {
+	return lo.MapErr(inputs, func(in *serverv1.ServerWithEndpointInput, _ int) (domain.Server, error) {
+
+		id, err := uuid.Parse(in.UserId)
+		if err != nil {
+			return domain.Server{}, err
+		}
+
 		return domain.Server{
 			Name:        in.Name,
-			CreatedByID: uint(in.UserId),
-		}
+			CreatedByID: id,
+		}, err
 	})
 }
 
 func buildDomainEndpoints(inputs []*serverv1.ServerWithEndpointInput, servers []domain.Server) []domain.Endpoint {
+
 	endpoints := make([]domain.Endpoint, 0, len(servers))
+
 	for i, sv := range servers {
 		if inputs[i].Url == "" {
 			continue
@@ -104,5 +120,6 @@ func buildDomainEndpoints(inputs []*serverv1.ServerWithEndpointInput, servers []
 			ExpectedCode: int(inputs[i].ExpectedCode),
 		})
 	}
+
 	return endpoints
 }

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -113,7 +114,7 @@ func TestDigestStarter_UpsertAndDescribeSchedule(t *testing.T) {
 
 	starter := newTestDigestStarter(t)
 
-	userID := uint(42)
+	userID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	fromDate := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
 	toDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
 
@@ -137,7 +138,7 @@ func TestDigestStarter_DescribeSchedule_NotExists(t *testing.T) {
 
 	starter := newTestDigestStarter(t)
 
-	info, err := starter.DescribeSchedule(t.Context(), 999)
+	info, err := starter.DescribeSchedule(t.Context(), uuid.MustParse("99999999-9999-9999-9999-999999999999"))
 	require.NoError(t, err)
 	require.NotNil(t, info)
 	require.False(t, info.Exists)
@@ -150,7 +151,7 @@ func TestDigestStarter_DeleteSchedule(t *testing.T) {
 
 	starter := newTestDigestStarter(t)
 
-	userID := uint(7)
+	userID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 	fromDate := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
 	toDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
 
@@ -176,6 +177,6 @@ func TestDigestStarter_StartDigest(t *testing.T) {
 
 	starter := newTestDigestStarter(t)
 
-	err := starter.StartDigest(t.Context(), uint(1))
+	err := starter.StartDigest(t.Context(), uuid.MustParse("11111111-1111-1111-1111-111111111111"))
 	require.NoError(t, err)
 }

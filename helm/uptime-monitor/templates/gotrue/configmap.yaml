@@ -1,0 +1,30 @@
+{{- $ns := include "uptime-monitor.namespace" . -}}
+{{- $gotrue := .Values.gotrue }}
+{{- if $gotrue.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gotrue-config
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/name: gotrue
+    app.kubernetes.io/part-of: uptime-monitor
+data:
+  GOTRUE_JWT_VALID_METHODS: ES256
+  # Must equal the auth.issuer used by the apps (go-oidc validates issuer match).
+  GOTRUE_JWT_ISSUER: http://gotrue.{{ $ns }}.svc.cluster.local:{{ $gotrue.port }}
+  GOTRUE_JWT_AUD: uptime-monitor
+  GOTRUE_JWT_EXP: "3600"
+
+  GOTRUE_DB_DRIVER: postgres
+  DB_NAMESPACE: auth
+  # DATABASE_URL lives in gotrue-secrets (Secret), not here.
+
+  API_EXTERNAL_URL: {{ .Values.gateway.externalURL }}
+  GOTRUE_SITE_URL: {{ $gotrue.siteUrl | default "http://localhost:3000" }}
+  GOTRUE_API_HOST: 0.0.0.0
+  PORT: "{{ $gotrue.port }}"
+
+  GOTRUE_MAILER_AUTOCONFIRM: "true"
+{{- end }}

@@ -15,8 +15,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - service: auth-service
-            image: auth-service
           - service: server-service
             image: server-service
           - service: importer-service

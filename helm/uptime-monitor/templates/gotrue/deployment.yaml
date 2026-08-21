@@ -1,0 +1,64 @@
+{{- $ns := include "uptime-monitor.namespace" . -}}
+{{- $gotrue := .Values.gotrue }}
+{{- if $gotrue.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gotrue
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/name: gotrue
+    app.kubernetes.io/part-of: uptime-monitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gotrue
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gotrue
+        app.kubernetes.io/part-of: uptime-monitor
+    spec:
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: gotrue
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+            runAsUser: 1000
+            runAsGroup: 1000
+          image: {{ $gotrue.image }}
+          imagePullPolicy: {{ $gotrue.pullPolicy | default "IfNotPresent" }}
+          envFrom:
+            - configMapRef:
+                name: gotrue-config
+            - secretRef:
+                name: gotrue-secrets
+                optional: true
+          ports:
+            - name: http
+              containerPort: {{ $gotrue.port }}
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+{{- end }}

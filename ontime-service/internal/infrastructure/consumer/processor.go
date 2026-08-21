@@ -7,12 +7,13 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
 type debeziumServerData struct {
 	ID          uint       `json:"id"`
-	CreatedByID uint       `json:"created_by_id"`
+	CreatedByID uuid.UUID  `json:"created_by_id"`
 	DeletedAt   *time.Time `json:"deleted_at"`
 }
 

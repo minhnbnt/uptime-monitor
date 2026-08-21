@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/domain"
@@ -64,7 +65,7 @@ func TestServerFromDomain(t *testing.T) {
 				Method:       "GET",
 				ExpectedCode: 200,
 			},
-			CreatedByID: 1,
+			CreatedByID: uuid.MustParse("00000000-0000-0000-0000-000000000001"),
 		}
 
 		got := ServerFromDomain(srv)

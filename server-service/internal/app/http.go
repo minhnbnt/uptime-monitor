@@ -26,11 +26,15 @@ func RunWebServer(ctx context.Context, injector do.Injector) {
 	cfg := do.MustInvoke[*config.Config](injector)
 	log := do.MustInvoke[*slog.Logger](injector)
 
-	middleWare := authclient.NewAuthMiddleware(log)
+	middleWare, err := authclient.NewAuthMiddleware(ctx, cfg.Auth.Issuer)
+	if err != nil {
+		log.Error("failed to create auth middleware", slog.Any("error", err))
+		panic(err)
+	}
 
 	httpServer := http.Server{
 		Addr:    ":8080",
-		Handler: middleWare.XUserIDMiddleware(srv),
+		Handler: middleWare.Middleware(srv),
 	}
 
 	go func() {

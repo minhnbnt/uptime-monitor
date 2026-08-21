@@ -6,3 +6,6 @@ grpc:
 
 log:
   level: info
+
+auth:
+  issuer: http://gotrue:9999

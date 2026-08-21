@@ -16,8 +16,9 @@ mail:
 log:
   level: debug
 
-auth_service:
-  addr: http://auth-service:8081
+auth:
+  issuer: http://gotrue:9999
+  service_token: ${AUTH_SERVICE_TOKEN}
 
 grpc:
   server_addr: "server-service:50051"

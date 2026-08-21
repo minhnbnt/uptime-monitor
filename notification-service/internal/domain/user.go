@@ -1,12 +1,14 @@
 package domain
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type User struct {
-	ID       uint
-	Email    string
-	Username string
-	Name     string
+	ID    uuid.UUID
+	Email string
 }
 
 type ScheduleConfig struct {

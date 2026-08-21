@@ -11,7 +11,7 @@ message ServerBrief {
 }
 
 message ListServersRequest {
-  uint64 user_id = 1;
+  string user_id = 1;
   int32 page = 2;
   int32 per_page = 3;
 }
@@ -21,7 +21,7 @@ message ListServersResponse {
 }
 
 message GetServerRequest {
-  uint64 user_id = 1;
+  string user_id = 1;
   uint64 server_id = 2;
 }
 
@@ -41,7 +41,7 @@ message ServerWithEndpoint {
 }
 
 message SearchServersRequest {
-  uint64 user_id = 1;
+  string user_id = 1;
   string q = 2;
   int32 from = 3;
   int32 to = 4;
@@ -61,7 +61,7 @@ message ServerWithEndpointInput {
   int32 expected_code = 5;
   int64 interval_ms = 6;
   int64 timeout_ms = 7;
-  uint64 user_id = 8;
+  string user_id = 8;
 }
 
 message BatchCreateServerResult {
@@ -81,7 +81,7 @@ message BatchCreateServersResponse {
 }
 
 message CountServersByStatusRequest {
-  uint64 user_id = 1;
+  string user_id = 1;
 }
 
 message CountServersByStatusResponse {

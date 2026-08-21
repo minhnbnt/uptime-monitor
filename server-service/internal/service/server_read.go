@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
 
@@ -17,17 +18,17 @@ import (
 
 type StatusClient interface {
 	GetCurrentStatuses(ctx context.Context, endpointIDs []uint) (map[uint]domain.ServerStatus, error)
-	CountByStatus(ctx context.Context, userID uint) (online, offline int64, err error)
+	CountByStatus(ctx context.Context, userID uuid.UUID) (online, offline int64, err error)
 }
 
 type ServerRepository interface {
-	List(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error)
-	Count(ctx context.Context, createdByID uint) (int64, error)
+	List(ctx context.Context, createdByID uuid.UUID, limit, offset int) ([]domain.Server, error)
+	Count(ctx context.Context, createdByID uuid.UUID) (int64, error)
 	GetByID(ctx context.Context, id uint) (*domain.Server, error)
 }
 
 type ServerSearchRepository interface {
-	Search(ctx context.Context, params dto.SearchParams, createdByID uint) ([]domain.Server, int64, error)
+	Search(ctx context.Context, params dto.SearchParams, createdByID uuid.UUID) ([]domain.Server, int64, error)
 }
 
 type ServerReader struct {
@@ -64,7 +65,7 @@ func RegisterServerReader(i do.Injector) {
 
 func (r *ServerReader) ListServers(
 	ctx context.Context,
-	createdByID uint,
+	createdByID uuid.UUID,
 	page, perPage int,
 ) ([]dto.Server, int64, error) {
 
@@ -114,7 +115,7 @@ func (r *ServerReader) GetServer(ctx context.Context, id uint) (*dto.Server, err
 func (r *ServerReader) SearchServers(
 	ctx context.Context,
 	params dto.SearchParams,
-	createdByID uint,
+	createdByID uuid.UUID,
 ) ([]dto.Server, int64, error) {
 
 	servers, total, err := r.searchRepository.Search(ctx, params, createdByID)

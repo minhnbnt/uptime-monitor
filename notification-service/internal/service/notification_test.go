@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -17,26 +18,29 @@ import (
 
 var errTestError = errors.New("test error")
 
+var testUserID = uuid.MustParse("11111111-1111-1111-1111-111111111111")
+var testUserID2 = uuid.MustParse("22222222-2222-2222-2222-222222222222")
+
 type mockDigestStarter struct {
 	mock.Mock
 }
 
-func (m *mockDigestStarter) StartDigest(ctx context.Context, userID uint) error {
+func (m *mockDigestStarter) StartDigest(ctx context.Context, userID uuid.UUID) error {
 	args := m.Called(ctx, userID)
 	return args.Error(0)
 }
 
-func (m *mockDigestStarter) UpsertSchedule(ctx context.Context, userID uint, cfg domain.ScheduleConfig) error {
+func (m *mockDigestStarter) UpsertSchedule(ctx context.Context, userID uuid.UUID, cfg domain.ScheduleConfig) error {
 	args := m.Called(ctx, userID, cfg)
 	return args.Error(0)
 }
 
-func (m *mockDigestStarter) DeleteSchedule(ctx context.Context, userID uint) error {
+func (m *mockDigestStarter) DeleteSchedule(ctx context.Context, userID uuid.UUID) error {
 	args := m.Called(ctx, userID)
 	return args.Error(0)
 }
 
-func (m *mockDigestStarter) DescribeSchedule(ctx context.Context, userID uint) (*domain.ScheduleInfo, error) {
+func (m *mockDigestStarter) DescribeSchedule(ctx context.Context, userID uuid.UUID) (*domain.ScheduleInfo, error) {
 	args := m.Called(ctx, userID)
 	return args.Get(0).(*domain.ScheduleInfo), args.Error(1)
 }
@@ -55,14 +59,14 @@ func TestGetNotificationConfig_WithSchedule(t *testing.T) {
 	fromDate := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
 	toDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
 
-	mockS.On("DescribeSchedule", mock.Anything, uint(1)).Return(&domain.ScheduleInfo{
+	mockS.On("DescribeSchedule", mock.Anything, testUserID).Return(&domain.ScheduleInfo{
 		Exists:     true,
 		FromDate:   fromDate,
 		ToDate:     toDate,
 		DigestTime: "09:00",
 	}, nil)
 
-	resp, err := svc.GetNotificationConfig(t.Context(), 1)
+	resp, err := svc.GetNotificationConfig(t.Context(), testUserID)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, "2026-06-01", resp.FromDate)
@@ -74,9 +78,9 @@ func TestGetNotificationConfig_NoSchedule(t *testing.T) {
 	mockS := &mockDigestStarter{}
 	svc := newTestService(mockS)
 
-	mockS.On("DescribeSchedule", mock.Anything, uint(1)).Return(&domain.ScheduleInfo{}, nil)
+	mockS.On("DescribeSchedule", mock.Anything, testUserID).Return(&domain.ScheduleInfo{}, nil)
 
-	_, err := svc.GetNotificationConfig(t.Context(), 1)
+	_, err := svc.GetNotificationConfig(t.Context(), testUserID)
 	require.ErrorIs(t, err, apperrors.ErrNotFound)
 }
 
@@ -84,9 +88,9 @@ func TestGetNotificationConfig_DescribeError(t *testing.T) {
 	mockS := &mockDigestStarter{}
 	svc := newTestService(mockS)
 
-	mockS.On("DescribeSchedule", mock.Anything, uint(1)).Return(&domain.ScheduleInfo{}, errTestError)
+	mockS.On("DescribeSchedule", mock.Anything, testUserID).Return(&domain.ScheduleInfo{}, errTestError)
 
-	_, err := svc.GetNotificationConfig(t.Context(), 1)
+	_, err := svc.GetNotificationConfig(t.Context(), testUserID)
 	require.Error(t, err)
 }
 
@@ -100,13 +104,13 @@ func TestUpdateNotificationConfig_Active(t *testing.T) {
 		DigestTime: "09:00",
 	}
 
-	mockS.On("UpsertSchedule", mock.Anything, uint(1), domain.ScheduleConfig{
+	mockS.On("UpsertSchedule", mock.Anything, testUserID, domain.ScheduleConfig{
 		FromDate:   time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC),
 		ToDate:     time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC),
 		DigestTime: "09:00",
 	}).Return(nil)
 
-	err := svc.UpdateNotificationConfig(t.Context(), 1, req)
+	err := svc.UpdateNotificationConfig(t.Context(), testUserID, req)
 	require.NoError(t, err)
 	mockS.AssertExpectations(t)
 }
@@ -121,9 +125,9 @@ func TestUpdateNotificationConfig_Inactive_DeletesSchedule(t *testing.T) {
 		DigestTime: "08:00",
 	}
 
-	mockS.On("DeleteSchedule", mock.Anything, uint(1)).Return(nil)
+	mockS.On("DeleteSchedule", mock.Anything, testUserID).Return(nil)
 
-	err := svc.UpdateNotificationConfig(t.Context(), 1, req)
+	err := svc.UpdateNotificationConfig(t.Context(), testUserID, req)
 	require.NoError(t, err)
 	mockS.AssertExpectations(t)
 }
@@ -132,10 +136,10 @@ func TestSendReport(t *testing.T) {
 	mockS := &mockDigestStarter{}
 	svc := newTestService(mockS)
 
-	mockS.On("DescribeSchedule", mock.Anything, uint(1)).Return(&domain.ScheduleInfo{Exists: true}, nil)
-	mockS.On("StartDigest", mock.Anything, uint(1)).Return(nil)
+	mockS.On("DescribeSchedule", mock.Anything, testUserID).Return(&domain.ScheduleInfo{Exists: true}, nil)
+	mockS.On("StartDigest", mock.Anything, testUserID).Return(nil)
 
-	err := svc.SendReport(t.Context(), 1)
+	err := svc.SendReport(t.Context(), testUserID)
 	require.NoError(t, err)
 	mockS.AssertExpectations(t)
 }
@@ -144,9 +148,9 @@ func TestSendReport_NoConfig(t *testing.T) {
 	mockS := &mockDigestStarter{}
 	svc := newTestService(mockS)
 
-	mockS.On("DescribeSchedule", mock.Anything, uint(2)).Return(&domain.ScheduleInfo{}, nil)
+	mockS.On("DescribeSchedule", mock.Anything, testUserID2).Return(&domain.ScheduleInfo{}, nil)
 
-	err := svc.SendReport(t.Context(), 2)
+	err := svc.SendReport(t.Context(), testUserID2)
 	require.ErrorIs(t, err, apperrors.ErrNotFound)
 	mockS.AssertExpectations(t)
 }

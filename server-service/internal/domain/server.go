@@ -3,6 +3,7 @@ package domain
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -10,7 +11,7 @@ type Server struct {
 	gorm.Model
 	Name        string    `gorm:"type:varchar(255);not null"`
 	Endpoint    *Endpoint `gorm:"foreignKey:ServerID;references:ID"`
-	CreatedByID uint      `gorm:"not null;default:0;index"`
+	CreatedByID uuid.UUID `gorm:"type:uuid;not null;index"`
 }
 
 func (Server) TableName() string {

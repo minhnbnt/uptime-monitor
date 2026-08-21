@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/domain"
@@ -40,7 +41,7 @@ func RegisterServerService(i do.Injector) {
 }
 
 func (ss *ServerService) CountByStatus(
-	ctx context.Context, userID uint,
+	ctx context.Context, userID uuid.UUID,
 ) (total, online, offline int64, err error) {
 	return ss.serverRepo.CountByStatus(ctx, userID)
 }
@@ -48,7 +49,7 @@ func (ss *ServerService) CountByStatus(
 func (ss *ServerService) CreateServer(
 	ctx context.Context,
 	req dto.CreateServerRequest,
-	createdByID uint,
+	createdByID uuid.UUID,
 ) (*dto.Server, error) {
 
 	server := domain.Server{
@@ -65,7 +66,7 @@ func (ss *ServerService) CreateServer(
 	return &result, nil
 }
 
-func (ss *ServerService) UpdateServer(ctx context.Context, id uint, userID uint, req dto.UpdateServerRequest) (*dto.Server, error) {
+func (ss *ServerService) UpdateServer(ctx context.Context, id uint, userID uuid.UUID, req dto.UpdateServerRequest) (*dto.Server, error) {
 
 	server, err := ss.serverWriter.GetByID(ctx, id)
 	if errors.Is(err, apperrors.ErrNotFound) {
@@ -98,7 +99,7 @@ func (ss *ServerService) UpdateServer(ctx context.Context, id uint, userID uint,
 	return &result, nil
 }
 
-func (ss *ServerService) DeleteServer(ctx context.Context, id uint, userID uint) error {
+func (ss *ServerService) DeleteServer(ctx context.Context, id uint, userID uuid.UUID) error {
 
 	server, err := ss.serverWriter.GetByID(ctx, id)
 	if errors.Is(err, apperrors.ErrNotFound) {

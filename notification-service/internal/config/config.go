@@ -1,13 +1,18 @@
 package config
 
 type Config struct {
-	Temporal    TemporalCfg  `mapstructure:"temporal"`
-	Mail        MailConfig   `mapstructure:"mail"`
-	Log         LogConfig    `mapstructure:"log"`
-	Server      ServerConfig `mapstructure:"server"`
-	AuthService ServiceAddr  `mapstructure:"auth_service"`
-	GRPC        GRPCConfig   `mapstructure:"grpc"`
-	Digest      DigestConfig `mapstructure:"digest"`
+	Temporal TemporalCfg  `mapstructure:"temporal"`
+	Mail     MailConfig   `mapstructure:"mail"`
+	Log      LogConfig    `mapstructure:"log"`
+	Server   ServerConfig `mapstructure:"server"`
+	Auth     AuthConfig   `mapstructure:"auth"`
+	GRPC     GRPCConfig   `mapstructure:"grpc"`
+	Digest   DigestConfig `mapstructure:"digest"`
+}
+
+type AuthConfig struct {
+	Issuer       string `mapstructure:"issuer"`
+	ServiceToken string `mapstructure:"service_token"`
 }
 
 type ServerConfig struct {
@@ -32,10 +37,6 @@ type MailConfig struct {
 	FromAddress           string `mapstructure:"from_address"`
 	DisableSecurity       bool   `mapstructure:"disable_security"`
 	TLSInsecureSkipVerify bool   `mapstructure:"tls_insecure_skip_verify"`
-}
-
-type ServiceAddr struct {
-	Addr string `mapstructure:"addr"`
 }
 
 type GRPCConfig struct {

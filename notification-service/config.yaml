@@ -24,8 +24,9 @@ mail:
 log:
   level: info
 
-auth_service:
-  addr: http://localhost:8081
+auth:
+  issuer: http://localhost:9999
+  service_token: ""
 
 server_service:
   addr: grpc://localhost:50051

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 	"gorm.io/gorm"
 
@@ -33,7 +34,7 @@ func RegisterParadeDBSearcher(i do.Injector) {
 func (s *ParadeDBSearcher) Search(
 	ctx context.Context,
 	params dto.SearchParams,
-	createdByID uint,
+	createdByID uuid.UUID,
 ) ([]domain.Server, int64, error) {
 
 	safeOrder, limit, offset := getQueryOptions(&params)

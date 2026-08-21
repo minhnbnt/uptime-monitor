@@ -62,7 +62,8 @@ func setDefaults(v *viper.Viper) {
 		"mail.disable_security":         false,
 		"mail.tls_insecure_skip_verify": false,
 
-		"auth_service.addr": "http://localhost:8081",
+		"auth.issuer":        "http://gotrue:9999",
+		"auth.service_token": "",
 
 		"grpc.server_addr": "localhost:50051",
 		"grpc.event_addr":  "localhost:50052",
@@ -93,7 +94,8 @@ func bindEnvVars(v *viper.Viper) error {
 		"mail.disable_security":         "MAIL_DISABLE_SECURITY",
 		"mail.tls_insecure_skip_verify": "MAIL_TLS_INSECURE_SKIP_VERIFY",
 
-		"auth_service.addr": "AUTH_SERVICE_ADDR",
+		"auth.issuer":        "AUTH_ISSUER",
+		"auth.service_token": "AUTH_SERVICE_TOKEN",
 
 		"grpc.server_addr": "GRPC_SERVER_ADDR",
 		"grpc.event_addr":  "GRPC_EVENT_ADDR",

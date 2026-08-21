@@ -24,8 +24,8 @@ func RegisterMailer(i do.Injector) {
 		mailClientWrapper := do.MustInvoke[*config.MailClientWrapper](i)
 
 		return &Mailer{
-			mailClient:  mailClientWrapper.GetClient(),
 			fromAddress: cfg.Mail.FromAddress,
+			mailClient:  mailClientWrapper.GetClient(),
 			logger:      do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})

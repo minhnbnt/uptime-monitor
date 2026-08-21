@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/dto"
 )
@@ -19,7 +21,7 @@ func (m *mockStatusClient) GetCurrentStatuses(_ context.Context, _ []uint) (map[
 	return m.statuses, m.err
 }
 
-func (m *mockStatusClient) CountByStatus(_ context.Context, _ uint) (int64, int64, error) {
+func (m *mockStatusClient) CountByStatus(_ context.Context, _ uuid.UUID) (int64, int64, error) {
 	return 0, 0, nil
 }
 
