@@ -6,7 +6,7 @@ WORKDIR /proto
 RUN buf generate
 
 
-FROM golang:1.26-alpine AS builder
+FROM public.ecr.aws/docker/library/golang:1.27-alpine AS builder
 
 ENV CGO_ENABLED=0 \
     GOOS=linux \
