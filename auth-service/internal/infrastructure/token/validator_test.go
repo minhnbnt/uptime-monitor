@@ -65,6 +65,29 @@ func TestValidateAccessToken_Success(t *testing.T) {
 	}
 }
 
+func TestValidateAccessToken_ExtractsSessionID(t *testing.T) {
+	p, tc := setupProviderWithConfig(t)
+	tv := &Validator{provider: p, tokenConfig: tc, logger: logger.NewMockLogger()}
+
+	token, err := p.NewToken(tc.GetAccessTokenIssuer(), map[string]any{
+		"sub":   "42",
+		"scope": "ping",
+		"sid":   "0195f0b0-0000-7000-8000-000000000001",
+		"exp":   time.Now().Add(15 * time.Minute).Unix(),
+	})
+	if err != nil {
+		t.Fatalf("NewToken error: %v", err)
+	}
+
+	info, err := tv.ValidateAccessToken(token)
+	if err != nil {
+		t.Fatalf("ValidateAccessToken error: %v", err)
+	}
+	if info.SID != "0195f0b0-0000-7000-8000-000000000001" {
+		t.Errorf("sid = %q, want 0195f0b0-0000-7000-8000-000000000001", info.SID)
+	}
+}
+
 func TestValidateAccessToken_WrongIssuer(t *testing.T) {
 	p, tc := setupProviderWithConfig(t)
 	tv := &Validator{provider: p, tokenConfig: tc, logger: logger.NewMockLogger()}

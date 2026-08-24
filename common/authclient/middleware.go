@@ -11,6 +11,7 @@ import (
 
 type userIDKey struct{}
 type scopesKey struct{}
+type sessionIDKey struct{}
 
 func GetUserID(ctx context.Context) uint {
 	v := ctx.Value(userIDKey{})
@@ -18,6 +19,14 @@ func GetUserID(ctx context.Context) uint {
 		return 0
 	}
 	return v.(uint)
+}
+
+func GetSessionID(ctx context.Context) string {
+	v := ctx.Value(sessionIDKey{})
+	if v == nil {
+		return ""
+	}
+	return v.(string)
 }
 
 func GetScopes(ctx context.Context) []string {
@@ -48,6 +57,7 @@ func (am *AuthMiddleware) XUserIDMiddleware(next http.Handler) http.Handler {
 
 		if uid == "" {
 			next.ServeHTTP(w, r)
+			return
 		}
 
 		id, err := strconv.ParseUint(uid, 10, 64)
@@ -59,6 +69,10 @@ func (am *AuthMiddleware) XUserIDMiddleware(next http.Handler) http.Handler {
 			scopes := strings.Fields(r.Header.Get("X-Scopes"))
 			if len(scopes) > 0 {
 				ctx = context.WithValue(ctx, scopesKey{}, scopes)
+			}
+
+			if sid := strings.TrimSpace(r.Header.Get("X-Session-ID")); sid != "" {
+				ctx = context.WithValue(ctx, sessionIDKey{}, sid)
 			}
 
 			r = r.WithContext(ctx)

@@ -50,6 +50,7 @@ func NewValidator(
 type AccessTokenInfo struct {
 	UserID uint
 	Scopes []string
+	SID    string
 }
 
 type RefreshTokenInfo struct {
@@ -79,15 +80,20 @@ func (tv *Validator) ValidateAccessToken(tokenStr string) (*AccessTokenInfo, err
 		return nil, apperrors.ErrInvalidAccessToken
 	}
 
+	var sid string
 	var scopes []string
-	claims, err := token.Claims()
-	if err == nil {
+	if claims, err := token.Claims(); err == nil {
+
 		if scopeStr, ok := claims["scope"].(string); ok {
 			scopes = strings.Fields(scopeStr)
 		}
+
+		if sidClaim, ok := claims["sid"].(string); ok {
+			sid = sidClaim
+		}
 	}
 
-	return &AccessTokenInfo{UserID: uint(userID), Scopes: scopes}, nil
+	return &AccessTokenInfo{UserID: uint(userID), Scopes: scopes, SID: sid}, nil
 }
 
 func (tv *Validator) ValidateRefreshToken(ctx context.Context, tokenStr string) (*RefreshTokenInfo, error) {

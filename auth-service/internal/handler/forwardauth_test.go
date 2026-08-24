@@ -28,6 +28,11 @@ func newFakeTokenValidator() *fakeTokenValidator {
 	return &fakeTokenValidator{byToken: map[string]*token.AccessTokenInfo{
 		"app-token":  {UserID: 42, Scopes: []string{"app"}},
 		"ping-token": {UserID: 42, Scopes: []string{"ping"}},
+		"ping-sid-token": {
+			UserID: 42,
+			Scopes: []string{"ping"},
+			SID:    "sess-abc",
+		},
 	}}
 }
 
@@ -131,6 +136,22 @@ func TestForwardAuth(t *testing.T) {
 		}
 		if got := rec.Header().Get("X-Scopes"); got != "app" {
 			t.Errorf("X-Scopes = %q, want app", got)
+		}
+	})
+
+	t.Run("ok with session id", func(t *testing.T) {
+		fw := &ForwardAuthHandler{validator: newFakeTokenValidator()}
+
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify", nil)
+		req.Header.Set("Authorization", "Bearer ping-sid-token")
+		rec := httptest.NewRecorder()
+		fw.ForwardAuth(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, want 200", rec.Code)
+		}
+		if got := rec.Header().Get("X-Session-ID"); got != "sess-abc" {
+			t.Errorf("X-Session-ID = %q, want sess-abc", got)
 		}
 	})
 

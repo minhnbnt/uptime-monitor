@@ -17,7 +17,7 @@ func authedChain(t *testing.T, headers map[string]string) (*httptest.ResponseRec
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
@@ -36,7 +36,7 @@ func guardedChain(t *testing.T, headers map[string]string) *httptest.ResponseRec
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
@@ -74,6 +74,43 @@ func TestXUserIDMiddleware_NoScopesHeader(t *testing.T) {
 	}
 	if HasScope(ctx, "app") {
 		t.Error("expected no scopes")
+	}
+}
+
+func TestXUserIDMiddleware_UnauthenticatedHandledOnce(t *testing.T) {
+	calls := 0
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	NewAuthMiddleware(slog.Default()).XUserIDMiddleware(next).ServeHTTP(rec, req)
+
+	if calls != 1 {
+		t.Errorf("handler called %d times, want 1", calls)
+	}
+}
+
+func TestXUserIDMiddleware_ParsesSessionID(t *testing.T) {
+	rec, ctx := authedChain(t, map[string]string{
+		"X-User-ID":    "42",
+		"X-Scopes":     "ping",
+		"X-Session-ID": "sess-123",
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if GetSessionID(ctx) != "sess-123" {
+		t.Errorf("sessionID = %q, want sess-123", GetSessionID(ctx))
+	}
+}
+
+func TestXUserIDMiddleware_NoSessionHeader(t *testing.T) {
+	_, ctx := authedChain(t, map[string]string{"X-User-ID": "7"})
+	if GetSessionID(ctx) != "" {
+		t.Errorf("sessionID = %q, want empty", GetSessionID(ctx))
 	}
 }
 

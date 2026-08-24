@@ -77,6 +77,7 @@ func (h *ForwardAuthHandler) ForwardAuth(w http.ResponseWriter, r *http.Request)
 
 	w.Header().Set("X-User-ID", fmt.Sprint(info.UserID))
 	w.Header().Set("X-Scopes", strings.Join(info.Scopes, " "))
+	w.Header().Set("X-Session-ID", info.SID)
 
 	w.WriteHeader(http.StatusOK)
 }
