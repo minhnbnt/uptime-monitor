@@ -25,7 +25,7 @@ RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
 
 # -----------------------------------------------------
 
-FROM alpine:latest AS upx
+FROM public.ecr.aws/docker/library/alpine:latest AS upx
 
 RUN --mount=type=cache,id=apk-cache,target=/var/cache/apk \
     apk add upx
