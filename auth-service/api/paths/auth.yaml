@@ -104,6 +104,29 @@ logout:
             schema:
               $ref: "../schemas/common.yaml#/ErrorResponse"
 
+create-ping-session:
+  post:
+    summary: Create a ping-scoped session using an app access token
+    operationId: CreatePingSession
+    x-ogen-operation-group: Auth
+    tags:
+      - auth
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: Ping session created successfully
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/auth.yaml#/AuthResponse"
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
 get-user:
   get:
     summary: Get user by ID

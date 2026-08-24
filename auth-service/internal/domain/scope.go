@@ -3,10 +3,10 @@ package domain
 type Scope string
 
 const (
-	ScopeAPI  Scope = "api"
+	ScopeApp  Scope = "app"
 	ScopePing Scope = "ping"
 )
 
 func DefaultScopes() []string {
-	return []string{string(ScopeAPI), string(ScopePing)}
+	return []string{string(ScopeApp)}
 }

@@ -2,20 +2,22 @@ package handler
 
 import (
 	"context"
+	"errors"
+	"slices"
 
+	"github.com/ogen-go/ogen/ogenerrors"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/generated/api"
+	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/dto"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/token"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/service"
 )
 
-type userIDKey struct{}
-
 type AccessTokenValidator interface { // ponytail: used by forwardauth.go
-	ValidateAccessToken(tokenStr string) (uint, error)
+	ValidateAccessToken(tokenStr string) (*token.AccessTokenInfo, error)
 }
 
 type AuthHandler struct {
@@ -101,14 +103,23 @@ func (h *AuthHandler) Logout(ctx context.Context, req *api.RefreshTokenRequest) 
 	return nil
 }
 
-func (h *AuthHandler) HandleBearerAuth(ctx context.Context, _ api.OperationName, t api.BearerAuth) (context.Context, error) {
+func (h *AuthHandler) CreatePingSession(ctx context.Context) (*api.AuthResponse, error) {
 
-	userID, err := h.tokenValidator.ValidateAccessToken(t.Token)
-	if err != nil {
-		return ctx, apperrors.ErrInvalidAccessToken
+	info, ok := tokenInfoFromContext(ctx)
+	if !ok {
+		return nil, apperrors.ToAPIError(apperrors.ErrInvalidAccessToken)
 	}
 
-	return context.WithValue(ctx, userIDKey{}, userID), nil
+	if !slices.Contains(info.Scopes, string(domain.ScopeApp)) {
+		return nil, apperrors.ToAPIError(apperrors.ErrForbidden)
+	}
+
+	result, err := h.authService.CreatePingSession(ctx, info.UserID)
+	if err != nil {
+		return nil, apperrors.ToAPIError(err)
+	}
+
+	return toAPIAuthResponse(result), nil
 }
 
 func (h *AuthHandler) GetUser(ctx context.Context, params api.GetUserParams) (*api.UserProfile, error) {
@@ -128,16 +139,19 @@ func (h *AuthHandler) GetUser(ctx context.Context, params api.GetUserParams) (*a
 
 func (h *AuthHandler) ValidateToken(ctx context.Context) (*api.ValidateTokenOK, error) {
 
-	userID, ok := ctx.Value(userIDKey{}).(uint)
-	if !ok || userID == 0 {
+	info, ok := tokenInfoFromContext(ctx)
+	if !ok {
 		return nil, apperrors.ToAPIError(apperrors.ErrInvalidAccessToken)
 	}
 
-	return &api.ValidateTokenOK{
-		UserID: int(userID),
-	}, nil
+	return &api.ValidateTokenOK{UserID: int(info.UserID)}, nil
 }
 
 func (h *AuthHandler) NewError(_ context.Context, err error) *api.ErrorResponseStatusCode {
+
+	if errors.Is(err, ogenerrors.ErrSecurityRequirementIsNotSatisfied) {
+		err = apperrors.ErrInvalidAccessToken
+	}
+
 	return apperrors.ToAPIError(err)
 }

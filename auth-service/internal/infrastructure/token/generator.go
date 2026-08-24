@@ -2,6 +2,7 @@ package token
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -29,17 +30,18 @@ func RegisterGenerator(i do.Injector) {
 
 func (tg *tokenGenerator) GenerateAccessToken(user *domain.User, scopes []string, sessionID string) (string, error) {
 
+	sort.Strings(scopes)
+
 	sub := fmt.Sprint(user.ID)
 	issuer := tg.tokenConfig.GetAccessTokenIssuer()
+	accessTokenTTL := tg.tokenConfig.GetAccessTokenTTL()
 	claims := map[string]any{
 		"sub":      sub,
 		"email":    user.Email,
 		"username": user.Username,
 		"scope":    strings.Join(scopes, " "),
 		"sid":      sessionID,
-		"exp": time.Now().
-			Add(tg.tokenConfig.GetAccessTokenTTL()).
-			Unix(),
+		"exp":      time.Now().Add(accessTokenTTL).Unix(),
 	}
 
 	token, err := tg.provider.NewToken(issuer, claims)
@@ -59,10 +61,11 @@ func (tg *tokenGenerator) GenerateRefreshToken(user *domain.User) (string, strin
 
 	sub := fmt.Sprint(user.ID)
 	issuer := tg.tokenConfig.GetRefreshTokenIssuer()
+	refreshTokenTTL := tg.tokenConfig.GetRefreshTokenTTL()
 	claims := map[string]any{
 		"sub": sub,
 		"jti": jti.String(),
-		"exp": time.Now().Add(tg.tokenConfig.GetRefreshTokenTTL()).Unix(),
+		"exp": time.Now().Add(refreshTokenTTL).Unix(),
 	}
 
 	token, err := tg.provider.NewToken(issuer, claims)

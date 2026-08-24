@@ -2,6 +2,7 @@ package token
 
 import (
 	"context"
+	"reflect"
 	"testing"
 	"time"
 
@@ -52,12 +53,15 @@ func TestValidateAccessToken_Success(t *testing.T) {
 		t.Fatalf("NewToken error: %v", err)
 	}
 
-	userID, err := tv.ValidateAccessToken(token)
+	info, err := tv.ValidateAccessToken(token)
 	if err != nil {
 		t.Fatalf("ValidateAccessToken error: %v", err)
 	}
-	if userID != 42 {
-		t.Errorf("userID = %d, want 42", userID)
+	if info.UserID != 42 {
+		t.Errorf("userID = %d, want 42", info.UserID)
+	}
+	if len(info.Scopes) != 0 {
+		t.Errorf("scopes = %v, want empty (no scope claim)", info.Scopes)
 	}
 }
 
@@ -120,15 +124,18 @@ func TestValidateRefreshToken_Success(t *testing.T) {
 		t.Fatalf("NewToken error: %v", err)
 	}
 
-	userID, jti, err := tv.ValidateRefreshToken(t.Context(), token)
+	info, err := tv.ValidateRefreshToken(t.Context(), token)
 	if err != nil {
 		t.Fatalf("ValidateRefreshToken error: %v", err)
 	}
-	if userID != 42 {
-		t.Errorf("userID = %d, want 42", userID)
+	if info.UserID != 42 {
+		t.Errorf("userID = %d, want 42", info.UserID)
 	}
-	if jti != "0195f0b0-0000-7000-8000-000000000000" {
-		t.Errorf("jti = %q, want 0195f0b0-0000-7000-8000-000000000000", jti)
+	if info.JTI != "0195f0b0-0000-7000-8000-000000000000" {
+		t.Errorf("jti = %q, want 0195f0b0-0000-7000-8000-000000000000", info.JTI)
+	}
+	if !reflect.DeepEqual(info.Scopes, []string{"app"}) {
+		t.Errorf("scopes = %v, want [app]", info.Scopes)
 	}
 }
 
@@ -145,7 +152,7 @@ func TestValidateRefreshToken_WrongIssuer(t *testing.T) {
 		t.Fatalf("NewToken error: %v", err)
 	}
 
-	_, _, err = tv.ValidateRefreshToken(t.Context(), token)
+	_, err = tv.ValidateRefreshToken(t.Context(), token)
 	if err == nil {
 		t.Fatal("expected error for wrong issuer")
 	}
@@ -164,7 +171,7 @@ func TestValidateRefreshToken_Expired(t *testing.T) {
 		t.Fatalf("NewToken error: %v", err)
 	}
 
-	_, _, err = tv.ValidateRefreshToken(t.Context(), token)
+	_, err = tv.ValidateRefreshToken(t.Context(), token)
 	if err == nil {
 		t.Fatal("expected error for expired refresh token")
 	}
@@ -182,7 +189,7 @@ func TestValidateRefreshToken_MissingJTI(t *testing.T) {
 		t.Fatalf("NewToken error: %v", err)
 	}
 
-	_, _, err = tv.ValidateRefreshToken(t.Context(), token)
+	_, err = tv.ValidateRefreshToken(t.Context(), token)
 	if err == nil {
 		t.Fatal("expected error for missing jti")
 	}
@@ -192,7 +199,7 @@ func TestValidateRefreshToken_Malformed(t *testing.T) {
 	p, tc := setupProviderWithConfig(t)
 	tv := &Validator{provider: p, tokenConfig: tc, sessionRepo: &mockSessionRepo{}, logger: logger.NewMockLogger()}
 
-	_, _, err := tv.ValidateRefreshToken(t.Context(), "not-a-valid-token")
+	_, err := tv.ValidateRefreshToken(t.Context(), "not-a-valid-token")
 	if err == nil {
 		t.Fatal("expected error for malformed token")
 	}
@@ -247,7 +254,7 @@ func TestValidateRefreshToken_InvalidSubject(t *testing.T) {
 		t.Fatalf("NewToken error: %v", err)
 	}
 
-	_, _, err = tv.ValidateRefreshToken(t.Context(), token)
+	_, err = tv.ValidateRefreshToken(t.Context(), token)
 	if err == nil {
 		t.Fatal("expected error for invalid subject")
 	}
@@ -266,7 +273,7 @@ func TestValidateRefreshToken_NonNumericSubject(t *testing.T) {
 		t.Fatalf("NewToken error: %v", err)
 	}
 
-	_, _, err = tv.ValidateRefreshToken(t.Context(), token)
+	_, err = tv.ValidateRefreshToken(t.Context(), token)
 	if err == nil {
 		t.Fatal("expected error for non-numeric subject")
 	}
@@ -294,7 +301,7 @@ func TestValidateRefreshToken_GetSessionError(t *testing.T) {
 		t.Fatalf("NewToken error: %v", err)
 	}
 
-	_, _, err = tv.ValidateRefreshToken(t.Context(), token)
+	_, err = tv.ValidateRefreshToken(t.Context(), token)
 	if err == nil {
 		t.Fatal("expected error when GetByJTI fails")
 	}
@@ -392,7 +399,7 @@ func TestValidateRefreshToken_DeletedSession(t *testing.T) {
 		t.Fatalf("NewToken error: %v", err)
 	}
 
-	_, _, err = tv.ValidateRefreshToken(t.Context(), token)
+	_, err = tv.ValidateRefreshToken(t.Context(), token)
 	if err == nil {
 		t.Fatal("expected error for revoked token")
 	}

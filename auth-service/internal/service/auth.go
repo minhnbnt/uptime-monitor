@@ -94,12 +94,14 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 		return nil, apperrors.ErrInternal
 	}
 
-	return s.issueTokens(ctx, &user)
+	return s.issueTokens(ctx, &user, domain.DefaultScopes())
 }
 
-func (s *AuthService) issueTokens(ctx context.Context, user *domain.User) (*dto.AuthResponse, error) {
+func (s *AuthService) issueTokens(ctx context.Context, user *domain.User, scopes []string) (*dto.AuthResponse, error) {
 
-	scopes := domain.DefaultScopes()
+	if len(scopes) == 0 {
+		scopes = domain.DefaultScopes()
+	}
 
 	refreshToken, jti, err := s.tokenGenerator.GenerateRefreshToken(user)
 	if err != nil {
@@ -179,7 +181,7 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Aut
 		return nil, apperrors.ErrInvalidCredentials
 	}
 
-	return s.issueTokens(ctx, user)
+	return s.issueTokens(ctx, user, domain.DefaultScopes())
 }
 
 func (s *AuthService) GetUser(ctx context.Context, id uint) (*dto.UserProfile, error) {
@@ -199,12 +201,12 @@ func (s *AuthService) GetUser(ctx context.Context, id uint) (*dto.UserProfile, e
 
 func (s *AuthService) Refresh(ctx context.Context, req dto.RefreshRequest) (*dto.AuthResponse, error) {
 
-	userID, _, err := s.tokenValidator.ValidateRefreshToken(ctx, req.RefreshToken)
+	info, err := s.tokenValidator.ValidateRefreshToken(ctx, req.RefreshToken)
 	if err != nil {
 		return nil, apperrors.ErrInvalidRefreshToken
 	}
 
-	user, err := s.userRepository.FindByID(ctx, userID)
+	user, err := s.userRepository.FindByID(ctx, info.UserID)
 	if err != nil {
 		s.logger.Error("failed to find user", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
@@ -214,5 +216,21 @@ func (s *AuthService) Refresh(ctx context.Context, req dto.RefreshRequest) (*dto
 		return nil, apperrors.ErrInvalidCredentials
 	}
 
-	return s.issueTokens(ctx, user)
+	return s.issueTokens(ctx, user, info.Scopes)
+}
+
+func (s *AuthService) CreatePingSession(ctx context.Context, userID uint) (*dto.AuthResponse, error) {
+
+	user, err := s.userRepository.FindByID(ctx, userID)
+	if err != nil {
+		s.logger.Error("failed to find user", slog.Any("error", err))
+		return nil, apperrors.ErrInternal
+	}
+
+	if user == nil {
+		return nil, apperrors.ErrNotFound
+	}
+
+	scopes := []string{string(domain.ScopePing)}
+	return s.issueTokens(ctx, user, scopes)
 }

@@ -7,11 +7,12 @@ import (
 )
 
 type mockAuthService struct {
-	registerFn func(ctx context.Context, req dto.RegisterRequest) (*dto.AuthResponse, error)
-	loginFn    func(ctx context.Context, req dto.LoginRequest) (*dto.AuthResponse, error)
-	refreshFn  func(ctx context.Context, req dto.RefreshRequest) (*dto.AuthResponse, error)
-	logoutFn   func(ctx context.Context, refreshToken string) error
-	getUserFn  func(ctx context.Context, id uint) (*dto.UserProfile, error)
+	registerFn          func(ctx context.Context, req dto.RegisterRequest) (*dto.AuthResponse, error)
+	loginFn             func(ctx context.Context, req dto.LoginRequest) (*dto.AuthResponse, error)
+	refreshFn           func(ctx context.Context, req dto.RefreshRequest) (*dto.AuthResponse, error)
+	logoutFn            func(ctx context.Context, refreshToken string) error
+	getUserFn           func(ctx context.Context, id uint) (*dto.UserProfile, error)
+	createPingSessionFn func(ctx context.Context, userID uint) (*dto.AuthResponse, error)
 }
 
 func (m *mockAuthService) Register(ctx context.Context, req dto.RegisterRequest) (*dto.AuthResponse, error) {
@@ -41,4 +42,11 @@ func (m *mockAuthService) GetUser(ctx context.Context, id uint) (*dto.UserProfil
 		return nil, nil
 	}
 	return m.getUserFn(ctx, id)
+}
+
+func (m *mockAuthService) CreatePingSession(ctx context.Context, userID uint) (*dto.AuthResponse, error) {
+	if m.createPingSessionFn == nil {
+		return nil, nil
+	}
+	return m.createPingSessionFn(ctx, userID)
 }

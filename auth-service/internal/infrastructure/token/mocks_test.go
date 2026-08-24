@@ -18,6 +18,7 @@ func (m *mockSessionRepo) GetByJTI(ctx context.Context, jti string) (*domain.Ses
 		return &domain.Session{
 			UserID:    42,
 			JTI:       uuid.MustParse(jti),
+			Scopes:    "app",
 			ExpiresAt: time.Now().Add(24 * time.Hour),
 		}, nil
 	}

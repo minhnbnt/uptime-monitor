@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -46,68 +47,87 @@ func NewValidator(
 	}
 }
 
-func (tv *Validator) ValidateAccessToken(tokenStr string) (uint, error) {
+type AccessTokenInfo struct {
+	UserID uint
+	Scopes []string
+}
+
+type RefreshTokenInfo struct {
+	UserID uint
+	JTI    string
+	Scopes []string
+}
+
+func (tv *Validator) ValidateAccessToken(tokenStr string) (*AccessTokenInfo, error) {
 
 	expectedIssuer := tv.tokenConfig.GetAccessTokenIssuer()
 	token, err := tv.provider.ParseWithIssuer(tokenStr, expectedIssuer)
 	if err != nil {
 		tv.logger.Debug("invalid access token", slog.Any("error", err))
-		return 0, apperrors.ErrInvalidAccessToken
+		return nil, apperrors.ErrInvalidAccessToken
 	}
 
 	sub, err := token.Subject()
 	if err != nil {
 		tv.logger.Debug("invalid access token subject", slog.Any("error", err))
-		return 0, apperrors.ErrInvalidAccessToken
+		return nil, apperrors.ErrInvalidAccessToken
 	}
 
 	userID, err := strconv.ParseUint(sub, 10, 64)
 	if err != nil {
 		tv.logger.Debug("invalid access token subject format", slog.Any("error", err))
-		return 0, apperrors.ErrInvalidAccessToken
+		return nil, apperrors.ErrInvalidAccessToken
 	}
 
-	return uint(userID), nil
+	var scopes []string
+	claims, err := token.Claims()
+	if err == nil {
+		if scopeStr, ok := claims["scope"].(string); ok {
+			scopes = strings.Fields(scopeStr)
+		}
+	}
+
+	return &AccessTokenInfo{UserID: uint(userID), Scopes: scopes}, nil
 }
 
-func (tv *Validator) ValidateRefreshToken(ctx context.Context, tokenStr string) (uint, string, error) {
+func (tv *Validator) ValidateRefreshToken(ctx context.Context, tokenStr string) (*RefreshTokenInfo, error) {
 
 	expectedIssuer := tv.tokenConfig.GetRefreshTokenIssuer()
 	token, err := tv.provider.ParseWithIssuer(tokenStr, expectedIssuer)
 	if err != nil {
 		tv.logger.Debug("invalid refresh token", slog.Any("error", err))
-		return 0, "", apperrors.ErrInvalidRefreshToken
+		return nil, apperrors.ErrInvalidRefreshToken
 	}
 
 	jti, err := token.JTI()
 	if err != nil {
 		tv.logger.Debug("invalid refresh token jti", slog.Any("error", err))
-		return 0, "", apperrors.ErrInvalidRefreshToken
+		return nil, apperrors.ErrInvalidRefreshToken
 	}
 
 	session, err := tv.sessionRepo.GetByJTI(ctx, jti)
 	if err != nil {
 		tv.logger.Debug("failed to get session", slog.Any("error", err))
-		return 0, "", apperrors.ErrInvalidRefreshToken
+		return nil, apperrors.ErrInvalidRefreshToken
 	}
 
 	if session == nil || session.ExpiresAt.Before(time.Now()) {
-		return 0, "", apperrors.ErrInvalidRefreshToken
+		return nil, apperrors.ErrInvalidRefreshToken
 	}
 
 	sub, err := token.Subject()
 	if err != nil {
 		tv.logger.Debug("invalid refresh token subject", slog.Any("error", err))
-		return 0, "", apperrors.ErrInvalidRefreshToken
+		return nil, apperrors.ErrInvalidRefreshToken
 	}
 
 	userID, err := strconv.ParseUint(sub, 10, 64)
 	if err != nil {
 		tv.logger.Debug("invalid refresh token subject format", slog.Any("error", err))
-		return 0, "", apperrors.ErrInvalidRefreshToken
+		return nil, apperrors.ErrInvalidRefreshToken
 	}
 
-	return uint(userID), jti, nil
+	return &RefreshTokenInfo{UserID: uint(userID), JTI: jti, Scopes: strings.Fields(session.Scopes)}, nil
 }
 
 func (tv *Validator) ParseRefreshToken(tokenStr string) (*jwt.Token, error) {

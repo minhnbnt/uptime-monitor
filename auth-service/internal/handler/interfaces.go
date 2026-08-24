@@ -12,4 +12,5 @@ type AuthService interface {
 	Refresh(ctx context.Context, req dto.RefreshRequest) (*dto.AuthResponse, error)
 	Logout(ctx context.Context, refreshToken string) error
 	GetUser(ctx context.Context, id uint) (*dto.UserProfile, error)
+	CreatePingSession(ctx context.Context, userID uint) (*dto.AuthResponse, error)
 }

@@ -21,6 +21,8 @@ paths:
     $ref: "./paths/auth.yaml#/refresh"
   /api/v1/auth/logout:
     $ref: "./paths/auth.yaml#/logout"
+  /api/v1/auth/sessions/ping:
+    $ref: "./paths/auth.yaml#/create-ping-session"
   /api/v1/auth/validate:
     $ref: "./paths/auth.yaml#/validate"
   /api/v1/auth/private/users/{id}:

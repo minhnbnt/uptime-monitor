@@ -16,8 +16,9 @@ import (
 func RunWebServer(ctx context.Context, injector do.Injector) {
 
 	authHandler := do.MustInvoke[*handler.AuthHandler](injector)
+	forwardAuthHandler := do.MustInvoke[*handler.ForwardAuthHandler](injector)
 
-	srv, err := api.NewServer(authHandler, authHandler, api.WithPathPrefix(""))
+	srv, err := api.NewServer(authHandler, forwardAuthHandler, api.WithPathPrefix(""))
 	if err != nil {
 		panic(err)
 	}
@@ -25,12 +26,11 @@ func RunWebServer(ctx context.Context, injector do.Injector) {
 	cfg := do.MustInvoke[*config.Config](injector)
 	log := do.MustInvoke[*slog.Logger](injector)
 
-	forwardAuthHandler := do.MustInvoke[*handler.ForwardAuthHandler](injector)
-
 	mux := http.NewServeMux()
-
-	mux.Handle("/auth/verify", forwardAuthHandler)
-	mux.Handle("/", srv)
+	{
+		mux.HandleFunc("/auth/verify", forwardAuthHandler.ForwardAuth)
+		mux.Handle("/", srv)
+	}
 
 	httpServer := http.Server{
 		Addr:    ":" + cfg.Server.Port,

@@ -68,7 +68,7 @@ services:
       traefik.http.services.server-service.loadbalancer.server.port: 8080
       traefik.http.routers.server.middlewares: cors, forward-auth
       traefik.http.middlewares.forward-auth.forwardauth.address: http://auth-service:8081/auth/verify
-      traefik.http.middlewares.forward-auth.forwardauth.authResponseHeaders: X-User-ID
+      traefik.http.middlewares.forward-auth.forwardauth.authResponseHeaders: X-User-ID,X-Scopes
 
   importer-service:
     build:
