@@ -67,9 +67,16 @@ func (r *SessionRepository) DeleteByJTI(ctx context.Context, jti string) error {
 		return nil
 	}
 
-	res := r.db.WithContext(ctx).Where("jti = ?", id).Delete(&domain.Session{})
-	if res.Error != nil {
-		return fmt.Errorf("delete session: %w", res.Error)
+	rowAffected, err := gorm.G[domain.Session](r.db).
+		Where("jti = ?", id).
+		Delete(ctx)
+
+	if err != nil {
+		return fmt.Errorf("delete session: %w", err)
+	}
+
+	if rowAffected > 1 {
+		return fmt.Errorf("unexpected rows affected: %d", rowAffected)
 	}
 
 	return nil
