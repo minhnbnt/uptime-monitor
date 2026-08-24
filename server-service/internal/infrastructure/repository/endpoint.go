@@ -40,12 +40,12 @@ func (er *EndpointRepository) GetByIDs(
 		Find(ctx)
 }
 
-func (er *EndpointRepository) GetByServerID(
-	ctx context.Context, serverID uint,
+func (er *EndpointRepository) GetByID(
+	ctx context.Context, id uint,
 ) (*domain.Endpoint, error) {
 
 	endpoint, err := gorm.G[domain.Endpoint](er.db).
-		Where("server_id = ?", serverID).
+		Where("id = ?", id).
 		First(ctx)
 
 	if err != nil {
@@ -58,7 +58,7 @@ func (er *EndpointRepository) GetByServerID(
 func (er *EndpointRepository) DeleteByServerID(ctx context.Context, serverID uint) error {
 
 	_, err := gorm.G[domain.Endpoint](er.db).
-		Where("server_id = ?", serverID).
+		Where("id = ?", serverID).
 		Delete(ctx)
 
 	if err != nil {
@@ -74,12 +74,13 @@ func (er *EndpointRepository) UpsertEndpoint(
 ) error {
 
 	queryClause := clause.OnConflict{
-		Columns: []clause.Column{{Name: "server_id"}},
+		Columns: []clause.Column{{Name: "id"}},
 		DoUpdates: clause.AssignmentColumns([]string{
 			"url", "method",
 			"expected_code",
 			"interval",
 			"timeout",
+			"body_check_expr",
 		}),
 	}
 

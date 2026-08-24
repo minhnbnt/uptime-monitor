@@ -7,18 +7,19 @@
 - [x] 1.3 common/authclient: fix bug thiếu `return` sau `next.ServeHTTP` khi `X-User-ID` rỗng (middleware.go:47-51); thêm test case request không có headers chỉ được handle đúng 1 lần
 - [x] 1.4 common/authclient: parse `X-Session-ID` trong `XUserIDMiddleware`, thêm `GetSessionID(ctx)`; unit test
 
-## 2. server-service — RPC ResolveServers
+## 2. server-service — RPC ResolveServers & Endpoint chia PK với Server
 
-- [ ] 2.1 Thêm message + rpc vào `common/proto/server/v1/server_service.proto` (`ResolveServersRequest{user_id, repeated names}`, `ResolvedServer{name, server_id, endpoint_id}`), regenerate code theo cách build hiện tại (Makefile)
-- [ ] 2.2 Repository: query `servers JOIN endpoints WHERE created_by_id = ? AND name IN (?)` trả về name/server_id/endpoint_id; unit/testcontainer test nếu repo đã có pattern tương ứng
-- [ ] 2.3 Service + handler gRPC method `ResolveServers` (mapping như các handler hiện có), wiring injector; test mapping
+- [x] 2.0 Refactor: `Endpoint` bỏ `gorm.Model`, PK trùng `servers.id` (`foreignKey:ID;references:ID`), bỏ cột `server_id`; mọi nơi tạo endpoint đặt `ID = serverID` (SetCheckMethod, batch import); ping-service domain/CDC parser/client theo mô hình mới
+- [x] 2.1 Thêm message + rpc vào `common/proto/server/v1/server_service.proto` (`ResolveServersRequest{user_id, repeated ids}`, `ResolveServersResponse{repeated ids}`), regenerate qua `buf generate`
+- [x] 2.2 Repository: `ResolveByIDs` — `SELECT id WHERE created_by_id = ? AND id IN (?)` (Pluck); module không có pattern test repo/testcontainers nên bỏ test ở tầng này
+- [x] 2.3 Service `ServerReader.ResolveServers` (TDD: passthrough + ErrInternal) + handler gRPC `ResolveServers` (map uint64↔uint); không cần wiring mới vì ServerServer/ServerRepository đã đăng ký sẵn
 
 ## 3. ping-service — push handler
 
-- [ ] 3.1 Domain/DTO: struct request item `{Name, Status}`, response `{NextTime, Accepted[], Errors[]}`; hằng số `pushInterval = 30 * time.Second`
+- [ ] 3.1 Domain/DTO: struct request item `{ID, Status}`, response `{NextTime, Accepted[], Errors[]}`; hằng số `pushInterval = 30 * time.Second`
 - [ ] 3.2 Rate limiter Lua: script `EVAL` nguyên tử check-and-set mốc `push:next:{sid}` (SET PX 60s) trả blocked/accepted + helper DEL giải phóng; unit test miniredis/testcontainer theo pattern test redis sẵn có (processor_test.go): gửi sớm bị chặn, hết hạn thì qua, 2 goroutine song song cùng sid chỉ 1 qua cổng
 - [ ] 3.3 grpcclient wrapper cho `ResolveServers` (ping-service side)
-- [ ] 3.4 Push service: decode → validate status ON/OFF → resolve tên → dựng accepted/errors (ambiguous khi >1 row cùng tên) → cổng Lua check-and-set (blocked → 429 kèm next_time) → record qua `RecordStatusWorker.Record()` → 0 accepted thì DEL mốc; unit test bảng case 200/207/400/429 + "toàn lỗi không giữ mốc"
+- [ ] 3.4 Push service: decode → validate status ON/OFF → resolve ID → dựng accepted/errors (ID lạ/không thuộc owner → "not found") → cổng Lua check-and-set (blocked → 429 kèm next_time) → record qua `RecordStatusWorker.Record()` → 0 accepted thì DEL mốc; unit test bảng case 200/207/400/429 + "toàn lỗi không giữ mốc"
 - [ ] 3.5 HTTP handler + route `/api/v1/ping/events` trên mux hiện có (app/http.go) với chain `XUserIDMiddleware → RequireScope("ping")`; wiring injector; test httptest cho 403 thiếu scope và 429 gửi sớm
 
 ## 4. Wiring & API docs

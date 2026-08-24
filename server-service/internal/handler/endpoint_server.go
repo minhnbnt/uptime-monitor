@@ -46,7 +46,7 @@ func (s *EndpointServer) GetEndpoints(ctx context.Context, req *endpointv1.GetEn
 		func(ep domain.Endpoint, _ int) *endpointv1.EndpointData {
 			return &endpointv1.EndpointData{
 				Id:           uint64(ep.ID),
-				ServerId:     uint64(ep.ServerID),
+				ServerId:     uint64(ep.ID),
 				Url:          ep.URL,
 				Method:       ep.Method,
 				ExpectedCode: int32(ep.ExpectedCode),

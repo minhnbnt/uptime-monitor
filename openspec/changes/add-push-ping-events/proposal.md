@@ -6,13 +6,13 @@ Hiện tại trạng thái server chỉ được ghi nhận qua cơ chế pull (
 
 ## What Changes
 
-- Thêm REST endpoint `POST /api/v1/ping/events` trên ping-service nhận batch event `[{name, status}]` (status ON/OFF, không có timestamp — server tự gắn thời điểm nhận).
+- Thêm REST endpoint `POST /api/v1/ping/events` trên ping-service nhận batch event `[{id, status}]` (id là ID server, status ON/OFF, không có timestamp — server tự gắn thời điểm nhận).
 - Xác thực đầy đủ qua JWT theo cơ chế forward-auth hiện có; yêu cầu scope `ping` trên token (đã có sẵn `CreatePingSession` phát token scope này).
 - Forward thêm session id (`sid` claim trong JWT) tới downstream services qua header mới `X-Session-ID`: bổ sung vào AccessTokenInfo, ForwardAuth response headers, Traefik `authResponseHeaders`, và middleware parse ở `common/authclient`.
-- Thêm gRPC `ResolveServers(user_id, names)` vào server-service để ánh xạ tên server → `{server_id, endpoint_id}` với kiểm tra owner.
+- Thêm gRPC `ResolveServers(user_id, ids)` vào server-service để ánh xạ server ID → `{server_id, endpoint_id}` với kiểm tra owner.
 - Event push đi qua cùng đường `RecordStatusWorker.Record()` như pull (dedupe theo last-status, forward sang ontime-service) — hai kiểu ping hoạt động đồng thời, độc lập.
 - Rate-limit theo session: response trả về `next_time` tính bằng hàm băm hiện có `NextExecutionTime(session_id, 30s)` (cùng cơ chế cập nhật score của poll); request đến trước `next_time` bị chặn 429.
-- Batch có lỗi từng phần trả 207 kèm mảng `errors` (tên không tồn tại, không thuộc owner, tên ambiguous, status sai định dạng).
+- Batch có lỗi từng phần trả 207 kèm mảng `errors` (ID không tồn tại hoặc không thuộc owner, status sai định dạng).
 - Sửa bug sẵn có trong `XUserIDMiddleware` (thiếu `return` khi `X-User-ID` rỗng khiến handler bị gọi 2 lần) — cần làm trước khi ping-service có route public đầu tiên.
 - Ngoài scope có ý định: phát hiện agent im lặng (staleness), interval push theo từng endpoint, tương tác với lịch zset của pull.
 

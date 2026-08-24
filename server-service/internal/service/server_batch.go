@@ -96,7 +96,7 @@ func buildDomainEndpoints(inputs []*serverv1.ServerWithEndpointInput, servers []
 			continue
 		}
 		endpoints = append(endpoints, domain.Endpoint{
-			ServerID:     sv.ID,
+			ID:           sv.ID,
 			URL:          inputs[i].Url,
 			Interval:     time.Duration(inputs[i].IntervalMs) * time.Millisecond,
 			Timeout:      time.Duration(inputs[i].TimeoutMs) * time.Millisecond,

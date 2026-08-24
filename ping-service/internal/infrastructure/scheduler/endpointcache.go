@@ -8,7 +8,6 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/samber/do/v2"
-	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
@@ -158,7 +157,7 @@ func mapToEndpoint(id uint, data map[string]string) (*domain.Endpoint, error) {
 	}
 
 	return &domain.Endpoint{
-		Model:        gorm.Model{ID: id},
+		ID:           id,
 		URL:          data["url"],
 		Method:       data["method"],
 		ExpectedCode: expectedCode,

@@ -65,6 +65,29 @@ func (sr *ServerRepository) List(
 	return servers, nil
 }
 
+func (sr *ServerRepository) ResolveByIDs(
+	ctx context.Context,
+	createdByID uint,
+	ids []uint,
+) ([]uint, error) {
+
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	found := make([]uint, 0, len(ids))
+	if err := sr.db.WithContext(ctx).
+		Model(&domain.Server{}).
+		Where("created_by_id = ?", createdByID).
+		Where("id IN ?", ids).
+		Pluck("id", &found).Error; err != nil {
+
+		return nil, fmt.Errorf("failed to resolve servers: %w", err)
+	}
+
+	return found, nil
+}
+
 func (sr *ServerRepository) Create(ctx context.Context, s *domain.Server) error {
 	return gorm.G[domain.Server](sr.db).Create(ctx, s)
 }

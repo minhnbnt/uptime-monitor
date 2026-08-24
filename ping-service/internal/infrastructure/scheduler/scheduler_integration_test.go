@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/testcontainers"
@@ -58,8 +57,8 @@ func TestRegisterBatch(t *testing.T) {
 	ctx := context.Background()
 
 	endpoints := []domain.Endpoint{
-		{Model: gorm.Model{ID: 1}, Interval: 30 * time.Second},
-		{Model: gorm.Model{ID: 2}, Interval: 60 * time.Second},
+		{ID: 1, Interval: 30 * time.Second},
+		{ID: 2, Interval: 60 * time.Second},
 	}
 
 	err := repo.RegisterBatch(ctx, endpoints)
@@ -83,7 +82,7 @@ func TestRegisterUnregister(t *testing.T) {
 	ctx := context.Background()
 
 	endpoints := []domain.Endpoint{
-		{Model: gorm.Model{ID: 10}, Interval: 30 * time.Second},
+		{ID: 10, Interval: 30 * time.Second},
 	}
 	err := repo.RegisterBatch(ctx, endpoints)
 	if err != nil {
@@ -333,9 +332,9 @@ func TestRegisterBatchWithSharding(t *testing.T) {
 	ctx := context.Background()
 
 	endpoints := []domain.Endpoint{
-		{Model: gorm.Model{ID: 1}, Interval: 30 * time.Second},
-		{Model: gorm.Model{ID: 2}, Interval: 60 * time.Second},
-		{Model: gorm.Model{ID: 3}, Interval: 90 * time.Second},
+		{ID: 1, Interval: 30 * time.Second},
+		{ID: 2, Interval: 60 * time.Second},
+		{ID: 3, Interval: 90 * time.Second},
 	}
 
 	err := repo.RegisterBatch(ctx, endpoints)
@@ -411,8 +410,8 @@ func TestUnregisterWithSharding(t *testing.T) {
 	ctx := context.Background()
 
 	err := repo.RegisterBatch(ctx, []domain.Endpoint{
-		{Model: gorm.Model{ID: 10}, Interval: 30 * time.Second},
-		{Model: gorm.Model{ID: 20}, Interval: 30 * time.Second},
+		{ID: 10, Interval: 30 * time.Second},
+		{ID: 20, Interval: 30 * time.Second},
 	})
 	if err != nil {
 		t.Fatalf("RegisterBatch: %v", err)
@@ -492,7 +491,7 @@ func TestSingleShardBehaviorIsUnchanged(t *testing.T) {
 	ctx := context.Background()
 
 	err := repo.RegisterBatch(ctx, []domain.Endpoint{
-		{Model: gorm.Model{ID: 1}, Interval: 30 * time.Second},
+		{ID: 1, Interval: 30 * time.Second},
 	})
 	if err != nil {
 		t.Fatalf("RegisterBatch: %v", err)

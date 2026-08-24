@@ -24,6 +24,7 @@ type ServerRepository interface {
 	List(ctx context.Context, createdByID uint, limit, offset int) ([]domain.Server, error)
 	Count(ctx context.Context, createdByID uint) (int64, error)
 	GetByID(ctx context.Context, id uint) (*domain.Server, error)
+	ResolveByIDs(ctx context.Context, createdByID uint, ids []uint) ([]uint, error)
 }
 
 type ServerSearchRepository interface {
@@ -134,6 +135,21 @@ func (r *ServerReader) SearchServers(
 	})
 
 	return out, total, nil
+}
+
+func (r *ServerReader) ResolveServers(
+	ctx context.Context,
+	createdByID uint,
+	ids []uint,
+) ([]uint, error) {
+
+	found, err := r.serverRepository.ResolveByIDs(ctx, createdByID, ids)
+	if err != nil {
+		r.logger.Error("failed to resolve servers", slog.Any("error", err))
+		return nil, apperrors.ErrInternal
+	}
+
+	return found, nil
 }
 
 func (r *ServerReader) applyStatuses(ctx context.Context, servers []*dto.Server) {

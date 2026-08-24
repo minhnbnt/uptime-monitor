@@ -90,10 +90,20 @@ message CountServersByStatusResponse {
   int64 offline = 3;
 }
 
+message ResolveServersRequest {
+  uint64 user_id = 1;
+  repeated uint64 ids = 2;
+}
+
+message ResolveServersResponse {
+  repeated uint64 ids = 1;
+}
+
 service ServerService {
   rpc ListServers(ListServersRequest) returns (ListServersResponse);
   rpc GetServer(GetServerRequest) returns (GetServerResponse);
   rpc SearchServers(SearchServersRequest) returns (SearchServersResponse);
   rpc BatchCreateServers(BatchCreateServersRequest) returns (BatchCreateServersResponse);
   rpc CountServersByStatus(CountServersByStatusRequest) returns (CountServersByStatusResponse);
+  rpc ResolveServers(ResolveServersRequest) returns (ResolveServersResponse);
 }

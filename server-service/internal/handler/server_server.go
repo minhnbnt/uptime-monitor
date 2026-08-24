@@ -149,6 +149,24 @@ func (s *ServerServer) BatchCreateServers(
 	return &serverv1.BatchCreateServersResponse{Results: results}, nil
 }
 
+func (s *ServerServer) ResolveServers(
+	ctx context.Context,
+	req *serverv1.ResolveServersRequest,
+) (*serverv1.ResolveServersResponse, error) {
+
+	requested := lo.Map(req.Ids, func(id uint64, _ int) uint { return uint(id) })
+
+	found, err := s.serverService.ResolveServers(ctx, uint(req.UserId), requested)
+	if err != nil {
+		s.logger.Error("resolve servers failed", slog.Any("error", err))
+		return nil, fmt.Errorf("resolve servers: %w", err)
+	}
+
+	return &serverv1.ResolveServersResponse{
+		Ids: lo.Map(found, func(id uint, _ int) uint64 { return uint64(id) }),
+	}, nil
+}
+
 func serverBriefFromDTO(sv dto.Server) *serverv1.ServerBrief {
 	return &serverv1.ServerBrief{
 		Id:        uint64(sv.ID),

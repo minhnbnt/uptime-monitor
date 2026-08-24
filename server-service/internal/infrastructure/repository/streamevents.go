@@ -21,7 +21,6 @@ type endpointLifecycleEvent struct {
 
 type streamEndpointData struct {
 	ID           uint   `json:"id"`
-	ServerID     uint   `json:"server_id"`
 	URL          string `json:"url"`
 	Method       string `json:"method"`
 	ExpectedCode int    `json:"expected_code"`
@@ -32,7 +31,6 @@ type streamEndpointData struct {
 func streamEndpointFromDomain(ep *domain.Endpoint) streamEndpointData {
 	return streamEndpointData{
 		ID:           ep.ID,
-		ServerID:     ep.ServerID,
 		URL:          ep.URL,
 		Method:       ep.Method,
 		ExpectedCode: ep.ExpectedCode,

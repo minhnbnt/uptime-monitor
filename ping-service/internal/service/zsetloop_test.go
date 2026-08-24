@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"gorm.io/gorm"
-
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/logger"
@@ -56,8 +54,7 @@ func TestGetSleepDuration(t *testing.T) {
 
 func TestRunIteration(t *testing.T) {
 	ep := &domain.Endpoint{
-		Model:        gorm.Model{ID: 1},
-		ServerID:     10,
+		ID:           1,
 		URL:          "https://example.com",
 		Method:       "GET",
 		ExpectedCode: 200,

@@ -15,7 +15,6 @@ import (
 func TestDebeziumEndpointDataToDomain(t *testing.T) {
 	data := debeziumEndpointData{
 		ID:           1,
-		ServerID:     10,
 		URL:          "https://example.com",
 		Method:       "GET",
 		ExpectedCode: 200,
@@ -26,9 +25,6 @@ func TestDebeziumEndpointDataToDomain(t *testing.T) {
 	got := data.toDomain()
 	if got.ID != 1 {
 		t.Errorf("ID = %d, want 1", got.ID)
-	}
-	if got.ServerID != 10 {
-		t.Errorf("ServerID = %d, want 10", got.ServerID)
 	}
 	if got.URL != "https://example.com" {
 		t.Errorf("URL = %q", got.URL)

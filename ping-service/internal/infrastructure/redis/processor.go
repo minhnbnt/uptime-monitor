@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 )
@@ -21,7 +20,6 @@ type debeziumMessage struct {
 
 type debeziumEndpointData struct {
 	ID           uint   `json:"id"`
-	ServerID     uint   `json:"server_id"`
 	URL          string `json:"url"`
 	Method       string `json:"method"`
 	ExpectedCode int    `json:"expected_code"`
@@ -31,8 +29,7 @@ type debeziumEndpointData struct {
 
 func (d *debeziumEndpointData) toDomain() domain.Endpoint {
 	return domain.Endpoint{
-		Model:        gorm.Model{ID: d.ID},
-		ServerID:     d.ServerID,
+		ID:           d.ID,
 		URL:          d.URL,
 		Method:       d.Method,
 		ExpectedCode: d.ExpectedCode,

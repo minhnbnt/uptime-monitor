@@ -39,12 +39,12 @@ Server-service sở hữu bảng `servers`/`endpoints` (1 server có đúng 1 en
 Mở rộng `RunHealthCheckServer` (app/http.go): route `/api/v1/ping/events` với chain `XUserIDMiddleware → RequireScope("ping") → handler`. Compose.yml thêm router Traefik rule `PathPrefix(/api/v1/ping/events)` + middlewares `cors,forward-auth`. Prefix riêng nên không đụng priority của các rule `/api/v1/servers*`.
 - *Alternative bị loại*: HTTP server mới riêng — thêm port, thêm wiring, không lợi gì.
 
-### D3 — Lookup tên qua gRPC RPC mới `ResolveServers(user_id, names[])` ở server-service
+### D3 — Lookup qua gRPC RPC mới `ResolveServers(user_id, ids[])` ở server-service
 
-Trả về `[{name, server_id, endpoint_id}]` cho các tên thuộc owner; tên không khớp đơn giản vắng mặt trong response. Query SQL `WHERE created_by_id = ? AND name IN (?)`. Ping-service tự dựng mảng `errors` từ phần thiếu.
-- Ambiguity: query trả >1 row cùng tên cho 1 user → ping-service đánh dấu item lỗi `"ambiguous"`.
-- Trả kèm `endpoint_id` luôn (JOIN) để khỏi gọi tiếp EndpointClient theo id — mỗi server chắc chắn có 1 endpoint.
-- *Alternative bị loại*: gọi `SearchServers(q=name)` từng cái — N round-trip, fuzzy matching gây kết quả sai ngữ nghĩa.
+Event tham chiếu server theo **ID**; `Endpoint` chia PK với `Server` (`endpoint.id == server.id`, quan hệ 1-1 chặt) nên hệ chỉ còn MỘT không gian định danh. RPC trả về các ID thuộc owner: `SELECT id WHERE created_by_id = ? AND id IN (?)`. Ping-service tự dựng mảng `errors` từ phần thiếu — báo chung một lý do "not found" cho cả ID lạ lẫn ID của người khác (không lộ sự tồn tại).
+- Không cần JOIN lấy endpoint_id: ID dùng chung, event push ghi trực tiếp theo ID đã resolve.
+- Điều kiện kèm theo của shared-PK: mọi đường tạo endpoint đặt `ID = serverID` tường minh (SetCheckMethod, batch import); `Endpoint` bỏ `gorm.Model` và cột `server_id`; dữ liệu dev cũ lệch ID thì re-seed.
+- *Alternative bị loại*: lookup theo tên — trùng tên gây ambiguous; hai không gian ID song song (event neo theo ServerID riêng) — phải sửa schema ontime + redis namespace xuyên 3 service; ping-service truy vấn thẳng Postgres — phá ranh giới service.
 
 ### D4 — Rate limit: state nhỏ Redis per-session, grid băm deterministic
 
@@ -67,7 +67,7 @@ Trả về `[{name, server_id, endpoint_id}]` cho các tên thuộc owner; tên 
 
 ### D5 — Xử lý batch: validate-all-then-process, partial 207
 
-Decode JSON → validate status + resolve tên (1 RPC) → **cổng Lua check-and-set mốc** (blocked → 429 `{next_time}`, dừng) → record từng item hợp lệ qua `RecordStatusWorker.Record()` (tái dùng nguyên trạng, tự gắn `Time=now`, dedupe, forward ontime) → 0 accepted thì DEL mốc vừa đặt → response:
+Decode JSON → validate status + resolve ID (1 RPC) → **cổng Lua check-and-set mốc** (blocked → 429 `{next_time}`, dừng) → record từng item hợp lệ qua `RecordStatusWorker.Record()` (tái dùng nguyên trạng, tự gắn `Time=now`, dedupe, forward ontime) → 0 accepted thì DEL mốc vừa đặt → response:
 
 | Trường hợp | Mã | Body |
 |---|---|---|
@@ -86,7 +86,7 @@ Thêm path + schema vào `api/spec.yaml` theo cấu trúc paths/schemas hiện c
 ## Risks / Trade-offs
 
 - [Hai nguồn chân lý đẩy nhau] Agent push OFF trong lúc pull probe thấy sống → trạng thái lật theo nguồn sau. → Chấp nhận có chủ đích theo yêu cầu "2 kiểu chạy đồng thời"; khi cần ưu tiên nguồn thì thêm policy sau.
-- [`Server.Name` không unique] Phải xử lý ambiguous ở tầng ứng dụng. → Đã có scenario riêng; nếu sau này muốn chặt, thêm unique index `(created_by_id, name)` là migration riêng.
+- [`Server.Name` không unique] Không còn là vấn đề của kênh push vì event tham chiếu theo ID; trùng tên chỉ ảnh hưởng hiển thị ở tầng khác. → Không cần xử lý tại đây.
 - [Header `sid` bị giả mạo nếu ai đó gọi thẳng ping-service] Mô hình tin cậy giống hệt `X-User-ID` hiện nay. → Giữ ping-service không lộ port HTTP ra ngoài mạng nội bộ compose.
 - [Clock skew giữa node tính `next_time`] Lưới băm mốc tuyệt đối theo epoch; skew nhỏ hơn 30s chỉ dịch nhẹ cửa sổ. → Chấp nhận, tương tự zset pull vốn đã phụ thuộc clock.
 - [Fix middleware ảnh hưởng service khác] Bug hiện tại khiến handler chạy 2 lần với header rỗng; sau fix chỉ chạy 1 lần. → Hành vi đúng, không service nào phụ thuộc hành vi sai này (test hiện có không cover nhánh đó).

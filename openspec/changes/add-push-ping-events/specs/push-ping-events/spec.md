@@ -8,7 +8,7 @@ Cung cấp kênh push để agent chủ động gửi event trạng thái on/off
 
 ### Requirement: Endpoint nhận batch push event
 
-Hệ thống SHALL cung cấp endpoint `POST /api/v1/ping/events` nhận mảng event dạng `[{"name": string, "status": "ON"|"OFF"}]`. Mỗi event KHÔNG chứa timestamp — hệ thống SHALL gắn thời điểm nhận tại thời gian xử lý. Request với body rỗng hoặc JSON không hợp lệ SHALL bị từ chối với mã 400.
+Hệ thống SHALL cung cấp endpoint `POST /api/v1/ping/events` nhận mảng event dạng `[{"id": number, "status": "ON"|"OFF"}]` trong đó `id` là ID của server. Mỗi event KHÔNG chứa timestamp — hệ thống SHALL gắn thời điểm nhận tại thời gian xử lý. Request với body rỗng hoặc JSON không hợp lệ SHALL bị từ chối với mã 400.
 
 #### Scenario: Gửi batch event hợp lệ
 - **WHEN** agent gửi POST `/api/v1/ping/events` với body `[{"name":"web-1","status":"ON"}]` kèm token hợp lệ scope `ping`
@@ -30,29 +30,21 @@ Endpoint push SHALL yêu cầu xác thực qua cơ chế forward-auth hiện có
 - **WHEN** agent dùng token chỉ có scope `app`
 - **THEN** hệ thống trả về 403 và không ghi nhận event nào
 
-### Requirement: Kiểm tra quyền sở hữu server qua ánh xạ tên
+### Requirement: Kiểm tra quyền sở hữu server qua ánh xạ ID
 
-Mỗi event tham chiếu server theo tên. Hệ thống SHALL ánh xạ tên → server trong phạm vi các server thuộc sở hữu của user trong token. Event tham chiếu tên không tồn tại hoặc không thuộc owner SHALL không được ghi nhận và được báo lỗi trong response.
+Mỗi event tham chiếu server theo ID. Hệ thống SHALL ánh xạ ID → endpoint trong phạm vi các server thuộc sở hữu của user trong token. Event tham chiếu ID không tồn tại hoặc không thuộc owner SHALL không được ghi nhận và được báo lỗi trong response (báo chung một lý do, không lộ sự tồn tại của server người khác).
 
-#### Scenario: Tên server không tồn tại
-- **WHEN** batch chứa tên không khớp bất kỳ server nào của user
+#### Scenario: ID server không tồn tại hoặc không thuộc owner
+- **WHEN** batch chứa ID không khớp bất kỳ server nào của user
 - **THEN** item đó nằm trong mảng `errors` với lý do phù hợp, các item hợp lệ khác vẫn được ghi nhận
-
-#### Scenario: Không thể đẩy trạng thái server người khác
-- **WHEN** agent của user A gửi event cho server thuộc user B
-- **THEN** event bị từ chối như tên không tồn tại (không lộ thông tin sự tồn tại của server)
 
 ### Requirement: Response một phần khi batch có lỗi
 
-Khi batch chứa ít nhất một item lỗi nhưng cũng có item hợp lệ, hệ thống SHALL trả về 207 với danh sách item đã chấp nhận (`accepted`) và mảng `errors` mô tả từng item lỗi (`name`, `error`). Item lỗi phổ biến: tên không tìm thấy, tên ambiguous (trùng tên trong số server của user), status sai định dạng.
+Khi batch chứa ít nhất một item lỗi nhưng cũng có item hợp lệ, hệ thống SHALL trả về 207 với danh sách item đã chấp nhận (`accepted`) và mảng `errors` mô tả từng item lỗi (`id`, `error`). Item lỗi phổ biến: ID không tìm thấy/không thuộc owner, status sai định dạng.
 
 #### Scenario: Batch một phần thành công
-- **WHEN** batch gồm 2 tên hợp lệ và 1 tên lạ
-- **THEN** response 207 chứa `accepted` với 2 tên, `errors` với 1 entry, và 2 event hợp lệ đã được ghi nhận
-
-#### Scenario: Tên ambiguous
-- **WHEN** user có nhiều server cùng một tên và batch tham chiếu tên đó
-- **THEN** item được báo lỗi "ambiguous" trong `errors`, không server nào trong số đó bị ghi nhận event
+- **WHEN** batch gồm 2 ID hợp lệ và 1 ID lạ
+- **THEN** response 207 chứa `accepted` với 2 ID, `errors` với 1 entry, và 2 event hợp lệ đã được ghi nhận
 
 ### Requirement: Rate limit theo session dựa trên băm session_id
 

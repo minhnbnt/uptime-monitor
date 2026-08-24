@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"gorm.io/gorm"
-
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	infra "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/logger"
@@ -31,7 +29,7 @@ func (m *mockRecordWorker) Record(ctx context.Context, event *domain.ServerEvent
 
 func TestPingAndRecordEndpoint(t *testing.T) {
 	ep := &domain.Endpoint{
-		Model:        gorm.Model{ID: 1},
+		ID:           1,
 		URL:          "https://example.com",
 		Method:       "GET",
 		ExpectedCode: 200,
