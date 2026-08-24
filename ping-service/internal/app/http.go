@@ -9,6 +9,8 @@ import (
 
 	"github.com/samber/do/v2"
 
+	"github.com/minhnbnt/uptime-monitor-microservices/common/authclient"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/generated/api"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
 	pinghandler "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/handler"
 )
@@ -28,12 +30,27 @@ func RunHealthCheckServer(ctx context.Context, injector do.Injector) {
 	config := do.MustInvoke[*config.Config](injector)
 	log := do.MustInvoke[*slog.Logger](injector)
 
+	pushHandler := do.MustInvoke[*pinghandler.PushEventHandler](injector)
+
+	apiServer, err := api.NewServer(pushHandler)
+	if err != nil {
+		log.Error("failed to create api server", slog.Any("error", err))
+		panic(err)
+	}
+
+	middleware := authclient.NewAuthMiddleware(log)
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = fmt.Fprintln(w, "OK")
 	})
+
+	mux.Handle(
+		"/api/v1/ping/events",
+		middleware.XUserIDMiddleware(middleware.RequireScope("ping")(apiServer)),
+	)
 
 	srv := &http.Server{
 		Addr:    ":" + config.Server.Port,
@@ -49,7 +66,7 @@ func RunHealthCheckServer(ctx context.Context, injector do.Injector) {
 		}
 	}()
 
-	err := srv.ListenAndServe()
+	err = srv.ListenAndServe()
 	if errors.Is(err, http.ErrServerClosed) {
 		return
 	}

@@ -1,0 +1,67 @@
+PushEventItem:
+  type: object
+  required:
+    - id
+    - status
+  properties:
+    id:
+      type: integer
+      format: int64
+      minimum: 1
+      description: Server ID the event refers to
+    status:
+      type: string
+      description: Desired server status; anything other than ON/OFF becomes a per-item error
+
+PushEventsResponse:
+  type: object
+  required:
+    - next_time
+    - accepted
+    - errors
+  properties:
+    next_time:
+      type: integer
+      format: int64
+      description: Unix milliseconds of the next allowed push for this session
+    accepted:
+      type: array
+      items:
+        type: integer
+        format: int64
+    errors:
+      type: array
+      items:
+        $ref: "#/PushEventError"
+
+PushEventError:
+  type: object
+  required:
+    - id
+    - error
+  properties:
+    id:
+      type: integer
+      format: int64
+    error:
+      type: string
+
+PushErrorsResponse:
+  type: object
+  required:
+    - errors
+  properties:
+    errors:
+      type: array
+      items:
+        $ref: "#/PushEventError"
+
+RateLimitResponse:
+  type: object
+  required:
+    - next_time
+  properties:
+    next_time:
+      type: integer
+      format: int64
+      description: Unix milliseconds when the session may push again

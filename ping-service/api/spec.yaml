@@ -1,0 +1,16 @@
+openapi: "3.0.3"
+info:
+  title: Uptime Monitor Ping API
+  description: Agent-facing API for pushing server status events
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+
+tags:
+  - name: ping
+    description: Push status events from monitoring agents
+paths:
+  /api/v1/ping/events:
+    $ref: "./paths/ping.yaml#/ping-events"

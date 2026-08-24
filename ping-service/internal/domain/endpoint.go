@@ -1,8 +1,6 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // Endpoint shares its primary key with its owner server (endpoint.id == server.id).
 type Endpoint struct {

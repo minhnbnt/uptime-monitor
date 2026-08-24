@@ -16,16 +16,16 @@
 
 ## 3. ping-service — push handler
 
-- [ ] 3.1 Domain/DTO: struct request item `{ID, Status}`, response `{NextTime, Accepted[], Errors[]}`; hằng số `pushInterval = 30 * time.Second`
-- [ ] 3.2 Rate limiter Lua: script `EVAL` nguyên tử check-and-set mốc `push:next:{sid}` (SET PX 60s) trả blocked/accepted + helper DEL giải phóng; unit test miniredis/testcontainer theo pattern test redis sẵn có (processor_test.go): gửi sớm bị chặn, hết hạn thì qua, 2 goroutine song song cùng sid chỉ 1 qua cổng
-- [ ] 3.3 grpcclient wrapper cho `ResolveServers` (ping-service side)
-- [ ] 3.4 Push service: decode → validate status ON/OFF → resolve ID → dựng accepted/errors (ID lạ/không thuộc owner → "not found") → cổng Lua check-and-set (blocked → 429 kèm next_time) → record qua `RecordStatusWorker.Record()` → 0 accepted thì DEL mốc; unit test bảng case 200/207/400/429 + "toàn lỗi không giữ mốc"
-- [ ] 3.5 HTTP handler + route `/api/v1/ping/events` trên mux hiện có (app/http.go) với chain `XUserIDMiddleware → RequireScope("ping")`; wiring injector; test httptest cho 403 thiếu scope và 429 gửi sớm
+- [x] 3.1 Domain/DTO: struct request item `{ID, Status}`, response `{NextTime, Accepted[], Errors[]}`; hằng số `pushInterval = 30 * time.Second`
+- [x] 3.2 Rate limiter Lua: script `EVAL` nguyên tử check-and-set mốc `push:next:{sid}` (SET PX 60s) trả blocked/accepted + helper DEL giải phóng; unit test miniredis/testcontainer theo pattern test redis sẵn có (processor_test.go): gửi sớm bị chặn, hết hạn thì qua, 2 goroutine song song cùng sid chỉ 1 qua cổng
+- [x] 3.3 grpcclient wrapper cho `ResolveServers` (ping-service side)
+- [x] 3.4 Push service: decode → validate status ON/OFF → resolve ID → dựng accepted/errors (ID lạ/không thuộc owner → "not found") → cổng Lua check-and-set (blocked → 429 kèm next_time) → record qua `RecordStatusWorker.Record()` → 0 accepted thì DEL mốc; unit test bảng case 200/207/400/429 + "toàn lỗi không giữ mốc"
+- [x] 3.5 ogen setup: `ping-service/api/{spec.yaml,paths/ping.yaml,schemas/ping.yaml}` + `.ogen.yml` + tool `ogen` trong go.mod + `//go:generate`; handler implement interface generated wrap push service; wiring `RunHealthCheckServer` giữ `/health` + mount server ogen, chain `XUserIDMiddleware → RequireScope("ping")`; test httptest cho 403 thiếu scope và 429 gửi sớm
 
 ## 4. Wiring & API docs
 
 - [ ] 4.1 compose.yml: cập nhật `authResponseHeaders` thêm `X-Session-ID`; thêm router Traefik cho ping-service rule `PathPrefix(/api/v1/ping/events)`, middlewares `cors,forward-auth`
-- [ ] 4.2 api/spec.yaml + `api/paths/ping.yaml` + `api/schemas/ping.yaml`: document endpoint với đủ mã 200/207/400/401/403/429 theo cấu trúc file hiện có
+- [ ] 4.2 (đã gộp vào 3.5) — OpenAPI spec per-service chính là tài liệu API; root `api/` docs stale, bỏ qua theo quyết định của owner
 
 ## 5. Verification end-to-end
 

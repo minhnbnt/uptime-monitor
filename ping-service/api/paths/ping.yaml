@@ -1,0 +1,55 @@
+ping-events:
+  post:
+    summary: Push server status events from an agent
+    description: |
+      Accepts a batch of status events referenced by server ID. Events carry no
+      timestamp — the server stamps them at processing time. Rate limited to one
+      batch per 30s window per session; a batch where every item fails does not
+      open the window.
+    operationId: PushEvents
+    x-ogen-operation-group: Ping
+    tags:
+      - ping
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: "../schemas/ping.yaml#/PushEventItem"
+    responses:
+      "200":
+        description: All events recorded
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/ping.yaml#/PushEventsResponse"
+      "207":
+        description: Partial success — some events recorded, some failed
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/ping.yaml#/PushEventsResponse"
+      "400":
+        description: Invalid body or every event failed
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/ping.yaml#/PushErrorsResponse"
+      "401":
+        description: Missing or invalid authentication
+      "403":
+        description: Token lacks the ping scope or session id
+      "429":
+        description: Session pushed too early in its window
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/ping.yaml#/RateLimitResponse"
+      default:
+        description: Error response
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"

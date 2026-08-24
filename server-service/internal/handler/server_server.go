@@ -162,9 +162,8 @@ func (s *ServerServer) ResolveServers(
 		return nil, fmt.Errorf("resolve servers: %w", err)
 	}
 
-	return &serverv1.ResolveServersResponse{
-		Ids: lo.Map(found, func(id uint, _ int) uint64 { return uint64(id) }),
-	}, nil
+	ids := lo.Map(found, func(id uint, _ int) uint64 { return uint64(id) })
+	return &serverv1.ResolveServersResponse{Ids: ids}, nil
 }
 
 func serverBriefFromDTO(sv dto.Server) *serverv1.ServerBrief {

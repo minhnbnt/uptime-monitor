@@ -11,8 +11,8 @@ Cung cấp kênh push để agent chủ động gửi event trạng thái on/off
 Hệ thống SHALL cung cấp endpoint `POST /api/v1/ping/events` nhận mảng event dạng `[{"id": number, "status": "ON"|"OFF"}]` trong đó `id` là ID của server. Mỗi event KHÔNG chứa timestamp — hệ thống SHALL gắn thời điểm nhận tại thời gian xử lý. Request với body rỗng hoặc JSON không hợp lệ SHALL bị từ chối với mã 400.
 
 #### Scenario: Gửi batch event hợp lệ
-- **WHEN** agent gửi POST `/api/v1/ping/events` với body `[{"name":"web-1","status":"ON"}]` kèm token hợp lệ scope `ping`
-- **THEN** hệ thống trả về 200 với `next_time` (thời điểm được phép gửi tiếp theo, đơn vị unix milliseconds) và `accepted` chứa danh sách tên đã ghi nhận
+- **WHEN** agent gửi POST `/api/v1/ping/events` với body `[{"id":1,"status":"ON"}]` kèm token hợp lệ scope `ping`
+- **THEN** hệ thống trả về 200 với `next_time` (thời điểm được phép gửi tiếp theo, đơn vị unix milliseconds) và `accepted` chứa danh sách ID đã ghi nhận
 
 #### Scenario: Body không hợp lệ
 - **WHEN** agent gửi body rỗng, mảng rỗng, hoặc JSON sai cấu trúc

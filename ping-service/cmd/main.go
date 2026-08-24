@@ -1,5 +1,7 @@
 package main
 
+//go:generate go tool ogen --config ../.ogen.yml --target ../generated/api --package api --clean ../api/spec.yaml
+
 import (
 	"context"
 	"flag"

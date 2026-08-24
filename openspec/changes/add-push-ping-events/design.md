@@ -72,16 +72,17 @@ Decode JSON → validate status + resolve ID (1 RPC) → **cổng Lua check-and-
 | Trường hợp | Mã | Body |
 |---|---|---|
 | Tất cả accepted | 200 | `{next_time, accepted[]}` |
-| Một phần | 207 | `{next_time, accepted[], errors[{name,error}]}` |
+| Một phần | 207 | `{next_time, accepted[], errors[{id,error}]}` |
 | Toàn lỗi / body sai | 400 | `{errors[]}` |
 | Gửi sớm | 429 | `{next_time}` |
 | Thiếu scope | 403 | — |
 
 Status string chấp nhận `ON`/`OFF` (khớp `domain.StatusOn/Off`, so sánh case-sensitive cho nghiêm).
 
-### D6 — API docs
+### D6 — HTTP layer: ogen generate theo pattern server-service
 
-Thêm path + schema vào `api/spec.yaml` theo cấu trúc paths/schemas hiện có (file mới `api/paths/ping.yaml`, `api/schemas/ping.yaml`), document đủ 200/207/400/401/403/429.
+Ping-service giữ pattern chung của repo: OpenAPI spec per-service (`ping-service/api/spec.yaml` + `paths/ping.yaml` + `schemas/ping.yaml`) là nguồn generate qua `go tool ogen` (`.ogen.yml`, `//go:generate` trong cmd/main.go) → package `generated/api`. Handler implement interface do ogen sinh ra, wrap push service. `RunHealthCheckServer` giữ `/health` trên mux và mount ogen server tại path endpoint; auth chain `XUserIDMiddleware → RequireScope("ping")` bọc quanh route push. Root `api/` docs đang stale — bỏ qua, mỗi service tự sở hữu spec.
+- *Alternative bị loại*: hand-rolled net/http handler trên mux health — lệch pattern của 5 service REST còn lại, phải tự viết decode/validate mà ogen sinh sẵn từ schema.
 
 ## Risks / Trade-offs
 
