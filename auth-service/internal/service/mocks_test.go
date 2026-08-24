@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/domain"
-	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/jwt"
 )
 
 func gormModel(id uint, t time.Time) gorm.Model {
@@ -53,32 +53,52 @@ func (m *mockPasswordEncoder) Verify(password, encodedHash string) (bool, error)
 }
 
 type mockTokenGenerator struct {
-	generateAccessTokenFn  func(user *domain.User) (string, error)
-	generateRefreshTokenFn func(user *domain.User) (string, error)
+	generateAccessTokenFn  func(user *domain.User, scopes []string, sessionID string) (string, error)
+	generateRefreshTokenFn func(user *domain.User) (string, string, error)
 }
 
-func (m *mockTokenGenerator) GenerateAccessToken(user *domain.User) (string, error) {
-	return m.generateAccessTokenFn(user)
+func (m *mockTokenGenerator) GenerateAccessToken(user *domain.User, scopes []string, sessionID string) (string, error) {
+	return m.generateAccessTokenFn(user, scopes, sessionID)
 }
-func (m *mockTokenGenerator) GenerateRefreshToken(user *domain.User) (string, error) {
+func (m *mockTokenGenerator) GenerateRefreshToken(user *domain.User) (string, string, error) {
 	return m.generateRefreshTokenFn(user)
 }
 
-type mockRevokedTokenRepo struct {
-	revokeFn    func(ctx context.Context, token *jwt.Token) error
-	isRevokedFn func(ctx context.Context, jti string) (bool, error)
+type mockSessionRepo struct {
+	createFn      func(ctx context.Context, session *domain.Session) error
+	getByJTIFn    func(ctx context.Context, jti string) (*domain.Session, error)
+	deleteByJTIFn func(ctx context.Context, jti string) error
+	findByUserFn  func(ctx context.Context, userID uint) ([]domain.Session, error)
 }
 
-func (m *mockRevokedTokenRepo) Revoke(ctx context.Context, token *jwt.Token) error {
-	if m.revokeFn == nil {
+func (m *mockSessionRepo) Create(ctx context.Context, session *domain.Session) error {
+	if m.createFn == nil {
 		return nil
 	}
-	return m.revokeFn(ctx, token)
+	return m.createFn(ctx, session)
 }
 
-func (m *mockRevokedTokenRepo) IsRevoked(ctx context.Context, jti string) (bool, error) {
-	if m.isRevokedFn == nil {
-		return false, nil
+func (m *mockSessionRepo) GetByJTI(ctx context.Context, jti string) (*domain.Session, error) {
+	if m.getByJTIFn == nil {
+		return &domain.Session{
+			UserID:    42,
+			JTI:       uuid.MustParse(jti),
+			ExpiresAt: time.Now().Add(24 * time.Hour),
+		}, nil
 	}
-	return m.isRevokedFn(ctx, jti)
+	return m.getByJTIFn(ctx, jti)
+}
+
+func (m *mockSessionRepo) DeleteByJTI(ctx context.Context, jti string) error {
+	if m.deleteByJTIFn == nil {
+		return nil
+	}
+	return m.deleteByJTIFn(ctx, jti)
+}
+
+func (m *mockSessionRepo) FindByUser(ctx context.Context, userID uint) ([]domain.Session, error) {
+	if m.findByUserFn == nil {
+		return nil, nil
+	}
+	return m.findByUserFn(ctx, userID)
 }

@@ -8,10 +8,6 @@ db:
   password: auth
   dbname: auth
 
-redis:
-  addr: redis:6379
-  db: 0
-
 jwt:
   key: change-me-in-production
 

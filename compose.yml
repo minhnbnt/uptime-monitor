@@ -36,8 +36,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_started
 
     labels:
       traefik.enable: true

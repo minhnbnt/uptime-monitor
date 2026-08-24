@@ -2,6 +2,7 @@ package token
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,28 +27,48 @@ func RegisterGenerator(i do.Injector) {
 	})
 }
 
-func (tg *tokenGenerator) GenerateAccessToken(user *domain.User) (string, error) {
+func (tg *tokenGenerator) GenerateAccessToken(user *domain.User, scopes []string, sessionID string) (string, error) {
 
 	sub := fmt.Sprint(user.ID)
-	return tg.provider.NewToken(tg.tokenConfig.GetAccessTokenIssuer(), map[string]any{
+	issuer := tg.tokenConfig.GetAccessTokenIssuer()
+	claims := map[string]any{
 		"sub":      sub,
 		"email":    user.Email,
 		"username": user.Username,
-		"exp":      time.Now().Add(tg.tokenConfig.GetAccessTokenTTL()).Unix(),
-	})
+		"scope":    strings.Join(scopes, " "),
+		"sid":      sessionID,
+		"exp": time.Now().
+			Add(tg.tokenConfig.GetAccessTokenTTL()).
+			Unix(),
+	}
+
+	token, err := tg.provider.NewToken(issuer, claims)
+	if err != nil {
+		return "", err
+	}
+
+	return token, nil
 }
 
-func (tg *tokenGenerator) GenerateRefreshToken(user *domain.User) (string, error) {
+func (tg *tokenGenerator) GenerateRefreshToken(user *domain.User) (string, string, error) {
 
 	jti, err := uuid.NewRandom()
 	if err != nil {
-		return "", fmt.Errorf("failed to generate jti: %v", err)
+		return "", "", fmt.Errorf("failed to generate jti: %v", err)
 	}
 
 	sub := fmt.Sprint(user.ID)
-	return tg.provider.NewToken(tg.tokenConfig.GetRefreshTokenIssuer(), map[string]any{
+	issuer := tg.tokenConfig.GetRefreshTokenIssuer()
+	claims := map[string]any{
 		"sub": sub,
 		"jti": jti.String(),
 		"exp": time.Now().Add(tg.tokenConfig.GetRefreshTokenTTL()).Unix(),
-	})
+	}
+
+	token, err := tg.provider.NewToken(issuer, claims)
+	if err != nil {
+		return "", "", err
+	}
+
+	return token, jti.String(), nil
 }

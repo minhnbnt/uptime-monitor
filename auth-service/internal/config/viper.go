@@ -53,7 +53,6 @@ func setDefaults(v *viper.Viper) {
 		"argon2.salt_length":   16,
 		"argon2.key_length":    32,
 		"db.port":              "5432",
-		"redis.db":             0,
 	}
 
 	for key, value := range defaults {
@@ -63,17 +62,14 @@ func setDefaults(v *viper.Viper) {
 
 func bindEnvVars(v *viper.Viper) error {
 	envMap := map[string]string{
-		"server.port":    "PORT",
-		"db.host":        "DB_HOST",
-		"db.port":        "DB_PORT",
-		"db.user":        "DB_USER",
-		"db.password":    "DB_PASSWORD",
-		"db.dbname":      "DB_NAME",
-		"redis.addr":     "REDIS_ADDR",
-		"redis.password": "REDIS_PASSWORD",
-		"redis.db":       "REDIS_DB",
-		"jwt.key":        "JWT_KEY",
-		"log.level":      "LOG_LEVEL",
+		"server.port": "PORT",
+		"db.host":     "DB_HOST",
+		"db.port":     "DB_PORT",
+		"db.user":     "DB_USER",
+		"db.password": "DB_PASSWORD",
+		"db.dbname":   "DB_NAME",
+		"jwt.key":     "JWT_KEY",
+		"log.level":   "LOG_LEVEL",
 	}
 
 	for key, env := range envMap {

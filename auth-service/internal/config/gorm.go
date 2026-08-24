@@ -67,7 +67,7 @@ func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 	sqlDB.SetMaxIdleConns(5)
 	sqlDB.SetConnMaxLifetime(30 * time.Minute)
 
-	if err := db.AutoMigrate(&domain.User{}); err != nil {
+	if err := db.AutoMigrate(&domain.User{}, &domain.Session{}); err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"strconv"
+	"time"
 
 	"github.com/samber/do/v2"
 
@@ -14,10 +15,10 @@ import (
 )
 
 type Validator struct {
-	provider         *jwt.Provider
-	tokenConfig      *config.TokenConfig
-	revokedTokenRepo RevokedTokenRepository
-	logger           *slog.Logger
+	provider    *jwt.Provider
+	tokenConfig *config.TokenConfig
+	sessionRepo SessionRepository
+	logger      *slog.Logger
 }
 
 func RegisterValidator(i do.Injector) {
@@ -25,7 +26,7 @@ func RegisterValidator(i do.Injector) {
 		return NewValidator(
 			do.MustInvoke[*jwt.Provider](i),
 			do.MustInvoke[*config.TokenConfig](i),
-			do.MustInvoke[*repository.RedisRevokedTokenRepository](i),
+			do.MustInvoke[*repository.SessionRepository](i),
 			do.MustInvoke[*slog.Logger](i),
 		), nil
 	})
@@ -34,14 +35,14 @@ func RegisterValidator(i do.Injector) {
 func NewValidator(
 	provider *jwt.Provider,
 	tokenConfig *config.TokenConfig,
-	revokedTokenRepo RevokedTokenRepository,
+	sessionRepo SessionRepository,
 	logger *slog.Logger,
 ) *Validator {
 	return &Validator{
-		logger:           logger,
-		provider:         provider,
-		tokenConfig:      tokenConfig,
-		revokedTokenRepo: revokedTokenRepo,
+		logger:      logger,
+		provider:    provider,
+		tokenConfig: tokenConfig,
+		sessionRepo: sessionRepo,
 	}
 }
 
@@ -84,12 +85,13 @@ func (tv *Validator) ValidateRefreshToken(ctx context.Context, tokenStr string) 
 		return 0, "", apperrors.ErrInvalidRefreshToken
 	}
 
-	revoked, err := tv.revokedTokenRepo.IsRevoked(ctx, jti)
+	session, err := tv.sessionRepo.GetByJTI(ctx, jti)
 	if err != nil {
-		tv.logger.Debug("failed to check revoked token", slog.Any("error", err))
+		tv.logger.Debug("failed to get session", slog.Any("error", err))
 		return 0, "", apperrors.ErrInvalidRefreshToken
 	}
-	if revoked {
+
+	if session == nil || session.ExpiresAt.Before(time.Now()) {
 		return 0, "", apperrors.ErrInvalidRefreshToken
 	}
 
@@ -112,5 +114,3 @@ func (tv *Validator) ParseRefreshToken(tokenStr string) (*jwt.Token, error) {
 	expectedIssuer := tv.tokenConfig.GetRefreshTokenIssuer()
 	return tv.provider.ParseWithIssuer(tokenStr, expectedIssuer)
 }
-
-var _ RevokedTokenRepository = (*repository.RedisRevokedTokenRepository)(nil)

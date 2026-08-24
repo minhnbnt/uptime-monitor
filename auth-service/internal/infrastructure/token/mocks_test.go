@@ -2,25 +2,24 @@ package token
 
 import (
 	"context"
+	"time"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/infrastructure/jwt"
+	"github.com/google/uuid"
+
+	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/domain"
 )
 
-type mockRevokedTokenRepo struct {
-	revokeFn    func(ctx context.Context, token *jwt.Token) error
-	isRevokedFn func(ctx context.Context, jti string) (bool, error)
+type mockSessionRepo struct {
+	getByJTIFn func(ctx context.Context, jti string) (*domain.Session, error)
 }
 
-func (m *mockRevokedTokenRepo) Revoke(ctx context.Context, token *jwt.Token) error {
-	if m.revokeFn == nil {
-		return nil
+func (m *mockSessionRepo) GetByJTI(ctx context.Context, jti string) (*domain.Session, error) {
+	if m.getByJTIFn == nil {
+		return &domain.Session{
+			UserID:    42,
+			JTI:       uuid.MustParse(jti),
+			ExpiresAt: time.Now().Add(24 * time.Hour),
+		}, nil
 	}
-	return m.revokeFn(ctx, token)
-}
-
-func (m *mockRevokedTokenRepo) IsRevoked(ctx context.Context, jti string) (bool, error) {
-	if m.isRevokedFn == nil {
-		return false, nil
-	}
-	return m.isRevokedFn(ctx, jti)
+	return m.getByJTIFn(ctx, jti)
 }

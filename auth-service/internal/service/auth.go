@@ -4,9 +4,13 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 
+	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/dto"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/errors"
@@ -27,23 +31,31 @@ type PasswordEncoder interface {
 }
 
 type AuthService struct {
-	userRepository         UserRepository
-	passwordEncoder        PasswordEncoder
-	tokenGenerator         token.Generator
-	tokenValidator         *token.Validator
-	revokedTokenRepository token.RevokedTokenRepository
-	logger                 *slog.Logger
+	userRepository    UserRepository
+	passwordEncoder   PasswordEncoder
+	tokenGenerator    token.Generator
+	tokenValidator    *token.Validator
+	sessionRepository SessionRepository
+	tokenConfig       *config.TokenConfig
+	logger            *slog.Logger
+}
+
+type SessionRepository interface {
+	Create(ctx context.Context, session *domain.Session) error
+	DeleteByJTI(ctx context.Context, jti string) error
+	FindByUser(ctx context.Context, userID uint) ([]domain.Session, error)
 }
 
 func RegisterAuthService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*AuthService, error) {
 		return &AuthService{
-			userRepository:         do.MustInvoke[*repository.UserRepository](i),
-			passwordEncoder:        do.MustInvoke[*argon2.PasswordEncoder](i),
-			tokenGenerator:         do.MustInvoke[token.Generator](i),
-			tokenValidator:         do.MustInvoke[*token.Validator](i),
-			revokedTokenRepository: do.MustInvoke[*repository.RedisRevokedTokenRepository](i),
-			logger:                 do.MustInvoke[*slog.Logger](i),
+			userRepository:    do.MustInvoke[*repository.UserRepository](i),
+			passwordEncoder:   do.MustInvoke[*argon2.PasswordEncoder](i),
+			tokenGenerator:    do.MustInvoke[token.Generator](i),
+			tokenValidator:    do.MustInvoke[*token.Validator](i),
+			sessionRepository: do.MustInvoke[*repository.SessionRepository](i),
+			tokenConfig:       do.MustInvoke[*config.TokenConfig](i),
+			logger:            do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
@@ -82,22 +94,47 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 		return nil, apperrors.ErrInternal
 	}
 
-	accessToken, err := s.tokenGenerator.GenerateAccessToken(&user)
+	return s.issueTokens(ctx, &user)
+}
+
+func (s *AuthService) issueTokens(ctx context.Context, user *domain.User) (*dto.AuthResponse, error) {
+
+	scopes := domain.DefaultScopes()
+
+	refreshToken, jti, err := s.tokenGenerator.GenerateRefreshToken(user)
 	if err != nil {
-		s.logger.Error("failed to generate access token", slog.Any("error", err))
+		s.logger.Error("failed to generate refresh token", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
-	refreshToken, err := s.tokenGenerator.GenerateRefreshToken(&user)
+	sessionID, err := uuid.Parse(jti)
 	if err != nil {
-		s.logger.Error("failed to generate refresh token", slog.Any("error", err))
+		s.logger.Error("failed to parse session id", slog.Any("error", err))
+		return nil, apperrors.ErrInternal
+	}
+
+	session := &domain.Session{
+		UserID:    user.ID,
+		JTI:       sessionID,
+		Scopes:    strings.Join(scopes, " "),
+		ExpiresAt: time.Now().Add(s.tokenConfig.GetRefreshTokenTTL()),
+	}
+
+	if err := s.sessionRepository.Create(ctx, session); err != nil {
+		s.logger.Error("failed to create session", slog.Any("error", err))
+		return nil, apperrors.ErrInternal
+	}
+
+	accessToken, err := s.tokenGenerator.GenerateAccessToken(user, scopes, jti)
+	if err != nil {
+		s.logger.Error("failed to generate access token", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
 	return &dto.AuthResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		User:         toUserProfile(user),
+		User:         toUserProfile(*user),
 	}, nil
 }
 
@@ -108,8 +145,13 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 		return apperrors.ErrInvalidRefreshToken
 	}
 
-	if err := s.revokedTokenRepository.Revoke(ctx, token); err != nil {
-		s.logger.Error("failed to revoke token", slog.Any("error", err))
+	jti, err := token.JTI()
+	if err != nil {
+		return apperrors.ErrInvalidRefreshToken
+	}
+
+	if err := s.sessionRepository.DeleteByJTI(ctx, jti); err != nil {
+		s.logger.Error("failed to delete session", slog.Any("error", err))
 		return apperrors.ErrInternal
 	}
 
@@ -137,23 +179,7 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Aut
 		return nil, apperrors.ErrInvalidCredentials
 	}
 
-	accessToken, err := s.tokenGenerator.GenerateAccessToken(user)
-	if err != nil {
-		s.logger.Error("failed to generate access token", slog.Any("error", err))
-		return nil, apperrors.ErrInternal
-	}
-
-	refreshToken, err := s.tokenGenerator.GenerateRefreshToken(user)
-	if err != nil {
-		s.logger.Error("failed to generate refresh token", slog.Any("error", err))
-		return nil, apperrors.ErrInternal
-	}
-
-	return &dto.AuthResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		User:         toUserProfile(*user),
-	}, nil
+	return s.issueTokens(ctx, user)
 }
 
 func (s *AuthService) GetUser(ctx context.Context, id uint) (*dto.UserProfile, error) {
@@ -183,25 +209,10 @@ func (s *AuthService) Refresh(ctx context.Context, req dto.RefreshRequest) (*dto
 		s.logger.Error("failed to find user", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
+
 	if user == nil {
 		return nil, apperrors.ErrInvalidCredentials
 	}
 
-	accessToken, err := s.tokenGenerator.GenerateAccessToken(user)
-	if err != nil {
-		s.logger.Error("failed to generate access token", slog.Any("error", err))
-		return nil, apperrors.ErrInternal
-	}
-
-	refreshToken, err := s.tokenGenerator.GenerateRefreshToken(user)
-	if err != nil {
-		s.logger.Error("failed to generate refresh token", slog.Any("error", err))
-		return nil, apperrors.ErrInternal
-	}
-
-	return &dto.AuthResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		User:         toUserProfile(*user),
-	}, nil
+	return s.issueTokens(ctx, user)
 }

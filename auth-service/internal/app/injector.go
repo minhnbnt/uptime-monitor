@@ -22,10 +22,9 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 		config.RegisterTokenConfig,
 		config.RegisterArgon2Config,
 		config.RegisterGORMDB,
-		config.RegisterRedisClient,
 
 		repository.RegisterUserRepository,
-		repository.RegisterRedisRevokedTokenRepository,
+		repository.RegisterSessionRepository,
 
 		jwt.RegisterProvider,
 		argon2.RegisterPasswordEncoder,
