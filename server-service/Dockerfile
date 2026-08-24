@@ -1,4 +1,4 @@
-FROM bufbuild/buf:1.71 as buf
+FROM bufbuild/buf:1.72 as buf
 
 COPY common/proto /proto
 WORKDIR /proto
@@ -6,7 +6,7 @@ WORKDIR /proto
 RUN buf generate
 
 
-FROM golang:1.26-alpine AS builder
+FROM public.ecr.aws/docker/library/golang:1.27-alpine AS builder
 
 ENV CGO_ENABLED=0 \
     GOOS=linux \
@@ -24,7 +24,7 @@ RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
     go build -trimpath -ldflags="-s -w" -o /app/server-service/app ./cmd/main.go
 
 
-FROM alpine:3.22 AS upx
+FROM alpine:latest AS upx
 
 RUN --mount=type=cache,id=apk-cache,target=/var/cache/apk \
     apk add upx
