@@ -56,7 +56,7 @@ func (l *PushRateLimiter) Allow(ctx context.Context, sessionID string, interval 
 		[]string{pushNextKey(sessionID)},
 		time.Now().UnixMilli(),
 		next.UnixMilli(),
-		(interval * 3).Milliseconds(),
+		(interval * 2).Milliseconds(),
 	)
 
 	res, err := cmd.Slice()

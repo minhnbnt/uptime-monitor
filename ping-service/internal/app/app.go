@@ -50,6 +50,7 @@ func providers(dev bool) []func(do.Injector) {
 		pingservice.RegisterEventService,
 		pinghandler.RegisterEndpointEventWorker,
 		pinghandler.RegisterZSetWorkerRunner,
+		pinghandler.RegisterPushEventHandler,
 	}
 }
 

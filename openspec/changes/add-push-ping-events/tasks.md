@@ -24,11 +24,11 @@
 
 ## 4. Wiring & API docs
 
-- [ ] 4.1 compose.yml: cập nhật `authResponseHeaders` thêm `X-Session-ID`; thêm router Traefik cho ping-service rule `PathPrefix(/api/v1/ping/events)`, middlewares `cors,forward-auth`
-- [ ] 4.2 (đã gộp vào 3.5) — OpenAPI spec per-service chính là tài liệu API; root `api/` docs stale, bỏ qua theo quyết định của owner
+- [x] 4.1 compose.yml: cập nhật `authResponseHeaders` thêm `X-Session-ID`; thêm router Traefik cho ping-service rule `PathPrefix(/api/v1/ping/events)`, middlewares `cors,forward-auth`
+- [x] 4.2 (đã gộp vào 3.5) — OpenAPI spec per-service chính là tài liệu API; root `api/` docs stale, bỏ qua theo quyết định của owner
 
 ## 5. Verification end-to-end
 
-- [ ] 5.1 `go test ./...` toàn repo xanh (kể cả test mới)
-- [ ] 5.2 Lint (`golangci-lint run`) sạch
-- [ ] 5.3 Smoke test thủ công theo compose: tạo ping-session token → POST batch hợp lệ (200 + next_time) → POST lại ngay (429) → batch lẫn tên lạ (207 + errors) → xác nhận event thay đổi trạng thái xuất hiện ở ontime-service
+- [x] 5.1 `go test ./...` toàn repo xanh (kể cả test mới)
+- [x] 5.2 Lint (`golangci-lint run`) sạch
+- [x] 5.3 Smoke test thủ công theo compose: tạo ping-session token → POST batch hợp lệ (200 + next_time) → POST lại ngay (429) → batch lẫn tên lạ (207 + errors) → xác nhận event thay đổi trạng thái xuất hiện ở ontime-service

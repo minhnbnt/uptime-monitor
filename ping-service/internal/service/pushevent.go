@@ -160,7 +160,7 @@ func (s *PushEventService) Handle(ctx context.Context, userID uint, sessionID st
 			return nil, err
 		}
 
-		ownedErrs := []PushEventError{}
+		var ownedErrs []PushEventError
 		pending, ownedErrs = filterOwned(pending, owned)
 		errs = append(errs, ownedErrs...)
 	}
@@ -196,7 +196,7 @@ func (s *PushEventService) Handle(ctx context.Context, userID uint, sessionID st
 			)
 
 			result.Errors = append(result.Errors, PushEventError{
-				ID:   item.ID,
+				ID:    item.ID,
 				Error: "record failed",
 			})
 

@@ -68,7 +68,7 @@ services:
       traefik.http.services.server-service.loadbalancer.server.port: 8080
       traefik.http.routers.server.middlewares: cors, forward-auth
       traefik.http.middlewares.forward-auth.forwardauth.address: http://auth-service:8081/auth/verify
-      traefik.http.middlewares.forward-auth.forwardauth.authResponseHeaders: X-User-ID,X-Scopes
+      traefik.http.middlewares.forward-auth.forwardauth.authResponseHeaders: X-User-ID,X-Scopes,X-Session-ID
 
   importer-service:
     build:
@@ -113,6 +113,13 @@ services:
         condition: service_started
       redis:
         condition: service_started
+
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.ping.rule: PathPrefix(`/api/v1/ping/events`)
+      traefik.http.routers.ping.service: ping-service
+      traefik.http.services.ping-service.loadbalancer.server.port: 8083
+      traefik.http.routers.ping.middlewares: cors, forward-auth
 
   ontime-service:
     build:
