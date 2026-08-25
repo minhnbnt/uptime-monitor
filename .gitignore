@@ -27,3 +27,4 @@ generated/
 helm/uptime-monitor/values.yaml
 
 tmp/
+benchmark/
