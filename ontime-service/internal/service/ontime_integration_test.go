@@ -51,7 +51,7 @@ func newBatcher(tb testing.TB, db *gorm.DB) *Batcher {
 	testcontainers.SkipIfShort(tb)
 
 	return NewBatcher(
-		ontimerepo.NewOntineRepository(db),
+		ontimerepo.NewOntimeUptimeRepository(db),
 		nil,
 		logger.NewMockLogger(),
 	)
@@ -62,7 +62,7 @@ func newBatcherWithRedis(tb testing.TB, db *gorm.DB, redisClient *redis.Client) 
 	testcontainers.SkipIfShort(tb)
 
 	return NewBatcher(
-		ontimerepo.NewOntineRepository(db),
+		ontimerepo.NewOntimeUptimeRepository(db),
 		ontimerepo.NewOntimeCacheRepository(redisClient),
 		logger.NewMockLogger(),
 	)

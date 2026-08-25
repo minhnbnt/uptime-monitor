@@ -73,7 +73,7 @@ func findUptimeRow(t *testing.T, rows []UptimeRow, endpointID uint, day string) 
 	t.Helper()
 
 	for _, r := range rows {
-		if r.EndpointID == endpointID && r.Day.Format("2006-01-02") == day {
+		if r.EndpointID == endpointID && r.From.Format("2006-01-02") == day {
 			return r
 		}
 	}
@@ -92,8 +92,8 @@ func assertUptime(t *testing.T, got, want float64) {
 
 // ---------- carry-in state (lowerbound) ----------
 
-// Last event before the day was ON and nothing happened during the day:
-// the server stayed ON for all 24h → 100%.
+// Last event before the window was ON and nothing happened during it:
+// the server stayed ON for the full 24h → 100%.
 func TestIntegration_Uptime_CarryInON_NoDayEvents(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	db := initUptimeTestDB(t)
@@ -102,8 +102,8 @@ func TestIntegration_Uptime_CarryInON_NoDayEvents(t *testing.T) {
 
 	repo := NewOntimeUptimeRepository(db)
 	rows, err := repo.BatchGetUptime(t.Context(), []BatchGetOntimeRequest{
-		{EndpointID: 1, Date: uDay(2026, 6, 2)},
-	}, uDay(2026, 6, 3))
+		{EndpointID: 1, From: uDay(2026, 6, 2), To: uDay(2026, 6, 3)},
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestIntegration_Uptime_CarryInON_NoDayEvents(t *testing.T) {
 	}
 
 	row := findUptimeRow(t, rows, 1, "2026-06-02")
-	assertUptime(t, row.Uptime, 100)
+	assertUptime(t, row.UptimePercent(), 100)
 	if !row.HasData {
 		t.Error("HasData = false, want true")
 	}
@@ -127,22 +127,21 @@ func TestIntegration_Uptime_CarryInOFF_NoDayEvents(t *testing.T) {
 
 	repo := NewOntimeUptimeRepository(db)
 	rows, err := repo.BatchGetUptime(t.Context(), []BatchGetOntimeRequest{
-		{EndpointID: 1, Date: uDay(2026, 6, 2)},
-	}, uDay(2026, 6, 3))
+		{EndpointID: 1, From: uDay(2026, 6, 2), To: uDay(2026, 6, 3)},
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	row := findUptimeRow(t, rows, 1, "2026-06-02")
-	assertUptime(t, row.Uptime, 0)
+	assertUptime(t, row.UptimePercent(), 0)
 }
 
 // ---------- in-day events with carry-in ----------
 
-// Carry-in ON from previous night; inside the day ON again at 06:00 then
-// OFF at 18:00. The carry-in state holds until the first day event, so the
-// server was online continuously 00:00→18:00 = 18h of 24h → 75%
-// (matches onlineSeconds: prevStatus starts as the carried-in status).
+// Carry-in ON from previous night; inside the window ON again at 06:00 then
+// OFF at 18:00. The carry-in state holds until the first window event, so
+// the server was online continuously 00:00→18:00 = 18h of 24h → 75%.
 func TestIntegration_Uptime_ON_OFF_Day_WithCarryIn(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	db := initUptimeTestDB(t)
@@ -153,17 +152,17 @@ func TestIntegration_Uptime_ON_OFF_Day_WithCarryIn(t *testing.T) {
 
 	repo := NewOntimeUptimeRepository(db)
 	rows, err := repo.BatchGetUptime(t.Context(), []BatchGetOntimeRequest{
-		{EndpointID: 1, Date: uDay(2026, 6, 1)},
-	}, uDay(2026, 6, 2))
+		{EndpointID: 1, From: uDay(2026, 6, 1), To: uDay(2026, 6, 2)},
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	row := findUptimeRow(t, rows, 1, "2026-06-01")
-	assertUptime(t, row.Uptime, 75)
+	assertUptime(t, row.UptimePercent(), 75)
 }
 
-// No event ever happened before the queried day: state at midnight is
+// No event ever happened before the queried window: state at the start is
 // unknown, so the window must shrink to the first known event. Events
 // OFF@06:00, ON@12:00 → online 12h over an 18h observed window ≈ 66.67%.
 func TestIntegration_Uptime_NoHistory_WindowShrinksToFirstEvent(t *testing.T) {
@@ -175,38 +174,61 @@ func TestIntegration_Uptime_NoHistory_WindowShrinksToFirstEvent(t *testing.T) {
 
 	repo := NewOntimeUptimeRepository(db)
 	rows, err := repo.BatchGetUptime(t.Context(), []BatchGetOntimeRequest{
-		{EndpointID: 1, Date: uDay(2026, 6, 1)},
-	}, uDay(2026, 6, 2))
+		{EndpointID: 1, From: uDay(2026, 6, 1), To: uDay(2026, 6, 2)},
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	row := findUptimeRow(t, rows, 1, "2026-06-01")
-	assertUptime(t, row.Uptime, 100.0*12.0/18.0)
+	assertUptime(t, row.UptimePercent(), 100.0*12.0/18.0)
 }
 
-// ---------- today clamped to `until` ----------
+// ---------- windows not aligned to midnight ----------
 
-// Queried day is the same calendar day as `until`: window ends at `until`,
-// not midnight. Carry-in OFF, ON at 06:00, until 12:00 → 6h online / 12h.
-func TestIntegration_Uptime_TodayClampedToUntil(t *testing.T) {
+// A window ending mid-day: carry-in OFF, ON at 06:00, window ends 12:00 →
+// 6h online of a 12h observed window → 50%. This used to require special
+// "today + until" handling; now it is just an ordinary From/To.
+func TestIntegration_Uptime_WindowEndMidDay(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	db := initUptimeTestDB(t)
 
 	seedUptimeRow(t, db, 1, domain.StatusOff, uTm(2026, 5, 31, 23, 0))
 	seedUptimeRow(t, db, 1, domain.StatusOn, uTm(2026, 6, 1, 6, 0))
 
-	until := uTm(2026, 6, 1, 12, 0)
 	repo := NewOntimeUptimeRepository(db)
 	rows, err := repo.BatchGetUptime(t.Context(), []BatchGetOntimeRequest{
-		{EndpointID: 1, Date: uDay(2026, 6, 1)},
-	}, until)
+		{EndpointID: 1, From: uDay(2026, 6, 1), To: uTm(2026, 6, 1, 12, 0)},
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	row := findUptimeRow(t, rows, 1, "2026-06-01")
-	assertUptime(t, row.Uptime, 50)
+	assertUptime(t, row.UptimePercent(), 50)
+}
+
+// A window starting and ending mid-day proves no midnight alignment is
+// assumed anywhere. Carry-in OFF, ON@10:00, OFF@20:00 over [09:00, 21:00):
+// online 10h of 12h ≈ 83.33%.
+func TestIntegration_Uptime_ArbitraryMidDayRange(t *testing.T) {
+	testcontainers.SkipIfShort(t)
+	db := initUptimeTestDB(t)
+
+	seedUptimeRow(t, db, 1, domain.StatusOff, uTm(2026, 5, 31, 23, 0))
+	seedUptimeRow(t, db, 1, domain.StatusOn, uTm(2026, 6, 1, 10, 0))
+	seedUptimeRow(t, db, 1, domain.StatusOff, uTm(2026, 6, 1, 20, 0))
+
+	repo := NewOntimeUptimeRepository(db)
+	rows, err := repo.BatchGetUptime(t.Context(), []BatchGetOntimeRequest{
+		{EndpointID: 1, From: uTm(2026, 6, 1, 9, 0), To: uTm(2026, 6, 1, 21, 0)},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	row := findUptimeRow(t, rows, 1, "2026-06-01")
+	assertUptime(t, row.UptimePercent(), 100.0*10.0/12.0)
 }
 
 // ---------- batching across servers and days ----------
@@ -224,19 +246,19 @@ func TestIntegration_Uptime_MultiServer_MultiDay(t *testing.T) {
 
 	repo := NewOntimeUptimeRepository(db)
 	rows, err := repo.BatchGetUptime(t.Context(), []BatchGetOntimeRequest{
-		{EndpointID: 7, Date: uDay(2026, 6, 1)},
-		{EndpointID: 7, Date: uDay(2026, 6, 2)},
-		{EndpointID: 8, Date: uDay(2026, 6, 1)},
-	}, uDay(2026, 6, 3))
+		{EndpointID: 7, From: uDay(2026, 6, 1), To: uDay(2026, 6, 2)},
+		{EndpointID: 7, From: uDay(2026, 6, 2), To: uDay(2026, 6, 3)},
+		{EndpointID: 8, From: uDay(2026, 6, 1), To: uDay(2026, 6, 2)},
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	d1 := findUptimeRow(t, rows, 7, "2026-06-01")
-	assertUptime(t, d1.Uptime, 100)
+	assertUptime(t, d1.UptimePercent(), 100)
 
 	d2 := findUptimeRow(t, rows, 7, "2026-06-02")
-	assertUptime(t, d2.Uptime, 50)
+	assertUptime(t, d2.UptimePercent(), 50)
 
 	for _, r := range rows {
 		if r.EndpointID == 8 {
@@ -247,10 +269,10 @@ func TestIntegration_Uptime_MultiServer_MultiDay(t *testing.T) {
 
 // ---------- unknown statuses are ignored without advancing the boundary ----------
 
-// A non-ON/OFF status row inside the day must be skipped entirely: the next
-// known event still measures from the last known boundary. ON@06, WEIRD@09,
-// OFF@18 → ON interval runs 06→18 = 12h over an 18h observed window ≈ 66.67%.
-// Counting the weird row as a boundary would give 3h/18h instead.
+// A non-ON/OFF status row inside the window must be skipped entirely: the
+// next known event still measures from the last known boundary. ON@06,
+// WEIRD@09, OFF@18 → ON interval runs 06→18 = 12h over an 18h observed
+// window ≈ 66.67%. Counting the weird row as a boundary would give 3h/18h.
 func TestIntegration_Uptime_IgnoresUnknownStatus(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	db := initUptimeTestDB(t)
@@ -261,17 +283,17 @@ func TestIntegration_Uptime_IgnoresUnknownStatus(t *testing.T) {
 
 	repo := NewOntimeUptimeRepository(db)
 	rows, err := repo.BatchGetUptime(t.Context(), []BatchGetOntimeRequest{
-		{EndpointID: 1, Date: uDay(2026, 6, 1)},
-	}, uDay(2026, 6, 2))
+		{EndpointID: 1, From: uDay(2026, 6, 1), To: uDay(2026, 6, 2)},
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	row := findUptimeRow(t, rows, 1, "2026-06-01")
-	assertUptime(t, row.Uptime, 100.0*12.0/18.0)
+	assertUptime(t, row.UptimePercent(), 100.0*12.0/18.0)
 }
 
-// ---------- no data & duplicate keys ----------
+// ---------- no data & duplicate keys & invalid input ----------
 
 func TestIntegration_Uptime_NoEvents_ReturnsNoRow(t *testing.T) {
 	testcontainers.SkipIfShort(t)
@@ -279,8 +301,8 @@ func TestIntegration_Uptime_NoEvents_ReturnsNoRow(t *testing.T) {
 
 	repo := NewOntimeUptimeRepository(db)
 	rows, err := repo.BatchGetUptime(t.Context(), []BatchGetOntimeRequest{
-		{EndpointID: 42, Date: uDay(2026, 6, 1)},
-	}, uDay(2026, 6, 2))
+		{EndpointID: 42, From: uDay(2026, 6, 1), To: uDay(2026, 6, 2)},
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -289,7 +311,7 @@ func TestIntegration_Uptime_NoEvents_ReturnsNoRow(t *testing.T) {
 	}
 }
 
-// The same (endpoint, day) requested twice collapses to one result row.
+// The same window requested twice collapses to one result row.
 func TestIntegration_Uptime_DuplicateRequestKeys(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	db := initUptimeTestDB(t)
@@ -297,12 +319,12 @@ func TestIntegration_Uptime_DuplicateRequestKeys(t *testing.T) {
 	seedUptimeRow(t, db, 1, domain.StatusOn, uTm(2026, 6, 1, 0, 0))
 
 	req := []BatchGetOntimeRequest{
-		{EndpointID: 1, Date: uDay(2026, 6, 1)},
-		{EndpointID: 1, Date: uDay(2026, 6, 1)},
+		{EndpointID: 1, From: uDay(2026, 6, 1), To: uDay(2026, 6, 2)},
+		{EndpointID: 1, From: uDay(2026, 6, 1), To: uDay(2026, 6, 2)},
 	}
 
 	repo := NewOntimeUptimeRepository(db)
-	rows, err := repo.BatchGetUptime(t.Context(), req, uDay(2026, 6, 2))
+	rows, err := repo.BatchGetUptime(t.Context(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -311,5 +333,23 @@ func TestIntegration_Uptime_DuplicateRequestKeys(t *testing.T) {
 	}
 
 	row := findUptimeRow(t, rows, 1, "2026-06-01")
-	assertUptime(t, row.Uptime, 100)
+	assertUptime(t, row.UptimePercent(), 100)
+}
+
+func TestIntegration_Uptime_InvalidWindow_ReturnsError(t *testing.T) {
+	testcontainers.SkipIfShort(t)
+	db := initUptimeTestDB(t)
+
+	repo := NewOntimeUptimeRepository(db)
+
+	cases := map[string]BatchGetOntimeRequest{
+		"to equals from": {EndpointID: 1, From: uDay(2026, 6, 1), To: uDay(2026, 6, 1)},
+		"to before from": {EndpointID: 1, From: uDay(2026, 6, 2), To: uDay(2026, 6, 1)},
+	}
+
+	for name, req := range cases {
+		if _, err := repo.BatchGetUptime(t.Context(), []BatchGetOntimeRequest{req}); err == nil {
+			t.Errorf("%s: expected error, got nil", name)
+		}
+	}
 }

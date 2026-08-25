@@ -2,34 +2,24 @@ package service
 
 import (
 	"context"
-	"iter"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
 	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/serverclient"
 )
 
-type mockOntineRepo struct {
-	batchGetOntimeFn func(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error)
+type mockOntimeRepo struct {
+	batchGetUptimeFn func(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.UptimeRow, error)
 }
 
-func (m *mockOntineRepo) BatchGetOntime(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) (iter.Seq2[ontimerepo.RawEvent, error], error) {
-
-	rows, err := m.batchGetOntimeFn(ctx, req)
-	if err != nil {
-		return nil, err
+func (m *mockOntimeRepo) BatchGetUptime(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.UptimeRow, error) {
+	if m.batchGetUptimeFn == nil {
+		return nil, nil
 	}
-
-	return func(yield func(ontimerepo.RawEvent, error) bool) {
-		for _, e := range rows {
-			if !yield(e, nil) {
-				return
-			}
-		}
-	}, nil
+	return m.batchGetUptimeFn(ctx, req)
 }
 
-var _ OntineRepository = (*mockOntineRepo)(nil)
+var _ OntimeRepository = (*mockOntimeRepo)(nil)
 
 type mockOntimeCacheRepo struct {
 	mGetFn func(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]dto.DayResult, error)
@@ -37,10 +27,10 @@ type mockOntimeCacheRepo struct {
 }
 
 func (m *mockOntimeCacheRepo) MGet(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]dto.DayResult, error) {
-	if m.mGetFn != nil {
-		return m.mGetFn(ctx, keys)
+	if m.mGetFn == nil {
+		return make(map[dto.BatchGetOntimeItem]dto.DayResult), nil
 	}
-	return make(map[dto.BatchGetOntimeItem]dto.DayResult), nil
+	return m.mGetFn(ctx, keys)
 }
 
 func (m *mockOntimeCacheRepo) MSet(ctx context.Context, items map[dto.BatchGetOntimeItem]dto.DayResult) error {

@@ -23,7 +23,7 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 
 		serverclient.RegisterClient,
 
-		repository.RegisterOntineRepository,
+		repository.RegisterOntimeUptimeRepository,
 		repository.RegisterOntimeCacheRepository,
 		repository.RegisterEventRepository,
 		service.RegisterBatcher,

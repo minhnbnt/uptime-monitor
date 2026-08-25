@@ -1,6 +1,7 @@
 package service
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -89,7 +90,7 @@ func TestIntegration_BatchGetOntime_TodaySingleON_PrevDayOFF(t *testing.T) {
 	want := online / coverage * 100
 
 	got := results[0].Result[0].Stats
-	if got != want {
+	if math.Abs(got-want) > 0.001 {
 		t.Errorf("Stats = %f, want %f (prev day OFF, today ON at 06:00)", got, want)
 	}
 }
@@ -125,7 +126,7 @@ func TestIntegration_BatchGetOntime_Today_ON_to_OFF(t *testing.T) {
 	want := online / coverage * 100
 
 	got := results[0].Result[0].Stats
-	if got != want {
+	if math.Abs(got-want) > 0.001 {
 		t.Errorf("Stats = %f, want %f (ON 06-10, then OFF)", got, want)
 	}
 }

@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"iter"
 	"log/slog"
 	"maps"
 	"slices"
@@ -17,8 +16,8 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/utils"
 )
 
-type OntineRepository interface {
-	BatchGetOntime(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) (iter.Seq2[ontimerepo.RawEvent, error], error)
+type OntimeRepository interface {
+	BatchGetUptime(ctx context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.UptimeRow, error)
 }
 
 type OntimeCacheRepository interface {
@@ -26,7 +25,7 @@ type OntimeCacheRepository interface {
 	MSet(ctx context.Context, items map[dto.BatchGetOntimeItem]dto.DayResult) error
 }
 
-func NewBatcher(repo OntineRepository, cache *ontimerepo.OntimeCacheRepository, l *slog.Logger) *Batcher {
+func NewBatcher(repo OntimeRepository, cache *ontimerepo.OntimeCacheRepository, l *slog.Logger) *Batcher {
 
 	var cacheInterface OntimeCacheRepository
 	if cache != nil {
@@ -34,17 +33,16 @@ func NewBatcher(repo OntineRepository, cache *ontimerepo.OntimeCacheRepository, 
 	}
 
 	return &Batcher{
-		ontineRepository:      repo,
+		ontimeRepo:            repo,
 		ontimeCacheRepository: cacheInterface,
 		logger:                l,
-		calculator:            OntimeCalculator{},
 	}
 }
 
 func RegisterBatcher(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*Batcher, error) {
 		return NewBatcher(
-			do.MustInvoke[*ontimerepo.OntineRepository](i),
+			do.MustInvoke[*ontimerepo.OntimeUptimeRepository](i),
 			do.MustInvoke[*ontimerepo.OntimeCacheRepository](i),
 			do.MustInvoke[*slog.Logger](i),
 		), nil
@@ -52,10 +50,9 @@ func RegisterBatcher(i do.Injector) {
 }
 
 type Batcher struct {
-	ontineRepository      OntineRepository
+	ontimeRepo            OntimeRepository
 	ontimeCacheRepository OntimeCacheRepository
 	logger                *slog.Logger
-	calculator            OntimeCalculator
 }
 
 func (b *Batcher) BatchGetOntimeUntil(ctx context.Context, req []dto.BatchGetOntimeItem, until time.Time) ([]dto.BatchGetOntimeResponse, error) {
@@ -120,60 +117,44 @@ func (b *Batcher) resolveCache(ctx context.Context, keys []dto.BatchGetOntimeIte
 func (b *Batcher) fillMisses(ctx context.Context, missedKeys []dto.BatchGetOntimeItem, until time.Time) map[dto.BatchGetOntimeItem]dto.DayResult {
 
 	requests := lo.Map(missedKeys, func(key dto.BatchGetOntimeItem, _ int) ontimerepo.BatchGetOntimeRequest {
-		return ontimerepo.BatchGetOntimeRequest{EndpointID: key.EndpointID, Date: key.Date}
+
+		dayStart := key.Date // already truncated to UTC midnight by getCacheKey
+		to := dayStart.Add(24 * time.Hour)
+
+		// Same clamp semantics the old calculator had: only the calendar day
+		// "until" falls on gets cut short at `until`; past days keep their
+		// full 24h window.
+		if utils.TruncateDay(until).Equal(dayStart) && until.Before(to) {
+			to = until
+		}
+
+		return ontimerepo.BatchGetOntimeRequest{EndpointID: key.EndpointID, From: dayStart, To: to}
 	})
 
-	seq, err := b.ontineRepository.BatchGetOntime(ctx, requests)
+	rows, err := b.ontimeRepo.BatchGetUptime(ctx, requests)
 	if err != nil {
 		b.logger.Warn("failed to get missed ontime keys", slog.Any("error", err))
+		// Return an empty map, not toCache: toCache is pre-seeded with zero
+		// results for every missed key, so returning it would poison the
+		// cache with bogus no-data/0% for a read that never completed.
+		// Caller just re-fetches them next time.
 		return make(map[dto.BatchGetOntimeItem]dto.DayResult)
 	}
 
 	// Pre-seed every missed key with a zero result so days with no events are
-	// still cached (otherwise they'd be re-fetched on every request).
+	// still cached (otherwise they'd be re-fetched on every request). The DB
+	// only returns rows for keys that actually have data; everything else
+	// keeps the zero value.
 	toCache := lo.SliceToMap(missedKeys, func(key dto.BatchGetOntimeItem) (dto.BatchGetOntimeItem, dto.DayResult) {
 		return key, dto.DayResult{}
 	})
 
-	// ponytail: the SQL orders by (endpoint_id, day, time), so we finalize a
-	// group the instant the key changes and discard its events — peak RAM is one
-	// day, not the whole result set. Each group is computed over its OWN day
-	// window (utils.TruncateDay(k.Day)), not "today" — otherwise past days
-	// resolve against the wrong 24h window and report 0%.
-	var curEvents []ontimerepo.RawEvent
-	flush := func(k endpointDayKey, events []ontimerepo.RawEvent) {
-
-		today := utils.TruncateDay(k.Day)
-		result := b.calculator.CalculateDayOntime(events, today, until)
-
-		itemKey := dto.BatchGetOntimeItem{EndpointID: k.EndpointID, Date: k.Day}
-		toCache[itemKey] = dto.DayResult{HasData: result.HasData, Uptime: result.Uptime}
-	}
-
-	curKey := endpointDayKey{}
-	for row, err := range seq {
-
-		if err != nil {
-			b.logger.Warn("failed to stream missed ontime rows", slog.Any("error", err))
-			// Return an empty map, not toCache: toCache is pre-seeded with zero
-			// results for every missed key, so returning it would poison the
-			// cache with bogus no-data/0% for days we never finished reading.
-			// Caller just re-fetches them next time.
-			return make(map[dto.BatchGetOntimeItem]dto.DayResult)
-		}
-
-		k := endpointDayKey{EndpointID: row.EndpointID, Day: row.Day}
-		if k != curKey && len(curEvents) > 0 {
-			flush(curKey, curEvents)
-			curEvents = nil
-		}
-
-		curKey = k
-		curEvents = append(curEvents, row)
-	}
-
-	if len(curEvents) > 0 {
-		flush(curKey, curEvents)
+	for _, row := range rows {
+		// TruncateDay normalizes both the zone and the wall clock: the DB
+		// hands back timestamptz in the session zone, while missedKeys carry
+		// UTC-midnight dates — raw equality would never match.
+		key := dto.BatchGetOntimeItem{EndpointID: row.EndpointID, Date: utils.TruncateDay(row.From)}
+		toCache[key] = dto.DayResult{HasData: row.HasData, Uptime: row.UptimePercent()}
 	}
 
 	return toCache
@@ -197,9 +178,4 @@ func (b *Batcher) buildResponse(req []dto.BatchGetOntimeItem, resultMap map[dto.
 			Result:     result,
 		}
 	})
-}
-
-type endpointDayKey struct {
-	EndpointID uint
-	Day        time.Time
 }

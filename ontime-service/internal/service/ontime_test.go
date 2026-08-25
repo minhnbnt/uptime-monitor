@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"iter"
 	"testing"
 	"time"
 
@@ -237,8 +236,8 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 		var mSetCalled bool
 
 		b := &Batcher{
-			ontineRepository: &mockOntineRepo{
-				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
+			ontimeRepo: &mockOntimeRepo{
+				batchGetUptimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.UptimeRow, error) {
 					dbCalled = true
 					return nil, nil
 				},
@@ -279,11 +278,18 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 		var capturedItems map[dto.BatchGetOntimeItem]dto.DayResult
 
 		b := &Batcher{
-			ontineRepository: &mockOntineRepo{
-				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
-					return []ontimerepo.RawEvent{
-						{EndpointID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)},
-					}, nil
+			ontimeRepo: &mockOntimeRepo{
+				batchGetUptimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.UptimeRow, error) {
+					// ON from 06:00 until the fixed "now" (14:00).
+					return []ontimerepo.UptimeRow{{
+						EndpointID:    1,
+						From:          d1,
+					To:            d1.Add(14 * time.Hour),
+						HasData:       true,
+						OnlineSeconds: 8 * 3600,
+						ObservedFrom:  d1,
+						ObservedTo:    d1.Add(14 * time.Hour),
+					}}, nil
 				},
 			},
 			ontimeCacheRepository: &mockOntimeCacheRepo{
@@ -319,8 +325,8 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
 
 		b := &Batcher{
-			ontineRepository: &mockOntineRepo{
-				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
+			ontimeRepo: &mockOntimeRepo{
+				batchGetUptimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.UptimeRow, error) {
 					return nil, errors.New("db error")
 				},
 			},
@@ -342,11 +348,17 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
 
 		b := &Batcher{
-			ontineRepository: &mockOntineRepo{
-				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
-					return []ontimerepo.RawEvent{
-						{EndpointID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)},
-					}, nil
+			ontimeRepo: &mockOntimeRepo{
+				batchGetUptimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.UptimeRow, error) {
+					return []ontimerepo.UptimeRow{{
+						EndpointID:    1,
+						From:          d1,
+					To:            d1.Add(14 * time.Hour),
+						HasData:       true,
+						OnlineSeconds: 8 * 3600,
+						ObservedFrom:  d1,
+						ObservedTo:    d1.Add(14 * time.Hour),
+					}}, nil
 				},
 			},
 			ontimeCacheRepository: &mockOntimeCacheRepo{
@@ -434,25 +446,29 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 		}
 
 		b := &Batcher{
-			ontineRepository: &mockOntineRepo{
-				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
-					// Only return events for the missing keys
-					events := []ontimerepo.RawEvent{}
+			ontimeRepo: &mockOntimeRepo{
+				batchGetUptimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.UptimeRow, error) {
+					// Only return measurements for the missing keys
+					rows := []ontimerepo.UptimeRow{}
 					for _, r := range req {
 						if r.EndpointID == 1 && r.Date.Equal(d2) {
-							events = append(events, ontimerepo.RawEvent{
-								EndpointID: 1, Day: d2, Status: "ON",
-								Time: d2.Add(6 * time.Hour),
+							rows = append(rows, ontimerepo.UptimeRow{
+								EndpointID: 1, From: d2, To: d2.Add(24 * time.Hour), HasData: true,
+								OnlineSeconds: 18 * 3600,
+								ObservedFrom:  d2,
+								ObservedTo:    d2.Add(24 * time.Hour),
 							})
 						}
 						if r.EndpointID == 2 && r.Date.Equal(d3) {
-							events = append(events, ontimerepo.RawEvent{
-								EndpointID: 2, Day: d3, Status: "OFF",
-								Time: d3.Add(12 * time.Hour),
+							rows = append(rows, ontimerepo.UptimeRow{
+								EndpointID: 2, From: d3, To: d3.Add(24 * time.Hour), HasData: false,
+								OnlineSeconds: 0,
+								ObservedFrom:  d3,
+								ObservedTo:    d3.Add(24 * time.Hour),
 							})
 						}
 					}
-					return events, nil
+					return rows, nil
 				},
 			},
 			ontimeCacheRepository: &mockOntimeCacheRepo{
@@ -493,14 +509,13 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 		var dbCalled bool
 
 		b := &Batcher{
-			ontineRepository: &mockOntineRepo{
-				batchGetOntimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.RawEvent, error) {
+			ontimeRepo: &mockOntimeRepo{
+				batchGetUptimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.UptimeRow, error) {
 					dbCalled = true
-					return []ontimerepo.RawEvent{
-						{EndpointID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)},
-						{EndpointID: 1, Day: d2, Status: "ON", Time: d2.Add(8 * time.Hour)},
-						{EndpointID: 1, Day: d2, Status: "OFF", Time: d2.Add(12 * time.Hour)},
-						{EndpointID: 2, Day: d3, Status: "ON", Time: d3.Add(8 * time.Hour)},
+					return []ontimerepo.UptimeRow{
+						{EndpointID: 1, From: d1, To: d1.Add(24 * time.Hour), HasData: true, OnlineSeconds: 18 * 3600, ObservedFrom: d1, ObservedTo: d1.Add(24 * time.Hour)},
+						{EndpointID: 1, From: d2, To: d2.Add(24 * time.Hour), HasData: true, OnlineSeconds: 16 * 3600, ObservedFrom: d2, ObservedTo: d2.Add(24 * time.Hour)},
+						{EndpointID: 2, From: d3, To: d3.Add(24 * time.Hour), HasData: true, OnlineSeconds: 16 * 3600, ObservedFrom: d3, ObservedTo: d3.Add(24 * time.Hour)},
 					}, nil
 				},
 			},
@@ -698,37 +713,30 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 	})
 }
 
-// ---------- fillMisses: stream error must not poison the cache ----------
+// ---------- fillMisses: DB error must not poison the cache ----------
 
-// errStreamRepo yields one valid event then a mid-stream error, simulating a
-// DB failure partway through scanning the result cursor.
-type errStreamRepo struct{}
+// errUptimeRepo simulates a DB failure while reading missed keys.
+type errUptimeRepo struct{}
 
-func (errStreamRepo) BatchGetOntime(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) (iter.Seq2[ontimerepo.RawEvent, error], error) {
-	d1 := oDay(2026, 6, 1)
-	return func(yield func(ontimerepo.RawEvent, error) bool) {
-		if !yield(ontimerepo.RawEvent{EndpointID: 1, Day: d1, Status: "ON", Time: d1.Add(6 * time.Hour)}, nil) {
-			return
-		}
-		yield(ontimerepo.RawEvent{}, errors.New("stream broke mid-way"))
-	}, nil
+func (errUptimeRepo) BatchGetUptime(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.UptimeRow, error) {
+	return nil, errors.New("db broke mid-read")
 }
 
-func TestFillMisses_StreamErrorDoesNotPoisonCache(t *testing.T) {
+func TestFillMisses_DBErrorDoesNotPoisonCache(t *testing.T) {
 	d1 := oDay(2026, 6, 1)
 	until := oTm(2026, 6, 1, 14, 0)
 
 	b := &Batcher{
-		ontineRepository: errStreamRepo{},
-		logger:           logger.NewMockLogger(),
+		ontimeRepo: errUptimeRepo{},
+		logger:     logger.NewMockLogger(),
 	}
 
 	missed := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: d1}}
 	got := b.fillMisses(t.Context(), missed, until)
 
-	// On a mid-stream error fillMisses must return an empty map, so the caller
+	// On a failed read fillMisses must return an empty map, so the caller
 	// caches nothing — never the pre-seeded zero results for unread days.
 	if len(got) != 0 {
-		t.Fatalf("on stream error fillMisses returned %d entries; want 0 (no poison): %+v", len(got), got)
+		t.Fatalf("on db error fillMisses returned %d entries; want 0 (no poison): %+v", len(got), got)
 	}
 }
