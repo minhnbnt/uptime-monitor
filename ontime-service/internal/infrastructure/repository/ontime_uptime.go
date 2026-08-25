@@ -99,19 +99,20 @@ const uptimeSQL = `
 	WITH
 	-- 1. Parse the batch request payload into (endpoint, window) pairs.
 	requested AS (
-		SELECT x.endpoint_id, x.from_ts, x.to_ts
+		SELECT request_item.endpoint_id, request_item.from_ts, request_item.to_ts
 		FROM jsonb_to_recordset(?::jsonb)
-		AS x(endpoint_id bigint, from_ts timestamptz, to_ts timestamptz)
+		AS request_item(endpoint_id bigint, from_ts timestamptz, to_ts timestamptz)
 	),
 
 	-- 2. Ordered so the window LEAD below can incremental-sort instead of
 	--    spilling a global sort to disk.
 	windows AS (
-		SELECT endpoint_id,
-			from_ts AS win_start,
-			to_ts AS win_end
-		FROM requested
-		ORDER BY endpoint_id, from_ts
+		SELECT
+			request_item.endpoint_id,
+			request_item.from_ts AS window_start,
+			request_item.to_ts AS window_end
+		FROM requested request_item
+		ORDER BY request_item.endpoint_id, request_item.from_ts
 	),
 
 	-- 3. Single status gate: only real ON/OFF states drive uptime.
@@ -127,30 +128,38 @@ const uptimeSQL = `
 	),
 
 	-- 4. One ordered stream: for each window, its starting state (last known
-	--    event strictly before win_start — the lowerbound probe) plus every
-	--    known event inside the window itself, both via index lookups.
+	--    event strictly before window_start — the lowerbound probe) plus
+	--    every known event inside the window itself, both via index lookups.
 	timeline AS (
-		SELECT w.endpoint_id, w.win_start, w.win_end, tl.status, tl.time, tl.src
-		FROM windows w
+		SELECT
+			observation_window.endpoint_id,
+			observation_window.window_start,
+			observation_window.window_end,
+			event_stream.status,
+			event_stream.time,
+			event_stream.source
+		FROM windows observation_window
 		CROSS JOIN LATERAL (
 			(
-				SELECT ke.status, ke.time, 'carryin'::text AS src
-				FROM known_events ke
-				WHERE ke.endpoint_id = w.endpoint_id
-					AND ke.time < w.win_start
-				ORDER BY ke.time DESC
+				SELECT known_event.status, known_event.time, 'carryin'::text AS source
+				FROM known_events known_event
+				WHERE known_event.endpoint_id = observation_window.endpoint_id
+					AND known_event.time < observation_window.window_start
+				ORDER BY known_event.time DESC
 				LIMIT 1
 			)
 			UNION ALL
 			(
-				SELECT ke.status, ke.time, 'dayev'::text AS src
-				FROM known_events ke
-				WHERE ke.endpoint_id = w.endpoint_id
-					AND ke.time >= w.win_start
-					AND ke.time < w.win_end
+				SELECT known_event.status, known_event.time, 'dayev'::text AS source
+				FROM known_events known_event
+				WHERE known_event.endpoint_id = observation_window.endpoint_id
+					AND known_event.time >= observation_window.window_start
+					AND known_event.time < observation_window.window_end
 			)
-		) tl
-		ORDER BY endpoint_id, win_start, time
+		) event_stream
+		ORDER BY observation_window.endpoint_id,
+			observation_window.window_start,
+			event_stream.time
 	),
 
 	-- 5. Raw lookahead only: when does this state stop being true?
@@ -160,19 +169,24 @@ const uptimeSQL = `
 	next_times AS (
 		SELECT
 			*,
-			LEAD(time)
-			OVER (PARTITION BY endpoint_id, win_start, win_end ORDER BY time) AS next_time
+			LEAD(time) OVER (
+				PARTITION BY endpoint_id, window_start, window_end
+				ORDER BY time
+			) AS next_event_time
 		FROM timeline
 	),
 
-	-- 6. Turn rows into half-open [seg_from, seg_to) intervals clamped to the
-	--    window: carry-in starts at win_start, nothing runs past win_end.
+	-- 6. Turn rows into half-open [segment_start, segment_end) intervals
+	--    clamped to the window: carry-in starts at window_start, nothing
+	--    runs past window_end.
 	segments AS (
-		SELECT endpoint_id,
-			win_start, win_end,
-			status, src,
-			GREATEST(time, win_start) AS seg_from,
-			LEAST(COALESCE(next_time, win_end), win_end) AS seg_to
+		SELECT
+			endpoint_id,
+			window_start, window_end,
+			status,
+			source,
+			GREATEST(time, window_start) AS segment_start,
+			LEAST(COALESCE(next_event_time, window_end), window_end) AS segment_end
 		FROM next_times
 	)
 
@@ -180,18 +194,18 @@ const uptimeSQL = `
 	--     began and ended. Windows whose starting state was known cover the
 	--     full span; otherwise coverage starts at the first known event.
 	SELECT endpoint_id,
-		win_start AS "from",
-		win_end AS "to",
+		window_start AS "from", window_end AS "to",
 		true AS has_data,
-		CASE WHEN bool_or(src = 'carryin')
-			THEN MIN(win_start)
-			ELSE MIN(seg_from)
+		CASE
+			WHEN bool_or(source = 'carryin')
+				THEN MIN(window_start)
+			ELSE MIN(segment_start)
 		END AS observed_from,
-		MAX(win_end) AS observed_to,
+		MAX(window_end) AS observed_to,
 		COALESCE(
-			SUM(EXTRACT(EPOCH FROM (seg_to - seg_from))) FILTER (WHERE status = 'ON'),
+			SUM(EXTRACT(EPOCH FROM (segment_end - segment_start))) FILTER (WHERE status = 'ON'),
 			0
 		) AS online_seconds
 	FROM segments
-	GROUP BY endpoint_id, win_start, win_end
+	GROUP BY endpoint_id, window_start, window_end
 `
