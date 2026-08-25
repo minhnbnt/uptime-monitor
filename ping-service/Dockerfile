@@ -21,6 +21,7 @@ COPY --from=buf /proto/generated ../common/proto/generated
 
 RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
     --mount=type=cache,id=go-build,target=/root/.cache/go-build \
+    go generate ./... && \
     go build -trimpath -ldflags="-s -w" -o app ./cmd/main.go
 
 # -----------------------------------------------------
