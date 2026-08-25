@@ -65,10 +65,11 @@ func (m *mockTokenGenerator) GenerateRefreshToken(user *domain.User) (string, st
 }
 
 type mockSessionRepo struct {
-	createFn      func(ctx context.Context, session *domain.Session) error
-	getByJTIFn    func(ctx context.Context, jti string) (*domain.Session, error)
-	deleteByJTIFn func(ctx context.Context, jti string) error
-	findByUserFn  func(ctx context.Context, userID uint) ([]domain.Session, error)
+	createFn             func(ctx context.Context, session *domain.Session) error
+	getByJTIFn           func(ctx context.Context, jti string) (*domain.Session, error)
+	deleteByJTIFn        func(ctx context.Context, jti string) error
+	deleteByJTIAndUserFn func(ctx context.Context, userID uint, jti string) (bool, error)
+	findByUserFn         func(ctx context.Context, userID uint) ([]domain.Session, error)
 }
 
 func (m *mockSessionRepo) Create(ctx context.Context, session *domain.Session) error {
@@ -101,4 +102,11 @@ func (m *mockSessionRepo) FindByUser(ctx context.Context, userID uint) ([]domain
 		return nil, nil
 	}
 	return m.findByUserFn(ctx, userID)
+}
+
+func (m *mockSessionRepo) DeleteByJTIAndUser(ctx context.Context, userID uint, jti string) (bool, error) {
+	if m.deleteByJTIAndUserFn == nil {
+		return false, nil
+	}
+	return m.deleteByJTIAndUserFn(ctx, userID, jti)
 }

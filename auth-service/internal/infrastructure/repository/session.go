@@ -82,6 +82,24 @@ func (r *SessionRepository) DeleteByJTI(ctx context.Context, jti string) error {
 	return nil
 }
 
+func (r *SessionRepository) DeleteByJTIAndUser(ctx context.Context, userID uint, jti string) (bool, error) {
+
+	id, err := uuid.Parse(jti)
+	if err != nil {
+		return false, nil
+	}
+
+	rowAffected, err := gorm.G[domain.Session](r.db).
+		Where("user_id = ? AND jti = ?", userID, id).
+		Delete(ctx)
+
+	if err != nil {
+		return false, fmt.Errorf("delete session by user: %w", err)
+	}
+
+	return rowAffected > 0, nil
+}
+
 func (r *SessionRepository) FindByUser(ctx context.Context, userID uint) ([]domain.Session, error) {
 
 	sessions, err := gorm.G[domain.Session](r.db).

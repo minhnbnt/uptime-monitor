@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 
+	"github.com/google/uuid"
 	"github.com/ogen-go/ogen/ogenerrors"
 	"github.com/samber/do/v2"
 
@@ -35,6 +36,31 @@ func RegisterAuthHandler(i do.Injector) {
 }
 
 var _ AuthService = (*service.AuthService)(nil)
+
+type AuthService interface {
+	Register(ctx context.Context, req dto.RegisterRequest) (*dto.AuthResponse, error)
+	Login(ctx context.Context, req dto.LoginRequest) (*dto.AuthResponse, error)
+	Refresh(ctx context.Context, req dto.RefreshRequest) (*dto.AuthResponse, error)
+	Logout(ctx context.Context, refreshToken string) error
+	GetUser(ctx context.Context, id uint) (*dto.UserProfile, error)
+	CreatePingSession(ctx context.Context, userID uint) (*dto.AuthResponse, error)
+	ListSessions(ctx context.Context, userID uint, currentSessionID string, page, perPage int) ([]dto.SessionInfo, int, error)
+	RevokeSession(ctx context.Context, userID uint, sessionID string) error
+}
+
+func appScopedInfo(ctx context.Context) (*token.AccessTokenInfo, error) {
+
+	info, ok := tokenInfoFromContext(ctx)
+	if !ok {
+		return nil, apperrors.ErrInvalidAccessToken
+	}
+
+	if !slices.Contains(info.Scopes, string(domain.ScopeApp)) {
+		return nil, apperrors.ErrForbidden
+	}
+
+	return info, nil
+}
 
 func (h *AuthHandler) Register(ctx context.Context, req *api.RegisterRequest) (*api.AuthResponse, error) {
 
@@ -105,13 +131,9 @@ func (h *AuthHandler) Logout(ctx context.Context, req *api.RefreshTokenRequest) 
 
 func (h *AuthHandler) CreatePingSession(ctx context.Context) (*api.AuthResponse, error) {
 
-	info, ok := tokenInfoFromContext(ctx)
-	if !ok {
-		return nil, apperrors.ToAPIError(apperrors.ErrInvalidAccessToken)
-	}
-
-	if !slices.Contains(info.Scopes, string(domain.ScopeApp)) {
-		return nil, apperrors.ToAPIError(apperrors.ErrForbidden)
+	info, err := appScopedInfo(ctx)
+	if err != nil {
+		return nil, apperrors.ToAPIError(err)
 	}
 
 	result, err := h.authService.CreatePingSession(ctx, info.UserID)
@@ -120,6 +142,70 @@ func (h *AuthHandler) CreatePingSession(ctx context.Context) (*api.AuthResponse,
 	}
 
 	return toAPIAuthResponse(result), nil
+}
+
+func (h *AuthHandler) ListSessions(ctx context.Context, params api.ListSessionsParams) (*api.SessionListResponse, error) {
+
+	info, err := appScopedInfo(ctx)
+	if err != nil {
+		return nil, apperrors.ToAPIError(err)
+	}
+
+	page := 1
+	if params.Page.IsSet() {
+		page = params.Page.Value
+	}
+
+	perPage := 20
+	if params.PerPage.IsSet() {
+		perPage = params.PerPage.Value
+	}
+
+	items, total, err := h.authService.ListSessions(ctx, info.UserID, info.SID, page, perPage)
+	if err != nil {
+		return nil, apperrors.ToAPIError(err)
+	}
+
+	data := make([]api.SessionInfo, 0, len(items))
+	for _, item := range items {
+
+		id, parseErr := uuid.Parse(item.ID)
+		if parseErr != nil {
+			return nil, apperrors.ToAPIError(apperrors.ErrInternal)
+		}
+
+		data = append(data, api.SessionInfo{
+			ID:        id,
+			Scopes:    item.Scopes,
+			Current:   item.Current,
+			CreatedAt: item.CreatedAt,
+			ExpiresAt: item.ExpiresAt,
+		})
+	}
+
+	return &api.SessionListResponse{
+		Data: data,
+		Meta: api.PaginationMeta{
+			Page:    api.NewOptInt(page),
+			PerPage: api.NewOptInt(perPage),
+			Total:   api.NewOptInt(total),
+		},
+	}, nil
+}
+
+func (h *AuthHandler) RevokeSession(ctx context.Context, params api.RevokeSessionParams) (api.RevokeSessionRes, error) {
+
+	info, err := appScopedInfo(ctx)
+	if err != nil {
+		return nil, apperrors.ToAPIError(err)
+	}
+
+	err = h.authService.RevokeSession(ctx, info.UserID, params.SessionId.String())
+	if err != nil {
+		return nil, apperrors.ToAPIError(err)
+	}
+
+	return &api.RevokeSessionNoContent{}, nil
 }
 
 func (h *AuthHandler) GetUser(ctx context.Context, params api.GetUserParams) (*api.UserProfile, error) {

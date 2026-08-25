@@ -70,3 +70,41 @@ RefreshTokenRequest:
   properties:
     refresh_token:
       type: string
+
+SessionInfo:
+  type: object
+  required:
+    - id
+    - scopes
+    - current
+    - created_at
+    - expires_at
+  properties:
+    id:
+      type: string
+      format: uuid
+    scopes:
+      type: array
+      items:
+        type: string
+    current:
+      type: boolean
+    created_at:
+      type: string
+      format: date-time
+    expires_at:
+      type: string
+      format: date-time
+
+SessionListResponse:
+  type: object
+  required:
+    - data
+    - meta
+  properties:
+    data:
+      type: array
+      items:
+        $ref: "#/SessionInfo"
+    meta:
+      $ref: "./common.yaml#/PaginationMeta"

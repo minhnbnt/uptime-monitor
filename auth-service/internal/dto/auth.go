@@ -1,5 +1,7 @@
 package dto
 
+import "time"
+
 type RegisterRequest struct {
 	Email    string
 	Username string
@@ -27,4 +29,12 @@ type UserProfile struct {
 	Email    string
 	Username string
 	Name     string
+}
+
+type SessionInfo struct {
+	ID        string
+	Scopes    []string
+	Current   bool
+	CreatedAt time.Time
+	ExpiresAt time.Time
 }

@@ -43,6 +43,7 @@ type AuthService struct {
 type SessionRepository interface {
 	Create(ctx context.Context, session *domain.Session) error
 	DeleteByJTI(ctx context.Context, jti string) error
+	DeleteByJTIAndUser(ctx context.Context, userID uint, jti string) (bool, error)
 	FindByUser(ctx context.Context, userID uint) ([]domain.Session, error)
 }
 
@@ -233,4 +234,62 @@ func (s *AuthService) CreatePingSession(ctx context.Context, userID uint) (*dto.
 
 	scopes := []string{string(domain.ScopePing)}
 	return s.issueTokens(ctx, user, scopes)
+}
+
+func (s *AuthService) ListSessions(ctx context.Context, userID uint, currentSessionID string, page, perPage int) ([]dto.SessionInfo, int, error) {
+
+	sessions, err := s.sessionRepository.FindByUser(ctx, userID)
+	if err != nil {
+		s.logger.Error("failed to list sessions", slog.Any("error", err))
+		return nil, 0, apperrors.ErrInternal
+	}
+
+	now := time.Now()
+	active := make([]domain.Session, 0, len(sessions))
+	for _, session := range sessions {
+		if session.ExpiresAt.After(now) {
+			active = append(active, session)
+		}
+	}
+
+	total := len(active)
+
+	start := (page - 1) * perPage
+	if start > total {
+		start = total
+	}
+
+	end := start + perPage
+	if end > total {
+		end = total
+	}
+
+	items := make([]dto.SessionInfo, 0, end-start)
+	for _, session := range active[start:end] {
+		id := session.JTI.String()
+		items = append(items, dto.SessionInfo{
+			ID:        id,
+			Scopes:    session.ScopeList(),
+			Current:   id == currentSessionID,
+			CreatedAt: session.CreatedAt,
+			ExpiresAt: session.ExpiresAt,
+		})
+	}
+
+	return items, total, nil
+}
+
+func (s *AuthService) RevokeSession(ctx context.Context, userID uint, sessionID string) error {
+
+	found, err := s.sessionRepository.DeleteByJTIAndUser(ctx, userID, sessionID)
+	if err != nil {
+		s.logger.Error("failed to revoke session", slog.Any("error", err))
+		return apperrors.ErrInternal
+	}
+
+	if !found {
+		return apperrors.ErrNotFound
+	}
+
+	return nil
 }

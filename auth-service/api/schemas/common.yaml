@@ -1,3 +1,13 @@
+PaginationMeta:
+  type: object
+  properties:
+    page:
+      type: integer
+    per_page:
+      type: integer
+    total:
+      type: integer
+
 ErrorResponse:
   type: object
   required:

@@ -13,6 +13,8 @@ type mockAuthService struct {
 	logoutFn            func(ctx context.Context, refreshToken string) error
 	getUserFn           func(ctx context.Context, id uint) (*dto.UserProfile, error)
 	createPingSessionFn func(ctx context.Context, userID uint) (*dto.AuthResponse, error)
+	listSessionsFn      func(ctx context.Context, userID uint, currentSessionID string, page, perPage int) ([]dto.SessionInfo, int, error)
+	revokeSessionFn     func(ctx context.Context, userID uint, sessionID string) error
 }
 
 func (m *mockAuthService) Register(ctx context.Context, req dto.RegisterRequest) (*dto.AuthResponse, error) {
@@ -49,4 +51,18 @@ func (m *mockAuthService) CreatePingSession(ctx context.Context, userID uint) (*
 		return nil, nil
 	}
 	return m.createPingSessionFn(ctx, userID)
+}
+
+func (m *mockAuthService) ListSessions(ctx context.Context, userID uint, currentSessionID string, page, perPage int) ([]dto.SessionInfo, int, error) {
+	if m.listSessionsFn == nil {
+		return nil, 0, nil
+	}
+	return m.listSessionsFn(ctx, userID, currentSessionID, page, perPage)
+}
+
+func (m *mockAuthService) RevokeSession(ctx context.Context, userID uint, sessionID string) error {
+	if m.revokeSessionFn == nil {
+		return nil
+	}
+	return m.revokeSessionFn(ctx, userID, sessionID)
 }
