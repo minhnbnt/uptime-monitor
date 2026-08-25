@@ -284,7 +284,7 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 					return []ontimerepo.UptimeRow{{
 						EndpointID:    1,
 						From:          d1,
-					To:            d1.Add(14 * time.Hour),
+						To:            d1.Add(14 * time.Hour),
 						HasData:       true,
 						OnlineSeconds: 8 * 3600,
 						ObservedFrom:  d1,
@@ -353,7 +353,7 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 					return []ontimerepo.UptimeRow{{
 						EndpointID:    1,
 						From:          d1,
-					To:            d1.Add(14 * time.Hour),
+						To:            d1.Add(14 * time.Hour),
 						HasData:       true,
 						OnlineSeconds: 8 * 3600,
 						ObservedFrom:  d1,
