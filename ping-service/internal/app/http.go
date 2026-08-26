@@ -20,6 +20,11 @@ func RunZSetWorker(ctx context.Context, i do.Injector) {
 	runner.RunZSetWorker(ctx)
 }
 
+func RunStaleWorker(ctx context.Context, i do.Injector) {
+	runner := do.MustInvoke[*pinghandler.StaleWorkerRunner](i)
+	runner.RunStaleWorker(ctx)
+}
+
 func RunStreamConsumer(ctx context.Context, i do.Injector) {
 	worker := do.MustInvoke[*pinghandler.EndpointEventWorker](i)
 	worker.Run(ctx)

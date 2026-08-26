@@ -32,3 +32,13 @@
 - [x] 5.1 `go test ./...` toàn repo xanh (kể cả test mới)
 - [x] 5.2 Lint (`golangci-lint run`) sạch
 - [x] 5.3 Smoke test thủ công theo compose: tạo ping-session token → POST batch hợp lệ (200 + next_time) → POST lại ngay (429) → batch lẫn tên lạ (207 + errors) → xác nhận event thay đổi trạng thái xuất hiện ở ontime-service
+
+## 6. Stale detection — agent im lặng
+
+- [x] 6.1 domain: `StatusUnknown ServerStatus = "UNKNOWN"`; hằng số `PushStaleInterval = 90 * time.Second`
+- [x] 6.2 scheduler: `ScoreUpdater` + `ZSetTaskClaimer` nhận `keyFor func(shardID uint) string`; logic Unregister chuyển thành `ScoreUpdater.Remove`; integration test cập nhật ctor + case Remove
+- [x] 6.3 repository `FreshnessStore` bọc updater+claimer trên cùng `keyFor` prefix `push:freshness`; API Touch/Remove/ClaimOverdue; test testcontainer theo pattern ratelimiter_test
+- [x] 6.4 `RecordStatusWorker.Record(ctx, event, freshness)` touch-before-record; callers: pushevent truyền `PushStaleInterval`, pingloop truyền `ep.Interval + PushStaleInterval`; mock/test cập nhật, thêm case dedupe-skip vẫn touch
+- [x] 6.5 service `StaleLoopService.Run` mirror `ZsetLoopService`: đủ batch (10) không sleep, else sleep min(until next, 30s); record UNKNOWN → thành công Remove entry, lỗi giữ entry; unit test bảng case
+- [x] 6.6 wiring: runner handler per-shard + đăng ký injector + goroutine `app.RunStaleWorker` trong cmd/main.go; `OnDelete` xóa luôn entry freshness
+- [x] 6.7 Verification: `go test ./...` + `golangci-lint run` xanh

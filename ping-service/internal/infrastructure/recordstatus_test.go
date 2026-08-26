@@ -4,12 +4,27 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/logger"
 )
+
+const testFreshness = 90 * time.Second
+
+type mockFreshnessToucher struct {
+	touched []uint
+	lease   time.Duration
+	err     error
+}
+
+func (m *mockFreshnessToucher) Touch(_ context.Context, endpointID uint, lease time.Duration) error {
+	m.touched = append(m.touched, endpointID)
+	m.lease = lease
+	return m.err
+}
 
 func newEvent(endpointID uint, status domain.ServerStatus) *domain.ServerEvent {
 	return &domain.ServerEvent{
@@ -31,10 +46,11 @@ func TestRecord(t *testing.T) {
 				},
 			},
 			eventRecorder: &mockEventRecorder{},
+			freshness:     &mockFreshnessToucher{},
 			logger:        log,
 		}
 
-		err := w.Record(context.Background(), newEvent(endpointID, domain.StatusOn))
+		err := w.Record(context.Background(), newEvent(endpointID, domain.StatusOn), testFreshness)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -61,10 +77,11 @@ func TestRecord(t *testing.T) {
 					return nil
 				},
 			},
-			logger: logger.NewMockLogger(),
+			freshness: &mockFreshnessToucher{},
+			logger:    logger.NewMockLogger(),
 		}
 
-		err := w.Record(context.Background(), newEvent(endpointID, domain.StatusOn))
+		err := w.Record(context.Background(), newEvent(endpointID, domain.StatusOn), testFreshness)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -100,10 +117,11 @@ func TestRecord(t *testing.T) {
 					return nil
 				},
 			},
-			logger: logger.NewMockLogger(),
+			freshness: &mockFreshnessToucher{},
+			logger:    logger.NewMockLogger(),
 		}
 
-		err := w.Record(context.Background(), newEvent(endpointID, domain.StatusOn))
+		err := w.Record(context.Background(), newEvent(endpointID, domain.StatusOn), testFreshness)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -134,10 +152,11 @@ func TestRecord(t *testing.T) {
 					return wantErr
 				},
 			},
-			logger: logger.NewMockLogger(),
+			freshness: &mockFreshnessToucher{},
+			logger:    logger.NewMockLogger(),
 		}
 
-		err := w.Record(context.Background(), newEvent(endpointID, domain.StatusOn))
+		err := w.Record(context.Background(), newEvent(endpointID, domain.StatusOn), testFreshness)
 		if err != wantErr {
 			t.Errorf("got %v, want %v", err, wantErr)
 		}
@@ -159,12 +178,69 @@ func TestRecord(t *testing.T) {
 					return nil
 				},
 			},
-			logger: logger.NewMockLogger(),
+			freshness: &mockFreshnessToucher{},
+			logger:    logger.NewMockLogger(),
 		}
 
-		err := w.Record(context.Background(), newEvent(endpointID, domain.StatusOn))
+		err := w.Record(context.Background(), newEvent(endpointID, domain.StatusOn), testFreshness)
 		if err != wantErr {
 			t.Errorf("got %v, want %v", err, wantErr)
+		}
+	})
+
+	t.Run("touches freshness even when dedupe skips recording", func(t *testing.T) {
+		fresh := &mockFreshnessToucher{}
+		w := &RecordStatusWorker{
+			statusStore: &mockStatusStore{
+				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
+					return domain.StatusOn, nil
+				},
+			},
+			eventRecorder: &mockEventRecorder{},
+			freshness:     fresh,
+			logger:        logger.NewMockLogger(),
+		}
+
+		err := w.Record(context.Background(), newEvent(endpointID, domain.StatusOn), testFreshness)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if len(fresh.touched) != 1 || fresh.touched[0] != endpointID {
+			t.Errorf("touched = %v, want [%d]", fresh.touched, endpointID)
+		}
+		if fresh.lease != testFreshness {
+			t.Errorf("lease = %v, want %v", fresh.lease, testFreshness)
+		}
+	})
+
+	t.Run("touch error logs warn but does not drop the event", func(t *testing.T) {
+		log, capLog := logger.NewCapturingLogger()
+		var recorded bool
+		w := &RecordStatusWorker{
+			statusStore: &mockStatusStore{
+				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
+					return domain.StatusOff, nil
+				},
+			},
+			eventRecorder: &mockEventRecorder{
+				recordEventFn: func(_ context.Context, _ uint, _ domain.ServerStatus) error {
+					recorded = true
+					return nil
+				},
+			},
+			freshness: &mockFreshnessToucher{err: errors.New("redis error")},
+			logger:    log,
+		}
+
+		err := w.Record(context.Background(), newEvent(endpointID, domain.StatusOn), testFreshness)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if !capLog.HasWarn() {
+			t.Error("expected warn log for touch failure")
+		}
+		if !recorded {
+			t.Error("event must still be recorded when touch fails")
 		}
 	})
 }

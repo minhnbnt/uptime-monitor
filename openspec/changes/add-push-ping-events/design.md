@@ -15,11 +15,11 @@ Server-service sở hữu bảng `servers`/`endpoints` (1 server có đúng 1 en
 - Kênh push REST cho agent, xác thực đầy đủ qua JWT scope `ping`
 - Rate-limit theo session dùng lại đúng hàm băm của pull (`utils.NextExecutionTime`)
 - Event push tái sử dụng 100% pipeline ghi nhận của pull
+- Phát hiện agent im lặng qua zset freshness dùng chung cho event push và pull
 - Fix bug middleware chặn đường route public
 
 **Non-Goals:**
 
-- Phát hiện agent im lặng / staleness detection (làm change riêng khi cần)
 - Interval push theo từng endpoint hoặc cấu hình được (fix cứng 30s)
 - Tương tác hai chiều giữa push và lịch zset pull
 - Unique constraint cho `Server.Name`
@@ -84,6 +84,16 @@ Status string chấp nhận `ON`/`OFF` (khớp `domain.StatusOn/Off`, so sánh c
 Ping-service giữ pattern chung của repo: OpenAPI spec per-service (`ping-service/api/spec.yaml` + `paths/ping.yaml` + `schemas/ping.yaml`) là nguồn generate qua `go tool ogen` (`.ogen.yml`, `//go:generate` trong cmd/main.go) → package `generated/api`. Handler implement interface do ogen sinh ra, wrap push service. `RunHealthCheckServer` giữ `/health` trên mux và mount ogen server tại path endpoint; auth chain `XUserIDMiddleware → RequireScope("ping")` bọc quanh route push. Root `api/` docs đang stale — bỏ qua, mỗi service tự sở hữu spec.
 - *Alternative bị loại*: hand-rolled net/http handler trên mux health — lệch pattern của 5 service REST còn lại, phải tự viết decode/validate mà ogen sinh sẵn từ schema.
 
+### D7 — Freshness zset sharded tái dụng ScoreUpdater, touch trong Record()
+
+Zset `push:freshness:{shard}` (member = server ID, score = hạn stale UnixMilli) tái dụng sharding + hàm băm của scheduler: `ScoreUpdater` và `ZSetTaskClaimer` được tham số hóa bằng `keyFor func(shardID uint) string` (instance scheduler giữ `shardKey` cũ, instance freshness trả `"push:freshness:{n}"`). Điểm cập nhật nằm trong `RecordStatusWorker.Record(ctx, event, freshness)` TRƯỚC bước dedupe — một chỗ cho cả hai nguồn nên không thể quên: event push truyền lease `PushStaleInterval = 90s` (3 cửa sổ push 30s), ping-loop truyền `ep.Interval + PushStaleInterval`. Lease riêng theo caller là bắt buộc: nếu ép const chung thì endpoint pull có interval > 90s sẽ bị flip UNKNOWN oan giữa hai lần poll. Touch lỗi chỉ log warn, không làm rơi event (Redis chết thì stale worker cũng không claim được gì). State nằm trong Redis thay vì in-memory map — restart ping-service không mất tracking, đây chính là yêu cầu "tắt app".
+- *Alternative bị loại*: store Redis viết riêng cho freshness (trùng lặp shard key/hash/pipeline đã có); const lease chung mọi nguồn (flip oan endpoint pull interval dài).
+
+### D8 — Claimer tái dụng nguyên bản, FreshnessStore bọc cả hai
+
+`ZSetTaskClaimer` nhận thêm `keyFor`, Lua `claimScript` + parser giữ nguyên một chữ: claim nguyên tử `ZRANGEBYSCORE score ≤ now LIMIT n WITHSCORES` + ZADD bump `now+10s` (claim lock — worker khác không lấy trùng, đúng cơ chế poll) + peek entry kế tiếp. `FreshnessStore` (repository pkg) bọc cặp updater+claimer dựng trên cùng một `keyFor`, expose `Touch/Remove/ClaimOverdue`. Stale loop mirror `ZsetLoopService`: đủ 10 entry → không sleep; else sleep min(until next, 30s). Từng entry due: record UNKNOWN (`domain.StatusUnknown`) qua đúng `Record()` (dedupe last-status tự chặn nhiễu UNKNOWN→UNKNOWN lặp) → thành công thì Remove entry (agent push lại tự tái tạo qua Touch); lỗi thì giữ entry — score đã bump nên không ai lấy trùng và tự retry ≥10s sau. OnDelete xóa luôn entry freshness để server bị xóa không phát UNKNOWN oan. Proto event dùng string tự do nên không phải regenerate; ontime lưu varchar thô không validate lúc ghi, read path `ToServerStatus` vốn coi giá trị lạ là unknown → zero change downstream.
+- *Alternative bị loại*: copy claim script vào ScoreUpdater (hai bản script phải sửa song song); single key không shard (lệch mô hình sẵn có).
+
 ## Risks / Trade-offs
 
 - [Hai nguồn chân lý đẩy nhau] Agent push OFF trong lúc pull probe thấy sống → trạng thái lật theo nguồn sau. → Chấp nhận có chủ đích theo yêu cầu "2 kiểu chạy đồng thời"; khi cần ưu tiên nguồn thì thêm policy sau.
@@ -91,6 +101,8 @@ Ping-service giữ pattern chung của repo: OpenAPI spec per-service (`ping-ser
 - [Header `sid` bị giả mạo nếu ai đó gọi thẳng ping-service] Mô hình tin cậy giống hệt `X-User-ID` hiện nay. → Giữ ping-service không lộ port HTTP ra ngoài mạng nội bộ compose.
 - [Clock skew giữa node tính `next_time`] Lưới băm mốc tuyệt đối theo epoch; skew nhỏ hơn 30s chỉ dịch nhẹ cửa sổ. → Chấp nhận, tương tự zset pull vốn đã phụ thuộc clock.
 - [Fix middleware ảnh hưởng service khác] Bug hiện tại khiến handler chạy 2 lần với header rỗng; sau fix chỉ chạy 1 lần. → Hành vi đúng, không service nào phụ thuộc hành vi sai này (test hiện có không cover nhánh đó).
+- [Server bị xóa khi còn trong freshness set] OnDelete xóa entry ngay; race hi hữu giữa claim và xóa chỉ dư 1 UNKNOWN cho ID đã xóa. → Chấp nhận, ontime vốn không kiểm tra tồn tại endpoint khi lưu event.
+- [UNKNOWN vào số liệu đếm] CountByStatus chỉ đếm ON/OFF nên UNKNOWN không làm lệch uptime; nếu sau này muốn hiển thị MonitorStatus "UNKNOWN" phía server-service/API (enum docs hiện ["ON","OFF"]) thì xử lý ở change riêng.
 
 ## Migration Plan
 

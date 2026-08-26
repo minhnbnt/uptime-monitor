@@ -9,8 +9,9 @@ import (
 type ServerStatus string
 
 const (
-	StatusOn  ServerStatus = "ON"
-	StatusOff ServerStatus = "OFF"
+	StatusOn      ServerStatus = "ON"
+	StatusOff     ServerStatus = "OFF"
+	StatusUnknown ServerStatus = "UNKNOWN"
 )
 
 type ServerEvent struct {

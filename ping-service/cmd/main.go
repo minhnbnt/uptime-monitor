@@ -34,6 +34,7 @@ func main() {
 
 	waitgroup.Go(func() { app.RunStreamConsumer(ctx, injector) })
 	waitgroup.Go(func() { app.RunZSetWorker(ctx, injector) })
+	waitgroup.Go(func() { app.RunStaleWorker(ctx, injector) })
 	waitgroup.Go(func() { app.RunPingGRPCServer(ctx, injector) })
 
 	waitgroup.Go(func() { app.RunHealthCheckServer(ctx, injector) })

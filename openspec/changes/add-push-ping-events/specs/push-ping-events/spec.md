@@ -73,3 +73,27 @@ Event push hợp lệ SHALL đi vào cùng đường ghi nhận với event pull
 #### Scenario: Push lặp cùng trạng thái
 - **WHEN** agent push status ON cho server vốn đã ở trạng thái ON
 - **THEN** không có event mới phát sinh downstream nhưng request vẫn tính là accepted và nhận `next_time`
+
+### Requirement: Ghi nhận độ tươi của server qua zset
+
+Trước khi ghi nhận bất kỳ event trạng thái nào cho một server (từ kênh push lẫn kênh pull), hệ thống SHALL cập nhật score của server đó trong một zset Redis thành `now + khoảng thời gian tươi`, trong đó khoảng tươi của event push là hằng số (~90s) và của event pull là interval của endpoint cộng thêm cùng hằng số đó. State SHALL nằm trong Redis để tồn tại qua lần restart ping-service.
+
+#### Scenario: Push làm mới hạn stale
+- **WHEN** agent push event hợp lệ được ghi nhận
+- **THEN** score của server trong zset freshness được đặt lại thành `now + ~90s` trước khi event đi vào pipeline dedupe
+
+#### Scenario: Pull giữ server sống khi agent tắt app
+- **WHEN** agent ngừng push nhưng server vẫn được pull probe định kỳ và ghi event
+- **THEN** score freshness tiếp tục được làm mới theo từng lần poll record, server không bị đánh unknown oan
+
+### Requirement: Worker phát hiện và đánh dấu stale
+
+Hệ thống SHALL chạy worker quét zset freshness: claim nguyên tử tối đa 10 entry có score ≤ now đồng thời bump score các entry đó thành `now + 10s` (chống worker khác lấy trùng), sau đó ghi 1 event UNKNOWN cho từng server. Với từng entry ghi UNKNOWN thành công, hệ thống SHALL xóa entry khỏi zset; nếu ghi lỗi SHALL giữ nguyên entry để tự thử lại sau ít nhất 10s. Nếu lượt claim trả đủ 10 entry, worker SHALL lặp ngay không sleep; ngược lại sleep bằng khoảng cách đến entry gần nhất nhưng không quá 30s. Status `UNKNOWN` đi qua cùng pipeline ghi nhận như ON/OFF.
+
+#### Scenario: Agent im lặng quá hạn
+- **WHEN** một server không được ghi nhận event nào trong khoảng thời gian tươi
+- **THEN** worker phát 1 event UNKNOWN cho server đó rồi xóa entry; khi agent push lại, entry được tái tạo và trạng thái thật tiếp tục được ghi nhận
+
+#### Scenario: Ghi UNKNOWN thất bại
+- **WHEN** việc record event UNKNOWN bị lỗi (ví dụ mất kết nối downstream)
+- **THEN** entry không bị xóa, score đã được bump thành `now + 10s` nên worker khác không lấy trùng và hệ thống tự thử lại ở vòng sau

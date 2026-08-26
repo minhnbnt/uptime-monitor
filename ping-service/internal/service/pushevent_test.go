@@ -57,7 +57,7 @@ type fakeRecorder struct {
 	fail   map[uint]bool
 }
 
-func (f *fakeRecorder) Record(_ context.Context, event *domain.ServerEvent) error {
+func (f *fakeRecorder) Record(_ context.Context, event *domain.ServerEvent, _ time.Duration) error {
 	if f.fail[event.EndpointID] {
 		return errors.New("boom")
 	}

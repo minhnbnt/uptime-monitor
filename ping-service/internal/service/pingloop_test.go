@@ -20,11 +20,11 @@ func (m *mockPingWorker) Ping(ctx context.Context, ep *domain.Endpoint) (*infra.
 }
 
 type mockRecordWorker struct {
-	recordFn func(ctx context.Context, event *domain.ServerEvent) error
+	recordFn func(ctx context.Context, event *domain.ServerEvent, freshness time.Duration) error
 }
 
-func (m *mockRecordWorker) Record(ctx context.Context, event *domain.ServerEvent) error {
-	return m.recordFn(ctx, event)
+func (m *mockRecordWorker) Record(ctx context.Context, event *domain.ServerEvent, freshness time.Duration) error {
+	return m.recordFn(ctx, event, freshness)
 }
 
 func TestPingAndRecordEndpoint(t *testing.T) {
@@ -47,7 +47,7 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 			},
 			responseChecker: &ResponseChecker{bodyChecker: &infra.BodyChecker{}},
 			recordStatusWorker: &mockRecordWorker{
-				recordFn: func(_ context.Context, event *domain.ServerEvent) error {
+				recordFn: func(_ context.Context, event *domain.ServerEvent, _ time.Duration) error {
 					recordedEvent = event
 					return nil
 				},
@@ -88,7 +88,7 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 			},
 			responseChecker: &ResponseChecker{bodyChecker: &infra.BodyChecker{}},
 			recordStatusWorker: &mockRecordWorker{
-				recordFn: func(_ context.Context, event *domain.ServerEvent) error {
+				recordFn: func(_ context.Context, event *domain.ServerEvent, _ time.Duration) error {
 					recordedEvent = event
 					return nil
 				},
@@ -121,7 +121,7 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 			},
 			responseChecker: &ResponseChecker{bodyChecker: &infra.BodyChecker{}},
 			recordStatusWorker: &mockRecordWorker{
-				recordFn: func(_ context.Context, event *domain.ServerEvent) error {
+				recordFn: func(_ context.Context, event *domain.ServerEvent, _ time.Duration) error {
 					recordedEvent = event
 					return nil
 				},
@@ -151,7 +151,7 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 			},
 			responseChecker: &ResponseChecker{bodyChecker: &infra.BodyChecker{}},
 			recordStatusWorker: &mockRecordWorker{
-				recordFn: func(_ context.Context, _ *domain.ServerEvent) error {
+				recordFn: func(_ context.Context, _ *domain.ServerEvent, _ time.Duration) error {
 					return errors.New("grpc error")
 				},
 			},
@@ -177,7 +177,7 @@ func TestPingAndRecordEndpoint(t *testing.T) {
 			},
 			responseChecker: &ResponseChecker{bodyChecker: &infra.BodyChecker{}},
 			recordStatusWorker: &mockRecordWorker{
-				recordFn: func(_ context.Context, _ *domain.ServerEvent) error { return nil },
+				recordFn: func(_ context.Context, _ *domain.ServerEvent, _ time.Duration) error { return nil },
 			},
 			scoreUpdater: &mockScoreUpdater{
 				updateFn: func(_ context.Context, _ uint, _ int64) error {

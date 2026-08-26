@@ -101,15 +101,7 @@ func (r *ZSetScheduleRepository) RegisterBatch(ctx context.Context, endpoints []
 }
 
 func (r *ZSetScheduleRepository) Unregister(ctx context.Context, endpointID uint) error {
-
-	zsetKey, err := schedulerShardKey(r.shardCount, endpointID)
-	if err != nil {
-		return fmt.Errorf("failed to get shard key: %w", err)
-	}
-
-	cmd := r.client.ZRem(ctx, zsetKey, fmt.Sprint(endpointID))
-
-	return cmd.Err()
+	return r.scoreUpdater.Remove(ctx, endpointID)
 }
 
 func (r *ZSetScheduleRepository) MoveIfWrongShard(
@@ -121,7 +113,7 @@ func (r *ZSetScheduleRepository) MoveIfWrongShard(
 
 	for _, task := range due {
 
-		correctKey, err := schedulerShardKey(r.shardCount, task.EndpointID)
+		correctKey, err := r.scoreUpdater.ShardKeyFor(task.EndpointID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get shard key: %w", err)
 		}

@@ -16,7 +16,13 @@ import (
 	pingrepo "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/repository"
 )
 
-const PushInterval = 30 * time.Second
+const (
+	PushInterval = 30 * time.Second
+
+	// PushStaleInterval is the freshness lease per push event: an agent that
+	// stays silent for 3 push windows in a row is considered stale.
+	PushStaleInterval = 90 * time.Second
+)
 
 type PushEventItem struct {
 	ID     uint64
@@ -52,7 +58,7 @@ type PushRateGate interface {
 }
 
 type PushEventRecorder interface {
-	Record(ctx context.Context, event *domain.ServerEvent) error
+	Record(ctx context.Context, event *domain.ServerEvent, freshness time.Duration) error
 }
 
 type PushEventService struct {
@@ -187,7 +193,7 @@ func (s *PushEventService) Handle(ctx context.Context, userID uint, sessionID st
 			Status:     domain.ServerStatus(item.Status),
 		}
 
-		if err := s.recorder.Record(ctx, &event); err != nil {
+		if err := s.recorder.Record(ctx, &event, PushStaleInterval); err != nil {
 
 			s.logger.Warn(
 				"failed to record push event",
@@ -195,11 +201,12 @@ func (s *PushEventService) Handle(ctx context.Context, userID uint, sessionID st
 				slog.Any("error", err),
 			)
 
-			result.Errors = append(result.Errors, PushEventError{
+			pushErr := PushEventError{
 				ID:    item.ID,
 				Error: "record failed",
-			})
+			}
 
+			result.Errors = append(result.Errors, pushErr)
 			continue
 		}
 

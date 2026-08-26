@@ -7,12 +7,14 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/redis"
+	pingrepo "github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/scheduler"
 )
 
 type EndpointEventHandler struct {
 	scheduler     *scheduler.ZSetScheduleRepository
 	endpointCache *scheduler.EndpointMetaCache
+	freshness     *pingrepo.FreshnessStore
 }
 
 func (e *EndpointEventHandler) OnCreate(ctx context.Context, endpoint domain.Endpoint) error {
@@ -36,7 +38,11 @@ func (e *EndpointEventHandler) OnDelete(ctx context.Context, id uint) error {
 		return err
 	}
 
-	return e.scheduler.Unregister(ctx, id)
+	if err := e.scheduler.Unregister(ctx, id); err != nil {
+		return err
+	}
+
+	return e.freshness.Remove(ctx, id)
 }
 
 type EndpointEventService struct {
@@ -49,9 +55,11 @@ func RegisterEventService(i do.Injector) {
 
 		sched := do.MustInvoke[*scheduler.ZSetScheduleRepository](i)
 		cache := do.MustInvoke[*scheduler.EndpointMetaCache](i)
+		freshness := do.MustInvoke[*pingrepo.FreshnessStore](i)
 		eventHandler := &EndpointEventHandler{
 			scheduler:     sched,
 			endpointCache: cache,
+			freshness:     freshness,
 		}
 
 		consumer := do.MustInvoke[*redis.StreamEventConsumer](i)

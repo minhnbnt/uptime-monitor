@@ -11,34 +11,19 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/utils"
 )
 
-func schedulerShardKey(shardCount int, endpointID uint) (string, error) {
-
-	if shardCount < 1 {
-		shardCount = 1
-	}
-
-	hash, err := utils.Hash(endpointID)
-	if err != nil {
-		return "", err
-	}
-
-	shardID := hash % uint64(shardCount)
-
-	return shardKey(uint(shardID)), nil
-}
-
 type ScoreUpdater struct {
 	client     *redis.Client
 	shardCount int
+	keyFor     func(shardID uint) string
 }
 
-func NewScoreUpdater(client *redis.Client, shardCount int) *ScoreUpdater {
+func NewScoreUpdater(client *redis.Client, shardCount int, keyFor func(shardID uint) string) *ScoreUpdater {
 
 	if shardCount < 1 {
 		shardCount = 1
 	}
 
-	return &ScoreUpdater{client: client, shardCount: shardCount}
+	return &ScoreUpdater{client: client, shardCount: shardCount, keyFor: keyFor}
 }
 
 func RegisterScoreUpdater(i do.Injector) {
@@ -47,8 +32,20 @@ func RegisterScoreUpdater(i do.Injector) {
 		cfg := do.MustInvoke[*config.Config](i)
 		wrapper := do.MustInvoke[*config.RedisClientWrapper](i)
 
-		return NewScoreUpdater(wrapper.GetClient(), cfg.Redis.SchedulerShards), nil
+		return NewScoreUpdater(wrapper.GetClient(), cfg.Redis.SchedulerShards, shardKey), nil
 	})
+}
+
+func (u *ScoreUpdater) ShardKeyFor(endpointID uint) (string, error) {
+
+	hash, err := utils.Hash(endpointID)
+	if err != nil {
+		return "", err
+	}
+
+	shardID := hash % uint64(u.shardCount)
+
+	return u.keyFor(uint(shardID)), nil
 }
 
 func (u *ScoreUpdater) Update(ctx context.Context, endpointID uint, nextScore int64) error {
@@ -61,10 +58,10 @@ func (u *ScoreUpdater) UpdateBatch(ctx context.Context, items map[uint]int64) er
 		return nil
 	}
 
-	scores := make(map[string][]redis.Z)
+	scores := make(map[string][]redis.Z, len(items))
 	for id, score := range items {
 
-		key, err := schedulerShardKey(u.shardCount, id)
+		key, err := u.ShardKeyFor(id)
 		if err != nil {
 			return fmt.Errorf("failed to get shard key: %w", err)
 		}
@@ -86,4 +83,16 @@ func (u *ScoreUpdater) UpdateBatch(ctx context.Context, items map[uint]int64) er
 	_, err := pipe.Exec(ctx)
 
 	return err
+}
+
+func (u *ScoreUpdater) Remove(ctx context.Context, endpointID uint) error {
+
+	zsetKey, err := u.ShardKeyFor(endpointID)
+	if err != nil {
+		return fmt.Errorf("failed to get shard key: %w", err)
+	}
+
+	cmd := u.client.ZRem(ctx, zsetKey, fmt.Sprint(endpointID))
+
+	return cmd.Err()
 }

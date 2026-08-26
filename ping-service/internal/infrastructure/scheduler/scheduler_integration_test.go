@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -37,8 +38,8 @@ func newRepo(tb testing.TB, shardCount ...int) *ZSetScheduleRepository {
 	if len(shardCount) > 0 {
 		sc = shardCount[0]
 	}
-	updater := NewScoreUpdater(client, sc)
-	claimer := NewZSetTaskClaimer(client)
+	updater := NewScoreUpdater(client, sc, shardKey)
+	claimer := NewZSetTaskClaimer(client, shardKey)
 	return NewZSetScheduleRepository(client, updater, claimer, sc)
 }
 
@@ -49,7 +50,7 @@ func newScoreUpdater(tb testing.TB, client *redis.Client, shardCount ...int) *Sc
 	if len(shardCount) > 0 {
 		sc = shardCount[0]
 	}
-	return NewScoreUpdater(client, sc)
+	return NewScoreUpdater(client, sc, shardKey)
 }
 
 func TestRegisterBatch(t *testing.T) {
@@ -251,7 +252,7 @@ func TestScoreUpdaterUpdateBatch(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	client := testcontainers.NewTestRedis(t, testRedisAddr)
 	updater := newScoreUpdater(t, client)
-	claimer := NewZSetTaskClaimer(client)
+	claimer := NewZSetTaskClaimer(client, shardKey)
 	repo := NewZSetScheduleRepository(client, updater, claimer, 1)
 	ctx := context.Background()
 
@@ -322,8 +323,8 @@ func newShardedRepo(tb testing.TB, shardCount int) *ZSetScheduleRepository {
 	tb.Helper()
 	testcontainers.SkipIfShort(tb)
 	client := testcontainers.NewTestRedis(tb, testRedisAddr)
-	updater := NewScoreUpdater(client, shardCount)
-	claimer := NewZSetTaskClaimer(client)
+	updater := NewScoreUpdater(client, shardCount, shardKey)
+	claimer := NewZSetTaskClaimer(client, shardKey)
 	return NewZSetScheduleRepository(client, updater, claimer, shardCount)
 }
 
@@ -343,7 +344,7 @@ func TestRegisterBatchWithSharding(t *testing.T) {
 	}
 
 	for _, ep := range endpoints {
-		key, _ := schedulerShardKey(3, ep.ID)
+		key, _ := repo.scoreUpdater.ShardKeyFor(ep.ID)
 		score, err := repo.client.ZScore(ctx, key, fmt.Sprint(ep.ID)).Result()
 		if err != nil {
 			t.Errorf("endpoint %d not found in shard key %q: %v", ep.ID, key, err)
@@ -417,8 +418,8 @@ func TestUnregisterWithSharding(t *testing.T) {
 		t.Fatalf("RegisterBatch: %v", err)
 	}
 
-	key10, _ := schedulerShardKey(3, 10)
-	key20, _ := schedulerShardKey(3, 20)
+	key10, _ := repo.scoreUpdater.ShardKeyFor(10)
+	key20, _ := repo.scoreUpdater.ShardKeyFor(20)
 
 	// Confirm both are in the correct shards
 	if _, err := repo.client.ZScore(ctx, key10, "10").Result(); err != nil {
@@ -449,7 +450,7 @@ func TestUnregisterWithSharding(t *testing.T) {
 func TestScoreUpdaterUpdateBatchWithSharding(t *testing.T) {
 	testcontainers.SkipIfShort(t)
 	client := testcontainers.NewTestRedis(t, testRedisAddr)
-	updater := NewScoreUpdater(client, 3)
+	updater := NewScoreUpdater(client, 3, shardKey)
 	ctx := context.Background()
 
 	now := time.Now()
@@ -457,7 +458,7 @@ func TestScoreUpdaterUpdateBatchWithSharding(t *testing.T) {
 
 	// Seed endpoints in their respective shards
 	for _, id := range []uint{1, 2, 3} {
-		key, _ := schedulerShardKey(3, id)
+		key, _ := updater.ShardKeyFor(id)
 		client.ZAdd(ctx, key, redis.Z{Member: fmt.Sprint(id), Score: float64(past)})
 	}
 
@@ -473,7 +474,7 @@ func TestScoreUpdaterUpdateBatchWithSharding(t *testing.T) {
 	}
 
 	for id, expectedScore := range newScores {
-		key, _ := schedulerShardKey(3, id)
+		key, _ := updater.ShardKeyFor(id)
 		score, err := client.ZScore(ctx, key, fmt.Sprint(id)).Result()
 		if err != nil {
 			t.Errorf("endpoint %d not found in shard %q: %v", id, key, err)
@@ -482,6 +483,30 @@ func TestScoreUpdaterUpdateBatchWithSharding(t *testing.T) {
 		if score != float64(expectedScore) {
 			t.Errorf("endpoint %d score = %f, want %d", id, score, expectedScore)
 		}
+	}
+}
+
+func TestScoreUpdaterRemove(t *testing.T) {
+	testcontainers.SkipIfShort(t)
+	client := testcontainers.NewTestRedis(t, testRedisAddr)
+	updater := NewScoreUpdater(client, 3, shardKey)
+	ctx := context.Background()
+
+	if err := updater.Update(ctx, 5, time.Now().Add(time.Hour).UnixMilli()); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	key, _ := updater.ShardKeyFor(5)
+	if _, err := client.ZScore(ctx, key, "5").Result(); err != nil {
+		t.Fatalf("endpoint 5 not seeded in %q: %v", key, err)
+	}
+
+	if err := updater.Remove(ctx, 5); err != nil {
+		t.Fatalf("Remove: %v", err)
+	}
+
+	if _, err := client.ZScore(ctx, key, "5").Result(); !errors.Is(err, redis.Nil) {
+		t.Errorf("err after remove = %v, want redis.Nil", err)
 	}
 }
 

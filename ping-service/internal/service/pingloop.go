@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/samber/do/v2"
@@ -18,7 +19,7 @@ type pingWorker interface {
 }
 
 type recordWorker interface {
-	Record(ctx context.Context, event *domain.ServerEvent) error
+	Record(ctx context.Context, event *domain.ServerEvent, freshness time.Duration) error
 }
 
 type scoreUpdater interface {
@@ -89,7 +90,7 @@ func (s *PingLoopService) pingAndRecordEndpoint(ctx context.Context, task PingTa
 		Status:     status,
 	}
 
-	if err := s.Record(ctx, &event); err != nil {
+	if err := s.Record(ctx, &event, ep.Interval+PushStaleInterval); err != nil {
 		s.logger.Error(
 			"record event",
 			slog.Int64("endpoint", int64(ep.ID)),
@@ -130,8 +131,8 @@ func (s *PingLoopService) Ping(ctx context.Context, ep *domain.Endpoint) (bool, 
 	return true, nil
 }
 
-func (s *PingLoopService) Record(ctx context.Context, event *domain.ServerEvent) error {
-	return s.recordStatusWorker.Record(ctx, event)
+func (s *PingLoopService) Record(ctx context.Context, event *domain.ServerEvent, freshness time.Duration) error {
+	return s.recordStatusWorker.Record(ctx, event, freshness)
 }
 
 func (s *PingLoopService) Run(ctx context.Context, channel <-chan PingTask) {

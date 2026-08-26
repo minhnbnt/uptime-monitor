@@ -14,16 +14,17 @@ import (
 
 type ZSetTaskClaimer struct {
 	client *redis.Client
+	keyFor func(shardID uint) string
 }
 
-func NewZSetTaskClaimer(client *redis.Client) *ZSetTaskClaimer {
-	return &ZSetTaskClaimer{client: client}
+func NewZSetTaskClaimer(client *redis.Client, keyFor func(shardID uint) string) *ZSetTaskClaimer {
+	return &ZSetTaskClaimer{client: client, keyFor: keyFor}
 }
 
 func RegisterZSetTaskClaimer(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ZSetTaskClaimer, error) {
 		wrapper := do.MustInvoke[*config.RedisClientWrapper](i)
-		return NewZSetTaskClaimer(wrapper.GetClient()), nil
+		return NewZSetTaskClaimer(wrapper.GetClient(), shardKey), nil
 	})
 }
 
@@ -40,7 +41,7 @@ func (r *ZSetTaskClaimer) ClaimDueTasksForShard(
 
 	cmd := claimScript.Run(
 		ctx, r.client,
-		[]string{shardKey(shardID)},
+		[]string{r.keyFor(shardID)},
 		fmt.Sprint(now),
 		fmt.Sprint(limit),
 		fmt.Sprint(lockMs),

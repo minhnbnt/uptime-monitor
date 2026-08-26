@@ -48,7 +48,9 @@ func (g *stubGate) Release(_ context.Context, _ string) error {
 
 type stubRecorder struct{}
 
-func (r *stubRecorder) Record(_ context.Context, _ *domain.ServerEvent) error { return nil }
+func (r *stubRecorder) Record(_ context.Context, _ *domain.ServerEvent, _ time.Duration) error {
+	return nil
+}
 
 func newPushTestServer(tb testing.TB, resolver *stubResolver, gate *stubGate) *httptest.Server {
 	tb.Helper()

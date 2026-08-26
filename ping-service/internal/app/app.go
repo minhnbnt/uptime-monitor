@@ -24,6 +24,7 @@ func providers(dev bool) []func(do.Injector) {
 
 		pingrepo.RegisterRedisServerEventRepository,
 		pingrepo.RegisterPushRateLimiter,
+		pingrepo.RegisterFreshnessStore,
 		grpcclient.RegisterEndpointClient,
 		grpcclient.RegisterEventRecorderClient,
 		grpcclient.RegisterServerClient,
@@ -45,11 +46,13 @@ func providers(dev bool) []func(do.Injector) {
 		pingservice.RegisterPingService,
 		pingservice.RegisterLoopService,
 		pingservice.RegisterPushEventService,
+		pingservice.RegisterStaleLoopService,
 
 		pingredis.RegisterStreamEventConsumer,
 		pingservice.RegisterEventService,
 		pinghandler.RegisterEndpointEventWorker,
 		pinghandler.RegisterZSetWorkerRunner,
+		pinghandler.RegisterStaleWorkerRunner,
 		pinghandler.RegisterPushEventHandler,
 	}
 }

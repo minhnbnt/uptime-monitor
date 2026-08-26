@@ -14,7 +14,8 @@ Hiện tại trạng thái server chỉ được ghi nhận qua cơ chế pull (
 - Rate-limit theo session: response trả về `next_time` tính bằng hàm băm hiện có `NextExecutionTime(session_id, 30s)` (cùng cơ chế cập nhật score của poll); request đến trước `next_time` bị chặn 429.
 - Batch có lỗi từng phần trả 207 kèm mảng `errors` (ID không tồn tại hoặc không thuộc owner, status sai định dạng).
 - Sửa bug sẵn có trong `XUserIDMiddleware` (thiếu `return` khi `X-User-ID` rỗng khiến handler bị gọi 2 lần) — cần làm trước khi ping-service có route public đầu tiên.
-- Ngoài scope có ý định: phát hiện agent im lặng (staleness), interval push theo từng endpoint, tương tác với lịch zset của pull.
+- Phát hiện agent im lặng (staleness): zset freshness trong Redis — trước khi ghi event (từ push lẫn pull), cập nhật score của server = `now + khoảng tươi`; worker quét các entry quá hạn, bump score `now+10s` chống worker khác lấy trùng, record 1 event UNKNOWN rồi xóa entry (record lỗi thì giữ lại, tự retry sau ≥10s). Agent tắt app nhưng server vẫn được pull probe sẽ không bị đánh unknown oan.
+- Ngoài scope có ý định: interval push theo từng endpoint, tương tác với lịch zset của pull.
 
 ## Capabilities
 
@@ -28,7 +29,7 @@ Hiện tại trạng thái server chỉ được ghi nhận qua cơ chế pull (
 
 ## Impact
 
-- **ping-service**: handler HTTP mới (`/api/v1/ping/events`) trên mux health server sẵn có; service layer mới cho push; wiring injector; config Traefik labels trong compose.yml.
+- **ping-service**: handler HTTP mới (`/api/v1/ping/events`) trên mux health server sẵn có; service layer mới cho push; wiring injector; config Traefik labels trong compose.yml; zset freshness sharded `push:freshness:{shard}` tái dụng ScoreUpdater/ZSetTaskClaimer qua tham số `keyFor`, stale worker loop, status `UNKNOWN`.
 - **server-service**: proto mới (`ResolveServers`) + repository/service/handler method.
 - **common/proto**: file `.proto` mới cho ResolveServers, regenerate code.
 - **common/authclient**: parse `X-Session-ID`, getter `GetSessionID`, fix bug thiếu `return`.
