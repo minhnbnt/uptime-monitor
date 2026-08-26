@@ -76,6 +76,7 @@ func (h *PushEventHandler) PushEvents(ctx context.Context, req []api.PushEventIt
 
 	body := api.PushEventsResponse{
 		NextTime: result.NextTime.UnixMilli(),
+		StaleAt:  result.StaleAt.UnixMilli(),
 		Accepted: accepted,
 		Errors:   eventErrors,
 	}

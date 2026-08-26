@@ -8,11 +8,11 @@ Cung cấp kênh push để agent chủ động gửi event trạng thái on/off
 
 ### Requirement: Endpoint nhận batch push event
 
-Hệ thống SHALL cung cấp endpoint `POST /api/v1/ping/events` nhận mảng event dạng `[{"id": number, "status": "ON"|"OFF"}]` trong đó `id` là ID của server. Mỗi event KHÔNG chứa timestamp — hệ thống SHALL gắn thời điểm nhận tại thời gian xử lý. Request với body rỗng hoặc JSON không hợp lệ SHALL bị từ chối với mã 400.
+Hệ thống SHALL cung cấp endpoint `POST /api/v1/ping/events` nhận mảng event dạng `[{"id": number, "status": "ON"|"OFF"}]` trong đó `id` là ID của server. Mỗi event KHÔNG chứa timestamp — hệ thống SHALL gắn thời điểm nhận tại thời gian xử lý. Response chấp nhận SHALL kèm `stale_at` (unix milliseconds): mốc mà nếu agent không push lại trước thời điểm đó, các server vừa được chấp nhận sẽ bị coi là im lặng (phát UNKNOWN). Request với body rỗng hoặc JSON không hợp lệ SHALL bị từ chối với mã 400.
 
 #### Scenario: Gửi batch event hợp lệ
 - **WHEN** agent gửi POST `/api/v1/ping/events` với body `[{"id":1,"status":"ON"}]` kèm token hợp lệ scope `ping`
-- **THEN** hệ thống trả về 200 với `next_time` (thời điểm được phép gửi tiếp theo, đơn vị unix milliseconds) và `accepted` chứa danh sách ID đã ghi nhận
+- **THEN** hệ thống trả về 200 với `next_time` (thời điểm được phép gửi tiếp theo, đơn vị unix milliseconds), `accepted` chứa danh sách ID đã ghi nhận, và `stale_at` xấp xỉ thời điểm nhận cộng khoảng stale
 
 #### Scenario: Body không hợp lệ
 - **WHEN** agent gửi body rỗng, mảng rỗng, hoặc JSON sai cấu trúc

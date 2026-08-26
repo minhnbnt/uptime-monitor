@@ -42,3 +42,9 @@
 - [x] 6.5 service `StaleLoopService.Run` mirror `ZsetLoopService`: đủ batch (10) không sleep, else sleep min(until next, 30s); record UNKNOWN → thành công Remove entry, lỗi giữ entry; unit test bảng case
 - [x] 6.6 wiring: runner handler per-shard + đăng ký injector + goroutine `app.RunStaleWorker` trong cmd/main.go; `OnDelete` xóa luôn entry freshness
 - [x] 6.7 Verification: `go test ./...` + `golangci-lint run` xanh
+
+## 7. stale_at trong response push
+
+- [x] 7.1 Schema `PushEventsResponse` thêm `stale_at` (unix ms, required) + regenerate ogen
+- [x] 7.2 `PushEventResult.StaleAt = now + PushStaleInterval` tính sau cổng gate (khớp lease mà Record() vừa touch); handler map vào body 200/207; 400/429 không trả
+- [x] 7.3 Unit test service (StaleAt ≈ now+90s ±1s) + handler test body chứa `stale_at`; `go test ./...` + golangci-lint xanh

@@ -105,6 +105,12 @@ func TestPushEventHandle(t *testing.T) {
 		if !res.NextTime.Equal(testNext) {
 			t.Errorf("nextTime = %v, want %v", res.NextTime, testNext)
 		}
+
+		wantStale := time.Now().Add(PushStaleInterval)
+		if res.StaleAt.Before(wantStale.Add(-time.Second)) || res.StaleAt.After(wantStale.Add(time.Second)) {
+			t.Errorf("staleAt = %v, want ~%v", res.StaleAt, wantStale)
+		}
+
 		if g.released {
 			t.Error("gate must not be released")
 		}

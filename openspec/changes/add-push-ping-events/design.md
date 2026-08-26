@@ -71,8 +71,8 @@ Decode JSON → validate status + resolve ID (1 RPC) → **cổng Lua check-and-
 
 | Trường hợp | Mã | Body |
 |---|---|---|
-| Tất cả accepted | 200 | `{next_time, accepted[]}` |
-| Một phần | 207 | `{next_time, accepted[], errors[{id,error}]}` |
+| Tất cả accepted | 200 | `{next_time, stale_at, accepted[]}` |
+| Một phần | 207 | `{next_time, stale_at, accepted[], errors[{id,error}]}` |
 | Toàn lỗi / body sai | 400 | `{errors[]}` |
 | Gửi sớm | 429 | `{next_time}` |
 | Thiếu scope | 403 | — |

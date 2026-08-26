@@ -36,6 +36,7 @@ type PushEventError struct {
 
 type PushEventResult struct {
 	NextTime time.Time
+	StaleAt  time.Time
 	Accepted []uint64
 	Errors   []PushEventError
 }
@@ -185,6 +186,10 @@ func (s *PushEventService) Handle(ctx context.Context, userID uint, sessionID st
 	}
 
 	result.NextTime = next
+
+	// Matches the freshness lease Record() just granted the accepted events:
+	// silence beyond this point marks them UNKNOWN.
+	result.StaleAt = time.Now().Add(PushStaleInterval)
 
 	for _, item := range pending {
 

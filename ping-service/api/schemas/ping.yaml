@@ -19,6 +19,7 @@ PushEventsResponse:
     - next_time
     - accepted
     - errors
+    - stale_at
   properties:
     next_time:
       type: integer
@@ -33,6 +34,10 @@ PushEventsResponse:
       type: array
       items:
         $ref: "#/PushEventError"
+    stale_at:
+      type: integer
+      format: int64
+      description: Unix milliseconds deadline — a batch sent after this point leaves the servers stale (reported UNKNOWN) until the agent pushes again
 
 PushEventError:
   type: object

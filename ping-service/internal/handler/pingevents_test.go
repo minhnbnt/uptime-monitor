@@ -154,6 +154,9 @@ func TestPushEventsEndpoint(t *testing.T) {
 		if !strings.Contains(body, `"accepted":[1]`) || !strings.Contains(body, `"errors":[]`) {
 			t.Errorf("body = %s, want accepted [1] and empty errors", body)
 		}
+		if !strings.Contains(body, `"stale_at":`) {
+			t.Errorf("body = %s, want stale_at present", body)
+		}
 	})
 
 	t.Run("early resend rejected with 429 and next_time", func(t *testing.T) {
