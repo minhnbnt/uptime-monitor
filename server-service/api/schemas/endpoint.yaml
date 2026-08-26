@@ -50,11 +50,11 @@ SetCheckMethodRequest:
   type: object
   required:
     - method
-    - endpoint
   properties:
     method:
       $ref: "#/CheckMethodType"
     endpoint:
+      description: Required for pull; ignored when switching to push (a push server has no endpoint)
       $ref: "#/Endpoint"
 
 TestEndpointRequest:

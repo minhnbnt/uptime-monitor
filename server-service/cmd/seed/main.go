@@ -129,13 +129,13 @@ func main() {
 				parsedURL, _ := url.Parse(fmt.Sprintf("http://%s/health", name))
 				epBody, _ := json.Marshal(&api.SetCheckMethodRequest{
 					Method: api.CheckMethodTypePull,
-					Endpoint: api.Endpoint{
+					Endpoint: api.NewOptEndpoint(api.Endpoint{
 						URL:          *parsedURL,
 						Interval:     30,
 						Timeout:      10,
 						Method:       "GET",
 						ExpectedCode: 200,
-					},
+					}),
 				})
 
 				req, _ = http.NewRequestWithContext(context.Background(), http.MethodPut,

@@ -32,25 +32,30 @@ func (h *EndpointHandler) SetCheckMethod(
 	ctx context.Context, req *api.SetCheckMethodRequest, params api.SetCheckMethodParams,
 ) (*api.ServerResponse, error) {
 
-	if req.Method == api.CheckMethodTypePush {
-		return nil, &api.ErrorResponseStatusCode{
-			StatusCode: http.StatusNotImplemented,
-			Response: api.ErrorResponse{
-				Error: api.ErrorResponseError{
-					Code:    "NOT_IMPLEMENTED",
-					Message: "Push check method is not yet implemented",
-				},
-			},
-		}
-	}
+	dtoReq := dto.SetCheckMethodRequest{Method: dto.CheckMethodType(req.Method)}
 
-	dtoReq := dto.SetCheckMethodRequest{
-		Method:       dto.CheckMethodType(req.Method),
-		HTTPMethod:   string(req.Endpoint.Method),
-		Interval:     time.Duration(req.Endpoint.Interval) * time.Second,
-		Timeout:      time.Duration(req.Endpoint.Timeout) * time.Second,
-		URL:          req.Endpoint.URL.String(),
-		ExpectedCode: req.Endpoint.ExpectedCode,
+	if req.Method == api.CheckMethodTypePull {
+		ep, ok := req.Endpoint.Get()
+		if !ok {
+			return nil, &api.ErrorResponseStatusCode{
+				StatusCode: http.StatusBadRequest,
+				Response: api.ErrorResponse{
+					Error: api.ErrorResponseError{
+						Code:    "INVALID_REQUEST",
+						Message: "endpoint is required for the pull check method",
+					},
+				},
+			}
+		}
+		dtoReq.HTTPMethod = string(ep.Method)
+		dtoReq.Interval = time.Duration(ep.Interval) * time.Second
+		dtoReq.Timeout = time.Duration(ep.Timeout) * time.Second
+		dtoReq.URL = ep.URL.String()
+		dtoReq.ExpectedCode = ep.ExpectedCode
+
+		if v, ok := ep.BodyCheckExpr.Get(); ok {
+			dtoReq.BodyCheckExpr = &v
+		}
 	}
 
 	userID := authclient.GetUserID(ctx)

@@ -66,6 +66,15 @@ func (es *EndpointService) SetCheckMethod(ctx context.Context, serverID uint, us
 		return apperrors.ErrForbidden
 	}
 
+	// A push server has no endpoint: drop any stale config so pull loops skip it.
+	if req.Method == dto.CheckMethodPush {
+		if err := es.endpointRepository.DeleteByServerID(ctx, serverID); err != nil {
+			es.logger.Error("failed to delete endpoint for push switch", slog.Any("error", err))
+			return apperrors.ErrInternal
+		}
+		return nil
+	}
+
 	endpoint := toDomainEndpoint(serverID, req)
 
 	if err := es.endpointRepository.UpsertEndpoint(ctx, endpoint); err != nil {
