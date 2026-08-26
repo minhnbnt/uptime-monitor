@@ -23,6 +23,7 @@ type AccessTokenValidator interface { // ponytail: used by forwardauth.go
 
 type AuthHandler struct {
 	authService    AuthService
+	sessionService SessionService
 	tokenValidator AccessTokenValidator
 }
 
@@ -30,20 +31,25 @@ func RegisterAuthHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*AuthHandler, error) {
 		return &AuthHandler{
 			authService:    do.MustInvoke[*service.AuthService](i),
+			sessionService: do.MustInvoke[*service.SessionService](i),
 			tokenValidator: do.MustInvoke[*token.Validator](i),
 		}, nil
 	})
 }
 
 var _ AuthService = (*service.AuthService)(nil)
+var _ SessionService = (*service.SessionService)(nil)
 
 type AuthService interface {
 	Register(ctx context.Context, req dto.RegisterRequest) (*dto.AuthResponse, error)
 	Login(ctx context.Context, req dto.LoginRequest) (*dto.AuthResponse, error)
 	Refresh(ctx context.Context, req dto.RefreshRequest) (*dto.AuthResponse, error)
-	Logout(ctx context.Context, refreshToken string) error
 	GetUser(ctx context.Context, id uint) (*dto.UserProfile, error)
 	CreatePingSession(ctx context.Context, userID uint) (*dto.AuthResponse, error)
+}
+
+type SessionService interface {
+	Logout(ctx context.Context, refreshToken string) error
 	ListSessions(ctx context.Context, userID uint, currentSessionID string, page, perPage int) ([]dto.SessionInfo, int, error)
 	RevokeSession(ctx context.Context, userID uint, sessionID string) error
 }
@@ -121,7 +127,7 @@ func toAPIAuthResponse(result *dto.AuthResponse) *api.AuthResponse {
 
 func (h *AuthHandler) Logout(ctx context.Context, req *api.RefreshTokenRequest) error {
 
-	err := h.authService.Logout(ctx, req.RefreshToken)
+	err := h.sessionService.Logout(ctx, req.RefreshToken)
 	if err != nil {
 		return apperrors.ToAPIError(err)
 	}
@@ -161,7 +167,7 @@ func (h *AuthHandler) ListSessions(ctx context.Context, params api.ListSessionsP
 		perPage = params.PerPage.Value
 	}
 
-	items, total, err := h.authService.ListSessions(ctx, info.UserID, info.SID, page, perPage)
+	items, total, err := h.sessionService.ListSessions(ctx, info.UserID, info.SID, page, perPage)
 	if err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}
@@ -200,7 +206,7 @@ func (h *AuthHandler) RevokeSession(ctx context.Context, params api.RevokeSessio
 		return nil, apperrors.ToAPIError(err)
 	}
 
-	err = h.authService.RevokeSession(ctx, info.UserID, params.SessionId.String())
+	err = h.sessionService.RevokeSession(ctx, info.UserID, params.SessionId.String())
 	if err != nil {
 		return nil, apperrors.ToAPIError(err)
 	}

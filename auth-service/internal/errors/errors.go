@@ -9,6 +9,9 @@ var (
 	ErrInvalidCredentials   = errors.New("invalid email/username or password")
 	ErrInvalidAccessToken   = errors.New("invalid or expired access token")
 	ErrInvalidRefreshToken  = errors.New("invalid or expired refresh token")
-	ErrBadRequest           = errors.New("invalid request")
-	ErrForbidden            = errors.New("forbidden")
+	// ErrSessionRotated means the presented session was already rotated away by
+	// another request — a replayed or duplicated refresh.
+	ErrSessionRotated = errors.New("session already rotated")
+	ErrBadRequest     = errors.New("invalid request")
+	ErrForbidden      = errors.New("forbidden")
 )

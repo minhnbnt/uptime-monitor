@@ -1,6 +1,10 @@
 package dto
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type RegisterRequest struct {
 	Email    string
@@ -18,6 +22,12 @@ type AuthResponse struct {
 	AccessToken  string
 	RefreshToken string
 	User         UserProfile
+}
+
+type TokenPair struct {
+	AccessToken  string
+	RefreshToken string
+	JTI          uuid.UUID
 }
 
 type RefreshRequest struct {

@@ -29,7 +29,7 @@ func TestAuthHandler_ListSessions(t *testing.T) {
 		var gotPage, gotPerPage int
 
 		h := &AuthHandler{
-			authService: &mockAuthService{
+			sessionService: &mockSessionService{
 				listSessionsFn: func(_ context.Context, userID uint, sid string, page, perPage int) ([]dto.SessionInfo, int, error) {
 					gotUserID, gotSID, gotPage, gotPerPage = userID, sid, page, perPage
 					return []dto.SessionInfo{
@@ -112,7 +112,7 @@ func TestAuthHandler_RevokeSession(t *testing.T) {
 		var gotSessionID string
 
 		h := &AuthHandler{
-			authService: &mockAuthService{
+			sessionService: &mockSessionService{
 				revokeSessionFn: func(_ context.Context, userID uint, sessionID string) error {
 					gotUserID, gotSessionID = userID, sessionID
 					return nil
@@ -146,7 +146,7 @@ func TestAuthHandler_RevokeSession(t *testing.T) {
 	t.Run("foreign or unknown session is not found", func(t *testing.T) {
 
 		h := &AuthHandler{
-			authService: &mockAuthService{
+			sessionService: &mockSessionService{
 				revokeSessionFn: func(_ context.Context, _ uint, _ string) error {
 					return apperrors.ErrNotFound
 				},

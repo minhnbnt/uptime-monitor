@@ -4,13 +4,9 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"strings"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 
-	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/dto"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/errors"
@@ -31,37 +27,26 @@ type PasswordEncoder interface {
 }
 
 type AuthService struct {
-	userRepository    UserRepository
-	passwordEncoder   PasswordEncoder
-	tokenGenerator    token.Generator
-	tokenValidator    *token.Validator
-	sessionRepository SessionRepository
-	tokenConfig       *config.TokenConfig
-	logger            *slog.Logger
-}
-
-type SessionRepository interface {
-	Create(ctx context.Context, session *domain.Session) error
-	DeleteByJTI(ctx context.Context, jti string) error
-	DeleteByJTIAndUser(ctx context.Context, userID uint, jti string) (bool, error)
-	FindByUser(ctx context.Context, userID uint) ([]domain.Session, error)
+	userRepository  UserRepository
+	passwordEncoder PasswordEncoder
+	tokenValidator  *token.Validator
+	sessionService  *SessionService
+	logger          *slog.Logger
 }
 
 func RegisterAuthService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*AuthService, error) {
 		return &AuthService{
-			userRepository:    do.MustInvoke[*repository.UserRepository](i),
-			passwordEncoder:   do.MustInvoke[*argon2.PasswordEncoder](i),
-			tokenGenerator:    do.MustInvoke[token.Generator](i),
-			tokenValidator:    do.MustInvoke[*token.Validator](i),
-			sessionRepository: do.MustInvoke[*repository.SessionRepository](i),
-			tokenConfig:       do.MustInvoke[*config.TokenConfig](i),
-			logger:            do.MustInvoke[*slog.Logger](i),
+			userRepository:  do.MustInvoke[*repository.UserRepository](i),
+			passwordEncoder: do.MustInvoke[*argon2.PasswordEncoder](i),
+			tokenValidator:  do.MustInvoke[*token.Validator](i),
+			sessionService:  do.MustInvoke[*SessionService](i),
+			logger:          do.MustInvoke[*slog.Logger](i),
 		}, nil
 	})
 }
 
-func toUserProfile(u domain.User) dto.UserProfile {
+func toUserProfile(u *domain.User) dto.UserProfile {
 	return dto.UserProfile{
 		ID:       u.ID,
 		Email:    u.Email,
@@ -95,70 +80,16 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 		return nil, apperrors.ErrInternal
 	}
 
-	return s.issueTokens(ctx, &user, domain.DefaultScopes())
-}
-
-func (s *AuthService) issueTokens(ctx context.Context, user *domain.User, scopes []string) (*dto.AuthResponse, error) {
-
-	if len(scopes) == 0 {
-		scopes = domain.DefaultScopes()
-	}
-
-	refreshToken, jti, err := s.tokenGenerator.GenerateRefreshToken(user)
+	tokenPair, err := s.sessionService.CreateSession(ctx, &user, domain.DefaultScopes())
 	if err != nil {
-		s.logger.Error("failed to generate refresh token", slog.Any("error", err))
-		return nil, apperrors.ErrInternal
-	}
-
-	sessionID, err := uuid.Parse(jti)
-	if err != nil {
-		s.logger.Error("failed to parse session id", slog.Any("error", err))
-		return nil, apperrors.ErrInternal
-	}
-
-	session := &domain.Session{
-		UserID:    user.ID,
-		JTI:       sessionID,
-		Scopes:    strings.Join(scopes, " "),
-		ExpiresAt: time.Now().Add(s.tokenConfig.GetRefreshTokenTTL()),
-	}
-
-	if err := s.sessionRepository.Create(ctx, session); err != nil {
-		s.logger.Error("failed to create session", slog.Any("error", err))
-		return nil, apperrors.ErrInternal
-	}
-
-	accessToken, err := s.tokenGenerator.GenerateAccessToken(user, scopes, jti)
-	if err != nil {
-		s.logger.Error("failed to generate access token", slog.Any("error", err))
-		return nil, apperrors.ErrInternal
+		return nil, err
 	}
 
 	return &dto.AuthResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		User:         toUserProfile(*user),
+		AccessToken:  tokenPair.AccessToken,
+		RefreshToken: tokenPair.RefreshToken,
+		User:         toUserProfile(&user),
 	}, nil
-}
-
-func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
-
-	token, err := s.tokenValidator.ParseRefreshToken(refreshToken)
-	if err != nil {
-		return apperrors.ErrInvalidRefreshToken
-	}
-
-	jti, err := token.JTI()
-	if err != nil {
-		return apperrors.ErrInvalidRefreshToken
-	}
-
-	if err := s.sessionRepository.DeleteByJTI(ctx, jti); err != nil {
-		s.logger.Error("failed to delete session", slog.Any("error", err))
-		return apperrors.ErrInternal
-	}
-
-	return nil
 }
 
 func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.AuthResponse, error) {
@@ -182,7 +113,16 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Aut
 		return nil, apperrors.ErrInvalidCredentials
 	}
 
-	return s.issueTokens(ctx, user, domain.DefaultScopes())
+	tokenPair, err := s.sessionService.CreateSession(ctx, user, domain.DefaultScopes())
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.AuthResponse{
+		AccessToken:  tokenPair.AccessToken,
+		RefreshToken: tokenPair.RefreshToken,
+		User:         toUserProfile(user),
+	}, nil
 }
 
 func (s *AuthService) GetUser(ctx context.Context, id uint) (*dto.UserProfile, error) {
@@ -196,7 +136,7 @@ func (s *AuthService) GetUser(ctx context.Context, id uint) (*dto.UserProfile, e
 		return nil, apperrors.ErrNotFound
 	}
 
-	profile := toUserProfile(*user)
+	profile := toUserProfile(user)
 	return &profile, nil
 }
 
@@ -207,6 +147,8 @@ func (s *AuthService) Refresh(ctx context.Context, req dto.RefreshRequest) (*dto
 		return nil, apperrors.ErrInvalidRefreshToken
 	}
 
+	// RotateSession swaps the presented session atomically with the new one,
+	// so the old refresh token can never be replayed.
 	user, err := s.userRepository.FindByID(ctx, info.UserID)
 	if err != nil {
 		s.logger.Error("failed to find user", slog.Any("error", err))
@@ -217,7 +159,16 @@ func (s *AuthService) Refresh(ctx context.Context, req dto.RefreshRequest) (*dto
 		return nil, apperrors.ErrInvalidCredentials
 	}
 
-	return s.issueTokens(ctx, user, info.Scopes)
+	tokenPair, err := s.sessionService.RotateSession(ctx, user, info.Scopes, info.JTI)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.AuthResponse{
+		AccessToken:  tokenPair.AccessToken,
+		RefreshToken: tokenPair.RefreshToken,
+		User:         toUserProfile(user),
+	}, nil
 }
 
 func (s *AuthService) CreatePingSession(ctx context.Context, userID uint) (*dto.AuthResponse, error) {
@@ -233,63 +184,14 @@ func (s *AuthService) CreatePingSession(ctx context.Context, userID uint) (*dto.
 	}
 
 	scopes := []string{string(domain.ScopePing)}
-	return s.issueTokens(ctx, user, scopes)
-}
-
-func (s *AuthService) ListSessions(ctx context.Context, userID uint, currentSessionID string, page, perPage int) ([]dto.SessionInfo, int, error) {
-
-	sessions, err := s.sessionRepository.FindByUser(ctx, userID)
+	tokenPair, err := s.sessionService.CreateSession(ctx, user, scopes)
 	if err != nil {
-		s.logger.Error("failed to list sessions", slog.Any("error", err))
-		return nil, 0, apperrors.ErrInternal
+		return nil, err
 	}
 
-	now := time.Now()
-	active := make([]domain.Session, 0, len(sessions))
-	for _, session := range sessions {
-		if session.ExpiresAt.After(now) {
-			active = append(active, session)
-		}
-	}
-
-	total := len(active)
-
-	start := (page - 1) * perPage
-	if start > total {
-		start = total
-	}
-
-	end := start + perPage
-	if end > total {
-		end = total
-	}
-
-	items := make([]dto.SessionInfo, 0, end-start)
-	for _, session := range active[start:end] {
-		id := session.JTI.String()
-		items = append(items, dto.SessionInfo{
-			ID:        id,
-			Scopes:    session.ScopeList(),
-			Current:   id == currentSessionID,
-			CreatedAt: session.CreatedAt,
-			ExpiresAt: session.ExpiresAt,
-		})
-	}
-
-	return items, total, nil
-}
-
-func (s *AuthService) RevokeSession(ctx context.Context, userID uint, sessionID string) error {
-
-	found, err := s.sessionRepository.DeleteByJTIAndUser(ctx, userID, sessionID)
-	if err != nil {
-		s.logger.Error("failed to revoke session", slog.Any("error", err))
-		return apperrors.ErrInternal
-	}
-
-	if !found {
-		return apperrors.ErrNotFound
-	}
-
-	return nil
+	return &dto.AuthResponse{
+		AccessToken:  tokenPair.AccessToken,
+		RefreshToken: tokenPair.RefreshToken,
+		User:         toUserProfile(user),
+	}, nil
 }

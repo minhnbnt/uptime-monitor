@@ -11,6 +11,7 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/domain"
+	apperrors "github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/errors"
 )
 
 type SessionRepository struct {
@@ -77,6 +78,44 @@ func (r *SessionRepository) DeleteByJTI(ctx context.Context, jti string) error {
 
 	if rowAffected > 1 {
 		return fmt.Errorf("unexpected rows affected: %d", rowAffected)
+	}
+
+	return nil
+}
+
+// Rotate atomically revokes the session identified by oldJTI and inserts next:
+// either both happen or neither does.
+func (r *SessionRepository) Rotate(ctx context.Context, oldJTI string, next *domain.Session) error {
+
+	oldID, err := uuid.Parse(oldJTI)
+	if err != nil {
+		return fmt.Errorf("parse old jti: %w", err)
+	}
+
+	err = r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+
+		deleted, err := gorm.G[domain.Session](tx).
+			Where("jti = ?", oldID).
+			Delete(ctx)
+
+		if err != nil {
+			return fmt.Errorf("delete old session: %w", err)
+		}
+
+		// The old session must actually be deleted here. Zero rows means another
+		// request already rotated it away — bail out instead of minting a twin.
+		if deleted != 1 {
+			return apperrors.ErrSessionRotated
+		}
+
+		if err := gorm.G[domain.Session](tx).Create(ctx, next); err != nil {
+			return fmt.Errorf("create new session: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("rotate session: %w", err)
 	}
 
 	return nil

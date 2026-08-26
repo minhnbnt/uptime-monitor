@@ -31,6 +31,8 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 		token.RegisterGenerator,
 		token.RegisterValidator,
 
+		service.RegisterTokenService,
+		service.RegisterSessionService,
 		service.RegisterAuthService,
 
 		handler.RegisterAuthHandler,

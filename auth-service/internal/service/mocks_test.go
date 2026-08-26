@@ -70,6 +70,7 @@ type mockSessionRepo struct {
 	deleteByJTIFn        func(ctx context.Context, jti string) error
 	deleteByJTIAndUserFn func(ctx context.Context, userID uint, jti string) (bool, error)
 	findByUserFn         func(ctx context.Context, userID uint) ([]domain.Session, error)
+	rotateFn             func(ctx context.Context, oldJTI string, session *domain.Session) error
 }
 
 func (m *mockSessionRepo) Create(ctx context.Context, session *domain.Session) error {
@@ -109,4 +110,11 @@ func (m *mockSessionRepo) DeleteByJTIAndUser(ctx context.Context, userID uint, j
 		return false, nil
 	}
 	return m.deleteByJTIAndUserFn(ctx, userID, jti)
+}
+
+func (m *mockSessionRepo) Rotate(ctx context.Context, oldJTI string, session *domain.Session) error {
+	if m.rotateFn == nil {
+		return nil
+	}
+	return m.rotateFn(ctx, oldJTI, session)
 }

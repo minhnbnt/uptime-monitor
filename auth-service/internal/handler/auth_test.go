@@ -141,7 +141,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		h := &AuthHandler{
-			authService: &mockAuthService{
+			sessionService: &mockSessionService{
 				logoutFn: func(_ context.Context, _ string) error {
 					return nil
 				},
@@ -157,7 +157,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 
 	t.Run("invalid refresh token", func(t *testing.T) {
 		h := &AuthHandler{
-			authService: &mockAuthService{
+			sessionService: &mockSessionService{
 				logoutFn: func(_ context.Context, _ string) error {
 					return apperrors.ErrInvalidRefreshToken
 				},
@@ -177,7 +177,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 
 	t.Run("internal error", func(t *testing.T) {
 		h := &AuthHandler{
-			authService: &mockAuthService{
+			sessionService: &mockSessionService{
 				logoutFn: func(_ context.Context, _ string) error {
 					return errors.New("unexpected")
 				},

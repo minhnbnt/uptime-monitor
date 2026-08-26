@@ -20,8 +20,13 @@ func sessionRow(id uint, userID uint, jti string, scopes string, expires time.Ti
 	if err != nil {
 		panic(err)
 	}
+
 	return domain.Session{
-		Model:     gorm.Model{ID: id, CreatedAt: time.Now(), UpdatedAt: time.Now()},
+		Model: gorm.Model{
+			ID:        id,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
 		UserID:    userID,
 		JTI:       parsed,
 		Scopes:    scopes,
@@ -29,7 +34,7 @@ func sessionRow(id uint, userID uint, jti string, scopes string, expires time.Ti
 	}
 }
 
-func TestAuthService_ListSessions(t *testing.T) {
+func TestSessionService_ListSessions(t *testing.T) {
 
 	const userID = uint(7)
 	now := time.Now()
@@ -62,7 +67,7 @@ func TestAuthService_ListSessions(t *testing.T) {
 			now.Add(-time.Hour),
 		)
 
-		svc := &AuthService{
+		svc := &SessionService{
 			logger: logger.NewMockLogger(),
 			sessionRepository: &mockSessionRepo{
 				findByUserFn: func(_ context.Context, id uint) ([]domain.Session, error) {
@@ -103,7 +108,7 @@ func TestAuthService_ListSessions(t *testing.T) {
 
 	t.Run("empty list", func(t *testing.T) {
 
-		svc := &AuthService{
+		svc := &SessionService{
 			logger: logger.NewMockLogger(),
 			sessionRepository: &mockSessionRepo{
 				findByUserFn: func(_ context.Context, _ uint) ([]domain.Session, error) {
@@ -124,7 +129,7 @@ func TestAuthService_ListSessions(t *testing.T) {
 
 	t.Run("page beyond range yields empty items with total kept", func(t *testing.T) {
 
-		svc := &AuthService{
+		svc := &SessionService{
 			logger: logger.NewMockLogger(),
 			sessionRepository: &mockSessionRepo{
 				findByUserFn: func(_ context.Context, _ uint) ([]domain.Session, error) {
@@ -145,7 +150,7 @@ func TestAuthService_ListSessions(t *testing.T) {
 
 	t.Run("repo error maps to internal", func(t *testing.T) {
 
-		svc := &AuthService{
+		svc := &SessionService{
 			logger: logger.NewMockLogger(),
 			sessionRepository: &mockSessionRepo{
 				findByUserFn: func(_ context.Context, _ uint) ([]domain.Session, error) {
@@ -161,7 +166,7 @@ func TestAuthService_ListSessions(t *testing.T) {
 	})
 }
 
-func TestAuthService_RevokeSession(t *testing.T) {
+func TestSessionService_RevokeSession(t *testing.T) {
 
 	const userID = uint(7)
 
@@ -170,7 +175,7 @@ func TestAuthService_RevokeSession(t *testing.T) {
 		var gotUserID uint
 		var gotJTI string
 
-		svc := &AuthService{
+		svc := &SessionService{
 			logger: logger.NewMockLogger(),
 			sessionRepository: &mockSessionRepo{
 				deleteByJTIAndUserFn: func(_ context.Context, id uint, jti string) (bool, error) {
@@ -195,7 +200,7 @@ func TestAuthService_RevokeSession(t *testing.T) {
 
 	t.Run("not found or foreign session", func(t *testing.T) {
 
-		svc := &AuthService{
+		svc := &SessionService{
 			logger: logger.NewMockLogger(),
 			sessionRepository: &mockSessionRepo{
 				deleteByJTIAndUserFn: func(_ context.Context, _ uint, _ string) (bool, error) {
@@ -212,7 +217,7 @@ func TestAuthService_RevokeSession(t *testing.T) {
 
 	t.Run("repo error maps to internal", func(t *testing.T) {
 
-		svc := &AuthService{
+		svc := &SessionService{
 			logger: logger.NewMockLogger(),
 			sessionRepository: &mockSessionRepo{
 				deleteByJTIAndUserFn: func(_ context.Context, _ uint, _ string) (bool, error) {
