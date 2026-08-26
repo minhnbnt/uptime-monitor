@@ -108,13 +108,14 @@ func (c *EndpointMetaCache) SetMulti(ctx context.Context, endpoints []*domain.En
 
 		key := metaCacheKey(endpoint.ID)
 
-		pipe.HSet(
-			ctx, key,
-			"url", endpoint.URL, "method", endpoint.Method,
-			"expected_code", fmt.Sprint(endpoint.ExpectedCode),
-			"interval_ns", fmt.Sprint(endpoint.Interval.Nanoseconds()),
-		)
+		value := map[string]string{
+			"url":           endpoint.URL,
+			"method":        endpoint.Method,
+			"expected_code": fmt.Sprint(endpoint.ExpectedCode),
+			"interval_ns":   fmt.Sprint(endpoint.Interval.Nanoseconds()),
+		}
 
+		pipe.HSet(ctx, key, value)
 		pipe.Expire(ctx, key, metaCacheTTL)
 	}
 

@@ -19,7 +19,12 @@ const staleMaxSleep = 30 * time.Second
 
 type staleStore interface {
 	Remove(ctx context.Context, endpointID uint) error
-	ClaimOverdue(ctx context.Context, shardID uint, limit int64) (due []scheduler.ScheduledTask, next scheduler.ScheduledTask, hasNext bool, err error)
+	ClaimOverdue(ctx context.Context, shardID uint, limit int64) (
+		due []scheduler.ScheduledTask,
+		next scheduler.ScheduledTask,
+		hasNext bool,
+		err error,
+	)
 }
 
 type StaleLoopService struct {
