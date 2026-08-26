@@ -17,14 +17,12 @@ import (
 
 const (
 	ontimeKeyPrefix = "ontime:"
-	ontimeKeySuffix = ":stats"
+	// v2 bumps the suffix away from the old string-format keys ("__NULL__"
+	// or a bare percentage): HGETALL/HSET against those would fail with
+	// WRONGTYPE until their TTL expires. Old entries die within an hour.
+	ontimeKeySuffix = ":stats:v2"
 	ontimeTTL       = 1 * time.Hour
 	todayTTL        = 10 * time.Second
-
-	// noDataSentinel is the cache value for a [endpoint, day] with no known
-	// uptime — distinct from "0%" so the consumer can tell "server was down
-	// all day" apart from "we have no data yet".
-	noDataSentinel = "__NULL__"
 )
 
 func isToday(t time.Time) bool {
@@ -50,11 +48,18 @@ func RegisterOntimeCacheRepository(i do.Injector) {
 	})
 }
 
-func redisKey(endpointID uint, day time.Time) string {
+// RedisKey is the single source of truth for the ontime cache key layout.
+// Producers and consumers (tests included) MUST build keys through it —
+// hand-rolled format strings are how the v1→v2 migration broke three tests.
+func RedisKey(endpointID uint, day time.Time) string {
 	return fmt.Sprintf(
 		"%s%d:%s%s", ontimeKeyPrefix, endpointID,
 		day.Format("2006-01-02"), ontimeKeySuffix,
 	)
+}
+
+func formatFloat(v float64) string {
+	return strconv.FormatFloat(v, 'f', -1, 64)
 }
 
 func (r *OntimeCacheRepository) MGet(ctx context.Context, keys []dto.BatchGetOntimeItem) (map[dto.BatchGetOntimeItem]dto.DayResult, error) {
@@ -63,38 +68,31 @@ func (r *OntimeCacheRepository) MGet(ctx context.Context, keys []dto.BatchGetOnt
 		return nil, nil
 	}
 
-	redisKeys := lo.Map(keys, func(k dto.BatchGetOntimeItem, _ int) string {
-		return redisKey(k.EndpointID, k.Date)
-	})
+	pipe := r.client.Pipeline()
 
-	values, err := r.client.MGet(ctx, redisKeys...).Result()
-	if err != nil {
+	cmds := make([]*redis.MapStringStringCmd, len(keys))
+	for i, k := range keys {
+		cmds[i] = pipe.HGetAll(ctx, RedisKey(k.EndpointID, k.Date))
+	}
+
+	if _, err := pipe.Exec(ctx); err != nil {
 		return nil, err
 	}
 
 	result := make(map[dto.BatchGetOntimeItem]dto.DayResult, len(keys))
-	for i, val := range values {
+	for i, cmd := range cmds {
 
-		if val == nil {
+		fields, err := cmd.Result()
+		if err != nil || len(fields) == 0 {
 			continue
 		}
 
-		str, ok := val.(string)
-		if !ok {
-			continue
-		}
-
-		if str == noDataSentinel {
-			result[keys[i]] = dto.DayResult{HasData: false}
-			continue
-		}
-
-		uptime, err := strconv.ParseFloat(str, 64)
+		stats, err := mapToDayResult(fields)
 		if err != nil {
 			continue
 		}
 
-		result[keys[i]] = dto.DayResult{HasData: true, Uptime: uptime}
+		result[keys[i]] = stats
 	}
 
 	return result, nil
@@ -114,18 +112,41 @@ func (r *OntimeCacheRepository) MSet(ctx context.Context, items map[dto.BatchGet
 			ttl = todayTTL
 		}
 
-		payload := noDataSentinel
-		if stats.HasData {
-			payload = fmt.Sprintf("%.2f", stats.Uptime)
+		key := RedisKey(key.EndpointID, key.Date)
+		value := map[string]string{
+			"has_data": lo.If(stats.HasData, "1").Else("0"),
+			"uptime":   formatFloat(stats.Uptime),
+			"unknown":  formatFloat(stats.Unknown),
 		}
 
-		pipe.Set(
-			ctx, redisKey(key.EndpointID, key.Date),
-			payload, ttl,
-		)
+		pipe.HSet(ctx, key, value)
+		pipe.Expire(ctx, key, ttl)
 	}
 
 	_, err := pipe.Exec(ctx)
 
 	return err
+}
+
+func mapToDayResult(fields map[string]string) (dto.DayResult, error) {
+
+	stats := dto.DayResult{}
+
+	if unknown, err := strconv.ParseFloat(fields["unknown"], 64); err == nil {
+		stats.Unknown = unknown
+	}
+
+	if fields["has_data"] != "1" {
+		return stats, nil
+	}
+
+	uptime, err := strconv.ParseFloat(fields["uptime"], 64)
+	if err != nil {
+		return stats, err
+	}
+
+	stats.HasData = true
+	stats.Uptime = uptime
+
+	return stats, nil
 }

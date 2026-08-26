@@ -75,6 +75,9 @@ components:
           format: double
         has_data:
           type: boolean
+        unknown_seconds:
+          type: number
+          format: double
 
     ServerOntime:
       type: object

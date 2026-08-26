@@ -154,7 +154,7 @@ func (b *Batcher) fillMisses(ctx context.Context, missedKeys []dto.BatchGetOntim
 		// hands back timestamptz in the session zone, while missedKeys carry
 		// UTC-midnight dates — raw equality would never match.
 		key := dto.BatchGetOntimeItem{EndpointID: row.EndpointID, Date: utils.TruncateDay(row.From)}
-		toCache[key] = dto.DayResult{HasData: row.HasData, Uptime: row.UptimePercent()}
+		toCache[key] = dto.DayResult{HasData: row.HasData, Uptime: row.UptimePercent(), Unknown: row.UnknownSeconds}
 	}
 
 	return toCache
@@ -170,7 +170,7 @@ func (b *Batcher) buildResponse(req []dto.BatchGetOntimeItem, resultMap map[dto.
 
 		result := lo.Map(items, func(item dto.BatchGetOntimeItem, _ int) dto.OntimeStats {
 			dr := resultMap[item]
-			return dto.OntimeStats{Date: item.Date, Stats: dr.Uptime, HasData: dr.HasData}
+			return dto.OntimeStats{Date: item.Date, Stats: dr.Uptime, HasData: dr.HasData, UnknownSeconds: dr.Unknown}
 		})
 
 		return dto.BatchGetOntimeResponse{

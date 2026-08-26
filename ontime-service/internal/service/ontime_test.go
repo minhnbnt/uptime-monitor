@@ -740,3 +740,78 @@ func TestFillMisses_DBErrorDoesNotPoisonCache(t *testing.T) {
 		t.Fatalf("on db error fillMisses returned %d entries; want 0 (no poison): %+v", len(got), got)
 	}
 }
+
+func TestOntimeService_UnknownSecondsPassthrough(t *testing.T) {
+	d1 := oDay(2026, 6, 1)
+	until := oTm(2026, 6, 1, 14, 0)
+
+	newRepoBatcher := func(rows []ontimerepo.UptimeRow) *Batcher {
+		return &Batcher{
+			ontimeRepo: &mockOntimeRepo{
+				batchGetUptimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.UptimeRow, error) {
+					return rows, nil
+				},
+			},
+			logger: logger.NewMockLogger(),
+		}
+	}
+
+	t.Run("has_data day carries unknown seconds", func(t *testing.T) {
+		req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: d1}}
+		b := newRepoBatcher([]ontimerepo.UptimeRow{{
+			EndpointID:     1,
+			From:           d1,
+			To:             d1.Add(24 * time.Hour),
+			HasData:        true,
+			ObservedFrom:   d1,
+			ObservedTo:     d1.Add(24 * time.Hour),
+			OnlineSeconds:  12 * 3600,
+			UnknownSeconds: 6 * 3600,
+		}})
+
+		got, err := b.BatchGetOntimeUntil(t.Context(), req, until)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(got) != 1 || len(got[0].Result) != 1 {
+			t.Fatalf("unexpected result shape: %+v", got)
+		}
+
+		stat := got[0].Result[0]
+		if !stat.HasData {
+			t.Error("HasData = false, want true")
+		}
+		if stat.UnknownSeconds != 6*3600 {
+			t.Errorf("UnknownSeconds = %f, want %d", stat.UnknownSeconds, 6*3600)
+		}
+	})
+
+	t.Run("fully unknown day keeps unknown seconds with has_data=false", func(t *testing.T) {
+		req := []dto.BatchGetOntimeItem{{EndpointID: 2, Date: d1}}
+		b := newRepoBatcher([]ontimerepo.UptimeRow{{
+			EndpointID:     2,
+			From:           d1,
+			To:             d1.Add(24 * time.Hour),
+			HasData:        false,
+			ObservedFrom:   d1,
+			ObservedTo:     d1.Add(24 * time.Hour),
+			UnknownSeconds: 24 * 3600,
+		}})
+
+		got, err := b.BatchGetOntimeUntil(t.Context(), req, until)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(got) != 1 || len(got[0].Result) != 1 {
+			t.Fatalf("unexpected result shape: %+v", got)
+		}
+
+		stat := got[0].Result[0]
+		if stat.HasData {
+			t.Error("HasData = true, want false")
+		}
+		if stat.UnknownSeconds != 24*3600 {
+			t.Errorf("UnknownSeconds = %f, want %d", stat.UnknownSeconds, 24*3600)
+		}
+	})
+}

@@ -353,3 +353,81 @@ func TestIntegration_Uptime_InvalidWindow_ReturnsError(t *testing.T) {
 		}
 	}
 }
+
+// ---------- unknown segments ----------
+
+// ON for the first half of the day, UNKNOWN from noon onward: online and
+// unknown split the window exactly, and the window still has data.
+func TestIntegration_Uptime_UnknownSplitsWindow(t *testing.T) {
+	testcontainers.SkipIfShort(t)
+	db := initUptimeTestDB(t)
+
+	seedUptimeRow(t, db, 1, domain.StatusOn, uTm(2026, 6, 1, 0, 0))
+	seedUptimeRow(t, db, 1, domain.StatusUnknown, uTm(2026, 6, 1, 12, 0))
+
+	repo := NewOntimeUptimeRepository(db)
+	rows, err := repo.BatchGetUptime(t.Context(), []BatchGetOntimeRequest{
+		{EndpointID: 1, From: uDay(2026, 6, 1), To: uDay(2026, 6, 2)},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	row := findUptimeRow(t, rows, 1, "2026-06-01")
+	assertUptime(t, row.OnlineSeconds, 12*3600)
+	assertUptime(t, row.UnknownSeconds, 12*3600)
+	if !row.HasData {
+		t.Error("partially unknown window must still report has_data")
+	}
+}
+
+// OFF after a mid-day unknown: the unknown gap must not swallow either side.
+func TestIntegration_Uptime_UnknownBetweenKnownStates(t *testing.T) {
+	testcontainers.SkipIfShort(t)
+	db := initUptimeTestDB(t)
+
+	seedUptimeRow(t, db, 2, domain.StatusOn, uTm(2026, 6, 1, 0, 0))
+	seedUptimeRow(t, db, 2, domain.StatusUnknown, uTm(2026, 6, 1, 6, 0))
+	seedUptimeRow(t, db, 2, domain.StatusOff, uTm(2026, 6, 1, 12, 0))
+
+	repo := NewOntimeUptimeRepository(db)
+	rows, err := repo.BatchGetUptime(t.Context(), []BatchGetOntimeRequest{
+		{EndpointID: 2, From: uDay(2026, 6, 1), To: uDay(2026, 6, 2)},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	row := findUptimeRow(t, rows, 2, "2026-06-01")
+	assertUptime(t, row.OnlineSeconds, 6*3600)
+	assertUptime(t, row.UnknownSeconds, 6*3600)
+	if !row.HasData {
+		t.Error("window with known states around the gap must report has_data")
+	}
+}
+
+// The last known event before the window is followed by an UNKNOWN: the
+// carry-in itself is UNKNOWN, so the whole observed span is unknown and the
+// window reports no usable data instead of inheriting the stale ON state.
+func TestIntegration_Uptime_FullyUnknownWindow_HasNoData(t *testing.T) {
+	testcontainers.SkipIfShort(t)
+	db := initUptimeTestDB(t)
+
+	seedUptimeRow(t, db, 3, domain.StatusOn, uTm(2026, 5, 31, 18, 0))
+	seedUptimeRow(t, db, 3, domain.StatusUnknown, uTm(2026, 5, 31, 23, 0))
+
+	repo := NewOntimeUptimeRepository(db)
+	rows, err := repo.BatchGetUptime(t.Context(), []BatchGetOntimeRequest{
+		{EndpointID: 3, From: uDay(2026, 6, 1), To: uDay(2026, 6, 2)},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	row := findUptimeRow(t, rows, 3, "2026-06-01")
+	assertUptime(t, row.OnlineSeconds, 0)
+	assertUptime(t, row.UnknownSeconds, 24*3600)
+	if row.HasData {
+		t.Error("fully unknown window must report has_data=false")
+	}
+}

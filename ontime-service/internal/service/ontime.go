@@ -109,6 +109,7 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []servercl
 	serverDates := make(map[uint][]time.Time, len(servers))
 
 	for _, sv := range servers {
+
 		created := utils.TruncateDay(sv.CreatedAt)
 		dates := lo.Filter(dates, func(d time.Time, _ int) bool {
 			return !d.Before(created)
@@ -136,13 +137,20 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []servercl
 
 	out := make(map[uint][]dto.OntimeStats, len(servers))
 	for _, sv := range servers {
+
 		stats, ok := lookup[sv.ID]
 		if !ok {
 			stats = make(map[time.Time]dto.DayResult)
 		}
+
 		out[sv.ID] = lo.Map(serverDates[sv.ID], func(d time.Time, _ int) dto.OntimeStats {
 			dr := stats[d]
-			return dto.OntimeStats{Date: d, Stats: dr.Uptime, HasData: dr.HasData}
+			return dto.OntimeStats{
+				Date:           d,
+				Stats:          dr.Uptime,
+				HasData:        dr.HasData,
+				UnknownSeconds: dr.Unknown,
+			}
 		})
 	}
 
@@ -156,7 +164,14 @@ func buildOntimeLookup(results []dto.BatchGetOntimeResponse) map[uint]map[time.T
 	for _, r := range results {
 
 		mp := lo.SliceToMap(r.Result, func(stat dto.OntimeStats) (time.Time, dto.DayResult) {
-			return utils.TruncateDay(stat.Date), dto.DayResult{HasData: stat.HasData, Uptime: stat.Stats}
+
+			dayResult := dto.DayResult{
+				HasData: stat.HasData,
+				Uptime:  stat.Stats,
+				Unknown: stat.UnknownSeconds,
+			}
+
+			return utils.TruncateDay(stat.Date), dayResult
 		})
 
 		lookup[r.EndpointID] = mp

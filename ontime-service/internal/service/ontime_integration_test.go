@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"flag"
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -211,8 +210,12 @@ func TestIntegration_BatchGetOntime_CacheHit(t *testing.T) {
 	now := oDay(2026, 6, 1)
 	b := newBatcherWithRedis(t, db, redisClient)
 
-	key := fmt.Sprintf("ontime:%d:%s:stats", 1, now.Format("2006-01-02"))
-	if err := redisClient.Set(t.Context(), key, "99.50", 0).Err(); err != nil {
+	key := ontimerepo.RedisKey(1, now)
+	if err := redisClient.HSet(t.Context(), key, map[string]string{
+		"has_data": "1",
+		"uptime":   "99.5",
+		"unknown":  "0",
+	}).Err(); err != nil {
 		t.Fatalf("seed redis: %v", err)
 	}
 
@@ -251,13 +254,13 @@ func TestIntegration_BatchGetOntime_CacheMissThenWarm(t *testing.T) {
 		t.Errorf("Stats = %f, want > 0", results[0].Result[0].Stats)
 	}
 
-	key := fmt.Sprintf("ontime:%d:%s:stats", 1, now.Format("2006-01-02"))
-	val, err := redisClient.Get(t.Context(), key).Result()
+	key := ontimerepo.RedisKey(1, now)
+	fields, err := redisClient.HGetAll(t.Context(), key).Result()
 	if err != nil {
-		t.Fatalf("Get cached key: %v", err)
+		t.Fatalf("HGetAll cached key: %v", err)
 	}
-	if val == "" {
-		t.Error("expected non-empty cached value")
+	if len(fields) == 0 || fields["uptime"] == "" {
+		t.Errorf("expected warmed hash entry with uptime field, got %+v", fields)
 	}
 }
 
@@ -270,8 +273,12 @@ func TestIntegration_BatchGetOntime_PartialCacheHit(t *testing.T) {
 	seedEvent(t, db, 1, domain.StatusOn, oTm(2026, 6, 1, 6, 0))
 	seedEvent(t, db, 2, domain.StatusOn, oTm(2026, 6, 1, 0, 0))
 
-	key := fmt.Sprintf("ontime:%d:%s:stats", 1, now.Format("2006-01-02"))
-	if err := redisClient.Set(t.Context(), key, "88.00", 0).Err(); err != nil {
+	key := ontimerepo.RedisKey(1, now)
+	if err := redisClient.HSet(t.Context(), key, map[string]string{
+		"has_data": "1",
+		"uptime":   "88",
+		"unknown":  "0",
+	}).Err(); err != nil {
 		t.Fatalf("seed redis: %v", err)
 	}
 
@@ -304,13 +311,13 @@ func TestIntegration_BatchGetOntime_PartialCacheHit(t *testing.T) {
 		}
 	}
 
-	key2 := fmt.Sprintf("ontime:%d:%s:stats", 2, now.Format("2006-01-02"))
-	val, err := redisClient.Get(t.Context(), key2).Result()
+	key2 := ontimerepo.RedisKey(2, now)
+	fields, err := redisClient.HGetAll(t.Context(), key2).Result()
 	if err != nil {
-		t.Fatalf("Get cached key for server 2: %v", err)
+		t.Fatalf("HGetAll cached key for server 2: %v", err)
 	}
-	if val == "" {
-		t.Error("expected server 2 to be cached after miss")
+	if len(fields) == 0 || fields["uptime"] == "" {
+		t.Errorf("expected server 2 to be cached after miss, got %+v", fields)
 	}
 }
 

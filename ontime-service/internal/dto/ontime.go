@@ -14,12 +14,14 @@ type BatchGetOntimeItem struct {
 type DayResult struct {
 	HasData bool
 	Uptime  float64
+	Unknown float64
 }
 
 type OntimeStats struct {
-	Date    time.Time `json:"date"`
-	Stats   float64   `json:"stats"`
-	HasData bool      `json:"has_data"`
+	Date           time.Time `json:"date"`
+	Stats          float64   `json:"stats"`
+	HasData        bool      `json:"has_data"`
+	UnknownSeconds float64   `json:"unknown_seconds"`
 }
 
 type BatchGetOntimeResponse struct {
