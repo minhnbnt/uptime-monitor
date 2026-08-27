@@ -183,7 +183,6 @@ const uptimeSQL = `
 					AND known_event.time < observation_window.window_end
 			)
 		) event_stream
-		ORDER BY endpoint_id, window_start, time
 	),
 
 	-- 4. Raw lookahead only: when does this state stop being true?
