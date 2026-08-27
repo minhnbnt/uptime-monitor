@@ -11,26 +11,29 @@ import (
 	"github.com/samber/lo/it"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
+	apperrors "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/errors"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/serverclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/utils"
 )
 
 type ServerClient interface {
 	ListServers(ctx context.Context, userID uint, page, perPage int) ([]serverclient.ServerBrief, error)
-	GetServer(ctx context.Context, serverID uint, userID uint) (*serverclient.ServerBrief, error)
 }
 
 type OntimeService struct {
-	serverClient ServerClient
-	batcher      *Batcher
-	logger       *slog.Logger
+	serverClient    ServerClient
+	serverOwnerRepo ServerOwnerRepository
+	batcher         *Batcher
+	logger          *slog.Logger
 }
 
-func NewOntimeService(sc ServerClient, b *Batcher, l *slog.Logger) *OntimeService {
+func NewOntimeService(sc ServerClient, ownerRepo ServerOwnerRepository, b *Batcher, l *slog.Logger) *OntimeService {
 	return &OntimeService{
-		serverClient: sc,
-		batcher:      b,
-		logger:       l,
+		serverClient:    sc,
+		serverOwnerRepo: ownerRepo,
+		batcher:         b,
+		logger:          l,
 	}
 }
 
@@ -38,6 +41,7 @@ func RegisterOntimeService(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*OntimeService, error) {
 		return NewOntimeService(
 			do.MustInvoke[*serverclient.Client](i),
+			do.MustInvoke[*repository.ServerOwnerRepository](i),
 			do.MustInvoke[*Batcher](i),
 			do.MustInvoke[*slog.Logger](i),
 		), nil
@@ -86,12 +90,17 @@ func (s *OntimeService) GetServersOntime(ctx context.Context, userID uint, maxRe
 
 func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID, userID uint) (*dto.ServerOntime, error) {
 
-	server, err := s.serverClient.GetServer(ctx, serverID, userID)
+	owned, err := s.serverOwnerRepo.GetOwnedServers(ctx, userID, []uint{serverID})
 	if err != nil {
 		return nil, err
 	}
+	if len(owned) == 0 {
+		return nil, apperrors.ErrNotFound
+	}
 
-	ontimeMap, err := s.getServersOntime(ctx, []serverclient.ServerBrief{*server})
+	ontimeMap, err := s.getServersOntime(ctx, []serverclient.ServerBrief{
+		{ID: owned[0].ServerID, CreatedAt: owned[0].CreatedAt},
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -100,6 +109,35 @@ func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID, userI
 		ServerID:    serverID,
 		OntimeStats: ontimeMap[serverID],
 	}, nil
+}
+
+func (s *OntimeService) GetServersWithOntime(ctx context.Context, userID uint, ids []uint) ([]dto.ServerOntime, error) {
+
+	owned, err := s.serverOwnerRepo.GetOwnedServers(ctx, userID, ids)
+	if err != nil {
+		return nil, err
+	}
+	if len(owned) != len(ids) {
+		return nil, apperrors.ErrForbidden
+	}
+
+	servers := lo.Map(owned, func(o repository.OwnedServer, _ int) serverclient.ServerBrief {
+		return serverclient.ServerBrief{ID: o.ServerID, CreatedAt: o.CreatedAt}
+	})
+
+	ontimeMap, err := s.getServersOntime(ctx, servers)
+	if err != nil {
+		return nil, err
+	}
+
+	out := lo.Map(servers, func(sv serverclient.ServerBrief, _ int) dto.ServerOntime {
+		return dto.ServerOntime{
+			ServerID:    sv.ID,
+			OntimeStats: ontimeMap[sv.ID],
+		}
+	})
+
+	return out, nil
 }
 
 func (s *OntimeService) getServersOntime(ctx context.Context, servers []serverclient.ServerBrief) (map[uint][]dto.OntimeStats, error) {

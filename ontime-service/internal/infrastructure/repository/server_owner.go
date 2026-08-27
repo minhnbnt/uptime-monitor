@@ -27,6 +27,60 @@ func RegisterServerOwnerRepository(i do.Injector) {
 	})
 }
 
+// OwnedServer is the minimal projection of server_owners needed to authorize
+// and window ontime calculations without a round-trip to the server-service.
+type OwnedServer struct {
+	ServerID  uint
+	CreatedAt time.Time
+}
+
+func (r *ServerOwnerRepository) GetOwnedServerIDs(
+	ctx context.Context, userID uint, serverIDs []uint,
+) ([]uint, error) {
+
+	if len(serverIDs) == 0 {
+		return nil, nil
+	}
+
+	var owned []uint
+	err := r.db.WithContext(ctx).
+		Model(&domain.ServerOwner{}).
+		Where("server_id IN ?", serverIDs).
+		Where("user_id = ?", userID).
+		Where("deleted_at IS NULL").
+		Pluck("server_id", &owned).
+		Error
+	if err != nil {
+		return nil, err
+	}
+
+	return owned, nil
+}
+
+func (r *ServerOwnerRepository) GetOwnedServers(
+	ctx context.Context, userID uint, serverIDs []uint,
+) ([]OwnedServer, error) {
+
+	if len(serverIDs) == 0 {
+		return nil, nil
+	}
+
+	var rows []OwnedServer
+	err := r.db.WithContext(ctx).
+		Model(&domain.ServerOwner{}).
+		Where("server_id IN ?", serverIDs).
+		Where("user_id = ?", userID).
+		Where("deleted_at IS NULL").
+		Select("server_id, created_at").
+		Scan(&rows).
+		Error
+	if err != nil {
+		return nil, err
+	}
+
+	return rows, nil
+}
+
 func (r *ServerOwnerRepository) Upsert(
 	ctx context.Context,
 	serverID, userID uint,

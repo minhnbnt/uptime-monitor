@@ -56,3 +56,20 @@ func (m *mockServerClient) GetServer(ctx context.Context, serverID uint, userID 
 }
 
 var _ ServerClient = (*mockServerClient)(nil)
+
+type mockServerOwnerRepo struct {
+	ownedServersFn func(ctx context.Context, userID uint, serverIDs []uint) ([]ontimerepo.OwnedServer, error)
+}
+
+func (m *mockServerOwnerRepo) GetOwnedServers(ctx context.Context, userID uint, serverIDs []uint) ([]ontimerepo.OwnedServer, error) {
+	if m.ownedServersFn == nil {
+		return nil, nil
+	}
+	return m.ownedServersFn(ctx, userID, serverIDs)
+}
+
+func (m *mockServerOwnerRepo) GetOwnedServerIDs(_ context.Context, _ uint, _ []uint) ([]uint, error) {
+	return nil, nil
+}
+
+var _ ServerOwnerRepository = (*mockServerOwnerRepo)(nil)

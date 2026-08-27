@@ -24,7 +24,7 @@ func TestRecordEventUsesProvidedTime(t *testing.T) {
 	want := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 
 	rec := &captureEventRecorder{}
-	svc := NewEventService(rec, nil)
+	svc := NewEventService(rec, nil, &fakeOwnerRepo{})
 
 	err := svc.RecordEvent(context.Background(), dto.RecordEventRequest{
 		EndpointID: 7,

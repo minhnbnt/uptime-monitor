@@ -10,11 +10,20 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/domain"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
+	apperrors "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/errors"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
 )
 
 type EventRecorder interface {
 	Save(ctx context.Context, event *domain.ServerEvent) error
+}
+
+// ServerOwnerRepository authorizes server ownership and supplies each server's
+// creation time for ontime windowing, all from the ontime DB (server_owners).
+// The concrete implementation lives in the repository package.
+type ServerOwnerRepository interface {
+	GetOwnedServerIDs(ctx context.Context, userID uint, serverIDs []uint) ([]uint, error)
+	GetOwnedServers(ctx context.Context, userID uint, serverIDs []uint) ([]repository.OwnedServer, error)
 }
 
 type EventRepository interface {
@@ -24,12 +33,13 @@ type EventRepository interface {
 }
 
 type EventService struct {
-	recorder EventRecorder
-	repo     EventRepository
+	recorder  EventRecorder
+	repo      EventRepository
+	ownerRepo ServerOwnerRepository
 }
 
-func NewEventService(r EventRecorder, repo EventRepository) *EventService {
-	return &EventService{recorder: r, repo: repo}
+func NewEventService(r EventRecorder, repo EventRepository, ownerRepo ServerOwnerRepository) *EventService {
+	return &EventService{recorder: r, repo: repo, ownerRepo: ownerRepo}
 }
 
 func RegisterEventService(i do.Injector) {
@@ -37,6 +47,7 @@ func RegisterEventService(i do.Injector) {
 		return NewEventService(
 			do.MustInvoke[*repository.ServerEventRepository](i),
 			do.MustInvoke[*repository.EventRepository](i),
+			do.MustInvoke[*repository.ServerOwnerRepository](i),
 		), nil
 	})
 }
@@ -73,6 +84,49 @@ func (s *EventService) GetCurrentStatuses(ctx context.Context, endpointIDs []uin
 	})
 
 	return results, nil
+}
+
+// MaxStatusIDs caps how many servers can be queried in one GetServersStatuses call.
+const MaxStatusIDs = 100
+
+func (s *EventService) GetServersStatuses(ctx context.Context, userID uint, serverIDs []uint) ([]dto.EndpointStatus, error) {
+
+	if len(serverIDs) > MaxStatusIDs {
+		return nil, apperrors.ErrBadRequest
+	}
+
+	owned, err := s.ownerRepo.GetOwnedServerIDs(ctx, userID, serverIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(owned) != len(serverIDs) {
+		return nil, apperrors.ErrForbidden
+	}
+
+	rows, err := s.repo.GetCurrentStatuses(ctx, serverIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	byID := make(map[uint]dto.EndpointStatus, len(rows))
+	for _, r := range rows {
+		byID[r.EndpointID] = dto.EndpointStatus{
+			EndpointID: r.EndpointID,
+			Status:     dto.ServerStatus(r.Status),
+		}
+	}
+
+	out := make([]dto.EndpointStatus, 0, len(serverIDs))
+	for _, id := range serverIDs {
+		st, ok := byID[id]
+		if !ok {
+			st = dto.EndpointStatus{EndpointID: id, Status: dto.ServerStatusUnknown}
+		}
+		out = append(out, st)
+	}
+
+	return out, nil
 }
 
 func (s *EventService) CountByStatus(ctx context.Context, endpointIDs []uint) (online, offline int64, err error) {

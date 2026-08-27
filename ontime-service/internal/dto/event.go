@@ -5,8 +5,9 @@ import "time"
 type ServerStatus string
 
 const (
-	ServerStatusOn  ServerStatus = "ON"
-	ServerStatusOff ServerStatus = "OFF"
+	ServerStatusOn      ServerStatus = "ON"
+	ServerStatusOff     ServerStatus = "OFF"
+	ServerStatusUnknown ServerStatus = "UNKNOWN"
 )
 
 func (s ServerStatus) String() string { return string(s) }

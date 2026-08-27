@@ -576,9 +576,9 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		svc := &OntimeService{
-			serverClient: &mockServerClient{
-				getServerFn: func(_ context.Context, serverID, _ uint) (*serverclient.ServerBrief, error) {
-					return &serverclient.ServerBrief{ID: serverID, Name: "server-a", CreatedAt: createdAt}, nil
+			serverOwnerRepo: &mockServerOwnerRepo{
+				ownedServersFn: func(_ context.Context, _ uint, ids []uint) ([]ontimerepo.OwnedServer, error) {
+					return []ontimerepo.OwnedServer{{ServerID: ids[0], CreatedAt: createdAt}}, nil
 				},
 			},
 			batcher: &Batcher{
@@ -613,9 +613,9 @@ func TestOntimeService_GetServerWithOntime(t *testing.T) {
 
 	t.Run("server not found", func(t *testing.T) {
 		svc := &OntimeService{
-			serverClient: &mockServerClient{
-				getServerFn: func(_ context.Context, _, _ uint) (*serverclient.ServerBrief, error) {
-					return nil, errors.New("not found")
+			serverOwnerRepo: &mockServerOwnerRepo{
+				ownedServersFn: func(_ context.Context, _ uint, _ []uint) ([]ontimerepo.OwnedServer, error) {
+					return nil, nil
 				},
 			},
 			batcher: &Batcher{},

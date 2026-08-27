@@ -16,16 +16,19 @@ import (
 type OntimeService interface {
 	ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]dto.ServerOntime, error)
 	GetServerWithOntime(ctx context.Context, serverID uint, userID uint) (*dto.ServerOntime, error)
+	GetServersWithOntime(ctx context.Context, userID uint, ids []uint) ([]dto.ServerOntime, error)
 }
 
 type OntimeHandler struct {
 	ontimeService OntimeService
+	eventService  *service.EventService
 }
 
 func RegisterOntimeHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*OntimeHandler, error) {
 		return &OntimeHandler{
 			ontimeService: do.MustInvoke[*service.OntimeService](i),
+			eventService:  do.MustInvoke[*service.EventService](i),
 		}, nil
 	})
 }
@@ -66,6 +69,51 @@ func (h *OntimeHandler) GetServerOntime(ctx context.Context, params api.GetServe
 	}
 
 	return &api.ServerOntimeResponse{Data: api.NewOptServerOntime(so)}, nil
+}
+
+func (h *OntimeHandler) GetServersStatuses(ctx context.Context, params *api.ServerStatusesRequest) (*api.ServerStatusesResponse, error) {
+
+	userID := authclient.GetUserID(ctx)
+
+	ids := lo.Map(params.Ids, func(id int, _ int) uint { return uint(id) })
+
+	statuses, err := h.eventService.GetServersStatuses(ctx, userID, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	data := lo.Map(statuses, func(st dto.EndpointStatus, _ int) api.ServerStatusItem {
+		return api.ServerStatusItem{
+			ServerID: int(st.EndpointID),
+			Status:   st.Status.String(),
+		}
+	})
+
+	return &api.ServerStatusesResponse{Data: data}, nil
+}
+
+func (h *OntimeHandler) ListServersOntimeByIDs(ctx context.Context, params *api.ServerOntimeByIDsRequest) (*api.ServerOntimeListResponse, error) {
+
+	userID := authclient.GetUserID(ctx)
+
+	ids := lo.Map(params.Ids, func(id int, _ int) uint { return uint(id) })
+	if len(ids) > 100 {
+		return nil, apperrors.ErrBadRequest
+	}
+
+	result, err := h.ontimeService.GetServersWithOntime(ctx, userID, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	data := lo.Map(result, func(item dto.ServerOntime, _ int) api.ServerOntime {
+		return api.ServerOntime{
+			ServerID:    api.NewOptInt(int(item.ServerID)),
+			OntimeStats: toOntimeStats(item.OntimeStats),
+		}
+	})
+
+	return &api.ServerOntimeListResponse{Data: data}, nil
 }
 
 func (h *OntimeHandler) NewError(_ context.Context, err error) *api.ErrorResponseStatusCode {
