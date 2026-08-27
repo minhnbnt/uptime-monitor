@@ -20,11 +20,22 @@ func (m *mockPingWorker) Ping(ctx context.Context, ep *domain.Endpoint) (*infra.
 }
 
 type mockRecordWorker struct {
-	recordFn func(ctx context.Context, event *domain.ServerEvent, freshness time.Duration) error
+	recordFn              func(ctx context.Context, event *domain.ServerEvent, freshness time.Duration) error
+	recordWithTimestampFn func(ctx context.Context, event *domain.EventWithTimestamp, freshness time.Duration) error
 }
 
 func (m *mockRecordWorker) Record(ctx context.Context, event *domain.ServerEvent, freshness time.Duration) error {
-	return m.recordFn(ctx, event, freshness)
+	if m.recordFn != nil {
+		return m.recordFn(ctx, event, freshness)
+	}
+	return nil
+}
+
+func (m *mockRecordWorker) RecordWithTimestamp(ctx context.Context, event *domain.EventWithTimestamp, freshness time.Duration) error {
+	if m.recordWithTimestampFn != nil {
+		return m.recordWithTimestampFn(ctx, event, freshness)
+	}
+	return nil
 }
 
 func TestPingAndRecordEndpoint(t *testing.T) {

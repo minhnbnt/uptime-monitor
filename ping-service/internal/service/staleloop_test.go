@@ -83,10 +83,10 @@ func TestMarkUnknown(t *testing.T) {
 
 	t.Run("success records unknown and removes the entry", func(t *testing.T) {
 		store := &fakeStaleStore{}
-		var recorded *domain.ServerEvent
+		var recorded *domain.EventWithTimestamp
 		var recordedFreshness time.Duration
 		rec := &mockRecordWorker{
-			recordFn: func(_ context.Context, event *domain.ServerEvent, freshness time.Duration) error {
+			recordWithTimestampFn: func(_ context.Context, event *domain.EventWithTimestamp, freshness time.Duration) error {
 				recorded = event
 				recordedFreshness = freshness
 				return nil
@@ -98,13 +98,13 @@ func TestMarkUnknown(t *testing.T) {
 		if recorded == nil {
 			t.Fatal("expected an event to be recorded")
 		}
-		if recorded.Status != domain.StatusUnknown {
-			t.Errorf("status = %q, want %q", recorded.Status, domain.StatusUnknown)
+		if recorded.Event.Status != domain.StatusUnknown {
+			t.Errorf("status = %q, want %q", recorded.Event.Status, domain.StatusUnknown)
 		}
-		if recorded.EndpointID != endpointID {
-			t.Errorf("endpointID = %d, want %d", recorded.EndpointID, endpointID)
+		if recorded.Event.EndpointID != endpointID {
+			t.Errorf("endpointID = %d, want %d", recorded.Event.EndpointID, endpointID)
 		}
-		if recorded.ID == (domain.ServerEvent{}).ID {
+		if recorded.Event.ID == (domain.ServerEvent{}).ID {
 			t.Error("expected event ID to be generated")
 		}
 		if recordedFreshness != PushStaleInterval {
@@ -115,11 +115,34 @@ func TestMarkUnknown(t *testing.T) {
 		}
 	})
 
+	t.Run("records unknown at the stale deadline, not at claim time", func(t *testing.T) {
+		staleDeadline := time.Now().Add(-37 * time.Minute).UnixMilli()
+		scoredTask := scheduler.ScheduledTask{EndpointID: endpointID, Score: staleDeadline}
+
+		var recorded *domain.EventWithTimestamp
+		rec := &mockRecordWorker{
+			recordWithTimestampFn: func(_ context.Context, event *domain.EventWithTimestamp, _ time.Duration) error {
+				recorded = event
+				return nil
+			},
+		}
+
+		newService(&fakeStaleStore{}, rec).markUnknown(t.Context(), scoredTask)
+
+		if recorded == nil {
+			t.Fatal("expected an event to be recorded")
+		}
+		want := time.UnixMilli(staleDeadline)
+		if !recorded.Time.Equal(want) {
+			t.Errorf("time = %v, want stale deadline %v", recorded.Time, want)
+		}
+	})
+
 	t.Run("record failure keeps the entry for retry", func(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
 		store := &fakeStaleStore{}
 		rec := &mockRecordWorker{
-			recordFn: func(_ context.Context, _ *domain.ServerEvent, _ time.Duration) error {
+			recordWithTimestampFn: func(_ context.Context, _ *domain.EventWithTimestamp, _ time.Duration) error {
 				return errors.New("grpc error")
 			},
 		}
@@ -139,7 +162,7 @@ func TestMarkUnknown(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
 		store := &fakeStaleStore{removeErr: errors.New("redis error")}
 		rec := &mockRecordWorker{
-			recordFn: func(_ context.Context, _ *domain.ServerEvent, _ time.Duration) error {
+			recordWithTimestampFn: func(_ context.Context, _ *domain.EventWithTimestamp, _ time.Duration) error {
 				return nil
 			},
 		}

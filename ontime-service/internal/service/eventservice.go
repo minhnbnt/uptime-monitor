@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/samber/do/v2"
@@ -51,7 +50,7 @@ func (s *EventService) RecordEvent(ctx context.Context, req dto.RecordEventReque
 
 	event := &domain.ServerEvent{
 		ID:         id,
-		Time:       time.Now(),
+		Time:       req.Time,
 		EndpointID: req.EndpointID,
 		Status:     domain.ServerStatus(req.Status),
 	}

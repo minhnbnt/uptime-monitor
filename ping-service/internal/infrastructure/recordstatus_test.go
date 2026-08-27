@@ -213,6 +213,32 @@ func TestRecord(t *testing.T) {
 		}
 	})
 
+	t.Run("live Record stamps ~now (historical time is the stale path's job)", func(t *testing.T) {
+		var got time.Time
+		w := &RecordStatusWorker{
+			statusStore: &mockStatusStore{
+				getStatusFn: func(_ context.Context, _ uint) (domain.ServerStatus, error) {
+					return domain.StatusOff, nil
+				},
+			},
+			eventRecorder: &mockEventRecorder{
+				recordEventAtFn: func(_ context.Context, _ uint, _ domain.ServerStatus, recordedAt time.Time) error {
+					got = recordedAt
+					return nil
+				},
+			},
+			freshness: &mockFreshnessToucher{},
+			logger:    logger.NewMockLogger(),
+		}
+
+		if err := w.Record(context.Background(), newEvent(endpointID, domain.StatusOn), testFreshness); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got.IsZero() || got.Before(time.Now().Add(-2*time.Second)) || got.After(time.Now().Add(2*time.Second)) {
+			t.Errorf("recorded time = %v, want ~now", got)
+		}
+	})
+
 	t.Run("touch error logs warn but does not drop the event", func(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
 		var recorded bool

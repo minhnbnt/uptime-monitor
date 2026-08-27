@@ -20,6 +20,7 @@ type pingWorker interface {
 
 type recordWorker interface {
 	Record(ctx context.Context, event *domain.ServerEvent, freshness time.Duration) error
+	RecordWithTimestamp(ctx context.Context, event *domain.EventWithTimestamp, freshness time.Duration) error
 }
 
 type scoreUpdater interface {

@@ -75,9 +75,18 @@ func (s *StaleLoopService) markUnknown(ctx context.Context, task scheduler.Sched
 		Status:     domain.StatusUnknown,
 	}
 
+	eventWithTimestamp := domain.EventWithTimestamp{
+		Event: &event,
+		// Attribute the UNKNOWN to the moment the server actually went stale
+		// (the freshness deadline), not to whenever the stale loop happens to
+		// claim it — e.g. after a long app downtime the window would otherwise
+		// be misplaced at restart time.
+		Time: time.UnixMilli(task.Score),
+	}
+
 	// On failure the entry stays claimed at now+10s and is retried later;
 	// on success it leaves the set until the agent pushes again.
-	if err := s.recorder.Record(ctx, &event, PushStaleInterval); err != nil {
+	if err := s.recorder.RecordWithTimestamp(ctx, &eventWithTimestamp, PushStaleInterval); err != nil {
 		s.logger.Warn(
 			"failed to record stale event",
 			slog.Int64("endpoint", int64(task.EndpointID)),

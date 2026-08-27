@@ -3,6 +3,7 @@ package grpcclient
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/samber/do/v2"
 
@@ -39,10 +40,15 @@ func (c *EventRecorderClient) Shutdown() error {
 }
 
 func (c *EventRecorderClient) RecordEvent(ctx context.Context, endpointID uint, status domain.ServerStatus) error {
+	return c.RecordEventAt(ctx, endpointID, status, time.Now())
+}
+
+func (c *EventRecorderClient) RecordEventAt(ctx context.Context, endpointID uint, status domain.ServerStatus, recordedAt time.Time) error {
 
 	_, err := c.client.RecordEvent(ctx, &eventv1.RecordEventRequest{
 		EndpointId: uint64(endpointID),
 		Status:     string(status),
+		EventTime:  recordedAt.UnixMilli(),
 	})
 
 	if err != nil {

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"time"
 
 	"github.com/samber/do/v2"
 
@@ -28,6 +29,7 @@ func (s *EventRecorderServer) RecordEvent(ctx context.Context, req *eventv1.Reco
 	err := s.eventService.RecordEvent(ctx, dto.RecordEventRequest{
 		Status:     dto.ServerStatus(req.Status),
 		EndpointID: uint(req.EndpointId),
+		Time:       time.UnixMilli(req.EventTime),
 	})
 
 	if err != nil {

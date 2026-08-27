@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	"time"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 )
@@ -23,7 +24,8 @@ func (m *mockStatusStore) SetStatus(ctx context.Context, endpointID uint, status
 }
 
 type mockEventRecorder struct {
-	recordEventFn func(ctx context.Context, endpointID uint, status domain.ServerStatus) error
+	recordEventFn   func(ctx context.Context, endpointID uint, status domain.ServerStatus) error
+	recordEventAtFn func(ctx context.Context, endpointID uint, status domain.ServerStatus, recordedAt time.Time) error
 }
 
 func (m *mockEventRecorder) RecordEvent(ctx context.Context, endpointID uint, status domain.ServerStatus) error {
@@ -31,6 +33,16 @@ func (m *mockEventRecorder) RecordEvent(ctx context.Context, endpointID uint, st
 		return nil
 	}
 	return m.recordEventFn(ctx, endpointID, status)
+}
+
+func (m *mockEventRecorder) RecordEventAt(ctx context.Context, endpointID uint, status domain.ServerStatus, recordedAt time.Time) error {
+	if m.recordEventAtFn != nil {
+		return m.recordEventAtFn(ctx, endpointID, status, recordedAt)
+	}
+	if m.recordEventFn != nil {
+		return m.recordEventFn(ctx, endpointID, status)
+	}
+	return nil
 }
 
 var _ StatusStore = (*mockStatusStore)(nil)

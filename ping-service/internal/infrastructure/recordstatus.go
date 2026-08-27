@@ -34,9 +34,36 @@ func RegisterRecordStatusWorker(i do.Injector) {
 	})
 }
 
-func (w *RecordStatusWorker) Record(ctx context.Context, event *domain.ServerEvent, freshness time.Duration) error {
+func (w *RecordStatusWorker) RecordWithTimestamp(ctx context.Context, event *domain.EventWithTimestamp, freshness time.Duration) error {
 
-	event.Time = time.Now()
+	endpointID := event.Event.EndpointID
+
+	// Refresh the staleness deadline before anything else so every recorded
+	// event — push or poll — counts as evidence of life.
+	if err := w.freshness.Touch(ctx, endpointID, freshness); err != nil {
+		w.logger.Warn(
+			"failed to touch freshness",
+			slog.Int64("endpointID", int64(endpointID)),
+			slog.Any("error", err),
+		)
+	}
+
+	// Historical/stale events are boundary markers inserted at a past
+	// timestamp, so they are recorded as-is without the live last-status
+	// dedupe (which assumes now-ordered processing and would misbehave if an
+	// event is inserted in the middle of the timeline).
+	if err := w.eventRecorder.RecordEventAt(ctx, endpointID, event.Event.Status, event.Time); err != nil {
+		return err
+	}
+
+	if err := w.statusStore.SetStatus(ctx, endpointID, event.Event.Status); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (w *RecordStatusWorker) Record(ctx context.Context, event *domain.ServerEvent, freshness time.Duration) error {
 
 	// Refresh the staleness deadline before anything else so every recorded
 	// event — push or poll — counts as evidence of life.
@@ -62,7 +89,7 @@ func (w *RecordStatusWorker) Record(ctx context.Context, event *domain.ServerEve
 		return nil
 	}
 
-	if err := w.eventRecorder.RecordEvent(ctx, event.EndpointID, event.Status); err != nil {
+	if err := w.eventRecorder.RecordEventAt(ctx, event.EndpointID, event.Status, time.Now()); err != nil {
 		return err
 	}
 
