@@ -96,7 +96,8 @@ func (r *OntimeUptimeRepository) BatchGetUptime(ctx context.Context, requests []
 		return nil, err
 	}
 
-	rows, err := gorm.G[UptimeRow](r.db).Raw(uptimeSQL, string(payload)).Find(ctx)
+	request := r.db.Raw(windowFromJsonb, string(payload))
+	rows, err := gorm.G[UptimeRow](r.db).Raw(uptimeSQL, request).Find(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -122,27 +123,25 @@ func deriveHasData(row UptimeRow) bool {
 	return row.UnknownSeconds < total-freshnessEpsilon
 }
 
-const uptimeSQL = `
-	WITH
-	-- 1. Parse the batch request payload into (endpoint, window) pairs.
-	requested AS (
-		SELECT request_item.endpoint_id, request_item.from_ts, request_item.to_ts
-		FROM jsonb_to_recordset(?::jsonb)
-		AS request_item(endpoint_id bigint, from_ts timestamptz, to_ts timestamptz)
-	),
+const windowFromJsonb = `
+	SELECT request_item.endpoint_id, request_item.from_ts, request_item.to_ts
+	FROM jsonb_to_recordset(?::jsonb)
+	AS request_item(endpoint_id bigint, from_ts timestamptz, to_ts timestamptz)
+`
 
-	-- 2. Ordered so the window LEAD below can incremental-sort instead of
+const uptimeSQL = `
+	-- 1. Ordered so the window LEAD below can incremental-sort instead of
 	--    spilling a global sort to disk.
-	windows AS (
+	WITH windows AS (
 		SELECT
 			request_item.endpoint_id,
 			request_item.from_ts AS window_start,
 			request_item.to_ts AS window_end
-		FROM requested request_item
+		FROM (?) request_item
 		ORDER BY request_item.endpoint_id, request_item.from_ts
 	),
 
-	-- 3. Single status gate: every real state drives the timeline, including
+	-- 2. Single status gate: every real state drives the timeline, including
 	--    UNKNOWN so silences split segments instead of being bridged by a
 	--    stale carry-in. NOT MATERIALIZED is load-bearing: materialized
 	--    (default when a CTE is referenced twice), every per-window probe
@@ -154,7 +153,7 @@ const uptimeSQL = `
 		WHERE status IN ('ON', 'OFF', 'UNKNOWN')
 	),
 
-	-- 4. One ordered stream: for each window, its starting state (last known
+	-- 3. One ordered stream: for each window, its starting state (last known
 	--    event strictly before window_start — the lowerbound probe) plus
 	--    every known event inside the window itself, both via index lookups.
 	timeline AS (
@@ -184,12 +183,10 @@ const uptimeSQL = `
 					AND known_event.time < observation_window.window_end
 			)
 		) event_stream
-		ORDER BY observation_window.endpoint_id,
-			observation_window.window_start,
-			event_stream.time
+		ORDER BY endpoint_id, window_start, time
 	),
 
-	-- 5. Raw lookahead only: when does this state stop being true?
+	-- 4. Raw lookahead only: when does this state stop being true?
 	--    The last row of a partition has no successor → NULL, patched next
 	--    step. Partitioned by the full window triple: two windows sharing a
 	--    start but not an end must never share a LEAD chain.
@@ -203,7 +200,7 @@ const uptimeSQL = `
 		FROM timeline
 	),
 
-	-- 6. Turn rows into half-open [segment_start, segment_end) intervals
+	-- 5. Turn rows into half-open [segment_start, segment_end) intervals
 	--    clamped to the window: carry-in starts at window_start, nothing
 	--    runs past window_end.
 	segments AS (
@@ -213,30 +210,37 @@ const uptimeSQL = `
 			status,
 			source,
 			GREATEST(time, window_start) AS segment_start,
-			LEAST(COALESCE(next_event_time, window_end), window_end) AS segment_end
+			LEAST(next_event_time, window_end) AS segment_end
 		FROM next_times
 	)
 
-	-- 7. Measure per window: seconds spent ON, seconds UNKNOWN, plus where
+	-- 6. Measure per window: seconds spent ON, seconds UNKNOWN, plus where
 	--     observation really began and ended. Windows whose starting state
 	--     was known cover the full span; otherwise coverage starts at the
 	--     first known event. HasData is derived in Go, not fetched.
-	SELECT endpoint_id,
-		window_start AS "from", window_end AS "to",
-		CASE
-			WHEN bool_or(source = 'carryin')
-				THEN MIN(window_start)
-			ELSE MIN(segment_start)
-		END AS observed_from,
-		MAX(window_end) AS observed_to,
-		COALESCE(
-			SUM(EXTRACT(EPOCH FROM (segment_end - segment_start))) FILTER (WHERE status = 'ON'),
-			0
-		) AS online_seconds,
-		COALESCE(
-			SUM(EXTRACT(EPOCH FROM (segment_end - segment_start))) FILTER (WHERE status = 'UNKNOWN'),
-			0
-		) AS unknown_seconds
+	SELECT
+	    endpoint_id,
+	    window_start AS "from", window_end AS "to",
+
+	    CASE
+	        WHEN bool_or(source = 'carryin')
+	            THEN window_start
+	        ELSE MIN(segment_start)
+	    END AS observed_from,
+
+	    window_end AS observed_to,
+
+	    COALESCE(
+	        SUM(EXTRACT(EPOCH FROM (segment_end - segment_start)))
+	            FILTER (WHERE status = 'ON'),
+	        0
+	    ) AS online_seconds,
+
+	    COALESCE(
+	        SUM(EXTRACT(EPOCH FROM (segment_end - segment_start)))
+	            FILTER (WHERE status = 'UNKNOWN'),
+	        0
+	    ) AS unknown_seconds
 	FROM segments
 	GROUP BY endpoint_id, window_start, window_end
 `
