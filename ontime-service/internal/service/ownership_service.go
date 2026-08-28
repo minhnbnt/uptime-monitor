@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"time"
 
 	"github.com/samber/do/v2"
 
@@ -25,11 +24,11 @@ func RegisterOwnershipService(i do.Injector) {
 }
 
 func (s *OwnershipService) OnCreate(ctx context.Context, serverID, userID uint) error {
-	return s.repo.Upsert(ctx, serverID, userID, nil)
+	return s.repo.Upsert(ctx, serverID, userID)
 }
 
-func (s *OwnershipService) OnUpdate(ctx context.Context, serverID, userID uint, deletedAt *time.Time) error {
-	return s.repo.Upsert(ctx, serverID, userID, deletedAt)
+func (s *OwnershipService) OnUpdate(ctx context.Context, serverID, userID uint) error {
+	return s.repo.Upsert(ctx, serverID, userID)
 }
 
 func (s *OwnershipService) OnDelete(ctx context.Context, serverID uint) error {

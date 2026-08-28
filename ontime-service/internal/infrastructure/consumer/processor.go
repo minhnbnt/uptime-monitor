@@ -36,10 +36,16 @@ func (p *messageProcessor) onDelete(ctx context.Context, event debeziumMessage) 
 }
 
 func (p *messageProcessor) onUpdate(ctx context.Context, event debeziumMessage) error {
+
 	if event.After == nil {
 		return nil
 	}
-	return p.handler.OnUpdate(ctx, event.After.ID, event.After.CreatedByID, event.After.DeletedAt)
+
+	if event.After.DeletedAt != nil {
+		return p.handler.OnDelete(ctx, event.After.ID)
+	}
+
+	return p.handler.OnUpdate(ctx, event.After.ID, event.After.CreatedByID)
 }
 
 func (p *messageProcessor) onCreate(ctx context.Context, event debeziumMessage) error {
