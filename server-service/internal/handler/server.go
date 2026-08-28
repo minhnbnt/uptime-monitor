@@ -143,7 +143,7 @@ func (h *ServerHandler) SearchServers(
 		Q:         params.Q,
 		From:      (page - 1) * perPage,
 		To:        perPage,
-		SortBy:    string(params.SortBy.Or(api.SearchServersSortByScore)),
+		SortBy:    string(params.SortBy.Or(api.SearchServersSortByName)),
 		SortOrder: string(params.SortOrder.Or(api.SearchServersSortOrderDesc)),
 	}
 

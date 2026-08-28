@@ -56,7 +56,7 @@ func RegisterServerReader(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ServerReader, error) {
 		return NewServerReader(
 			do.MustInvoke[*serverrepo.ServerRepository](i),
-			do.MustInvoke[*serverrepo.ParadeDBSearcher](i),
+			do.MustInvoke[*serverrepo.PrefixSearcher](i),
 			do.MustInvoke[grpcclient.StatusClient](i),
 			do.MustInvoke[*slog.Logger](i),
 		), nil

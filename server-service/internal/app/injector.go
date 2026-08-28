@@ -21,7 +21,7 @@ func RegisterPackages(injector do.Injector, configPath string, dev bool) {
 
 		repository.RegisterServerRepository,
 		repository.RegisterEndpointRepository,
-		repository.RegisterParadeDBSearcher,
+		repository.RegisterPrefixSearcher,
 		repository.RegisterStreamEventPublisher,
 
 		grpcclient.RegisterEventClient,

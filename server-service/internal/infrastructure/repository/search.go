@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -14,23 +13,19 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/dto"
 )
 
-type ParadeDBSearcher struct {
+type PrefixSearcher struct {
 	db *gorm.DB
 }
 
-func RegisterParadeDBSearcher(i do.Injector) {
-	do.Provide(i, func(i do.Injector) (*ParadeDBSearcher, error) {
+func RegisterPrefixSearcher(i do.Injector) {
+	do.Provide(i, func(i do.Injector) (*PrefixSearcher, error) {
 
 		gw := do.MustInvoke[*config.GORMWrapper](i)
-		if !gw.SearchEnabled {
-			return nil, errors.New("pg_search not available, ParadeDB search disabled")
-		}
-
-		return &ParadeDBSearcher{db: gw.GetDB()}, nil
+		return &PrefixSearcher{db: gw.GetDB()}, nil
 	})
 }
 
-func (s *ParadeDBSearcher) Search(
+func (s *PrefixSearcher) Search(
 	ctx context.Context,
 	params dto.SearchParams,
 	createdByID uint,
@@ -43,7 +38,7 @@ func (s *ParadeDBSearcher) Search(
 		Where("created_by_id = ?", createdByID)
 
 	if params.Q != "" {
-		query = query.Where("name @@@ ?", params.Q)
+		query = query.Where("name ILIKE CONCAT(?, '%')", params.Q)
 	}
 
 	total, err := query.Count(ctx, "*")
@@ -72,14 +67,13 @@ var sortFieldMap = map[string]string{
 	"name":       "name",
 	"created_at": "created_at",
 	"status":     "status",
-	"score":      "pdb.score(id)",
 }
 
 func getQueryOptions(params *dto.SearchParams) (safeOrder string, limit, offset int) {
 
 	field, ok := sortFieldMap[params.SortBy]
 	if !ok {
-		field = sortFieldMap["score"]
+		field = sortFieldMap["name"]
 	}
 
 	order := "DESC"

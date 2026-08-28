@@ -284,8 +284,8 @@ servers-search:
         in: query
         schema:
           type: string
-          enum: [name, created_at, score]
-          default: score
+          enum: [name, created_at]
+          default: name
       - name: sort_order
         in: query
         schema:

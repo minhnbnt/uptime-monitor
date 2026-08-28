@@ -84,28 +84,7 @@ func newGORMDatabase(i do.Injector) (*GORMWrapper, error) {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
-	searchEnabled := true
-	if err := EnablePGSearch(db); err != nil {
-		log.Warn("failed to enable pg_search, ParadeDB search disabled", slog.Any("error", err))
-		searchEnabled = false
-	}
-
-	return &GORMWrapper{db: db, SearchEnabled: searchEnabled}, nil
-}
-
-func EnablePGSearch(db *gorm.DB) error {
-
-	result := db.Exec("CREATE EXTENSION IF NOT EXISTS pg_search")
-	if result.Error != nil {
-		return fmt.Errorf("failed to enable pg_search: %w", result.Error)
-	}
-
-	result = db.Exec(`CREATE INDEX IF NOT EXISTS servers_search_idx ON servers USING bm25 (id, name) WITH (key_field='id')`)
-	if result.Error != nil {
-		return fmt.Errorf("failed to create BM25 index: %w", result.Error)
-	}
-
-	return nil
+	return &GORMWrapper{db: db}, nil
 }
 
 func RunMigration(db *gorm.DB) error {
@@ -133,8 +112,7 @@ func RegisterGORMDB(i do.Injector) {
 }
 
 type GORMWrapper struct {
-	db            *gorm.DB
-	SearchEnabled bool
+	db *gorm.DB
 }
 
 func (gw *GORMWrapper) GetDB() *gorm.DB {
