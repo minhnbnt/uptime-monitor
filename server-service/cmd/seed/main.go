@@ -13,7 +13,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/generated/api"
 )
 
-const baseURL = "http://192.168.8.130:30080"
+const baseURL = "http://localhost:8080"
 
 func authToken() string {
 
@@ -84,7 +84,7 @@ func main() {
 			client := &http.Client{}
 
 			for port := range ports {
-				name := fmt.Sprintf("172.27.102.17:%d", port)
+				name := fmt.Sprintf("host.docker.internal:%d", port)
 
 				reqBody, _ := json.Marshal(api.CreateServerRequest{Name: name})
 				req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, baseURL+"/api/v1/servers", bytes.NewReader(reqBody))
