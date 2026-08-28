@@ -38,7 +38,7 @@ func (s *PrefixSearcher) Search(
 		Where("created_by_id = ?", createdByID)
 
 	if params.Q != "" {
-		query = query.Where("name ILIKE CONCAT(?, '%')", params.Q)
+		query = query.Where("name ILIKE CONCAT(?::text, '%')", params.Q)
 	}
 
 	total, err := query.Count(ctx, "*")
