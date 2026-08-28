@@ -13,80 +13,73 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/logger"
 )
 
-func TestStreamEventConsumerRunDeadLettersPoisonAndProcessesValid(t *testing.T) {
+func TestStreamEventConsumerRunReclaimsPending(t *testing.T) {
 	testcontainers.SkipIfShort(t)
+
+	defer func(old time.Duration) { reclaimIdleTime = old }(reclaimIdleTime)
+	reclaimIdleTime = 100 * time.Millisecond
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	client := testcontainers.NewTestRedis(t, testRedisAddr)
-
-	// anchor the consumer group at "$" before publishing so new messages are read
 	if err := client.XGroupCreateMkStream(ctx, streamKey, consumerGroup, "$").Err(); err != nil {
 		t.Fatalf("create group: %v", err)
 	}
 
 	var mu sync.Mutex
-	var created domain.Endpoint
-	var handled int
-	handler := &mockEndpointEventHandler{
-		onCreateFn: func(_ context.Context, ep domain.Endpoint) error {
+	var calls int
+	h := &mockEndpointEventHandler{
+		onCreateFn: func(context.Context, domain.Endpoint) error {
 			mu.Lock()
-			created = ep
-			handled++
+			calls++
 			mu.Unlock()
 			return nil
 		},
 	}
-
 	consumer := &StreamEventConsumer{client: client, logger: logger.NewMockLogger()}
 
-	go consumer.Run(ctx, handler)
+	// publish a valid endpoint message, then claim it with a different consumer WITHOUT
+	// acking it (simulating a dead worker) so it becomes pending.
+	if err := client.XAdd(ctx, &redis.XAddArgs{
+		Stream: streamKey,
+		Values: map[string]any{"value": `{"op":"c","after":{"id":1,"url":"https://x.com","method":"GET","expected_code":200,"interval":5000000000,"timeout":2000000000}}`},
+	}).Err(); err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	if _, err := client.XReadGroup(ctx, &redis.XReadGroupArgs{
+		Group:    consumerGroup,
+		Consumer: "probe",
+		Streams:  []string{streamKey, ">"},
+		Count:    streamReadCount,
+	}).Result(); err != nil && err != redis.Nil {
+		t.Fatalf("probe read: %v", err)
+	}
 
-	if err := client.XAdd(ctx, &redis.XAddArgs{
-		Stream: streamKey,
-		Values: map[string]any{"value": "not json"},
-	}).Err(); err != nil {
-		t.Fatalf("publish poison: %v", err)
-	}
-	if err := client.XAdd(ctx, &redis.XAddArgs{
-		Stream: streamKey,
-		Values: map[string]any{"value": `{"op":"c","after":{"id":7,"url":"https://x.com","method":"GET","expected_code":200,"interval":5000000000,"timeout":2000000000}}`},
-	}).Err(); err != nil {
-		t.Fatalf("publish valid: %v", err)
-	}
+	// let the pending entry age past reclaimIdleTime
+	time.Sleep(200 * time.Millisecond)
+
+	go consumer.Run(ctx, h)
 
 	deadline := time.Now().Add(15 * time.Second)
 	for {
 		mu.Lock()
-		gotCreated := created
-		gotHandled := handled
+		c := calls
 		mu.Unlock()
-
-		dlq, err := client.XLen(ctx, dlqStreamKey).Result()
-		if err != nil {
-			t.Fatalf("xlen dlq: %v", err)
-		}
-
-		if dlq == 1 && gotHandled >= 1 && gotCreated.ID == 7 {
+		if c >= 1 {
 			break
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("timeout: dlq=%d handled=%d createdID=%d", dlq, gotHandled, gotCreated.ID)
+			t.Fatalf("timeout: handler calls = %d", c)
 		}
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 	}
 
-	entries, err := client.XRange(ctx, dlqStreamKey, "-", "+").Result()
+	pending, err := client.XPending(ctx, streamKey, consumerGroup).Result()
 	if err != nil {
-		t.Fatalf("xrange dlq: %v", err)
+		t.Fatalf("xpending: %v", err)
 	}
-	if len(entries) != 1 {
-		t.Fatalf("dlq entries = %d, want 1 (only the poison message)", len(entries))
-	}
-	if entries[0].Values["original_id"] == "" {
-		t.Error("dlq entry missing original_id")
-	}
-	if _, ok := entries[0].Values["error"]; !ok {
-		t.Error("dlq entry missing error field")
+	if pending.Count != 0 {
+		t.Errorf("expected no pending entries after reclaim+ack, got %d", pending.Count)
 	}
 }

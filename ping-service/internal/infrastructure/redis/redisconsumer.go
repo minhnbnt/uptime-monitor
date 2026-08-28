@@ -2,14 +2,11 @@ package redis
 
 import (
 	"context"
-	"iter"
 	"log/slog"
-	"slices"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/samber/do/v2"
-	"github.com/samber/lo/it"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
@@ -23,6 +20,11 @@ const (
 	streamReadCount = 10
 	streamBlockTime = 5 * time.Second
 )
+
+// reclaimIdleTime is the pending-message age after which a dead worker's
+// unacked messages are reclaimed by a live consumer. Exposed as a var so
+// tests can lower it.
+var reclaimIdleTime = time.Minute
 
 type StreamEventConsumer struct {
 	client *redis.Client
@@ -62,42 +64,84 @@ func (c *StreamEventConsumer) Run(ctx context.Context, handler EndpointEventHand
 		handler: handler,
 		logger:  c.logger,
 		client:  c.client,
+		offsets: NewOffsetStore(c.client, 30*time.Minute),
+	}
+
+	readArgs := redis.XReadGroupArgs{
+		Group:    consumerGroup,
+		Consumer: consumerName,
+		Streams:  []string{streamKey, ">"},
+		Count:    streamReadCount,
+		Block:    streamBlockTime,
 	}
 
 	for ctx.Err() == nil {
 
-		streams, err := c.client.XReadGroup(ctx, &redis.XReadGroupArgs{
-			Group:    consumerGroup,
-			Consumer: consumerName,
-			Streams:  []string{streamKey, ">"},
-			Count:    streamReadCount,
-			Block:    streamBlockTime,
-		}).Result()
-
-		if err == redis.Nil {
-			continue
-		}
-
-		if err != nil {
+		streams, err := c.client.XReadGroup(ctx, &readArgs).Result()
+		if err != nil && err != redis.Nil {
 			c.logger.Error("stream read", slog.Any("error", err))
 			time.Sleep(time.Second)
 			continue
 		}
 
-		streamIter := slices.Values(streams)
-		messages := it.FlatMap(streamIter, func(stream redis.XStream) iter.Seq[redis.XMessage] {
-			return slices.Values(stream.Messages)
-		})
+		for _, stream := range streams {
+			for _, msg := range stream.Messages {
+				if processor.ProcessMessage(ctx, msg) {
+					c.ack(ctx, msg.ID)
+				}
+			}
+		}
 
-		for msg := range messages {
+		claimed, reclaimErr := c.reclaim(ctx)
+		if reclaimErr != nil {
+			c.logger.Error("claim pending", slog.Any("error", reclaimErr))
+			continue
+		}
 
-			canAck := processor.ProcessMessage(ctx, msg)
-
-			if canAck {
+		for _, msg := range claimed {
+			if processor.ProcessMessage(ctx, msg) {
 				c.ack(ctx, msg.ID)
 			}
 		}
 	}
+}
+
+// reclaim redis overlapping messages left unacked > reclaimIdleTime (e.g. dead workers) back to this consumer.
+func (c *StreamEventConsumer) reclaim(ctx context.Context) ([]redis.XMessage, error) {
+
+	msgID := "0"
+	claimed := []redis.XMessage{}
+
+	args := redis.XAutoClaimArgs{
+		Stream:   streamKey,
+		Group:    consumerGroup,
+		Consumer: consumerName,
+		MinIdle:  reclaimIdleTime,
+		Start:    msgID,
+		Count:    streamReadCount,
+	}
+
+	for {
+
+		messages, next, err := c.client.XAutoClaim(ctx, &args).Result()
+		if err != nil {
+			return nil, err
+		}
+
+		claimed = append(claimed, messages...)
+
+		if len(messages) == 0 || next == msgID {
+			break
+		}
+
+		msgID = next
+
+		if len(messages) < streamReadCount {
+			break
+		}
+	}
+
+	return claimed, nil
 }
 
 func (c *StreamEventConsumer) ack(ctx context.Context, msgID string) {

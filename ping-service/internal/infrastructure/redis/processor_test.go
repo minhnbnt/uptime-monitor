@@ -251,6 +251,7 @@ func TestProcessMessage(t *testing.T) {
 	})
 
 	t.Run("create with nil after acks but does not call handler", func(t *testing.T) {
+		testcontainers.SkipIfShort(t)
 		var handlerCalled bool
 		p := &messageProcessor{
 			handler: &mockEndpointEventHandler{
@@ -260,6 +261,7 @@ func TestProcessMessage(t *testing.T) {
 				},
 			},
 			logger: logger.NewMockLogger(),
+			client: testcontainers.NewTestRedis(t, testRedisAddr),
 		}
 
 		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"op":"c"}`))
@@ -293,6 +295,7 @@ func TestProcessMessage(t *testing.T) {
 	})
 
 	t.Run("update with nil after acks but does not call handler", func(t *testing.T) {
+		testcontainers.SkipIfShort(t)
 		var handlerCalled bool
 		p := &messageProcessor{
 			handler: &mockEndpointEventHandler{
@@ -302,6 +305,7 @@ func TestProcessMessage(t *testing.T) {
 				},
 			},
 			logger: logger.NewMockLogger(),
+			client: testcontainers.NewTestRedis(t, testRedisAddr),
 		}
 
 		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"op":"u"}`))
