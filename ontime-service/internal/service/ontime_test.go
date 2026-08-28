@@ -8,7 +8,6 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
 	ontimerepo "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/repository"
-	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/serverclient"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/logger"
 )
 
@@ -637,11 +636,11 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		svc := &OntimeService{
-			serverClient: &mockServerClient{
-				listServersFn: func(_ context.Context, _ uint, _, _ int) ([]serverclient.ServerBrief, error) {
-					return []serverclient.ServerBrief{
-						{ID: 1, Name: "server-a", CreatedAt: createdAt},
-						{ID: 2, Name: "server-b", CreatedAt: createdAt},
+			serverOwnerRepo: &mockServerOwnerRepo{
+				listByUserFn: func(_ context.Context, _ uint) ([]ontimerepo.OwnedServer, error) {
+					return []ontimerepo.OwnedServer{
+						{ServerID: 1, CreatedAt: createdAt},
+						{ServerID: 2, CreatedAt: createdAt},
 					}, nil
 				},
 			},
@@ -677,8 +676,8 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 
 	t.Run("empty server list", func(t *testing.T) {
 		svc := &OntimeService{
-			serverClient: &mockServerClient{
-				listServersFn: func(_ context.Context, _ uint, _, _ int) ([]serverclient.ServerBrief, error) {
+			serverOwnerRepo: &mockServerOwnerRepo{
+				listByUserFn: func(_ context.Context, _ uint) ([]ontimerepo.OwnedServer, error) {
 					return nil, nil
 				},
 			},
@@ -695,10 +694,10 @@ func TestOntimeService_ListServersWithOntime(t *testing.T) {
 		}
 	})
 
-	t.Run("server client error", func(t *testing.T) {
+	t.Run("server owner repo error", func(t *testing.T) {
 		svc := &OntimeService{
-			serverClient: &mockServerClient{
-				listServersFn: func(_ context.Context, _ uint, _, _ int) ([]serverclient.ServerBrief, error) {
+			serverOwnerRepo: &mockServerOwnerRepo{
+				listByUserFn: func(_ context.Context, _ uint) ([]ontimerepo.OwnedServer, error) {
 					return nil, errors.New("db error")
 				},
 			},

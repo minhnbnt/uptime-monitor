@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/samber/do/v2"
+	"github.com/samber/lo"
 
 	eventv1 "github.com/minhnbnt/uptime-monitor-microservices/common/proto/generated/event/v1"
 	"github.com/minhnbnt/uptime-monitor-microservices/notification-service/internal/config"
@@ -68,10 +69,21 @@ func (a *Client) GetServersOntimeForDates(
 		slog.Int("dates", len(dates)),
 	)
 
+	serverIDs := lo.Map(servers, func(sv domain.Server, _ int) uint64 {
+		return uint64(sv.ID)
+	})
+
 	request := eventv1.GetServersOntimeRequest{
-		UserId:     uint64(userID),
-		MaxRecords: int64(a.maxRecords),
+		UserId: uint64(userID),
 	}
+	if len(serverIDs) > 0 {
+		request.ServerIds = serverIDs
+	}
+	if len(dates) > 0 {
+		request.FromDate = dates[0].UnixMilli()
+		request.ToDate = dates[len(dates)-1].UnixMilli()
+	}
+
 	resp, err := a.client.GetServersOntime(ctx, &request)
 	if err != nil {
 		a.logger.Error(

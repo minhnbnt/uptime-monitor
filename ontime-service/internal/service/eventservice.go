@@ -24,6 +24,7 @@ type EventRecorder interface {
 type ServerOwnerRepository interface {
 	GetOwnedServerIDs(ctx context.Context, userID uint, serverIDs []uint) ([]uint, error)
 	GetOwnedServers(ctx context.Context, userID uint, serverIDs []uint) ([]repository.OwnedServer, error)
+	ListByUser(ctx context.Context, userID uint) ([]repository.OwnedServer, error)
 }
 
 type EventRepository interface {

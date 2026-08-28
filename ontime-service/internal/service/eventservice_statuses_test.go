@@ -43,6 +43,10 @@ func (f *fakeOwnerRepo) GetOwnedServers(_ context.Context, _ uint, _ []uint) ([]
 	return nil, nil
 }
 
+func (f *fakeOwnerRepo) ListByUser(_ context.Context, _ uint) ([]repository.OwnedServer, error) {
+	return nil, nil
+}
+
 var _ ServerOwnerRepository = (*fakeOwnerRepo)(nil)
 
 type noopRecorder struct{}

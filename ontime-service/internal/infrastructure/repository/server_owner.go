@@ -74,6 +74,29 @@ func (r *ServerOwnerRepository) GetOwnedServers(
 		Select("server_id, created_at").
 		Scan(&rows).
 		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return rows, nil
+}
+
+// ListByUser returns every owned server (server_id + created_at) for a user,
+// used to enumerate the server set without a round-trip to server-service.
+func (r *ServerOwnerRepository) ListByUser(
+	ctx context.Context, userID uint,
+) ([]OwnedServer, error) {
+
+	var rows []OwnedServer
+	err := r.db.WithContext(ctx).
+		Model(&domain.ServerOwner{}).
+		Where("user_id = ?", userID).
+		Where("deleted_at IS NULL").
+		Select("server_id, created_at").
+		Scan(&rows).
+		Error
+
 	if err != nil {
 		return nil, err
 	}
@@ -96,10 +119,7 @@ func (r *ServerOwnerRepository) Upsert(
 		owner.DeletedAt = gorm.DeletedAt{Time: *deletedAt, Valid: true}
 	}
 
-	result := r.db.WithContext(ctx).
-		Table("server_owners").
-		Save(&owner)
-
+	result := r.db.WithContext(ctx).Save(&owner)
 	return result.Error
 }
 
