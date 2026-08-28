@@ -7,13 +7,20 @@ short-lived (15 min), so the agent refreshes it via the auth-service refresh
 endpoint using the refresh token.
 
 Setup (operator, out of band):
-  1. login  -> POST /api/v1/auth/login            -> app access token
-  2. mint   -> POST /api/v1/auth/sessions/ping     -> ping access + refresh token
-  3. export PING_TOKEN / PING_REFRESH_TOKEN (plus optional vars below)
+  1. Obtain a ping refresh token once: login -> POST /api/v1/auth/login
+     (app token) -> mint POST /api/v1/auth/sessions/ping (ping access +
+     refresh token). Persist only the refresh token.
+  2. export PING_REFRESH_TOKEN. The agent mints/refreshes the access token
+     itself on startup and before it expires, so no access token is needed.
 
 Env vars:
-  PING_TOKEN          (required) ping-scoped access token
-  PING_REFRESH_TOKEN  (required) refresh token paired with PING_TOKEN
+  PING_REFRESH_TOKEN  (required) ping-scoped refresh token, used on first
+                      start or when no token file exists
+  PING_TOKEN          (optional) access token; if unset the agent refreshes
+                      one from PING_REFRESH_TOKEN on startup
+  PING_TOKEN_FILE     (optional) where the agent persists the rotated token
+                      pair; defaults to /var/lib/uptime-agent/tokens.json.
+                      Delete this file to force re-reading PING_REFRESH_TOKEN.
   PING_ENDPOINT       push URL, default http://localhost:8080/api/v1/ping/events
   PING_AUTH_BASE      auth base URL, default http://localhost:8080/api/v1/auth
   PING_EVENTS_FILE    events file, default /etc/uptime-agent/events.json
@@ -120,8 +127,8 @@ def sleep_until(unix_ms):
 
 
 def main():
-    if not PING_TOKEN or not PING_REFRESH_TOKEN:
-        log("FATAL: PING_TOKEN and PING_REFRESH_TOKEN are required")
+    if not PING_REFRESH_TOKEN:
+        log("FATAL: PING_REFRESH_TOKEN is required")
         sys.exit(1)
 
     stop = {"sig": False}
@@ -133,6 +140,9 @@ def main():
     signal.signal(signal.SIGTERM, handle_signal)
 
     log(f"agent started; endpoint={PING_ENDPOINT} events={PING_EVENTS_FILE}")
+
+    if not PING_TOKEN:
+        refresh_token()
 
     while not stop["sig"]:
         if time.time() >= decode_exp(PING_TOKEN) - REFRESH_SKEW:
