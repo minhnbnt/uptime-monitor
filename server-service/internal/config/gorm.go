@@ -98,6 +98,17 @@ func RunMigration(db *gorm.DB) error {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
+	// ponytail: ILIKE 'prefix%' can't use a plain B-tree index; varchar_pattern_ops
+	// lets Postgres do a range scan for case-insensitive prefix matches. Leading
+	// created_by_id narrows per-user first; partial filter mirrors gorm's soft-delete.
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_servers_created_by_id_name_pattern
+		ON servers (created_by_id, name varchar_pattern_ops)
+		WHERE deleted_at IS NULL
+	`).Error; err != nil {
+		return fmt.Errorf("failed to create name prefix index: %w", err)
+	}
+
 	return nil
 }
 
