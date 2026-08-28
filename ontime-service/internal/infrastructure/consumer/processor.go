@@ -14,6 +14,7 @@ type messageProcessor struct {
 	handler ServerOwnerHandler
 	logger  *slog.Logger
 	client  *redis.Client
+	offsets *RedisOffsetStore
 }
 
 func (p *messageProcessor) onDelete(ctx context.Context, event debeziumMessage) error {
@@ -53,6 +54,23 @@ func (p *messageProcessor) ProcessMessage(ctx context.Context, msg redis.XMessag
 		return p.deadLetterOrRetry(ctx, msg, err)
 	}
 
+	serverID, err := resolveServerID(event)
+	if err != nil {
+		return p.deadLetterOrRetry(ctx, msg, err)
+	}
+
+	// ponytail: skip stale, out-of-order reprocessed messages (e.g. reclaim brings an
+	// older create back after a newer delete for the same server already applied).
+	// Comparing the ms-seq stream ids is enough; per-server offset is redis-persisted.
+	stale, err := p.isStale(ctx, serverID, msg.ID)
+	if err != nil {
+		p.logger.Warn("check offset", slog.String("id", msg.ID), slog.Any("error", err))
+		return false
+	}
+	if stale {
+		return true
+	}
+
 	switch event.Op {
 	case "c", "r":
 		if err := p.onCreate(ctx, event); err != nil {
@@ -73,7 +91,39 @@ func (p *messageProcessor) ProcessMessage(ctx context.Context, msg redis.XMessag
 		return p.deadLetterOrRetry(ctx, msg, permanent(fmt.Errorf("unexpected operation %q", event.Op)))
 	}
 
+	if err := p.offsets.SetOffset(ctx, serverID, msg.ID); err != nil {
+		p.logger.Error("set offset", slog.String("id", msg.ID), slog.Any("error", err))
+	}
+
 	return true
+}
+
+// isStale reports whether a message for serverID is older than one already applied.
+func (p *messageProcessor) isStale(ctx context.Context, serverID uint, msgID string) (bool, error) {
+
+	applied, err := p.offsets.GetOffset(ctx, serverID)
+	if err == redis.Nil {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	return p.offsets.IsNewer(applied, msgID)
+}
+
+func resolveServerID(event debeziumMessage) (uint, error) {
+
+	if event.After != nil {
+		return event.After.ID, nil
+	}
+
+	if event.Before != nil {
+		return event.Before.ID, nil
+	}
+
+	return 0, permanent(errors.New("resolveServerID: event has no before or after"))
 }
 
 // deadLetterOrRetry acks permanent failures into the DLQ stream; transient errors
