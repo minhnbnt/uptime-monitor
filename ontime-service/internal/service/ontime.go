@@ -80,7 +80,7 @@ func (s *OntimeService) GetServersOntime(ctx context.Context, userID uint, serve
 		return make(map[uint][]dto.OntimeStats), nil
 	}
 
-	ids := lo.Map(serverIDs, func(id uint64,_ int) uint {		return uint(id)	})
+	ids := lo.Map(serverIDs, func(id uint64, _ int) uint { return uint(id) })
 
 	owned, err := s.serverOwnerRepo.GetOwnedServers(ctx, userID, ids)
 	if err != nil {

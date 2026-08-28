@@ -15,8 +15,8 @@ const (
 )
 
 type EventWithTimestamp struct {
-	Event  *ServerEvent
-	Time   time.Time
+	Event *ServerEvent
+	Time  time.Time
 }
 
 type ServerEvent struct {
