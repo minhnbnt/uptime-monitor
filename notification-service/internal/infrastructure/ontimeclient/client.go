@@ -15,10 +15,11 @@ import (
 )
 
 type Client struct {
-	client     eventv1.OntimeServiceClient
-	wrapper    *config.GRPCOntimeClientWrapper
-	logger     *slog.Logger
-	maxRecords int
+	client       eventv1.OntimeServiceClient
+	statusClient eventv1.StatusServiceClient
+	wrapper      *config.GRPCOntimeClientWrapper
+	logger       *slog.Logger
+	maxRecords   int
 }
 
 func NewClient(
@@ -29,10 +30,11 @@ func NewClient(
 	client := eventv1.NewOntimeServiceClient(wrapper.GetConn())
 
 	return &Client{
-		client:     client,
-		logger:     logger,
-		wrapper:    wrapper,
-		maxRecords: maxRecords,
+		client:       client,
+		statusClient: eventv1.NewStatusServiceClient(wrapper.GetConn()),
+		logger:       logger,
+		wrapper:      wrapper,
+		maxRecords:   maxRecords,
 	}
 }
 
@@ -114,4 +116,23 @@ func (a *Client) GetServersOntimeForDates(
 	}
 
 	return result, nil
+}
+
+// CountByStatus returns the total number of servers a user owns plus the
+// online/offline split. The endpoint was moved from server-service to
+// ontime-service's StatusService gRPC.
+func (a *Client) CountByStatus(ctx context.Context, createdByID uint) (total, online, offline int64, err error) {
+
+	req := eventv1.CountByStatusRequest{UserId: uint64(createdByID)}
+	resp, err := a.statusClient.CountByStatus(ctx, &req)
+	if err != nil {
+		a.logger.Error(
+			"ontimeclient.CountByStatus: rpc failed",
+			slog.Uint64("user_id", uint64(createdByID)),
+			slog.Any("error", err),
+		)
+		return 0, 0, 0, fmt.Errorf("count servers by status: %w", err)
+	}
+
+	return resp.Total, resp.Online, resp.Offline, nil
 }

@@ -147,6 +147,10 @@ services:
       traefik.http.routers.ontime.service: ontime-service
       traefik.http.services.ontime-service.loadbalancer.server.port: 8084
       traefik.http.routers.ontime.middlewares: cors, forward-auth
+      traefik.http.routers.ontime-count.rule: PathPrefix(`/api/v1/servers/count`)
+      traefik.http.routers.ontime-count.priority: 30
+      traefik.http.routers.ontime-count.service: ontime-service
+      traefik.http.routers.ontime-count.middlewares: cors, forward-auth
 
   notification-service:
     build:

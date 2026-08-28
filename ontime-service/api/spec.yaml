@@ -110,6 +110,24 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/v1/servers/count:
+    get:
+      operationId: countServersByStatus
+      summary: Count servers by status for the authenticated user
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerCountResponse"
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     OntimeStats:
@@ -189,6 +207,16 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ServerStatusItem"
+
+    ServerCountResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+        online:
+          type: integer
+        offline:
+          type: integer
 
     ErrorResponse:
       type: object

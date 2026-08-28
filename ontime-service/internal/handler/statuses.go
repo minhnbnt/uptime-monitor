@@ -53,12 +53,16 @@ func (s *StatusServer) CountByStatus(
 	ctx context.Context, req *eventv1.CountByStatusRequest,
 ) (*eventv1.CountByStatusResponse, error) {
 
-	online, offline, err := s.eventService.CountByStatusByUserID(ctx, uint(req.UserId))
+	total, online, offline, err := s.eventService.CountServersByStatus(ctx, uint(req.UserId))
 	if err != nil {
 		return nil, err
 	}
 
-	return &eventv1.CountByStatusResponse{Online: online, Offline: offline}, nil
+	return &eventv1.CountByStatusResponse{
+		Total:   total,
+		Online:  online,
+		Offline: offline,
+	}, nil
 }
 
 var _ eventv1.StatusServiceServer = (*StatusServer)(nil)

@@ -116,6 +116,21 @@ func (h *OntimeHandler) ListServersOntimeByIDs(ctx context.Context, params *api.
 	return &api.ServerOntimeListResponse{Data: data}, nil
 }
 
+func (h *OntimeHandler) CountServersByStatus(ctx context.Context) (*api.ServerCountResponse, error) {
+
+	userID := authclient.GetUserID(ctx)
+	total, online, offline, err := h.eventService.CountServersByStatus(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.ServerCountResponse{
+		Total:   api.NewOptInt(int(total)),
+		Online:  api.NewOptInt(int(online)),
+		Offline: api.NewOptInt(int(offline)),
+	}, nil
+}
+
 func (h *OntimeHandler) NewError(_ context.Context, err error) *api.ErrorResponseStatusCode {
 
 	status, body := apperrors.ToAPIError(err)

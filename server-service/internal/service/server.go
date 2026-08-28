@@ -39,12 +39,6 @@ func RegisterServerService(i do.Injector) {
 	})
 }
 
-func (ss *ServerService) CountByStatus(
-	ctx context.Context, userID uint,
-) (total, online, offline int64, err error) {
-	return ss.serverRepo.CountByStatus(ctx, userID)
-}
-
 func (ss *ServerService) CreateServer(
 	ctx context.Context,
 	req dto.CreateServerRequest,

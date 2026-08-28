@@ -11,30 +11,25 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/domain"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/errors"
-	"github.com/minhnbnt/uptime-monitor-microservices/server-service/internal/infrastructure/grpcclient"
 )
 
 type ServerRepository struct {
-	db          *gorm.DB
-	eventClient grpcclient.StatusClient
+	db *gorm.DB
 }
 
 func NewServerRepository(
 	db *gorm.DB,
-	eventClient grpcclient.StatusClient,
 ) *ServerRepository {
-	return &ServerRepository{db: db, eventClient: eventClient}
+	return &ServerRepository{db: db}
 }
 
 func RegisterServerRepository(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*ServerRepository, error) {
 
 		dbWrapper := do.MustInvoke[*config.GORMWrapper](i)
-		eventClient := do.MustInvoke[grpcclient.StatusClient](i)
 
 		return &ServerRepository{
-			db:          dbWrapper.GetDB(),
-			eventClient: eventClient,
+			db: dbWrapper.GetDB(),
 		}, nil
 	})
 }
@@ -141,27 +136,6 @@ func (sr *ServerRepository) Delete(ctx context.Context, id uint) error {
 	}
 
 	return nil
-}
-
-func (sr *ServerRepository) CountByStatus(
-	ctx context.Context, createdByID uint,
-) (total, online, offline int64, err error) {
-
-	total, err = sr.Count(ctx, createdByID)
-	if err != nil {
-		return 0, 0, 0, fmt.Errorf("count servers: %w", err)
-	}
-
-	if total == 0 {
-		return 0, 0, 0, nil
-	}
-
-	online, offline, err = sr.eventClient.CountByStatus(ctx, createdByID)
-	if err != nil {
-		return 0, 0, 0, err
-	}
-
-	return total, online, offline, nil
 }
 
 func (sr *ServerRepository) BatchCreateServers(

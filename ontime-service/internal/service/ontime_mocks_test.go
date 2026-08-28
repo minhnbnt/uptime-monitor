@@ -64,4 +64,8 @@ func (m *mockServerOwnerRepo) GetOwnedServerIDs(_ context.Context, _ uint, _ []u
 	return nil, nil
 }
 
+func (m *mockServerOwnerRepo) CountOwnedServers(_ context.Context, _ uint) (int64, error) {
+	return 0, nil
+}
+
 var _ ServerOwnerRepository = (*mockServerOwnerRepo)(nil)

@@ -25,6 +25,7 @@ type ServerOwnerRepository interface {
 	GetOwnedServerIDs(ctx context.Context, userID uint, serverIDs []uint) ([]uint, error)
 	GetOwnedServers(ctx context.Context, userID uint, serverIDs []uint) ([]repository.OwnedServer, error)
 	ListByUser(ctx context.Context, userID uint) ([]repository.OwnedServer, error)
+	CountOwnedServers(ctx context.Context, userID uint) (int64, error)
 }
 
 type EventRepository interface {
@@ -120,10 +121,15 @@ func (s *EventService) GetServersStatuses(ctx context.Context, userID uint, serv
 
 	out := make([]dto.EndpointStatus, 0, len(serverIDs))
 	for _, id := range serverIDs {
+
 		st, ok := byID[id]
 		if !ok {
-			st = dto.EndpointStatus{EndpointID: id, Status: dto.ServerStatusUnknown}
+			st = dto.EndpointStatus{
+				EndpointID: id,
+				Status:     dto.ServerStatusUnknown,
+			}
 		}
+
 		out = append(out, st)
 	}
 
@@ -136,6 +142,28 @@ func (s *EventService) CountByStatus(ctx context.Context, endpointIDs []uint) (o
 
 func (s *EventService) CountByStatusByUserID(ctx context.Context, userID uint) (online, offline int64, err error) {
 	return s.repo.CountByStatusByUserID(ctx, userID)
+}
+
+// CountServersByStatus returns the total number of servers a user owns plus the
+// online/offline split, sourced entirely from the ontime DB (server_owners +
+// server_events). This is the server-service /servers/count endpoint moved here.
+func (s *EventService) CountServersByStatus(ctx context.Context, userID uint) (total, online, offline int64, err error) {
+
+	total, err = s.ownerRepo.CountOwnedServers(ctx, userID)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	if total == 0 {
+		return 0, 0, 0, nil
+	}
+
+	online, offline, err = s.repo.CountByStatusByUserID(ctx, userID)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	return total, online, offline, nil
 }
 
 var (

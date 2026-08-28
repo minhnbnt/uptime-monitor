@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/samber/do/v2"
+	"github.com/samber/lo"
 	"gorm.io/gorm"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/config"
@@ -38,23 +39,22 @@ func (r *ServerOwnerRepository) GetOwnedServerIDs(
 	ctx context.Context, userID uint, serverIDs []uint,
 ) ([]uint, error) {
 
-	if len(serverIDs) == 0 {
-		return nil, nil
-	}
-
-	var owned []uint
-	err := r.db.WithContext(ctx).
-		Model(&domain.ServerOwner{}).
-		Where("server_id IN ?", serverIDs).
-		Where("user_id = ?", userID).
-		Where("deleted_at IS NULL").
-		Pluck("server_id", &owned).
-		Error
+	owned, err := r.GetOwnedServers(ctx, userID, serverIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	return owned, nil
+	return lo.Map(owned, func(s OwnedServer, _ int) uint {
+		return s.ServerID
+	}), nil
+}
+
+func (r *ServerOwnerRepository) CountOwnedServers(
+	ctx context.Context, userID uint,
+) (int64, error) {
+	return gorm.G[domain.ServerOwner](r.db).
+		Where("user_id = ?", userID).
+		Count(ctx, "")
 }
 
 func (r *ServerOwnerRepository) GetOwnedServers(
@@ -65,15 +65,12 @@ func (r *ServerOwnerRepository) GetOwnedServers(
 		return nil, nil
 	}
 
-	var rows []OwnedServer
-	err := r.db.WithContext(ctx).
-		Model(&domain.ServerOwner{}).
+	rows := []OwnedServer{}
+	err := gorm.G[domain.ServerOwner](r.db).
 		Where("server_id IN ?", serverIDs).
 		Where("user_id = ?", userID).
-		Where("deleted_at IS NULL").
 		Select("server_id, created_at").
-		Scan(&rows).
-		Error
+		Scan(ctx, &rows)
 
 	if err != nil {
 		return nil, err
@@ -88,14 +85,11 @@ func (r *ServerOwnerRepository) ListByUser(
 	ctx context.Context, userID uint,
 ) ([]OwnedServer, error) {
 
-	var rows []OwnedServer
-	err := r.db.WithContext(ctx).
-		Model(&domain.ServerOwner{}).
+	rows := []OwnedServer{}
+	err := gorm.G[domain.ServerOwner](r.db).
 		Where("user_id = ?", userID).
-		Where("deleted_at IS NULL").
 		Select("server_id, created_at").
-		Scan(&rows).
-		Error
+		Scan(ctx, &rows)
 
 	if err != nil {
 		return nil, err
@@ -116,7 +110,10 @@ func (r *ServerOwnerRepository) Upsert(
 	}
 
 	if deletedAt != nil {
-		owner.DeletedAt = gorm.DeletedAt{Time: *deletedAt, Valid: true}
+		owner.DeletedAt = gorm.DeletedAt{
+			Time:  *deletedAt,
+			Valid: true,
+		}
 	}
 
 	result := r.db.WithContext(ctx).Save(&owner)

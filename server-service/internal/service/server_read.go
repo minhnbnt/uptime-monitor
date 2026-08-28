@@ -17,7 +17,6 @@ import (
 
 type StatusClient interface {
 	GetCurrentStatuses(ctx context.Context, endpointIDs []uint) (map[uint]domain.ServerStatus, error)
-	CountByStatus(ctx context.Context, userID uint) (online, offline int64, err error)
 }
 
 type ServerRepository interface {

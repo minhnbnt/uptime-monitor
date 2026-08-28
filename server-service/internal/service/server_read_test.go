@@ -71,10 +71,6 @@ func (m *mockStatusClient) GetCurrentStatuses(_ context.Context, _ []uint) (map[
 	return m.statuses, m.err
 }
 
-func (m *mockStatusClient) CountByStatus(_ context.Context, _ uint) (int64, int64, error) {
-	return 0, 0, nil
-}
-
 func TestServerReader_applyStatuses(t *testing.T) {
 
 	withEndpoint := &dto.Server{ID: 1, Endpoint: &dto.Endpoint{ID: 10}}

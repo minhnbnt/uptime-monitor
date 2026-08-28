@@ -61,24 +61,3 @@ func (a *Client) List(ctx context.Context, createdByID uint, limit, offset int) 
 
 	return servers, nil
 }
-
-func (a *Client) CountByStatus(ctx context.Context, createdByID uint) (total, online, offline int64, err error) {
-
-	req := serverv1.CountServersByStatusRequest{UserId: uint64(createdByID)}
-	a.logger.Debug(
-		"serverclient.CountByStatus: sending gRPC request",
-		slog.Uint64("user_id", uint64(createdByID)),
-	)
-
-	resp, err := a.client.CountServersByStatus(ctx, &req)
-	if err != nil {
-		a.logger.Error(
-			"serverclient.CountByStatus: gRPC call failed",
-			slog.Uint64("user_id", uint64(createdByID)),
-			slog.Any("error", err),
-		)
-		return 0, 0, 0, fmt.Errorf("count servers by status: %w", err)
-	}
-
-	return resp.Total, resp.Online, resp.Offline, nil
-}
