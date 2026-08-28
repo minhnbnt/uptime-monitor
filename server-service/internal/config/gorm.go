@@ -98,6 +98,12 @@ func RunMigration(db *gorm.DB) error {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
+	// idx_servers_created_by_id is now covered by the composite index below
+	// (created_by_id is its leading column), so drop the redundant single-column one.
+	if err := db.Exec(`DROP INDEX IF EXISTS idx_servers_created_by_id`).Error; err != nil {
+		return fmt.Errorf("failed to drop redundant created_by_id index: %w", err)
+	}
+
 	// ponytail: ILIKE 'prefix%' can't use a plain B-tree index; varchar_pattern_ops
 	// lets Postgres do a range scan for case-insensitive prefix matches. Leading
 	// created_by_id narrows per-user first; partial filter mirrors gorm's soft-delete.
