@@ -13,6 +13,7 @@ import (
 
 const (
 	streamKey       = "uptime.public.servers"
+	dlqStreamKey    = streamKey + ".dlq"
 	consumerGroup   = "ontime-service-owners"
 	consumerName    = "worker-1"
 	streamReadCount = 10
@@ -56,6 +57,7 @@ func (c *OwnershipConsumer) Run(ctx context.Context, handler ServerOwnerHandler)
 	processor := &messageProcessor{
 		handler: handler,
 		logger:  c.logger,
+		client:  c.client,
 	}
 
 	for ctx.Err() == nil {
