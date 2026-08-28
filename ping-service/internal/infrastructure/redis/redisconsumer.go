@@ -2,11 +2,14 @@ package redis
 
 import (
 	"context"
+	"iter"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/samber/do/v2"
+	"github.com/samber/lo/it"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
@@ -14,6 +17,7 @@ import (
 
 const (
 	streamKey       = "uptime.public.endpoints"
+	dlqStreamKey    = streamKey + ".dlq"
 	consumerGroup   = "ping-service"
 	consumerName    = "worker-1"
 	streamReadCount = 10
@@ -57,6 +61,7 @@ func (c *StreamEventConsumer) Run(ctx context.Context, handler EndpointEventHand
 	processor := &messageProcessor{
 		handler: handler,
 		logger:  c.logger,
+		client:  c.client,
 	}
 
 	for ctx.Err() == nil {
@@ -79,14 +84,17 @@ func (c *StreamEventConsumer) Run(ctx context.Context, handler EndpointEventHand
 			continue
 		}
 
-		for _, stream := range streams {
-			for _, msg := range stream.Messages {
+		streamIter := slices.Values(streams)
+		messages := it.FlatMap(streamIter, func(stream redis.XStream) iter.Seq[redis.XMessage] {
+			return slices.Values(stream.Messages)
+		})
 
-				canAck := processor.ProcessMessage(ctx, msg)
+		for msg := range messages {
 
-				if canAck {
-					c.ack(ctx, msg.ID)
-				}
+			canAck := processor.ProcessMessage(ctx, msg)
+
+			if canAck {
+				c.ack(ctx, msg.ID)
 			}
 		}
 	}

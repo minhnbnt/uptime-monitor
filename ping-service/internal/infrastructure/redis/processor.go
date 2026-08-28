@@ -2,45 +2,18 @@ package redis
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
-	"time"
+	"maps"
 
 	"github.com/redis/go-redis/v9"
-
-	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
 )
-
-type debeziumMessage struct {
-	Before *debeziumEndpointData `json:"before"`
-	After  *debeziumEndpointData `json:"after"`
-	Op     string                `json:"op"` // c=create, u=update, d=delete
-}
-
-type debeziumEndpointData struct {
-	ID           uint   `json:"id"`
-	URL          string `json:"url"`
-	Method       string `json:"method"`
-	ExpectedCode int    `json:"expected_code"`
-	Interval     int64  `json:"interval"`
-	Timeout      int64  `json:"timeout"`
-}
-
-func (d *debeziumEndpointData) toDomain() domain.Endpoint {
-	return domain.Endpoint{
-		ID:           d.ID,
-		URL:          d.URL,
-		Method:       d.Method,
-		ExpectedCode: d.ExpectedCode,
-		Interval:     time.Duration(d.Interval),
-		Timeout:      time.Duration(d.Timeout),
-	}
-}
 
 type messageProcessor struct {
 	handler EndpointEventHandler
 	logger  *slog.Logger
+	client  *redis.Client
 }
 
 func (p *messageProcessor) onDelete(ctx context.Context, event debeziumMessage) error {
@@ -63,8 +36,8 @@ func (p *messageProcessor) onUpdate(ctx context.Context, event debeziumMessage) 
 		return nil
 	}
 
-	domain := event.After.toDomain()
-	if err := p.handler.OnUpdate(ctx, domain); err != nil {
+	endpoint := event.After.toDomain()
+	if err := p.handler.OnUpdate(ctx, endpoint); err != nil {
 		return err
 	}
 
@@ -77,8 +50,8 @@ func (p *messageProcessor) onCreate(ctx context.Context, event debeziumMessage) 
 		return nil
 	}
 
-	domain := event.After.toDomain()
-	if err := p.handler.OnCreate(ctx, domain); err != nil {
+	endpoint := event.After.toDomain()
+	if err := p.handler.OnCreate(ctx, endpoint); err != nil {
 		return err
 	}
 
@@ -87,74 +60,77 @@ func (p *messageProcessor) onCreate(ctx context.Context, event debeziumMessage) 
 
 func (p *messageProcessor) ProcessMessage(ctx context.Context, msg redis.XMessage) (canAck bool) {
 
-	raw, ok := msg.Values["value"]
-	if !ok {
-		p.logger.Warn("stream message missing value field", slog.String("id", msg.ID))
-		return false
-	}
-
-	rawStr, ok := raw.(string)
-	if !ok {
-		p.logger.Warn(
-			"stream message value not string",
-			slog.String("id", msg.ID),
-		)
-
-		return false
-	}
-
-	event := debeziumMessage{}
-	if err := json.Unmarshal([]byte(rawStr), &event); err != nil {
-
-		p.logger.Error(
-			"stream message invalid json",
-			slog.String("id", msg.ID),
-			slog.Any("error", err),
-		)
-
-		return false
+	event, err := unmarshalDebeziumMessage(msg)
+	if err != nil {
+		return p.deadLetterOrRetry(ctx, msg, err)
 	}
 
 	switch event.Op {
 	case "c", "r":
 		if err := p.onCreate(ctx, event); err != nil {
-			p.logger.Error("handle endpoint",
-				slog.Uint64("endpoint_id", uint64(event.After.ID)),
-				slog.String("op", event.Op),
-				slog.Any("error", err),
-			)
-
-			return false
+			return p.deadLetterOrRetry(ctx, msg, fmt.Errorf("handle endpoint: %w", err))
 		}
 
 	case "u":
 		if err := p.onUpdate(ctx, event); err != nil {
-			p.logger.Error("handle endpoint",
-				slog.Uint64("endpoint_id", uint64(event.After.ID)),
-				slog.String("op", event.Op),
-				slog.Any("error", err),
-			)
-
-			return false
+			return p.deadLetterOrRetry(ctx, msg, fmt.Errorf("handle endpoint: %w", err))
 		}
 
 	case "d":
 		if err := p.onDelete(ctx, event); err != nil {
-			p.logger.Error("handle endpoint",
-				slog.Uint64("endpoint_id", uint64(event.Before.ID)),
-				slog.String("op", event.Op),
-				slog.Any("error", err),
-			)
-
-			return false
+			return p.deadLetterOrRetry(ctx, msg, fmt.Errorf("handle endpoint: %w", err))
 		}
 
 	default:
-		p.logger.Warn("unknown operation", slog.String("op", event.Op))
-		return false
+		return p.deadLetterOrRetry(ctx, msg, permanent(fmt.Errorf("unexpected operation %q", event.Op)))
 	}
 
 	return true
+}
+
+// deadLetterOrRetry acks permanent failures into the DLQ stream; transient errors
+// are returned for retry via reclaim. A failed DLQ write is NOT acked so the
+// message is never lost.
+func (p *messageProcessor) deadLetterOrRetry(ctx context.Context, msg redis.XMessage, err error) bool {
+
+	if !errors.Is(err, ErrPermanent) {
+		p.logger.Error("handle message",
+			slog.String("id", msg.ID),
+			slog.Any("error", err),
+		)
+		return false
+	}
+
+	if dlqErr := p.sendToDLQ(ctx, msg, err); dlqErr != nil {
+		p.logger.Error("write dlq",
+			slog.String("id", msg.ID),
+			slog.Any("error", dlqErr),
+		)
+		return false
+	}
+
+	p.logger.Error(
+		"dead-lettered",
+		slog.String("id", msg.ID),
+		slog.Any("error", err),
+	)
+
+	return true
+}
+
+func (p *messageProcessor) sendToDLQ(ctx context.Context, msg redis.XMessage, err error) error {
+
+	values := maps.Clone(msg.Values)
+
+	values["error"] = err.Error()
+	values["original_id"] = msg.ID
+
+	args := redis.XAddArgs{
+		Stream: dlqStreamKey,
+		Values: values,
+	}
+
+	return p.client.XAdd(ctx, &args).Err()
 }
 
 func resolveDeletedID(event debeziumMessage) (uint, error) {
@@ -167,5 +143,5 @@ func resolveDeletedID(event debeziumMessage) (uint, error) {
 		return event.After.ID, nil
 	}
 
-	return 0, errors.New("resolveDeletedID: event has no before or after")
+	return 0, permanent(errors.New("resolveDeletedID: event has no before or after"))
 }

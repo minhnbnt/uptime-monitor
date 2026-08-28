@@ -3,14 +3,25 @@ package redis
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/domain"
+	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/infrastructure/testcontainers"
 	"github.com/minhnbnt/uptime-monitor-microservices/ping-service/internal/logger"
 )
+
+var testRedisAddr string
+
+func TestMain(m *testing.M) {
+	ctx := context.Background()
+	_, addr := testcontainers.StartRedisAddr(ctx)
+	testRedisAddr = addr
+	os.Exit(m.Run())
+}
 
 func TestDebeziumEndpointDataToDomain(t *testing.T) {
 	data := debeziumEndpointData{
@@ -74,6 +85,9 @@ func TestResolveDeletedID(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error")
 		}
+		if !errors.Is(err, ErrPermanent) {
+			t.Errorf("expected permanent error, got %v", err)
+		}
 	})
 }
 
@@ -89,58 +103,68 @@ func xmessage(id, value string) redis.XMessage {
 func TestProcessMessage(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("missing value field", func(t *testing.T) {
+	t.Run("missing value field is dead-lettered", func(t *testing.T) {
+		testcontainers.SkipIfShort(t)
+		client := testcontainers.NewTestRedis(t, testRedisAddr)
 		log, capLog := logger.NewCapturingLogger()
-		p := &messageProcessor{logger: log}
+		p := &messageProcessor{logger: log, client: client}
 
 		msg := redis.XMessage{ID: "1-0", Values: map[string]any{}}
-		canAck := p.ProcessMessage(ctx, msg)
-		if canAck {
-			t.Error("expected canAck=false")
-		}
-		if !capLog.HasWarn() {
-			t.Error("expected warn log")
-		}
-	})
-
-	t.Run("value not a string", func(t *testing.T) {
-		log, capLog := logger.NewCapturingLogger()
-		p := &messageProcessor{logger: log}
-
-		msg := redis.XMessage{ID: "1-0", Values: map[string]any{"value": 42}}
-		canAck := p.ProcessMessage(ctx, msg)
-		if canAck {
-			t.Error("expected canAck=false")
-		}
-		if !capLog.HasWarn() {
-			t.Error("expected warn log")
-		}
-	})
-
-	t.Run("invalid JSON", func(t *testing.T) {
-		log, capLog := logger.NewCapturingLogger()
-		p := &messageProcessor{logger: log}
-
-		canAck := p.ProcessMessage(ctx, xmessage("1-0", "not json"))
-		if canAck {
-			t.Error("expected canAck=false")
+		if !p.ProcessMessage(ctx, msg) {
+			t.Error("expected canAck=true for permanent error")
 		}
 		if !capLog.HasError() {
-			t.Error("expected error log")
+			t.Error("expected error log (dead-lettered)")
 		}
+		assertDLQCount(t, client, 1)
 	})
 
-	t.Run("unknown operation", func(t *testing.T) {
+	t.Run("value not a string is dead-lettered", func(t *testing.T) {
+		testcontainers.SkipIfShort(t)
+		client := testcontainers.NewTestRedis(t, testRedisAddr)
 		log, capLog := logger.NewCapturingLogger()
-		p := &messageProcessor{logger: log}
+		p := &messageProcessor{logger: log, client: client}
+
+		msg := redis.XMessage{ID: "1-0", Values: map[string]any{"value": 42}}
+		if !p.ProcessMessage(ctx, msg) {
+			t.Error("expected canAck=true for permanent error")
+		}
+		if !capLog.HasError() {
+			t.Error("expected error log (dead-lettered)")
+		}
+		assertDLQCount(t, client, 1)
+	})
+
+	t.Run("invalid JSON is dead-lettered", func(t *testing.T) {
+		testcontainers.SkipIfShort(t)
+		client := testcontainers.NewTestRedis(t, testRedisAddr)
+		log, capLog := logger.NewCapturingLogger()
+		p := &messageProcessor{logger: log, client: client}
+
+		canAck := p.ProcessMessage(ctx, xmessage("1-0", "not json"))
+		if !canAck {
+			t.Error("expected canAck=true for permanent error")
+		}
+		if !capLog.HasError() {
+			t.Error("expected error log (dead-lettered)")
+		}
+		assertDLQCount(t, client, 1)
+	})
+
+	t.Run("unknown operation is dead-lettered", func(t *testing.T) {
+		testcontainers.SkipIfShort(t)
+		client := testcontainers.NewTestRedis(t, testRedisAddr)
+		log, capLog := logger.NewCapturingLogger()
+		p := &messageProcessor{logger: log, client: client}
 
 		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"op":"x"}`))
-		if canAck {
-			t.Error("expected canAck=false")
+		if !canAck {
+			t.Error("expected canAck=true for permanent error")
 		}
-		if !capLog.HasWarn() {
-			t.Error("expected warn log")
+		if !capLog.HasError() {
+			t.Error("expected error log (dead-lettered)")
 		}
+		assertDLQCount(t, client, 1)
 	})
 
 	t.Run("create operation", func(t *testing.T) {
@@ -288,6 +312,45 @@ func TestProcessMessage(t *testing.T) {
 			t.Error("expected canAck=true — tombstone events should be acked")
 		}
 	})
+}
+
+func TestDeadLetterWritesToDLQStream(t *testing.T) {
+	testcontainers.SkipIfShort(t)
+	ctx := context.Background()
+	client := testcontainers.NewTestRedis(t, testRedisAddr)
+
+	p := &messageProcessor{logger: logger.NewMockLogger(), client: client}
+
+	msg := xmessage("1-0", "not json")
+	if !p.ProcessMessage(ctx, msg) {
+		t.Fatal("expected canAck=true for permanent error")
+	}
+
+	entries, err := client.XRange(ctx, dlqStreamKey, "-", "+").Result()
+	if err != nil {
+		t.Fatalf("xrange dlq: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("dlq entries = %d, want 1", len(entries))
+	}
+	if entries[0].Values["original_id"] != "1-0" {
+		t.Errorf("original_id = %v, want 1-0", entries[0].Values["original_id"])
+	}
+	if _, ok := entries[0].Values["error"]; !ok {
+		t.Error("dlq entry missing error field")
+	}
+}
+
+func assertDLQCount(t *testing.T, client *redis.Client, want int64) {
+	t.Helper()
+	ctx := context.Background()
+	n, err := client.XLen(ctx, dlqStreamKey).Result()
+	if err != nil {
+		t.Fatalf("xlen dlq: %v", err)
+	}
+	if n != want {
+		t.Errorf("dlq entries = %d, want %d", n, want)
+	}
 }
 
 func TestOnCreateUpdateDelete(t *testing.T) {
