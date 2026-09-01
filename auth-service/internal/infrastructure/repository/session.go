@@ -11,7 +11,6 @@ import (
 
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/config"
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/domain"
-	apperrors "github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/errors"
 )
 
 type SessionRepository struct {
@@ -83,42 +82,20 @@ func (r *SessionRepository) DeleteByJTI(ctx context.Context, jti string) error {
 	return nil
 }
 
-// Rotate atomically revokes the session identified by oldJTI and inserts next:
-// either both happen or neither does.
-func (r *SessionRepository) Rotate(ctx context.Context, oldJTI string, next *domain.Session) error {
+// IncrementCounter atomically increments the session counter using CAS (compare-and-swap).
+// Returns true if the counter was incremented, false if the counter doesn't match (replay/concurrent write).
+func (r *SessionRepository) IncrementCounter(ctx context.Context, session *domain.Session) (bool, error) {
 
-	oldID, err := uuid.Parse(oldJTI)
-	if err != nil {
-		return fmt.Errorf("parse old jti: %w", err)
+	result := r.db.WithContext(ctx).
+		Model(&domain.Session{}).
+		Where("jti = ? AND counter = ?", session.JTI, session.Counter).
+		Updates(map[string]any{"counter": gorm.Expr("counter + 1")})
+
+	if err := result.Error; err != nil {
+		return false, fmt.Errorf("increment session counter: %w", err)
 	}
 
-	err = r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-
-		deleted, err := gorm.G[domain.Session](tx).
-			Where("jti = ?", oldID).
-			Delete(ctx)
-
-		if err != nil {
-			return fmt.Errorf("delete old session: %w", err)
-		}
-
-		// The old session must actually be deleted here. Zero rows means another
-		// request already rotated it away — bail out instead of minting a twin.
-		if deleted != 1 {
-			return apperrors.ErrSessionRotated
-		}
-
-		if err := gorm.G[domain.Session](tx).Create(ctx, next); err != nil {
-			return fmt.Errorf("create new session: %w", err)
-		}
-
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("rotate session: %w", err)
-	}
-
-	return nil
+	return result.RowsAffected == 1, nil
 }
 
 func (r *SessionRepository) DeleteByJTIAndUser(ctx context.Context, userID uint, jti string) (bool, error) {

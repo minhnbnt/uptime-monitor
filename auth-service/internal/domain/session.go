@@ -14,6 +14,7 @@ type Session struct {
 	gorm.Model
 	UserID    uint      `gorm:"not null;index"`
 	JTI       uuid.UUID `gorm:"type:uuid;not null;uniqueIndex"`
+	Counter   int64     `gorm:"not null;default:0"`
 	Scopes    string    `gorm:"type:text;not null"`
 	ExpiresAt time.Time `gorm:"not null;index"`
 }

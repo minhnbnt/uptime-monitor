@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/samber/do/v2"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/auth-service/internal/config"
@@ -52,26 +51,22 @@ func (tg *tokenGenerator) GenerateAccessToken(user *domain.User, scopes []string
 	return token, nil
 }
 
-func (tg *tokenGenerator) GenerateRefreshToken(user *domain.User) (string, string, error) {
-
-	jti, err := uuid.NewRandom()
-	if err != nil {
-		return "", "", fmt.Errorf("failed to generate jti: %v", err)
-	}
+func (tg *tokenGenerator) GenerateRefreshToken(user *domain.User, jti string, counter int64) (string, error) {
 
 	sub := fmt.Sprint(user.ID)
 	issuer := tg.tokenConfig.GetRefreshTokenIssuer()
 	refreshTokenTTL := tg.tokenConfig.GetRefreshTokenTTL()
 	claims := map[string]any{
-		"sub": sub,
-		"jti": jti.String(),
-		"exp": time.Now().Add(refreshTokenTTL).Unix(),
+		"sub":     sub,
+		"jti":     jti,
+		"counter": counter,
+		"exp":     time.Now().Add(refreshTokenTTL).Unix(),
 	}
 
 	token, err := tg.provider.NewToken(issuer, claims)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
-	return token, jti.String(), nil
+	return token, nil
 }

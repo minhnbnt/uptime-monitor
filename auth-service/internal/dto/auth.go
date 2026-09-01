@@ -48,3 +48,9 @@ type SessionInfo struct {
 	CreatedAt time.Time
 	ExpiresAt time.Time
 }
+
+type TokenGenerateRequest struct {
+	JTI     string
+	Counter int64
+	Scopes  []string
+}

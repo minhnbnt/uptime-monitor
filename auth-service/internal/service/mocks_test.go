@@ -54,14 +54,14 @@ func (m *mockPasswordEncoder) Verify(password, encodedHash string) (bool, error)
 
 type mockTokenGenerator struct {
 	generateAccessTokenFn  func(user *domain.User, scopes []string, sessionID string) (string, error)
-	generateRefreshTokenFn func(user *domain.User) (string, string, error)
+	generateRefreshTokenFn func(user *domain.User, jti string, counter int64) (string, error)
 }
 
 func (m *mockTokenGenerator) GenerateAccessToken(user *domain.User, scopes []string, sessionID string) (string, error) {
 	return m.generateAccessTokenFn(user, scopes, sessionID)
 }
-func (m *mockTokenGenerator) GenerateRefreshToken(user *domain.User) (string, string, error) {
-	return m.generateRefreshTokenFn(user)
+func (m *mockTokenGenerator) GenerateRefreshToken(user *domain.User, jti string, counter int64) (string, error) {
+	return m.generateRefreshTokenFn(user, jti, counter)
 }
 
 type mockSessionRepo struct {
@@ -70,7 +70,7 @@ type mockSessionRepo struct {
 	deleteByJTIFn        func(ctx context.Context, jti string) error
 	deleteByJTIAndUserFn func(ctx context.Context, userID uint, jti string) (bool, error)
 	findByUserFn         func(ctx context.Context, userID uint) ([]domain.Session, error)
-	rotateFn             func(ctx context.Context, oldJTI string, session *domain.Session) error
+	incrementCounterFn   func(ctx context.Context, session *domain.Session) (bool, error)
 }
 
 func (m *mockSessionRepo) Create(ctx context.Context, session *domain.Session) error {
@@ -112,9 +112,9 @@ func (m *mockSessionRepo) DeleteByJTIAndUser(ctx context.Context, userID uint, j
 	return m.deleteByJTIAndUserFn(ctx, userID, jti)
 }
 
-func (m *mockSessionRepo) Rotate(ctx context.Context, oldJTI string, session *domain.Session) error {
-	if m.rotateFn == nil {
-		return nil
+func (m *mockSessionRepo) IncrementCounter(ctx context.Context, session *domain.Session) (bool, error) {
+	if m.incrementCounterFn == nil {
+		return true, nil
 	}
-	return m.rotateFn(ctx, oldJTI, session)
+	return m.incrementCounterFn(ctx, session)
 }

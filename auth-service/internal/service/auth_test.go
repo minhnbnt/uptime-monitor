@@ -109,8 +109,8 @@ func TestAuthService_Register(t *testing.T) {
 					}
 					return "access-token", nil
 				},
-				generateRefreshTokenFn: func(_ *domain.User) (string, string, error) {
-					return "refresh-token", "0195f0b0-0000-7000-8000-000000000000", nil
+				generateRefreshTokenFn: func(_ *domain.User, _ string, _ int64) (string, error) {
+					return "refresh-token", nil
 				},
 			},
 			nil,
@@ -225,8 +225,8 @@ func TestAuthService_Register(t *testing.T) {
 				generateAccessTokenFn: func(_ *domain.User, _ []string, _ string) (string, error) {
 					return "", errors.New("jwt failed")
 				},
-				generateRefreshTokenFn: func(_ *domain.User) (string, string, error) {
-					return "refresh-token", "0195f0b0-0000-7000-8000-000000000000", nil
+				generateRefreshTokenFn: func(_ *domain.User, _ string, _ int64) (string, error) {
+					return "refresh-token", nil
 				},
 			},
 			nil,
@@ -304,8 +304,6 @@ func TestAuthService_Refresh(t *testing.T) {
 		p, tc := setupProviderWithConfig(t)
 		tokenStr := generateRefreshToken(t, p, tc, "5")
 
-		var rotatedOld string
-		var rotatedNew *domain.Session
 		val := token.NewValidator(p, tc, &mockSessionRepo{}, logger.NewMockLogger())
 		svc := newTestAuthService(
 			&mockUserRepo{
@@ -315,18 +313,16 @@ func TestAuthService_Refresh(t *testing.T) {
 			},
 			nil,
 			&mockSessionRepo{
-				rotateFn: func(_ context.Context, oldJTI string, session *domain.Session) error {
-					rotatedOld = oldJTI
-					rotatedNew = session
-					return nil
+				incrementCounterFn: func(_ context.Context, _ *domain.Session) (bool, error) {
+					return true, nil
 				},
 			},
 			&mockTokenGenerator{
 				generateAccessTokenFn: func(_ *domain.User, _ []string, _ string) (string, error) {
 					return "access-token", nil
 				},
-				generateRefreshTokenFn: func(_ *domain.User) (string, string, error) {
-					return "refresh-token", "0195f0b0-0000-7000-8000-000000000001", nil
+				generateRefreshTokenFn: func(_ *domain.User, _ string, _ int64) (string, error) {
+					return "refresh-token", nil
 				},
 			},
 			val,
@@ -346,13 +342,6 @@ func TestAuthService_Refresh(t *testing.T) {
 		if result.User.ID != 5 {
 			t.Errorf("User.ID = %d, want 5", result.User.ID)
 		}
-		const oldJTI = "0195f0b0-0000-7000-8000-000000000000"
-		if rotatedOld != oldJTI {
-			t.Errorf("rotated old JTI = %q, want %s", rotatedOld, oldJTI)
-		}
-		if rotatedNew == nil || rotatedNew.JTI.String() != "0195f0b0-0000-7000-8000-000000000001" {
-			t.Errorf("rotated new session = %v, want new JTI", rotatedNew)
-		}
 	})
 
 	t.Run("rotation failure aborts the refresh", func(t *testing.T) {
@@ -367,24 +356,24 @@ func TestAuthService_Refresh(t *testing.T) {
 			},
 			nil,
 			&mockSessionRepo{
-				rotateFn: func(_ context.Context, _ string, _ *domain.Session) error {
-					return errors.New("db down")
+				incrementCounterFn: func(_ context.Context, _ *domain.Session) (bool, error) {
+					return false, nil
 				},
 			},
 			&mockTokenGenerator{
 				generateAccessTokenFn: func(_ *domain.User, _ []string, _ string) (string, error) {
 					return "access-token", nil
 				},
-				generateRefreshTokenFn: func(_ *domain.User) (string, string, error) {
-					return "refresh-token", "0195f0b0-0000-7000-8000-000000000001", nil
+				generateRefreshTokenFn: func(_ *domain.User, _ string, _ int64) (string, error) {
+					return "refresh-token", nil
 				},
 			},
 			token.NewValidator(p, tc, &mockSessionRepo{}, logger.NewMockLogger()),
 			tc,
 		)
 
-		if _, err := svc.Refresh(t.Context(), dto.RefreshRequest{RefreshToken: tokenStr}); !errors.Is(err, apperrors.ErrInternal) {
-			t.Errorf("err = %v, want ErrInternal", err)
+		if _, err := svc.Refresh(t.Context(), dto.RefreshRequest{RefreshToken: tokenStr}); !errors.Is(err, apperrors.ErrInvalidRefreshToken) {
+			t.Errorf("err = %v, want ErrInvalidRefreshToken", err)
 		}
 	})
 
@@ -400,16 +389,16 @@ func TestAuthService_Refresh(t *testing.T) {
 			},
 			nil,
 			&mockSessionRepo{
-				rotateFn: func(_ context.Context, _ string, _ *domain.Session) error {
-					return apperrors.ErrSessionRotated
+				incrementCounterFn: func(_ context.Context, _ *domain.Session) (bool, error) {
+					return false, nil
 				},
 			},
 			&mockTokenGenerator{
 				generateAccessTokenFn: func(_ *domain.User, _ []string, _ string) (string, error) {
 					return "access-token", nil
 				},
-				generateRefreshTokenFn: func(_ *domain.User) (string, string, error) {
-					return "refresh-token", "0195f0b0-0000-7000-8000-000000000001", nil
+				generateRefreshTokenFn: func(_ *domain.User, _ string, _ int64) (string, error) {
+					return "refresh-token", nil
 				},
 			},
 			token.NewValidator(p, tc, &mockSessionRepo{}, logger.NewMockLogger()),
@@ -458,15 +447,18 @@ func TestAuthService_Refresh(t *testing.T) {
 		p, tc := setupProviderWithConfig(t)
 		tokenStr := generateRefreshToken(t, p, tc, "99")
 
-		svc := &AuthService{
-			logger:         logger.NewMockLogger(),
-			tokenValidator: token.NewValidator(p, tc, &mockSessionRepo{}, logger.NewMockLogger()),
-			userRepository: &mockUserRepo{
+		svc := newTestAuthService(
+			&mockUserRepo{
 				findByIDFn: func(_ context.Context, _ uint) (*domain.User, error) {
 					return nil, nil
 				},
 			},
-		}
+			nil,
+			&mockSessionRepo{},
+			nil,
+			token.NewValidator(p, tc, &mockSessionRepo{}, logger.NewMockLogger()),
+			tc,
+		)
 
 		_, err := svc.Refresh(t.Context(), dto.RefreshRequest{RefreshToken: tokenStr})
 		if !errors.Is(err, apperrors.ErrInvalidCredentials) {
@@ -478,15 +470,18 @@ func TestAuthService_Refresh(t *testing.T) {
 		p, tc := setupProviderWithConfig(t)
 		tokenStr := generateRefreshToken(t, p, tc, "5")
 
-		svc := &AuthService{
-			logger:         logger.NewMockLogger(),
-			tokenValidator: token.NewValidator(p, tc, &mockSessionRepo{}, logger.NewMockLogger()),
-			userRepository: &mockUserRepo{
+		svc := newTestAuthService(
+			&mockUserRepo{
 				findByIDFn: func(_ context.Context, _ uint) (*domain.User, error) {
 					return nil, errors.New("db error")
 				},
 			},
-		}
+			nil,
+			&mockSessionRepo{},
+			nil,
+			token.NewValidator(p, tc, &mockSessionRepo{}, logger.NewMockLogger()),
+			tc,
+		)
 
 		_, err := svc.Refresh(t.Context(), dto.RefreshRequest{RefreshToken: tokenStr})
 		if err == nil {
@@ -510,8 +505,8 @@ func TestAuthService_Refresh(t *testing.T) {
 				generateAccessTokenFn: func(_ *domain.User, _ []string, _ string) (string, error) {
 					return "", errors.New("jwt failed")
 				},
-				generateRefreshTokenFn: func(_ *domain.User) (string, string, error) {
-					return "refresh-token", "0195f0b0-0000-7000-8000-000000000000", nil
+				generateRefreshTokenFn: func(_ *domain.User, _ string, _ int64) (string, error) {
+					return "refresh-token", nil
 				},
 			},
 			token.NewValidator(p, tc, &mockSessionRepo{}, logger.NewMockLogger()),
@@ -563,8 +558,8 @@ func TestAuthService_Login(t *testing.T) {
 				generateAccessTokenFn: func(_ *domain.User, _ []string, _ string) (string, error) {
 					return "access-token", nil
 				},
-				generateRefreshTokenFn: func(_ *domain.User) (string, string, error) {
-					return "refresh-token", "0195f0b0-0000-7000-8000-000000000000", nil
+				generateRefreshTokenFn: func(_ *domain.User, _ string, _ int64) (string, error) {
+					return "refresh-token", nil
 				},
 			},
 			nil,
@@ -661,8 +656,8 @@ func TestAuthService_Login(t *testing.T) {
 				generateAccessTokenFn: func(_ *domain.User, _ []string, _ string) (string, error) {
 					return "", errors.New("jwt failed")
 				},
-				generateRefreshTokenFn: func(_ *domain.User) (string, string, error) {
-					return "refresh-token", "0195f0b0-0000-7000-8000-000000000000", nil
+				generateRefreshTokenFn: func(_ *domain.User, _ string, _ int64) (string, error) {
+					return "refresh-token", nil
 				},
 			},
 			nil,

@@ -54,9 +54,10 @@ type AccessTokenInfo struct {
 }
 
 type RefreshTokenInfo struct {
-	UserID uint
-	JTI    string
-	Scopes []string
+	UserID  uint
+	JTI     string
+	Scopes  []string
+	Counter int64
 }
 
 func (tv *Validator) ValidateAccessToken(tokenStr string) (*AccessTokenInfo, error) {
@@ -133,7 +134,14 @@ func (tv *Validator) ValidateRefreshToken(ctx context.Context, tokenStr string) 
 		return nil, apperrors.ErrInvalidRefreshToken
 	}
 
-	return &RefreshTokenInfo{UserID: uint(userID), JTI: jti, Scopes: strings.Fields(session.Scopes)}, nil
+	var counter int64
+	if claims, err := token.Claims(); err == nil {
+		if c, ok := claims["counter"].(float64); ok {
+			counter = int64(c)
+		}
+	}
+
+	return &RefreshTokenInfo{UserID: uint(userID), JTI: jti, Scopes: strings.Fields(session.Scopes), Counter: counter}, nil
 }
 
 func (tv *Validator) ParseRefreshToken(tokenStr string) (*jwt.Token, error) {

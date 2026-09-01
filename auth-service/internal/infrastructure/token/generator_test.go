@@ -56,12 +56,10 @@ func TestTokenGenerator_RefreshTokenHasJTI(t *testing.T) {
 
 	refreshUser := &domain.User{}
 	refreshUser.ID = 7
-	tokenStr, jti, err := g.GenerateRefreshToken(refreshUser)
+	jti := "test-jti-123"
+	tokenStr, err := g.GenerateRefreshToken(refreshUser, jti, 0)
 	if err != nil {
 		t.Fatalf("GenerateRefreshToken error: %v", err)
-	}
-	if jti == "" {
-		t.Fatal("expected non-empty jti")
 	}
 
 	parsed, err := p.ParseWithIssuer(tokenStr, tc.GetRefreshTokenIssuer())

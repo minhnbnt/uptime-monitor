@@ -12,5 +12,5 @@ type SessionRepository interface {
 
 type Generator interface {
 	GenerateAccessToken(user *domain.User, scopes []string, sessionID string) (string, error)
-	GenerateRefreshToken(user *domain.User) (string, string, error)
+	GenerateRefreshToken(user *domain.User, jti string, counter int64) (string, error)
 }

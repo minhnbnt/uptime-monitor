@@ -28,21 +28,48 @@ func RegisterTokenService(i do.Injector) {
 
 func (s *TokenService) GenerateTokenPair(user *domain.User, scopes []string) (*dto.TokenPair, error) {
 
-	refreshToken, jti, err := s.tokenGenerator.GenerateRefreshToken(user)
+	jti, err := uuid.NewRandom()
+	if err != nil {
+		s.logger.Error("failed to generate uuid", slog.Any("error", err))
+		return nil, apperrors.ErrInternal
+	}
+
+	refreshToken, err := s.tokenGenerator.GenerateRefreshToken(user, jti.String(), 0)
 	if err != nil {
 		s.logger.Error("failed to generate refresh token", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
-	sessionID, err := uuid.Parse(jti)
+	accessToken, err := s.tokenGenerator.GenerateAccessToken(user, scopes, jti.String())
 	if err != nil {
-		s.logger.Error("failed to parse session id", slog.Any("error", err))
+		s.logger.Error("failed to generate access token", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 
-	accessToken, err := s.tokenGenerator.GenerateAccessToken(user, scopes, jti)
+	return &dto.TokenPair{
+		JTI:          jti,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
+}
+
+func (s *TokenService) GenerateTokenPairWithCounter(user *domain.User, req dto.TokenGenerateRequest) (*dto.TokenPair, error) {
+
+	refreshToken, err := s.tokenGenerator.GenerateRefreshToken(user, req.JTI, req.Counter)
+	if err != nil {
+		s.logger.Error("failed to generate refresh token", slog.Any("error", err))
+		return nil, apperrors.ErrInternal
+	}
+
+	accessToken, err := s.tokenGenerator.GenerateAccessToken(user, req.Scopes, req.JTI)
 	if err != nil {
 		s.logger.Error("failed to generate access token", slog.Any("error", err))
+		return nil, apperrors.ErrInternal
+	}
+
+	sessionID, err := uuid.Parse(req.JTI)
+	if err != nil {
+		s.logger.Error("failed to parse jti", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
 

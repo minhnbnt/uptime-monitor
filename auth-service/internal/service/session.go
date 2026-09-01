@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"strings"
 	"time"
@@ -20,10 +19,11 @@ import (
 
 type SessionRepository interface {
 	Create(ctx context.Context, session *domain.Session) error
+	GetByJTI(ctx context.Context, jti string) (*domain.Session, error)
 	DeleteByJTI(ctx context.Context, jti string) error
 	DeleteByJTIAndUser(ctx context.Context, userID uint, jti string) (bool, error)
 	FindByUser(ctx context.Context, userID uint) ([]domain.Session, error)
-	Rotate(ctx context.Context, oldJTI string, session *domain.Session) error
+	IncrementCounter(ctx context.Context, session *domain.Session) (bool, error)
 }
 
 // SessionService owns the session lifecycle: listing, revocation and logout.
@@ -120,33 +120,48 @@ func (s *SessionService) RevokeSession(ctx context.Context, userID uint, session
 	return nil
 }
 
-func (s *SessionService) RotateSession(ctx context.Context, user *domain.User, newScope []string, oldSessionID string) (*dto.TokenPair, error) {
+func (s *SessionService) RotateSession(ctx context.Context, user *domain.User, session *domain.Session) (*dto.TokenPair, error) {
 
-	tokenPair, err := s.tokenService.GenerateTokenPair(user, newScope)
+	// Atomic CAS: increment counter only if it matches
+	updated, err := s.sessionRepository.IncrementCounter(ctx, session)
+	if err != nil {
+		s.logger.Error("failed to increment session counter", slog.Any("error", err))
+		return nil, apperrors.ErrInternal
+	}
+	if !updated {
+		// Counter mismatch — replay hoặc concurrent write
+		return nil, apperrors.ErrInvalidRefreshToken
+	}
+
+	request := dto.TokenGenerateRequest{
+		JTI:     session.JTI.String(),
+		Counter: session.Counter + 1,
+		Scopes:  session.ScopeList(),
+	}
+
+	tokenPair, err := s.tokenService.GenerateTokenPairWithCounter(user, request)
 	if err != nil {
 		return nil, err
 	}
 
-	session := domain.Session{
-		UserID:    user.ID,
-		JTI:       tokenPair.JTI,
-		Scopes:    strings.Join(newScope, " "),
-		ExpiresAt: time.Now().Add(s.tokenConfig.GetRefreshTokenTTL()),
-	}
+	return tokenPair, nil
+}
 
-	err = s.sessionRepository.Rotate(ctx, oldSessionID, &session)
-	if errors.Is(err, apperrors.ErrSessionRotated) {
-		// Someone else already rotated this session — a duplicated or replayed
-		// refresh must not mint a second live session.
-		return nil, apperrors.ErrInvalidRefreshToken
-	}
-
+func (s *SessionService) GetSessionByJTI(ctx context.Context, jti string) (*domain.Session, error) {
+	session, err := s.sessionRepository.GetByJTI(ctx, jti)
 	if err != nil {
-		s.logger.Error("failed to store session", slog.Any("error", err))
+		s.logger.Error("failed to get session", slog.Any("error", err))
 		return nil, apperrors.ErrInternal
 	}
+	if session == nil {
+		return nil, nil
+	}
+	// Check if session is expired
+	if session.ExpiresAt.Before(time.Now()) {
+		return nil, nil
+	}
 
-	return tokenPair, nil
+	return session, nil
 }
 
 func (s *SessionService) CreateSession(ctx context.Context, user *domain.User, scope []string) (*dto.TokenPair, error) {

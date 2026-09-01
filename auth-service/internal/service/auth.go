@@ -147,8 +147,18 @@ func (s *AuthService) Refresh(ctx context.Context, req dto.RefreshRequest) (*dto
 		return nil, apperrors.ErrInvalidRefreshToken
 	}
 
-	// RotateSession swaps the presented session atomically with the new one,
-	// so the old refresh token can never be replayed.
+	session, err := s.sessionService.GetSessionByJTI(ctx, info.JTI)
+	if err != nil {
+		return nil, apperrors.ErrInvalidRefreshToken
+	}
+	if session == nil {
+		return nil, apperrors.ErrInvalidRefreshToken
+	}
+
+	if info.Counter != session.Counter {
+		return nil, apperrors.ErrInvalidRefreshToken
+	}
+
 	user, err := s.userRepository.FindByID(ctx, info.UserID)
 	if err != nil {
 		s.logger.Error("failed to find user", slog.Any("error", err))
@@ -159,7 +169,7 @@ func (s *AuthService) Refresh(ctx context.Context, req dto.RefreshRequest) (*dto
 		return nil, apperrors.ErrInvalidCredentials
 	}
 
-	tokenPair, err := s.sessionService.RotateSession(ctx, user, info.Scopes, info.JTI)
+	tokenPair, err := s.sessionService.RotateSession(ctx, user, session)
 	if err != nil {
 		return nil, err
 	}
