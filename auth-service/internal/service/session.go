@@ -77,12 +77,9 @@ func (s *SessionService) ListSessions(ctx context.Context, userID uint, currentS
 	}
 
 	now := time.Now()
-	active := make([]domain.Session, 0, len(sessions))
-	for _, session := range sessions {
-		if session.ExpiresAt.After(now) {
-			active = append(active, session)
-		}
-	}
+	active := lo.Filter(sessions, func(s domain.Session, _ int) bool {
+		return s.ExpiresAt.After(now)
+	})
 
 	total := len(active)
 
@@ -148,6 +145,7 @@ func (s *SessionService) RotateSession(ctx context.Context, user *domain.User, s
 }
 
 func (s *SessionService) GetSessionByJTI(ctx context.Context, jti string) (*domain.Session, error) {
+
 	session, err := s.sessionRepository.GetByJTI(ctx, jti)
 	if err != nil {
 		s.logger.Error("failed to get session", slog.Any("error", err))
