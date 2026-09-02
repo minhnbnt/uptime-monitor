@@ -119,7 +119,9 @@ func (s *SessionService) RevokeSession(ctx context.Context, userID uint, session
 
 func (s *SessionService) RotateSession(ctx context.Context, user *domain.User, session *domain.Session) (*dto.TokenPair, error) {
 
-	// Atomic CAS: increment counter only if it matches
+	session.ExpiresAt = time.Now().Add(s.tokenConfig.GetRefreshTokenTTL())
+
+	// Atomic CAS: increment counter + extend expiry
 	updated, err := s.sessionRepository.IncrementCounter(ctx, session)
 	if err != nil {
 		s.logger.Error("failed to increment session counter", slog.Any("error", err))

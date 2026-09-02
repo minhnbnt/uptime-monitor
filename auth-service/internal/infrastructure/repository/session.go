@@ -89,7 +89,10 @@ func (r *SessionRepository) IncrementCounter(ctx context.Context, session *domai
 	result := r.db.WithContext(ctx).
 		Model(&domain.Session{}).
 		Where("jti = ? AND counter = ?", session.JTI, session.Counter).
-		Updates(map[string]any{"counter": gorm.Expr("counter + 1")})
+		Updates(map[string]any{
+			"counter":    gorm.Expr("counter + 1"),
+			"expires_at": session.ExpiresAt,
+		})
 
 	if err := result.Error; err != nil {
 		return false, fmt.Errorf("increment session counter: %w", err)
