@@ -50,14 +50,17 @@ func (s *OntimeRangeService) CalculateUptime(
 	}
 
 	from, to := in.From, in.To
-
 	now := time.Now()
 	if to.After(now) {
 		to = now
 	}
+
 	if from.After(now) {
 		from = now
 	}
+
+	from = from.Truncate(time.Microsecond)
+	to = to.Truncate(time.Microsecond)
 
 	if err := validateRange(from, to); err != nil {
 		return nil, err
@@ -75,20 +78,19 @@ func (s *OntimeRangeService) CalculateUptime(
 		return nil, err
 	}
 
-	var overall repository.UptimeRow
+	overall := repository.UptimeRow{
+		EndpointID:     serverID,
+		From:           from,
+		To:             to,
+		ObservedFrom:   from,
+		ObservedTo:     to,
+		HasData:        false,
+		OnlineSeconds:  0,
+		UnknownSeconds: 0,
+	}
+
 	if len(rows) > 0 {
 		overall = rows[0]
-	} else {
-		overall = repository.UptimeRow{
-			EndpointID:     serverID,
-			From:           from,
-			To:             to,
-			ObservedFrom:   from,
-			ObservedTo:     to,
-			HasData:        false,
-			OnlineSeconds:  0,
-			UnknownSeconds: 0,
-		}
 	}
 
 	intervals := utils.SplitIntervals(from, to, resolution)
@@ -97,12 +99,12 @@ func (s *OntimeRangeService) CalculateUptime(
 
 	return &dto.UptimeResponse{
 		ServerID:      serverID,
+		From:          from.Format(time.RFC3339),
+		To:            to.Format(time.RFC3339),
 		Uptime:        overall.UptimePercent(),
 		HasData:       overall.HasData,
 		Partial:       overall.ObservedFrom.After(from),
-		From:          from.Format(time.RFC3339),
-		To:            to.Format(time.RFC3339),
-		TotalSeconds:  overall.ObservedTo.Sub(overall.ObservedFrom).Seconds(),
+		TotalSeconds:  overall.TotalSeconds(),
 		OnlineSeconds: overall.OnlineSeconds,
 		Intervals:     intervalResults,
 	}, nil
@@ -119,8 +121,8 @@ func (s *OntimeRangeService) calculateIntervals(
 	requests := lo.Map(intervals, func(iv utils.Interval, _ int) repository.BatchGetOntimeRequest {
 		return repository.BatchGetOntimeRequest{
 			EndpointID: serverID,
-			From:       iv.Start,
-			To:         iv.End,
+			To:         iv.End.Truncate(time.Microsecond).UTC(),
+			From:       iv.Start.Truncate(time.Microsecond).UTC(),
 		}
 	})
 
@@ -131,26 +133,26 @@ func (s *OntimeRangeService) calculateIntervals(
 	}
 
 	rowMap := make(map[time.Time]repository.UptimeRow, len(rows))
-	for _, r := range rows {
-		rowMap[r.From] = r
+	for _, row := range rows {
+		key := row.From.Truncate(time.Microsecond).UTC()
+		rowMap[key] = row
 	}
 
 	return lo.Map(intervals, func(iv utils.Interval, _ int) dto.IntervalResult {
-		row, ok := rowMap[iv.Start]
-		if !ok {
-			return dto.IntervalResult{
-				From:    iv.Start.Format(time.RFC3339),
-				To:      iv.End.Format(time.RFC3339),
-				Uptime:  0,
-				HasData: false,
-			}
-		}
-		return dto.IntervalResult{
+
+		result := dto.IntervalResult{
 			From:    iv.Start.Format(time.RFC3339),
 			To:      iv.End.Format(time.RFC3339),
-			Uptime:  row.UptimePercent(),
-			HasData: row.HasData,
+			HasData: false,
+			Uptime:  0,
 		}
+
+		if row, ok := rowMap[iv.Start]; ok {
+			result.Uptime = row.UptimePercent()
+			result.HasData = row.HasData
+		}
+
+		return result
 	})
 }
 

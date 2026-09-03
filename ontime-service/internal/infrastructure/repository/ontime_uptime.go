@@ -40,12 +40,16 @@ type UptimeRow struct {
 	UnknownSeconds float64
 }
 
+func (r UptimeRow) TotalSeconds() float64 {
+	return r.ObservedTo.Sub(r.ObservedFrom).Seconds()
+}
+
 // UptimePercent turns the measured seconds into the familiar 0–100 figure.
 // A non-positive observation window yields 0 rather than NaN, mirroring the
 // historical calcUptimePercent guard.
 func (r UptimeRow) UptimePercent() float64 {
 
-	total := r.ObservedTo.Sub(r.ObservedFrom).Seconds()
+	total := r.TotalSeconds()
 	if total <= 0 {
 		return 0
 	}

@@ -351,3 +351,129 @@ func TestIntegration_BatchGetOntime_Today(t *testing.T) {
 		t.Errorf("Stats = %f, want > 0 for today", got)
 	}
 }
+
+// ---------- CalculateUptime (OntimeRangeService) ----------
+
+// calculateIntervals builds a rowMap keyed by r.From (time.Time from DB).
+// If the interval Start from SplitIntervals does not exactly match the DB
+// row's From (e.g. nanosecond precision mismatch after JSON→PG roundtrip),
+// every interval returns Uptime:0, HasData:false. This test exercises that
+// path with sub-daily resolution to expose the bug.
+func TestIntegration_CalculateUptime_Intervals(t *testing.T) {
+	testcontainers.SkipIfShort(t)
+	db := initTestDB(t)
+
+	seedEvent(t, db, 1, domain.StatusOn, oTm(2026, 6, 1, 0, 0))
+	seedEvent(t, db, 1, domain.StatusOff, oTm(2026, 6, 1, 12, 0))
+
+	ownerRepo := &mockServerOwnerRepo{
+		ownedServersFn: func(_ context.Context, _ uint, ids []uint) ([]ontimerepo.OwnedServer, error) {
+			var out []ontimerepo.OwnedServer
+			for _, id := range ids {
+				out = append(out, ontimerepo.OwnedServer{ServerID: id})
+			}
+			return out, nil
+		},
+	}
+
+	svc := &OntimeRangeService{
+		uptimeRepo: ontimerepo.NewOntimeUptimeRepository(db),
+		ownerRepo:  ownerRepo,
+		logger:     logger.NewMockLogger(),
+	}
+
+	resp, err := svc.CalculateUptime(t.Context(), dto.CalculateUptimeInput{
+		ServerID:   1,
+		UserID:     1,
+		From:       oDay(2026, 6, 1),
+		To:         oDay(2026, 6, 2),
+		Resolution: time.Hour,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(resp.Intervals) == 0 {
+		t.Fatal("Intervals is empty, want non-empty")
+	}
+
+	t.Logf("total intervals (after merge): %d", len(resp.Intervals))
+	for i, iv := range resp.Intervals {
+		t.Logf("interval[%d]: from=%s to=%s uptime=%.2f hasData=%v", i, iv.From, iv.To, iv.Uptime, iv.HasData)
+		if !iv.HasData {
+			t.Errorf("interval[%d]: HasData=false, want true", i)
+		}
+	}
+
+	// First 12h should be 100% (ON from 00:00), last 12h should be 0% (OFF from 12:00).
+	for _, iv := range resp.Intervals {
+		from, err := time.Parse(time.RFC3339, iv.From)
+		if err != nil {
+			t.Fatalf("parse interval from: %v", err)
+		}
+		hour := from.Hour()
+		switch {
+		case hour < 12:
+			if iv.Uptime != 100 {
+				t.Errorf("interval from %s: uptime=%.2f, want 100", iv.From, iv.Uptime)
+			}
+		case hour >= 12:
+			if iv.Uptime != 0 {
+				t.Errorf("interval from %s: uptime=%.2f, want 0", iv.From, iv.Uptime)
+			}
+		}
+	}
+}
+
+// Same scenario but from/to carry nanosecond noise. Postgres timestamptz is
+// microsecond-precision, so the JSON→PG→GORM roundtrip truncates nanoseconds.
+// Without normalizing both sides the map key never matches.
+func TestIntegration_CalculateUptime_NanosecondFrom(t *testing.T) {
+	testcontainers.SkipIfShort(t)
+	db := initTestDB(t)
+
+	seedEvent(t, db, 1, domain.StatusOn, oTm(2026, 6, 1, 0, 0))
+	seedEvent(t, db, 1, domain.StatusOff, oTm(2026, 6, 1, 12, 0))
+
+	ownerRepo := &mockServerOwnerRepo{
+		ownedServersFn: func(_ context.Context, _ uint, ids []uint) ([]ontimerepo.OwnedServer, error) {
+			var out []ontimerepo.OwnedServer
+			for _, id := range ids {
+				out = append(out, ontimerepo.OwnedServer{ServerID: id})
+			}
+			return out, nil
+		},
+	}
+
+	svc := &OntimeRangeService{
+		uptimeRepo: ontimerepo.NewOntimeUptimeRepository(db),
+		ownerRepo:  ownerRepo,
+		logger:     logger.NewMockLogger(),
+	}
+
+	// from has a nanosecond component that Postgres will truncate.
+	from := time.Date(2026, 6, 1, 0, 0, 0, 123, time.UTC)
+	to := time.Date(2026, 6, 2, 0, 0, 0, 0, time.UTC)
+
+	resp, err := svc.CalculateUptime(t.Context(), dto.CalculateUptimeInput{
+		ServerID:   1,
+		UserID:     1,
+		From:       from,
+		To:         to,
+		Resolution: time.Hour,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(resp.Intervals) == 0 {
+		t.Fatal("Intervals is empty, want non-empty")
+	}
+
+	for i, iv := range resp.Intervals {
+		t.Logf("interval[%d]: from=%s to=%s uptime=%.2f hasData=%v", i, iv.From, iv.To, iv.Uptime, iv.HasData)
+		if !iv.HasData {
+			t.Errorf("interval[%d]: HasData=false, want true", i)
+		}
+	}
+}
