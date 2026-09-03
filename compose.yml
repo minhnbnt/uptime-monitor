@@ -190,14 +190,14 @@ services:
         condition: service_healthy
 
   redis:
-    image: ghcr.io/valkey-io/valkey:9-alpine
+    image: registry.access.redhat.com/hi/valkey:9
     ports:
       - 6379:6379
 
     volumes:
       - redis_data:/data
 
-    command: --appendonly yes --appendfsync always --maxmemory-policy volatile-lru --protected-mode no
+    command: --maxmemory-policy volatile-lru --protected-mode no
 
   postgres:
     image: registry.access.redhat.com/hi/postgresql:18

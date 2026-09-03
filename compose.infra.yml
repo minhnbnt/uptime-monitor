@@ -45,7 +45,7 @@ services:
     volumes:
       - redis_data:/data
 
-    command: --appendonly yes --appendfsync always --maxmemory-policy volatile-lru --protected-mode no
+    command: --maxmemory-policy volatile-lru --protected-mode no
 
   temporal:
     image: temporalio/temporal:1.7.2
