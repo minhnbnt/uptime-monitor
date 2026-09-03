@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/generated/api"
 	ontimedto "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
@@ -112,4 +113,78 @@ func TestNewError(t *testing.T) {
 			t.Errorf("status = %d, want %d", err.StatusCode, http.StatusInternalServerError)
 		}
 	})
+}
+
+func TestCalculateUptime(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		h := &OntimeHandler{
+			ontimeRangeService: &mockOntimeRangeService{
+				calculateUptimeFn: func(_ context.Context, in ontimedto.CalculateUptimeInput) (*ontimedto.UptimeResponse, error) {
+					return &ontimedto.UptimeResponse{
+						ServerID:      in.ServerID,
+						Uptime:        99.5,
+						HasData:       true,
+						Partial:       false,
+						From:          "2026-01-01T00:00:00Z",
+						To:            "2026-01-02T00:00:00Z",
+						TotalSeconds:  86400,
+						OnlineSeconds: 85968,
+						Intervals: []ontimedto.IntervalResult{
+							{From: "2026-01-01T00:00:00Z", To: "2026-01-01T00:15:00Z", Uptime: 100, HasData: true},
+						},
+					}, nil
+				},
+			},
+		}
+		resp, err := h.CalculateUptime(
+			t.Context(),
+			&api.CalculateUptimeRequest{
+				From: parseTime(t, "2026-01-01T00:00:00Z"),
+				To:   parseTime(t, "2026-01-02T00:00:00Z"),
+			},
+			api.CalculateUptimeParams{ID: 1},
+		)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !resp.Uptime.IsSet() {
+			t.Fatal("expected uptime")
+		}
+		if resp.Uptime.Value != 99.5 {
+			t.Errorf("uptime = %f, want 99.5", resp.Uptime.Value)
+		}
+		if len(resp.Intervals) != 1 {
+			t.Errorf("intervals len = %d, want 1", len(resp.Intervals))
+		}
+	})
+
+	t.Run("service error", func(t *testing.T) {
+		h := &OntimeHandler{
+			ontimeRangeService: &mockOntimeRangeService{
+				calculateUptimeFn: func(_ context.Context, _ ontimedto.CalculateUptimeInput) (*ontimedto.UptimeResponse, error) {
+					return nil, errors.New("some error")
+				},
+			},
+		}
+		_, err := h.CalculateUptime(
+			t.Context(),
+			&api.CalculateUptimeRequest{
+				From: parseTime(t, "2026-01-01T00:00:00Z"),
+				To:   parseTime(t, "2026-01-02T00:00:00Z"),
+			},
+			api.CalculateUptimeParams{ID: 1},
+		)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+}
+
+func parseTime(t *testing.T, s string) time.Time {
+	t.Helper()
+	v, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		t.Fatalf("parse time: %v", err)
+	}
+	return v
 }

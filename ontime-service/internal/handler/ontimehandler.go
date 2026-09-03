@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"time"
 
 	"github.com/samber/do/v2"
 	"github.com/samber/lo"
@@ -10,6 +11,7 @@ import (
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/generated/api"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
 	apperrors "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/errors"
+	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/infrastructure/utils"
 	"github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/service"
 )
 
@@ -19,16 +21,22 @@ type OntimeService interface {
 	GetServersWithOntime(ctx context.Context, userID uint, ids []uint) ([]dto.ServerOntime, error)
 }
 
+type OntimeRangeService interface {
+	CalculateUptime(ctx context.Context, in dto.CalculateUptimeInput) (*dto.UptimeResponse, error)
+}
+
 type OntimeHandler struct {
-	ontimeService OntimeService
-	eventService  *service.EventService
+	ontimeService      OntimeService
+	ontimeRangeService OntimeRangeService
+	eventService       *service.EventService
 }
 
 func RegisterOntimeHandler(i do.Injector) {
 	do.Provide(i, func(i do.Injector) (*OntimeHandler, error) {
 		return &OntimeHandler{
-			ontimeService: do.MustInvoke[*service.OntimeService](i),
-			eventService:  do.MustInvoke[*service.EventService](i),
+			ontimeService:      do.MustInvoke[*service.OntimeService](i),
+			ontimeRangeService: do.MustInvoke[*service.OntimeRangeService](i),
+			eventService:       do.MustInvoke[*service.EventService](i),
 		}, nil
 	})
 }
@@ -131,6 +139,39 @@ func (h *OntimeHandler) CountServersByStatus(ctx context.Context) (*api.ServerCo
 	}, nil
 }
 
+func (h *OntimeHandler) CalculateUptime(
+	ctx context.Context,
+	req *api.CalculateUptimeRequest,
+	params api.CalculateUptimeParams,
+) (*api.UptimeResponse, error) {
+
+	userID := authclient.GetUserID(ctx)
+
+	resolution := time.Duration(15 * time.Minute)
+	if req.Resolution.IsSet() {
+		d, err := utils.ParseResolution(req.Resolution.Value)
+		if err != nil {
+			return nil, err
+		}
+		resolution = d
+	}
+
+	input := dto.CalculateUptimeInput{
+		ServerID:   uint(params.ID),
+		UserID:     userID,
+		From:       req.From,
+		To:         req.To,
+		Resolution: resolution,
+	}
+
+	result, err := h.ontimeRangeService.CalculateUptime(ctx, input)
+	if err != nil {
+		return nil, err
+	}
+
+	return toAPIUptimeResponse(result)
+}
+
 func (h *OntimeHandler) NewError(_ context.Context, err error) *api.ErrorResponseStatusCode {
 
 	status, body := apperrors.ToAPIError(err)
@@ -155,7 +196,49 @@ func toOntimeStats(stats []dto.OntimeStats) []api.OntimeStats {
 	})
 }
 
+func toAPIUptimeResponse(r *dto.UptimeResponse) (*api.UptimeResponse, error) {
+	intervals := make([]api.IntervalResult, len(r.Intervals))
+	for i, iv := range r.Intervals {
+		from, err := time.Parse(time.RFC3339, iv.From)
+		if err != nil {
+			return nil, err
+		}
+		to, err := time.Parse(time.RFC3339, iv.To)
+		if err != nil {
+			return nil, err
+		}
+		intervals[i] = api.IntervalResult{
+			From:    api.NewOptDateTime(from),
+			To:      api.NewOptDateTime(to),
+			Uptime:  api.NewOptFloat64(iv.Uptime),
+			HasData: api.NewOptBool(iv.HasData),
+		}
+	}
+
+	from, err := time.Parse(time.RFC3339, r.From)
+	if err != nil {
+		return nil, err
+	}
+	to, err := time.Parse(time.RFC3339, r.To)
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.UptimeResponse{
+		ServerID:      api.NewOptInt(int(r.ServerID)),
+		Uptime:        api.NewOptFloat64(r.Uptime),
+		From:          api.NewOptDateTime(from),
+		To:            api.NewOptDateTime(to),
+		TotalSeconds:  api.NewOptFloat64(r.TotalSeconds),
+		OnlineSeconds: api.NewOptFloat64(r.OnlineSeconds),
+		HasData:       api.NewOptBool(r.HasData),
+		Partial:       api.NewOptBool(r.Partial),
+		Intervals:     intervals,
+	}, nil
+}
+
 var (
-	_ OntimeService = (*service.OntimeService)(nil)
-	_ api.Handler   = (*OntimeHandler)(nil)
+	_ OntimeService      = (*service.OntimeService)(nil)
+	_ OntimeRangeService = (*service.OntimeRangeService)(nil)
+	_ api.Handler        = (*OntimeHandler)(nil)
 )

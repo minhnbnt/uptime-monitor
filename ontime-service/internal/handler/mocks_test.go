@@ -29,3 +29,14 @@ func (m *mockOntimeService) GetServersWithOntime(ctx context.Context, userID uin
 	}
 	return m.getServersWithOntimeFn(ctx, userID, ids)
 }
+
+type mockOntimeRangeService struct {
+	calculateUptimeFn func(ctx context.Context, in ontimedto.CalculateUptimeInput) (*ontimedto.UptimeResponse, error)
+}
+
+func (m *mockOntimeRangeService) CalculateUptime(ctx context.Context, in ontimedto.CalculateUptimeInput) (*ontimedto.UptimeResponse, error) {
+	if m.calculateUptimeFn == nil {
+		return nil, nil
+	}
+	return m.calculateUptimeFn(ctx, in)
+}
