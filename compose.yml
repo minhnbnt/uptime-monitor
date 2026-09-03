@@ -142,7 +142,7 @@ services:
 
     labels:
       traefik.enable: "true"
-      traefik.http.routers.ontime.rule: PathPrefix(`/api/v1/servers/ontime`)
+      traefik.http.routers.ontime.rule: PathPrefix(`/api/v1/servers/ontime`) || PathPrefix(`/api/v1/ontime`)
       traefik.http.routers.ontime.priority: 20
       traefik.http.routers.ontime.service: ontime-service
       traefik.http.services.ontime-service.loadbalancer.server.port: 8084

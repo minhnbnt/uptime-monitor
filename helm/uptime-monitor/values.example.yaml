@@ -172,6 +172,7 @@ apps:
     ingress:
       - /api/v1/servers/ontime
       - /api/v1/servers/count
+      - /api/v1/ontime
     config:
       server:
         port: 8084

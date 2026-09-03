@@ -128,7 +128,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/v1/servers/{id}/uptime:
+  /api/v1/ontime/{id}/uptime:
     post:
       operationId: calculateUptime
       summary: Calculate uptime for a time range
