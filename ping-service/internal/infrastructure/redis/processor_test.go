@@ -57,8 +57,10 @@ func TestDebeziumEndpointDataToDomain(t *testing.T) {
 func TestResolveDeletedID(t *testing.T) {
 	t.Run("before field exists", func(t *testing.T) {
 		id, err := resolveDeletedID(debeziumMessage{
-			Before: &debeziumEndpointData{ID: 1},
-			After:  &debeziumEndpointData{ID: 2},
+			Payload: debeziumMessagePayload{
+				Before: &debeziumEndpointData{ID: 1},
+				After:  &debeziumEndpointData{ID: 2},
+			},
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -70,7 +72,9 @@ func TestResolveDeletedID(t *testing.T) {
 
 	t.Run("only after field exists", func(t *testing.T) {
 		id, err := resolveDeletedID(debeziumMessage{
-			After: &debeziumEndpointData{ID: 3},
+			Payload: debeziumMessagePayload{
+				After: &debeziumEndpointData{ID: 3},
+			},
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -157,7 +161,7 @@ func TestProcessMessage(t *testing.T) {
 		log, capLog := logger.NewCapturingLogger()
 		p := &messageProcessor{logger: log, client: client}
 
-		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"op":"x"}`))
+		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"payload":{"op":"x"}}`))
 		if !canAck {
 			t.Error("expected canAck=true for permanent error")
 		}
@@ -179,7 +183,7 @@ func TestProcessMessage(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"op":"c","after":{"id":1,"server_id":10,"url":"https://example.com","method":"GET","expected_code":200,"interval":30000000000,"timeout":10000000000}}`))
+		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"payload":{"op":"c","after":{"id":1,"server_id":10,"url":"https://example.com","method":"GET","expected_code":200,"interval":30000000000,"timeout":10000000000}}}`))
 		if !canAck {
 			t.Error("expected canAck=true")
 		}
@@ -199,7 +203,7 @@ func TestProcessMessage(t *testing.T) {
 			logger: log,
 		}
 
-		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"op":"c","after":{"id":1}}`))
+		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"payload":{"op":"c","after":{"id":1}}}`))
 		if canAck {
 			t.Error("expected canAck=false")
 		}
@@ -220,7 +224,7 @@ func TestProcessMessage(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"op":"u","after":{"id":2,"url":"https://updated.com"}}`))
+		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"payload":{"op":"u","after":{"id":2,"url":"https://updated.com"}}}`))
 		if !canAck {
 			t.Error("expected canAck=true")
 		}
@@ -241,7 +245,7 @@ func TestProcessMessage(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"op":"d","before":{"id":3}}`))
+		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"payload":{"op":"d","before":{"id":3}}}`))
 		if !canAck {
 			t.Error("expected canAck=true")
 		}
@@ -264,7 +268,7 @@ func TestProcessMessage(t *testing.T) {
 			client: testcontainers.NewTestRedis(t, testRedisAddr),
 		}
 
-		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"op":"c"}`))
+		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"payload":{"op":"c"}}`))
 		if handlerCalled {
 			t.Error("OnCreate should not be called after is nil")
 		}
@@ -285,7 +289,7 @@ func TestProcessMessage(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"op":"d","after":{"id":5}}`))
+		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"payload":{"op":"d","after":{"id":5}}}`))
 		if !canAck {
 			t.Error("expected canAck=true")
 		}
@@ -308,7 +312,7 @@ func TestProcessMessage(t *testing.T) {
 			client: testcontainers.NewTestRedis(t, testRedisAddr),
 		}
 
-		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"op":"u"}`))
+		canAck := p.ProcessMessage(ctx, xmessage("1-0", `{"payload":{"op":"u"}}`))
 		if handlerCalled {
 			t.Error("OnUpdate should not be called when after is nil")
 		}
@@ -370,7 +374,7 @@ func TestOnCreateUpdateDelete(t *testing.T) {
 				},
 			},
 		}
-		err := p.onCreate(ctx, debeziumMessage{After: &debeziumEndpointData{ID: 1}})
+		err := p.onCreate(ctx, debeziumMessage{Payload: debeziumMessagePayload{After: &debeziumEndpointData{ID: 1}}})
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -408,7 +412,7 @@ func TestOnCreateUpdateDelete(t *testing.T) {
 				},
 			},
 		}
-		err := p.onUpdate(ctx, debeziumMessage{After: &debeziumEndpointData{ID: 2}})
+		err := p.onUpdate(ctx, debeziumMessage{Payload: debeziumMessagePayload{After: &debeziumEndpointData{ID: 2}}})
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -446,7 +450,7 @@ func TestOnCreateUpdateDelete(t *testing.T) {
 				},
 			},
 		}
-		err := p.onDelete(ctx, debeziumMessage{Before: &debeziumEndpointData{ID: 3}})
+		err := p.onDelete(ctx, debeziumMessage{Payload: debeziumMessagePayload{Before: &debeziumEndpointData{ID: 3}}})
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}

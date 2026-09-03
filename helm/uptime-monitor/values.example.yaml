@@ -7,6 +7,9 @@ global:
 
 namespace: uptime-monitor
 
+cilium:
+  enabled: false
+
 traefik:
   enabled: true
   image: ghcr.io/traefik/traefik:3.7
@@ -58,6 +61,8 @@ apps:
     port: 8081
     grpcPort:
     replicas: 1
+    args: ["--config=/config.yml"]
+    mountPath: /config.yml
     ingress:
       - /api/v1/auth
     config:
@@ -90,6 +95,8 @@ apps:
     port: 8080
     grpcPort: 50051
     replicas: 1
+    args: ["--dev", "--config=/app/config.yml"]
+    mountPath: /app/config.yml
     ingress:
       - /api/v1/servers
       - /api/v1/test-endpoint
@@ -135,6 +142,8 @@ apps:
     port: 8083
     grpcPort: 50053
     replicas: 2
+    args: ["--config=/config.yml"]
+    mountPath: /config.yml
     ingress: []
     config:
       server:
@@ -158,8 +167,11 @@ apps:
     port: 8084
     grpcPort: 50052
     replicas: 1
+    args: ["--config=/config.yml"]
+    mountPath: /config.yml
     ingress:
       - /api/v1/servers/ontime
+      - /api/v1/servers/count
     config:
       server:
         port: 8084
@@ -183,6 +195,8 @@ apps:
     port: 8086
     grpcPort:
     replicas: 1
+    args: ["--dev", "--config=/app/config.yml"]
+    mountPath: /app/config.yml
     ingress:
       - /api/v1/servers/import
       - /api/v1/servers/export
@@ -199,6 +213,8 @@ apps:
     port: 8085
     grpcPort: 50056
     replicas: 1
+    args: ["--config=/config.yml"]
+    mountPath: /config.yml
     ingress:
       - /api/v1/notifications
     config:

@@ -38,7 +38,7 @@ spec:
               type: RuntimeDefault
           image: {{ include "uptime-monitor.image" (dict "name" $name "root" $) }}
           imagePullPolicy: {{ $.Values.global.image.pullPolicy }}
-          args: ["--config=/app/config.yml"]
+          args: {{ $app.args | default (list "--config=/app/config.yml") | toJson }}
           envFrom:
             - secretRef:
                 name: {{ $name }}-secrets
@@ -52,7 +52,7 @@ spec:
             {{- end }}
           volumeMounts:
             - name: config
-              mountPath: /app/config.yml
+              mountPath: {{ $app.mountPath | default "/app/config.yml" }}
               subPath: config.yml
           readinessProbe:
             tcpSocket:

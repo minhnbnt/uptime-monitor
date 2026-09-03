@@ -17,10 +17,14 @@ func permanent(err error) error {
 	return errors.Join(ErrPermanent, err)
 }
 
-type debeziumMessage struct {
+type debeziumMessagePayload struct {
 	Before *debeziumEndpointData `json:"before"`
 	After  *debeziumEndpointData `json:"after"`
 	Op     string                `json:"op"` // c=create, u=update, d=delete
+}
+
+type debeziumMessage struct {
+	Payload debeziumMessagePayload `json:"payload"`
 }
 
 type debeziumEndpointData struct {

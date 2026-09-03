@@ -29,22 +29,22 @@ func (p *messageProcessor) onDelete(ctx context.Context, event debeziumMessage) 
 
 func (p *messageProcessor) onUpdate(ctx context.Context, event debeziumMessage) error {
 
-	if event.After == nil {
+	if event.Payload.After == nil {
 		return nil
 	}
 
-	if event.After.DeletedAt != nil {
-		return p.handler.OnDelete(ctx, event.After.ID)
+	if event.Payload.After.DeletedAt != nil {
+		return p.handler.OnDelete(ctx, event.Payload.After.ID)
 	}
 
-	return p.handler.OnUpdate(ctx, event.After.ID, event.After.CreatedByID)
+	return p.handler.OnUpdate(ctx, event.Payload.After.ID, event.Payload.After.CreatedByID)
 }
 
 func (p *messageProcessor) onCreate(ctx context.Context, event debeziumMessage) error {
-	if event.After == nil {
+	if event.Payload.After == nil {
 		return nil
 	}
-	return p.handler.OnCreate(ctx, event.After.ID, event.After.CreatedByID)
+	return p.handler.OnCreate(ctx, event.Payload.After.ID, event.Payload.After.CreatedByID)
 }
 
 func (p *messageProcessor) ProcessMessage(ctx context.Context, msg redis.XMessage) (canAck bool) {
@@ -71,7 +71,7 @@ func (p *messageProcessor) ProcessMessage(ctx context.Context, msg redis.XMessag
 		return true
 	}
 
-	switch event.Op {
+	switch event.Payload.Op {
 	case "c", "r":
 		if err := p.onCreate(ctx, event); err != nil {
 			return p.deadLetterOrRetry(ctx, msg, fmt.Errorf("handle server: %w", err))
@@ -88,7 +88,7 @@ func (p *messageProcessor) ProcessMessage(ctx context.Context, msg redis.XMessag
 		}
 
 	default:
-		return p.deadLetterOrRetry(ctx, msg, permanent(fmt.Errorf("unexpected operation %q", event.Op)))
+		return p.deadLetterOrRetry(ctx, msg, permanent(fmt.Errorf("unexpected operation %q", event.Payload.Op)))
 	}
 
 	if err := p.offsets.SetOffset(ctx, serverID, msg.ID); err != nil {
@@ -115,12 +115,12 @@ func (p *messageProcessor) isStale(ctx context.Context, serverID uint, msgID str
 
 func resolveServerID(event debeziumMessage) (uint, error) {
 
-	if event.After != nil {
-		return event.After.ID, nil
+	if event.Payload.After != nil {
+		return event.Payload.After.ID, nil
 	}
 
-	if event.Before != nil {
-		return event.Before.ID, nil
+	if event.Payload.Before != nil {
+		return event.Payload.Before.ID, nil
 	}
 
 	return 0, permanent(errors.New("resolveServerID: event has no before or after"))
@@ -172,11 +172,11 @@ func (p *messageProcessor) sendToDLQ(ctx context.Context, msg redis.XMessage, er
 }
 
 func resolveDeletedID(event debeziumMessage) (uint, error) {
-	if event.Before != nil {
-		return event.Before.ID, nil
+	if event.Payload.Before != nil {
+		return event.Payload.Before.ID, nil
 	}
-	if event.After != nil {
-		return event.After.ID, nil
+	if event.Payload.After != nil {
+		return event.Payload.After.ID, nil
 	}
 	return 0, permanent(errors.New("resolveDeletedID: event has no before or after"))
 }

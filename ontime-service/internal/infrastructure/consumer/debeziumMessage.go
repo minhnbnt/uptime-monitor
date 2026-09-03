@@ -21,10 +21,14 @@ type debeziumServerData struct {
 	DeletedAt   *time.Time `json:"deleted_at"`
 }
 
-type debeziumMessage struct {
+type debeziumMessagePayload struct {
 	Before *debeziumServerData `json:"before"`
 	After  *debeziumServerData `json:"after"`
 	Op     string              `json:"op"`
+}
+
+type debeziumMessage struct {
+	Payload debeziumMessagePayload `json:"payload"`
 }
 
 func unmarshalDebeziumMessage(msg redis.XMessage) (debeziumMessage, error) {

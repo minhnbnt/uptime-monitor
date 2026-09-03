@@ -32,4 +32,6 @@ spec:
     address: http://auth-service:8081/auth/verify
     authResponseHeaders:
       - X-User-ID
+      - X-Scopes
+      - X-Session-ID
 {{- end }}

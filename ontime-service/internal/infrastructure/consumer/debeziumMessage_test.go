@@ -38,12 +38,12 @@ func TestUnmarshalDebeziumMessage(t *testing.T) {
 		t.Errorf("invalid json: err = %v, want permanent", err)
 	}
 
-	msg := redis.XMessage{Values: map[string]any{"value": `{"op":"c","after":{"id":1,"created_by_id":1}}`}}
+	msg := redis.XMessage{Values: map[string]any{"value": `{"payload":{"op":"c","after":{"id":1,"created_by_id":1}}}`}}
 	event, err := unmarshalDebeziumMessage(msg)
 	if err != nil {
 		t.Fatalf("valid message: unexpected err %v", err)
 	}
-	if event.Op != "c" || event.After == nil || event.After.ID != 1 {
+	if event.Payload.Op != "c" || event.Payload.After == nil || event.Payload.After.ID != 1 {
 		t.Errorf("valid message parsed incorrectly: %+v", event)
 	}
 }
