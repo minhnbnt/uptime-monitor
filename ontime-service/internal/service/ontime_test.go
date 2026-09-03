@@ -284,7 +284,6 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 						EndpointID:    1,
 						From:          d1,
 						To:            d1.Add(14 * time.Hour),
-						HasData:       true,
 						OnlineSeconds: 8 * 3600,
 						ObservedFrom:  d1,
 						ObservedTo:    d1.Add(14 * time.Hour),
@@ -353,7 +352,6 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 						EndpointID:    1,
 						From:          d1,
 						To:            d1.Add(14 * time.Hour),
-						HasData:       true,
 						OnlineSeconds: 8 * 3600,
 						ObservedFrom:  d1,
 						ObservedTo:    d1.Add(14 * time.Hour),
@@ -452,7 +450,7 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 					for _, r := range req {
 						if r.EndpointID == 1 && r.Date.Equal(d2) {
 							rows = append(rows, ontimerepo.UptimeRow{
-								EndpointID: 1, From: d2, To: d2.Add(24 * time.Hour), HasData: true,
+								EndpointID: 1, From: d2, To: d2.Add(24 * time.Hour),
 								OnlineSeconds: 18 * 3600,
 								ObservedFrom:  d2,
 								ObservedTo:    d2.Add(24 * time.Hour),
@@ -460,7 +458,7 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 						}
 						if r.EndpointID == 2 && r.Date.Equal(d3) {
 							rows = append(rows, ontimerepo.UptimeRow{
-								EndpointID: 2, From: d3, To: d3.Add(24 * time.Hour), HasData: false,
+								EndpointID: 2, From: d3, To: d3.Add(24 * time.Hour),
 								OnlineSeconds: 0,
 								ObservedFrom:  d3,
 								ObservedTo:    d3.Add(24 * time.Hour),
@@ -512,9 +510,9 @@ func TestOntimeService_BatchGetOntime(t *testing.T) {
 				batchGetUptimeFn: func(_ context.Context, _ []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.UptimeRow, error) {
 					dbCalled = true
 					return []ontimerepo.UptimeRow{
-						{EndpointID: 1, From: d1, To: d1.Add(24 * time.Hour), HasData: true, OnlineSeconds: 18 * 3600, ObservedFrom: d1, ObservedTo: d1.Add(24 * time.Hour)},
-						{EndpointID: 1, From: d2, To: d2.Add(24 * time.Hour), HasData: true, OnlineSeconds: 16 * 3600, ObservedFrom: d2, ObservedTo: d2.Add(24 * time.Hour)},
-						{EndpointID: 2, From: d3, To: d3.Add(24 * time.Hour), HasData: true, OnlineSeconds: 16 * 3600, ObservedFrom: d3, ObservedTo: d3.Add(24 * time.Hour)},
+						{EndpointID: 1, From: d1, To: d1.Add(24 * time.Hour), OnlineSeconds: 18 * 3600, ObservedFrom: d1, ObservedTo: d1.Add(24 * time.Hour)},
+						{EndpointID: 1, From: d2, To: d2.Add(24 * time.Hour), OnlineSeconds: 16 * 3600, ObservedFrom: d2, ObservedTo: d2.Add(24 * time.Hour)},
+						{EndpointID: 2, From: d3, To: d3.Add(24 * time.Hour), OnlineSeconds: 16 * 3600, ObservedFrom: d3, ObservedTo: d3.Add(24 * time.Hour)},
 					}, nil
 				},
 			},
@@ -758,10 +756,10 @@ func TestOntimeService_UnknownSecondsPassthrough(t *testing.T) {
 	t.Run("has_data day carries unknown seconds", func(t *testing.T) {
 		req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: d1}}
 		b := newRepoBatcher([]ontimerepo.UptimeRow{{
-			EndpointID:     1,
-			From:           d1,
-			To:             d1.Add(24 * time.Hour),
-			HasData:        true,
+			EndpointID: 1,
+			From:       d1,
+			To:         d1.Add(24 * time.Hour),
+
 			ObservedFrom:   d1,
 			ObservedTo:     d1.Add(24 * time.Hour),
 			OnlineSeconds:  12 * 3600,
@@ -788,10 +786,10 @@ func TestOntimeService_UnknownSecondsPassthrough(t *testing.T) {
 	t.Run("fully unknown day keeps unknown seconds with has_data=false", func(t *testing.T) {
 		req := []dto.BatchGetOntimeItem{{EndpointID: 2, Date: d1}}
 		b := newRepoBatcher([]ontimerepo.UptimeRow{{
-			EndpointID:     2,
-			From:           d1,
-			To:             d1.Add(24 * time.Hour),
-			HasData:        false,
+			EndpointID: 2,
+			From:       d1,
+			To:         d1.Add(24 * time.Hour),
+
 			ObservedFrom:   d1,
 			ObservedTo:     d1.Add(24 * time.Hour),
 			UnknownSeconds: 24 * 3600,

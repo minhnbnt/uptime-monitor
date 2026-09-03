@@ -84,7 +84,6 @@ func (s *OntimeRangeService) CalculateUptime(
 		To:             to,
 		ObservedFrom:   from,
 		ObservedTo:     to,
-		HasData:        false,
 		OnlineSeconds:  0,
 		UnknownSeconds: 0,
 	}
@@ -102,7 +101,7 @@ func (s *OntimeRangeService) CalculateUptime(
 		From:          from.Format(time.RFC3339),
 		To:            to.Format(time.RFC3339),
 		Uptime:        overall.UptimePercent(),
-		HasData:       overall.HasData,
+		HasData:       overall.HasData(),
 		Partial:       overall.ObservedFrom.After(from),
 		TotalSeconds:  overall.TotalSeconds(),
 		OnlineSeconds: overall.OnlineSeconds,
@@ -149,7 +148,7 @@ func (s *OntimeRangeService) calculateIntervals(
 
 		if row, ok := rowMap[iv.Start]; ok {
 			result.Uptime = row.UptimePercent()
-			result.HasData = row.HasData
+			result.HasData = true
 		}
 
 		return result

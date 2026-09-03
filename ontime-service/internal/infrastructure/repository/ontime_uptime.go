@@ -33,7 +33,6 @@ type UptimeRow struct {
 	EndpointID     uint
 	From           time.Time
 	To             time.Time
-	HasData        bool
 	ObservedFrom   time.Time
 	ObservedTo     time.Time
 	OnlineSeconds  float64
@@ -106,25 +105,21 @@ func (r *OntimeUptimeRepository) BatchGetUptime(ctx context.Context, requests []
 		return nil, err
 	}
 
-	for i := range rows {
-		rows[i].HasData = deriveHasData(rows[i])
-	}
-
 	return rows, nil
 }
 
-// freshnessEpsilon absorbs float wobble from EXTRACT(EPOCH) when deciding
-// whether unknown time covers the whole observed span.
-const freshnessEpsilon = 1e-3
+func (r UptimeRow) HasData() bool {
 
-func deriveHasData(row UptimeRow) bool {
+	// freshnessEpsilon absorbs float wobble from EXTRACT(EPOCH) when deciding
+	// whether unknown time covers the whole observed span.
+	const freshnessEpsilon = 1e-3
 
-	total := row.ObservedTo.Sub(row.ObservedFrom).Seconds()
+	total := r.TotalSeconds()
 	if total <= 0 {
 		return false
 	}
 
-	return row.UnknownSeconds < total-freshnessEpsilon
+	return r.UnknownSeconds < total-freshnessEpsilon
 }
 
 const windowFromJsonb = `

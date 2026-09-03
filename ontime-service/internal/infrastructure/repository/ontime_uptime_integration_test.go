@@ -113,7 +113,7 @@ func TestIntegration_Uptime_CarryInON_NoDayEvents(t *testing.T) {
 
 	row := findUptimeRow(t, rows, 1, "2026-06-02")
 	assertUptime(t, row.UptimePercent(), 100)
-	if !row.HasData {
+	if !row.HasData() {
 		t.Error("HasData = false, want true")
 	}
 }
@@ -376,7 +376,7 @@ func TestIntegration_Uptime_UnknownSplitsWindow(t *testing.T) {
 	row := findUptimeRow(t, rows, 1, "2026-06-01")
 	assertUptime(t, row.OnlineSeconds, 12*3600)
 	assertUptime(t, row.UnknownSeconds, 12*3600)
-	if !row.HasData {
+	if !row.HasData() {
 		t.Error("partially unknown window must still report has_data")
 	}
 }
@@ -401,7 +401,7 @@ func TestIntegration_Uptime_UnknownBetweenKnownStates(t *testing.T) {
 	row := findUptimeRow(t, rows, 2, "2026-06-01")
 	assertUptime(t, row.OnlineSeconds, 6*3600)
 	assertUptime(t, row.UnknownSeconds, 6*3600)
-	if !row.HasData {
+	if !row.HasData() {
 		t.Error("window with known states around the gap must report has_data")
 	}
 }
@@ -427,7 +427,7 @@ func TestIntegration_Uptime_FullyUnknownWindow_HasNoData(t *testing.T) {
 	row := findUptimeRow(t, rows, 3, "2026-06-01")
 	assertUptime(t, row.OnlineSeconds, 0)
 	assertUptime(t, row.UnknownSeconds, 24*3600)
-	if row.HasData {
+	if row.HasData() {
 		t.Error("fully unknown window must report has_data=false")
 	}
 }
