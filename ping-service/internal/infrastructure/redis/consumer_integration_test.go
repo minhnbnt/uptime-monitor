@@ -43,7 +43,7 @@ func TestStreamEventConsumerRunReclaimsPending(t *testing.T) {
 	// acking it (simulating a dead worker) so it becomes pending.
 	if err := client.XAdd(ctx, &redis.XAddArgs{
 		Stream: streamKey,
-		Values: map[string]any{"value": `{"op":"c","after":{"id":1,"url":"https://x.com","method":"GET","expected_code":200,"interval":5000000000,"timeout":2000000000}}`},
+		Values: map[string]any{"value": `{"payload":{"op":"c","after":{"id":1,"url":"https://x.com","method":"GET","expected_code":200,"interval":5000000000,"timeout":2000000000}}}`},
 	}).Err(); err != nil {
 		t.Fatalf("publish: %v", err)
 	}

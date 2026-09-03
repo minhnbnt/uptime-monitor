@@ -39,7 +39,7 @@ func TestProcessMessageSkipsStaleAndAppliesFresh(t *testing.T) {
 	}
 
 	// stale message (id 1-0 < applied 2-0) -> acked, handler NOT called
-	if !p.ProcessMessage(ctx, xmessage("1-0", `{"op":"c","after":{"id":1,"url":"https://x.com","method":"GET","expected_code":200,"interval":5000000000,"timeout":2000000000}}`)) {
+	if !p.ProcessMessage(ctx, xmessage("1-0", `{"payload":{"op":"c","after":{"id":1,"url":"https://x.com","method":"GET","expected_code":200,"interval":5000000000,"timeout":2000000000}}}`)) {
 		t.Error("expected canAck=true for stale message")
 	}
 	mu.Lock()
@@ -49,7 +49,7 @@ func TestProcessMessageSkipsStaleAndAppliesFresh(t *testing.T) {
 	mu.Unlock()
 
 	// fresh message (id 3-0 > applied 2-0) -> acked, handler called
-	if !p.ProcessMessage(ctx, xmessage("3-0", `{"op":"c","after":{"id":1,"url":"https://x.com","method":"GET","expected_code":200,"interval":5000000000,"timeout":2000000000}}`)) {
+	if !p.ProcessMessage(ctx, xmessage("3-0", `{"payload":{"op":"c","after":{"id":1,"url":"https://x.com","method":"GET","expected_code":200,"interval":5000000000,"timeout":2000000000}}}`)) {
 		t.Error("expected canAck=true for fresh message")
 	}
 	mu.Lock()

@@ -88,7 +88,7 @@ func TestProcessMessageSkipsStaleAndAppliesFresh(t *testing.T) {
 	}
 
 	// stale message (id 1-0 < applied 2-0) -> acked, handler NOT called
-	if !p.ProcessMessage(ctx, xmessage("1-0", `{"op":"c","after":{"id":1,"created_by_id":10}}`)) {
+	if !p.ProcessMessage(ctx, xmessage("1-0", `{"payload":{"op":"c","after":{"id":1,"created_by_id":10}}}`)) {
 		t.Error("expected canAck=true for stale message")
 	}
 	mu.Lock()
@@ -98,7 +98,7 @@ func TestProcessMessageSkipsStaleAndAppliesFresh(t *testing.T) {
 	mu.Unlock()
 
 	// fresh message (id 3-0 > applied 2-0) -> acked, handler called
-	if !p.ProcessMessage(ctx, xmessage("3-0", `{"op":"c","after":{"id":1,"created_by_id":10}}`)) {
+	if !p.ProcessMessage(ctx, xmessage("3-0", `{"payload":{"op":"c","after":{"id":1,"created_by_id":10}}}`)) {
 		t.Error("expected canAck=true for fresh message")
 	}
 	mu.Lock()
@@ -138,7 +138,7 @@ func TestOwnershipConsumerRunReclaimsPending(t *testing.T) {
 	// acking it (simulating a dead worker) so it becomes pending.
 	if err := client.XAdd(ctx, &redis.XAddArgs{
 		Stream: streamKey,
-		Values: map[string]any{"value": `{"op":"c","after":{"id":1,"created_by_id":10}}`},
+		Values: map[string]any{"value": `{"payload":{"op":"c","after":{"id":1,"created_by_id":10}}}`},
 	}).Err(); err != nil {
 		t.Fatalf("publish: %v", err)
 	}
