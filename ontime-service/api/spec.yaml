@@ -66,6 +66,13 @@ paths:
     post:
       operationId: listServersOntimeByIDs
       summary: List ontime stats for given server ids
+      parameters:
+        - name: X-Timezone
+          in: header
+          required: false
+          description: IANA timezone name (e.g. "Asia/Ho_Chi_Minh") used for day boundaries. Defaults to UTC.
+          schema:
+            type: string
       requestBody:
         required: true
         content:

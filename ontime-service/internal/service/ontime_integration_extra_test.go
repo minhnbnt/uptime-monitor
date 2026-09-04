@@ -74,7 +74,7 @@ func TestIntegration_BatchGetOntime_TodaySingleON_PrevDayOFF(t *testing.T) {
 	b := newBatcher(t, db)
 	req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: today}}
 
-	results, err := b.BatchGetOntimeUntil(t.Context(), req, now)
+	results, err := b.BatchGetOntimeUntil(t.Context(), req, now, time.UTC)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestIntegration_BatchGetOntime_Today_ON_to_OFF(t *testing.T) {
 	b := newBatcher(t, db)
 	req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: today}}
 
-	results, err := b.BatchGetOntimeUntil(t.Context(), req, now)
+	results, err := b.BatchGetOntimeUntil(t.Context(), req, now, time.UTC)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

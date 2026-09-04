@@ -18,7 +18,7 @@ import (
 type OntimeService interface {
 	ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]dto.ServerOntime, error)
 	GetServerWithOntime(ctx context.Context, serverID uint, userID uint) (*dto.ServerOntime, error)
-	GetServersWithOntime(ctx context.Context, userID uint, ids []uint) ([]dto.ServerOntime, error)
+	GetServersWithOntime(ctx context.Context, userID uint, ids []uint, loc *time.Location) ([]dto.ServerOntime, error)
 }
 
 type OntimeRangeService interface {
@@ -100,16 +100,16 @@ func (h *OntimeHandler) GetServersStatuses(ctx context.Context, params *api.Serv
 	return &api.ServerStatusesResponse{Data: data}, nil
 }
 
-func (h *OntimeHandler) ListServersOntimeByIDs(ctx context.Context, params *api.ServerOntimeByIDsRequest) (*api.ServerOntimeListResponse, error) {
+func (h *OntimeHandler) ListServersOntimeByIDs(ctx context.Context, req *api.ServerOntimeByIDsRequest, params api.ListServersOntimeByIDsParams) (*api.ServerOntimeListResponse, error) {
 
 	userID := authclient.GetUserID(ctx)
 
-	ids := lo.Map(params.Ids, func(id int, _ int) uint { return uint(id) })
+	ids := lo.Map(req.Ids, func(id int, _ int) uint { return uint(id) })
 	if len(ids) > 100 {
 		return nil, apperrors.ErrBadRequest
 	}
 
-	result, err := h.ontimeService.GetServersWithOntime(ctx, userID, ids)
+	result, err := h.ontimeService.GetServersWithOntime(ctx, userID, ids, resolveLocation(params.XTimezone))
 	if err != nil {
 		return nil, err
 	}

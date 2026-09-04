@@ -55,9 +55,12 @@ type Batcher struct {
 	logger                *slog.Logger
 }
 
-func (b *Batcher) BatchGetOntimeUntil(ctx context.Context, req []dto.BatchGetOntimeItem, until time.Time) ([]dto.BatchGetOntimeResponse, error) {
+func (b *Batcher) BatchGetOntimeUntil(ctx context.Context, req []dto.BatchGetOntimeItem, until time.Time, loc *time.Location) ([]dto.BatchGetOntimeResponse, error) {
 
-	cacheKeys := getCacheKey(req)
+	if loc == nil {
+		loc = time.UTC
+	}
+	cacheKeys := getCacheKey(req, loc)
 	resultMap := b.resolveCache(ctx, cacheKeys)
 
 	missKeys := lo.Filter(cacheKeys, func(key dto.BatchGetOntimeItem, _ int) bool {
@@ -69,7 +72,7 @@ func (b *Batcher) BatchGetOntimeUntil(ctx context.Context, req []dto.BatchGetOnt
 		return b.buildResponse(req, resultMap), nil
 	}
 
-	toCache := b.fillMisses(ctx, missKeys, until)
+	toCache := b.fillMisses(ctx, missKeys, until, loc)
 	maps.Copy(resultMap, toCache)
 
 	if b.ontimeCacheRepository == nil {
@@ -84,14 +87,17 @@ func (b *Batcher) BatchGetOntimeUntil(ctx context.Context, req []dto.BatchGetOnt
 }
 
 func (b *Batcher) BatchGetOntime(ctx context.Context, req []dto.BatchGetOntimeItem) ([]dto.BatchGetOntimeResponse, error) {
-	return b.BatchGetOntimeUntil(ctx, req, time.Now())
+	return b.BatchGetOntimeUntil(ctx, req, time.Now(), time.UTC)
 }
 
-func getCacheKey(req []dto.BatchGetOntimeItem) []dto.BatchGetOntimeItem {
+func getCacheKey(req []dto.BatchGetOntimeItem, loc *time.Location) []dto.BatchGetOntimeItem {
 
+	if loc == nil {
+		loc = time.UTC
+	}
 	reqIter := slices.Values(req)
 	cacheKeys := it.Map(reqIter, func(item dto.BatchGetOntimeItem) dto.BatchGetOntimeItem {
-		item.Date = utils.TruncateDay(item.Date)
+		item.Date = utils.TruncateDayIn(item.Date, loc)
 		return item
 	})
 
@@ -114,17 +120,20 @@ func (b *Batcher) resolveCache(ctx context.Context, keys []dto.BatchGetOntimeIte
 	return cached
 }
 
-func (b *Batcher) fillMisses(ctx context.Context, missedKeys []dto.BatchGetOntimeItem, until time.Time) map[dto.BatchGetOntimeItem]dto.DayResult {
+func (b *Batcher) fillMisses(ctx context.Context, missedKeys []dto.BatchGetOntimeItem, until time.Time, loc *time.Location) map[dto.BatchGetOntimeItem]dto.DayResult {
 
+	if loc == nil {
+		loc = time.UTC
+	}
 	requests := lo.Map(missedKeys, func(key dto.BatchGetOntimeItem, _ int) ontimerepo.BatchGetOntimeRequest {
 
-		dayStart := key.Date // already truncated to UTC midnight by getCacheKey
+		dayStart := key.Date // already truncated to midnight in loc by getCacheKey
 		to := dayStart.Add(24 * time.Hour)
 
 		// Same clamp semantics the old calculator had: only the calendar day
 		// "until" falls on gets cut short at `until`; past days keep their
 		// full 24h window.
-		if utils.TruncateDay(until).Equal(dayStart) && until.Before(to) {
+		if utils.TruncateDayIn(until, loc).Equal(dayStart) && until.Before(to) {
 			to = until
 		}
 
@@ -150,12 +159,13 @@ func (b *Batcher) fillMisses(ctx context.Context, missedKeys []dto.BatchGetOntim
 	})
 
 	for _, row := range rows {
-		// TruncateDay normalizes both the zone and the wall clock: the DB
+		// TruncateDayIn normalizes both the zone and the wall clock: the DB
 		// hands back timestamptz in the session zone, while missedKeys carry
-		// UTC-midnight dates — raw equality would never match.
+		// midnight-in-loc dates — raw equality would never match.
+		// Conversion is instant-based, so it holds for any session zone.
 		key := dto.BatchGetOntimeItem{
 			EndpointID: row.EndpointID,
-			Date:       utils.TruncateDay(row.From),
+			Date:       utils.TruncateDayIn(row.From, loc),
 		}
 
 		toCache[key] = dto.DayResult{

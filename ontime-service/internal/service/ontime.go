@@ -59,7 +59,7 @@ func (s *OntimeService) ListServersWithOntime(ctx context.Context, userID uint, 
 	}
 	pageOwned := owned[start:end]
 
-	ontimeMap, err := s.getServersOntime(ctx, pageOwned, utils.Last30Days())
+	ontimeMap, err := s.getServersOntime(ctx, pageOwned, utils.Last30Days(), time.UTC)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (s *OntimeService) GetServersOntime(ctx context.Context, userID uint, serve
 	}
 
 	dates := utils.BuildDateRange(from, to)
-	return s.getServersOntime(ctx, owned, dates)
+	return s.getServersOntime(ctx, owned, dates, time.UTC)
 }
 
 func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID, userID uint) (*dto.ServerOntime, error) {
@@ -109,7 +109,7 @@ func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID, userI
 		return nil, apperrors.ErrNotFound
 	}
 
-	ontimeMap, err := s.getServersOntime(ctx, owned, utils.Last30Days())
+	ontimeMap, err := s.getServersOntime(ctx, owned, utils.Last30Days(), time.UTC)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,11 @@ func (s *OntimeService) GetServerWithOntime(ctx context.Context, serverID, userI
 	}, nil
 }
 
-func (s *OntimeService) GetServersWithOntime(ctx context.Context, userID uint, ids []uint) ([]dto.ServerOntime, error) {
+func (s *OntimeService) GetServersWithOntime(ctx context.Context, userID uint, ids []uint, loc *time.Location) ([]dto.ServerOntime, error) {
+
+	if loc == nil {
+		loc = time.UTC
+	}
 
 	owned, err := s.serverOwnerRepo.GetOwnedServers(ctx, userID, ids)
 	if err != nil {
@@ -130,7 +134,7 @@ func (s *OntimeService) GetServersWithOntime(ctx context.Context, userID uint, i
 		return nil, apperrors.ErrForbidden
 	}
 
-	ontimeMap, err := s.getServersOntime(ctx, owned, utils.Last30Days())
+	ontimeMap, err := s.getServersOntime(ctx, owned, utils.Last30DaysIn(loc), loc)
 	if err != nil {
 		return nil, err
 	}
@@ -145,10 +149,13 @@ func (s *OntimeService) GetServersWithOntime(ctx context.Context, userID uint, i
 	return out, nil
 }
 
-func (s *OntimeService) getServersOntime(ctx context.Context, servers []repository.OwnedServer, dates []time.Time) (map[uint][]dto.OntimeStats, error) {
+func (s *OntimeService) getServersOntime(ctx context.Context, servers []repository.OwnedServer, dates []time.Time, loc *time.Location) (map[uint][]dto.OntimeStats, error) {
 
+	if loc == nil {
+		loc = time.UTC
+	}
 	if len(dates) == 0 {
-		dates = utils.Last30Days()
+		dates = utils.Last30DaysIn(loc)
 	}
 
 	items := make([]dto.BatchGetOntimeItem, 0, len(servers)*len(dates))
@@ -156,7 +163,7 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []reposito
 
 	for _, sv := range servers {
 
-		created := utils.TruncateDay(sv.CreatedAt)
+		created := utils.TruncateDayIn(sv.CreatedAt, loc)
 		activeDates := lo.Filter(dates, func(d time.Time, _ int) bool {
 			return !d.Before(created)
 		})
@@ -173,13 +180,13 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []reposito
 		return make(map[uint][]dto.OntimeStats), nil
 	}
 
-	results, err := s.batcher.BatchGetOntime(ctx, items)
+	results, err := s.batcher.BatchGetOntimeUntil(ctx, items, time.Now(), loc)
 	if err != nil {
 		s.logger.Error("failed to batch get ontime", slog.Any("error", err))
 		return nil, err
 	}
 
-	lookup := buildOntimeLookup(results)
+	lookup := buildOntimeLookup(results, loc)
 
 	out := make(map[uint][]dto.OntimeStats, len(servers))
 	for _, sv := range servers {
@@ -203,8 +210,11 @@ func (s *OntimeService) getServersOntime(ctx context.Context, servers []reposito
 	return out, nil
 }
 
-func buildOntimeLookup(results []dto.BatchGetOntimeResponse) map[uint]map[time.Time]dto.DayResult {
+func buildOntimeLookup(results []dto.BatchGetOntimeResponse, loc *time.Location) map[uint]map[time.Time]dto.DayResult {
 
+	if loc == nil {
+		loc = time.UTC
+	}
 	lookup := make(map[uint]map[time.Time]dto.DayResult, len(results))
 
 	for _, r := range results {
@@ -217,7 +227,7 @@ func buildOntimeLookup(results []dto.BatchGetOntimeResponse) map[uint]map[time.T
 				Unknown: stat.UnknownSeconds,
 			}
 
-			return utils.TruncateDay(stat.Date), dayResult
+			return utils.TruncateDayIn(stat.Date, loc), dayResult
 		})
 
 		lookup[r.EndpointID] = mp

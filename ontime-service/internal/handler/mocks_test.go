@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"time"
 
 	ontimedto "github.com/minhnbnt/uptime-monitor-microservices/ontime-service/internal/dto"
 )
@@ -9,7 +10,7 @@ import (
 type mockOntimeService struct {
 	listServersWithOntimeFn func(ctx context.Context, createdByID uint, page, perPage int) ([]ontimedto.ServerOntime, error)
 	getServerWithOntimeFn   func(ctx context.Context, serverID uint, userID uint) (*ontimedto.ServerOntime, error)
-	getServersWithOntimeFn  func(ctx context.Context, userID uint, ids []uint) ([]ontimedto.ServerOntime, error)
+	getServersWithOntimeFn  func(ctx context.Context, userID uint, ids []uint, loc *time.Location) ([]ontimedto.ServerOntime, error)
 }
 
 func (m *mockOntimeService) ListServersWithOntime(ctx context.Context, createdByID uint, page, perPage int) ([]ontimedto.ServerOntime, error) {
@@ -23,11 +24,11 @@ func (m *mockOntimeService) GetServerWithOntime(ctx context.Context, serverID ui
 	return m.getServerWithOntimeFn(ctx, serverID, userID)
 }
 
-func (m *mockOntimeService) GetServersWithOntime(ctx context.Context, userID uint, ids []uint) ([]ontimedto.ServerOntime, error) {
+func (m *mockOntimeService) GetServersWithOntime(ctx context.Context, userID uint, ids []uint, loc *time.Location) ([]ontimedto.ServerOntime, error) {
 	if m.getServersWithOntimeFn == nil {
 		return nil, nil
 	}
-	return m.getServersWithOntimeFn(ctx, userID, ids)
+	return m.getServersWithOntimeFn(ctx, userID, ids, loc)
 }
 
 type mockOntimeRangeService struct {

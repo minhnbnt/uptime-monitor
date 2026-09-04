@@ -27,10 +27,16 @@ const (
 
 func isToday(t time.Time) bool {
 
-	now := time.Now()
-	today := utils.TruncateDay(now)
+	// Compare in the key's own location: UTC day-buckets behave exactly as
+	// before, while user-tz buckets get "today" in the user's calendar.
+	// That keeps the short todayTTL on the still-moving current day.
+	loc := t.Location()
+	if loc == nil {
+		loc = time.UTC
+	}
+	today := utils.TruncateDayIn(time.Now(), loc)
 
-	return utils.TruncateDay(t).Equal(today)
+	return utils.TruncateDayIn(t, loc).Equal(today)
 }
 
 type OntimeCacheRepository struct {

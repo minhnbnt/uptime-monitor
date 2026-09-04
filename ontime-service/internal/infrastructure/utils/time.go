@@ -8,21 +8,43 @@ import (
 )
 
 func TruncateDay(t time.Time) time.Time {
-	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
+	return TruncateDayIn(t, time.UTC)
+}
+
+// TruncateDayIn floors t to midnight in loc. Conversion is instant-based,
+// so inputs carrying any location (UTC, DB session zone, user tz) map to
+// the same calendar day in loc.
+func TruncateDayIn(t time.Time, loc *time.Location) time.Time {
+
+	if loc == nil {
+		loc = time.UTC
+	}
+
+	lt := t.In(loc)
+
+	return time.Date(lt.Year(), lt.Month(), lt.Day(), 0, 0, 0, 0, loc)
 }
 
 func Last30Days() []time.Time {
+	return Last30DaysIn(time.UTC)
+}
 
-	until := TruncateDay(time.Now())
+func Last30DaysIn(loc *time.Location) []time.Time {
+
+	until := TruncateDayIn(time.Now(), loc)
 	since := until.AddDate(0, 0, -29)
 
-	return BuildDateRange(since, until)
+	return BuildDateRangeIn(since, until, loc)
 }
 
 func BuildDateRange(from, to time.Time) []time.Time {
+	return BuildDateRangeIn(from, to, time.UTC)
+}
 
-	start := TruncateDay(from)
-	end := TruncateDay(to)
+func BuildDateRangeIn(from, to time.Time, loc *time.Location) []time.Time {
+
+	start := TruncateDayIn(from, loc)
+	end := TruncateDayIn(to, loc)
 
 	dates := make([]time.Time, 0, int(end.Sub(start).Hours()/24)+1)
 	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {

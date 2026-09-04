@@ -180,6 +180,69 @@ func TestCalculateUptime(t *testing.T) {
 	})
 }
 
+func TestResolveLocation(t *testing.T) {
+	t.Run("valid timezone", func(t *testing.T) {
+		// Exact value browsers send (IANA alias of Asia/Ho_Chi_Minh, UTC+7).
+		loc := resolveLocation(api.NewOptString("Asia/Saigon"))
+		if loc.String() != "Asia/Saigon" {
+			t.Errorf("loc = %s, want Asia/Saigon", loc)
+		}
+	})
+
+	t.Run("missing header falls back to UTC", func(t *testing.T) {
+		if loc := resolveLocation(api.OptString{}); loc != time.UTC {
+			t.Errorf("loc = %s, want UTC", loc)
+		}
+	})
+
+	t.Run("unknown timezone falls back to UTC", func(t *testing.T) {
+		if loc := resolveLocation(api.NewOptString("Mars/Olympus")); loc != time.UTC {
+			t.Errorf("loc = %s, want UTC", loc)
+		}
+	})
+}
+
+func TestListServersOntimeByIDs(t *testing.T) {
+	t.Run("passes header timezone to service", func(t *testing.T) {
+		var gotLoc *time.Location
+		h := &OntimeHandler{
+			ontimeService: &mockOntimeService{
+				getServersWithOntimeFn: func(_ context.Context, _ uint, ids []uint, loc *time.Location) ([]ontimedto.ServerOntime, error) {
+					gotLoc = loc
+					return []ontimedto.ServerOntime{{ServerID: uint(ids[0])}}, nil
+				},
+			},
+		}
+		resp, err := h.ListServersOntimeByIDs(
+			t.Context(),
+			&api.ServerOntimeByIDsRequest{Ids: []int{1}},
+			api.ListServersOntimeByIDsParams{XTimezone: api.NewOptString("Asia/Saigon")},
+		)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if gotLoc == nil || gotLoc.String() != "Asia/Saigon" {
+			t.Fatalf("loc = %v, want Asia/Saigon", gotLoc)
+		}
+		if len(resp.Data) != 1 {
+			t.Errorf("len data = %d, want 1", len(resp.Data))
+		}
+	})
+
+	t.Run("too many ids", func(t *testing.T) {
+		h := &OntimeHandler{ontimeService: &mockOntimeService{}}
+		ids := make([]int, 101)
+		_, err := h.ListServersOntimeByIDs(
+			t.Context(),
+			&api.ServerOntimeByIDsRequest{Ids: ids},
+			api.ListServersOntimeByIDsParams{},
+		)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+}
+
 func parseTime(t *testing.T, s string) time.Time {
 	t.Helper()
 	v, err := time.Parse(time.RFC3339, s)

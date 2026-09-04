@@ -118,7 +118,7 @@ func TestBuildOntimeLookup(t *testing.T) {
 			},
 		}
 
-		got := buildOntimeLookup(results)
+		got := buildOntimeLookup(results, time.UTC)
 
 		if len(got) != 2 {
 			t.Fatalf("len = %d, want 2", len(got))
@@ -135,7 +135,7 @@ func TestBuildOntimeLookup(t *testing.T) {
 	})
 
 	t.Run("empty input", func(t *testing.T) {
-		got := buildOntimeLookup(nil)
+		got := buildOntimeLookup(nil, time.UTC)
 		if len(got) != 0 {
 			t.Errorf("len = %d, want 0", len(got))
 		}
@@ -253,7 +253,7 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		got, err := b.BatchGetOntimeUntil(t.Context(), req, until)
+		got, err := b.BatchGetOntimeUntil(t.Context(), req, until, time.UTC)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -300,7 +300,7 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 			logger: logger.NewMockLogger(),
 		}
 
-		got, err := b.BatchGetOntimeUntil(t.Context(), req, until)
+		got, err := b.BatchGetOntimeUntil(t.Context(), req, until, time.UTC)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -318,6 +318,67 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 		}
 	})
 
+	t.Run("user timezone day window", func(t *testing.T) {
+		// Exact value browsers send (IANA alias of Asia/Ho_Chi_Minh, UTC+7).
+		loc, err := time.LoadLocation("Asia/Saigon")
+		if err != nil {
+			t.Fatalf("LoadLocation: %v", err)
+		}
+		dayStart := time.Date(2026, 9, 4, 0, 0, 0, 0, loc)
+		until := time.Date(2026, 9, 4, 14, 0, 0, 0, loc) // same local day, 14:00
+
+		var captured []ontimerepo.BatchGetOntimeRequest
+		b := &Batcher{
+			ontimeRepo: &mockOntimeRepo{
+				batchGetUptimeFn: func(_ context.Context, req []ontimerepo.BatchGetOntimeRequest) ([]ontimerepo.UptimeRow, error) {
+					captured = req
+					// DB hands back timestamptz in the session zone (UTC here),
+					// not in the user's zone.
+					return []ontimerepo.UptimeRow{{
+						EndpointID:    1,
+						From:          dayStart.In(time.UTC),
+						To:            until.In(time.UTC),
+						OnlineSeconds: 14 * 3600,
+						ObservedFrom:  dayStart.In(time.UTC),
+						ObservedTo:    until.In(time.UTC),
+					}}, nil
+				},
+			},
+			ontimeCacheRepository: &mockOntimeCacheRepo{},
+			logger:                logger.NewMockLogger(),
+		}
+
+		got, err := b.BatchGetOntimeUntil(t.Context(),
+			[]dto.BatchGetOntimeItem{{EndpointID: 1, Date: dayStart}}, until, loc)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(captured) != 1 {
+			t.Fatalf("db requests = %d, want 1", len(captured))
+		}
+		// Day window is midnight-to-midnight in the user's zone...
+		if !captured[0].From.Equal(dayStart) {
+			t.Errorf("From = %v, want %v", captured[0].From, dayStart)
+		}
+		// ...cut short at `until` because it is the current local day.
+		// (UTC code would miss the clamp: UTC-midnight != +07-midnight.)
+		if !captured[0].To.Equal(until) {
+			t.Errorf("To = %v, want %v (clamped to until)", captured[0].To, until)
+		}
+
+		if len(got) != 1 || len(got[0].Result) != 1 {
+			t.Fatalf("unexpected result shape: %+v", got)
+		}
+		res := got[0].Result[0]
+		if !res.Date.Equal(dayStart) {
+			t.Errorf("Date = %v, want %v", res.Date, dayStart)
+		}
+		if !res.HasData || res.Stats != 100.0 {
+			t.Errorf("HasData/Stats = %v/%f, want true/100", res.HasData, res.Stats)
+		}
+	})
+
 	t.Run("DB error logs warning", func(t *testing.T) {
 		req := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: d1}}
 		log, capLog := logger.NewCapturingLogger()
@@ -332,7 +393,7 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 			logger:                log,
 		}
 
-		_, err := b.BatchGetOntimeUntil(t.Context(), req, until)
+		_, err := b.BatchGetOntimeUntil(t.Context(), req, until, time.UTC)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -366,7 +427,7 @@ func TestOntimeService_BatchGetOntimeUntil(t *testing.T) {
 			logger: log,
 		}
 
-		got, err := b.BatchGetOntimeUntil(t.Context(), req, until)
+		got, err := b.BatchGetOntimeUntil(t.Context(), req, until, time.UTC)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -729,7 +790,7 @@ func TestFillMisses_DBErrorDoesNotPoisonCache(t *testing.T) {
 	}
 
 	missed := []dto.BatchGetOntimeItem{{EndpointID: 1, Date: d1}}
-	got := b.fillMisses(t.Context(), missed, until)
+	got := b.fillMisses(t.Context(), missed, until, time.UTC)
 
 	// On a failed read fillMisses must return an empty map, so the caller
 	// caches nothing — never the pre-seeded zero results for unread days.
@@ -766,7 +827,7 @@ func TestOntimeService_UnknownSecondsPassthrough(t *testing.T) {
 			UnknownSeconds: 6 * 3600,
 		}})
 
-		got, err := b.BatchGetOntimeUntil(t.Context(), req, until)
+		got, err := b.BatchGetOntimeUntil(t.Context(), req, until, time.UTC)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -795,7 +856,7 @@ func TestOntimeService_UnknownSecondsPassthrough(t *testing.T) {
 			UnknownSeconds: 24 * 3600,
 		}})
 
-		got, err := b.BatchGetOntimeUntil(t.Context(), req, until)
+		got, err := b.BatchGetOntimeUntil(t.Context(), req, until, time.UTC)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
