@@ -4,7 +4,11 @@ NotificationConfig:
     digest_time:
       type: string
       pattern: "^\\d{2}:\\d{2}$"
-      description: "Time of day to send digest (HH:MM format)"
+      description: "Time of day to send digest (HH:MM format, in `timezone`)"
+    timezone:
+      type: string
+      description: 'IANA timezone name (e.g. "Asia/Ho_Chi_Minh") the digest_time is interpreted in. Defaults to UTC.'
+      example: "Asia/Ho_Chi_Minh"
     from_date:
       type: string
       format: date

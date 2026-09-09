@@ -128,6 +128,50 @@ func TestDigestStarter_UpsertAndDescribeSchedule(t *testing.T) {
 	require.True(t, fromDate.Equal(info.FromDate), "expected %v, got %v", fromDate, info.FromDate)
 	require.True(t, toDate.Equal(info.ToDate), "expected %v, got %v", toDate, info.ToDate)
 	require.Equal(t, "09:30", info.DigestTime)
+	require.Equal(t, "UTC", info.Timezone)
+}
+
+func TestDigestStarter_UpsertAndDescribeSchedule_WithTimezone(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	starter := newTestDigestStarter(t)
+
+	userID := uint(43)
+	fromDate := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	toDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+
+	err := starter.UpsertSchedule(t.Context(), userID, domain.ScheduleConfig{
+		FromDate:   fromDate,
+		ToDate:     toDate,
+		DigestTime: "09:30",
+		Timezone:   "Asia/Saigon",
+	})
+	require.NoError(t, err)
+
+	info, err := starter.DescribeSchedule(t.Context(), userID)
+	require.NoError(t, err)
+	require.NotNil(t, info)
+	require.True(t, info.Exists)
+
+	// Wall-clock config round-trips as the user typed it...
+	require.Equal(t, "09:30", info.DigestTime)
+	require.Equal(t, "Asia/Saigon", info.Timezone)
+
+	// ...and the stored calendar keeps the wall-clock values with the
+	// zone attached — the server evaluates them in-zone, no UTC
+	// conversion on our side.
+	handle := testClient.ScheduleClient().GetHandle(t.Context(), "digest-user-43")
+	desc, err := handle.Describe(t.Context())
+	require.NoError(t, err)
+	require.NotEmpty(t, desc.Schedule.Spec.Calendars)
+	cal := desc.Schedule.Spec.Calendars[0]
+	require.NotEmpty(t, cal.Hour)
+	require.NotEmpty(t, cal.Minute)
+	require.Equal(t, 9, cal.Hour[0].Start)
+	require.Equal(t, 30, cal.Minute[0].Start)
+	require.Equal(t, "Asia/Saigon", desc.Schedule.Spec.TimeZoneName)
 }
 
 func TestDigestStarter_DescribeSchedule_NotExists(t *testing.T) {

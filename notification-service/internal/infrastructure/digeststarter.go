@@ -81,6 +81,14 @@ func (ds *TemporalDigestStarter) DescribeSchedule(ctx context.Context, userID ui
 		ToDate:   spec.EndAt,
 	}
 
+	// Empty means the schedule predates timezone support — the server
+	// evaluates such calendars in UTC.
+	if spec.TimeZoneName != "" {
+		info.Timezone = spec.TimeZoneName
+	} else {
+		info.Timezone = "UTC"
+	}
+
 	if len(spec.Calendars) > 0 {
 
 		cal := spec.Calendars[0]
@@ -114,12 +122,16 @@ func (ds *TemporalDigestStarter) UpsertSchedule(ctx context.Context, userID uint
 		return err
 	}
 
+	// TimeZoneName makes the server evaluate the calendar in the user's
+	// zone (empty = UTC default). Hour/minute stay as the user's
+	// wall-clock digest_time — no UTC conversion needed.
 	spec := temporalclient.ScheduleSpec{
 		StartAt: cfg.FromDate, EndAt: cfg.ToDate,
 		Calendars: []temporalclient.ScheduleCalendarSpec{{
 			Hour:   []temporalclient.ScheduleRange{{Start: hour}},
 			Minute: []temporalclient.ScheduleRange{{Start: minute}},
 		}},
+		TimeZoneName: cfg.Timezone,
 	}
 
 	action := &temporalclient.ScheduleWorkflowAction{

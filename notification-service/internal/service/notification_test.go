@@ -60,6 +60,7 @@ func TestGetNotificationConfig_WithSchedule(t *testing.T) {
 		FromDate:   fromDate,
 		ToDate:     toDate,
 		DigestTime: "09:00",
+		Timezone:   "Asia/Saigon",
 	}, nil)
 
 	resp, err := svc.GetNotificationConfig(t.Context(), 1)
@@ -68,6 +69,7 @@ func TestGetNotificationConfig_WithSchedule(t *testing.T) {
 	require.Equal(t, "2026-06-01", resp.FromDate)
 	require.Equal(t, "2026-07-01", resp.ToDate)
 	require.Equal(t, "09:00", resp.DigestTime)
+	require.Equal(t, "Asia/Saigon", resp.Timezone)
 }
 
 func TestGetNotificationConfig_NoSchedule(t *testing.T) {
@@ -109,6 +111,45 @@ func TestUpdateNotificationConfig_Active(t *testing.T) {
 	err := svc.UpdateNotificationConfig(t.Context(), 1, req)
 	require.NoError(t, err)
 	mockS.AssertExpectations(t)
+}
+
+func TestUpdateNotificationConfig_ActiveWithTimezone(t *testing.T) {
+	mockS := &mockDigestStarter{}
+	svc := newTestService(mockS)
+
+	req := &dto.NotificationConfigRequest{
+		FromDate:   "2026-06-01",
+		ToDate:     "2026-07-01",
+		DigestTime: "09:00",
+		Timezone:   "Asia/Saigon",
+	}
+
+	mockS.On("UpsertSchedule", mock.Anything, uint(1), domain.ScheduleConfig{
+		FromDate:   time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC),
+		ToDate:     time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC),
+		DigestTime: "09:00",
+		Timezone:   "Asia/Saigon",
+	}).Return(nil)
+
+	err := svc.UpdateNotificationConfig(t.Context(), 1, req)
+	require.NoError(t, err)
+	mockS.AssertExpectations(t)
+}
+
+func TestUpdateNotificationConfig_InvalidTimezone(t *testing.T) {
+	mockS := &mockDigestStarter{}
+	svc := newTestService(mockS)
+
+	req := &dto.NotificationConfigRequest{
+		FromDate:   "2026-06-01",
+		ToDate:     "2026-07-01",
+		DigestTime: "09:00",
+		Timezone:   "Mars/Olympus",
+	}
+
+	err := svc.UpdateNotificationConfig(t.Context(), 1, req)
+	require.ErrorIs(t, err, apperrors.ErrBadRequest)
+	mockS.AssertNotCalled(t, "UpsertSchedule", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestUpdateNotificationConfig_Inactive_DeletesSchedule(t *testing.T) {

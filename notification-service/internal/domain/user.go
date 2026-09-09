@@ -13,6 +13,9 @@ type ScheduleConfig struct {
 	FromDate   time.Time
 	ToDate     time.Time
 	DigestTime string
+	// Timezone is the IANA name digest_time is interpreted in.
+	// Empty means UTC.
+	Timezone string
 }
 
 type ScheduleInfo struct {
@@ -20,4 +23,7 @@ type ScheduleInfo struct {
 	FromDate   time.Time
 	ToDate     time.Time
 	DigestTime string
+	// Timezone is the IANA name digest_time is interpreted in.
+	// Always resolved (defaults to UTC) so GET round-trips.
+	Timezone string
 }

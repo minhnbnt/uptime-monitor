@@ -51,6 +51,7 @@ func (s *NotificationService) GetNotificationConfig(ctx context.Context, userID 
 
 	resp := &dto.NotificationConfigResponse{
 		DigestTime: info.DigestTime,
+		Timezone:   info.Timezone,
 	}
 
 	if !info.FromDate.IsZero() {
@@ -78,10 +79,17 @@ func (s *NotificationService) UpdateNotificationConfig(ctx context.Context, user
 			return fmt.Errorf("parse to_date: %w", apperrors.ErrBadRequest)
 		}
 
+		if req.Timezone != "" {
+			if _, err := time.LoadLocation(req.Timezone); err != nil {
+				return fmt.Errorf("unknown timezone %q: %w", req.Timezone, apperrors.ErrBadRequest)
+			}
+		}
+
 		config := domain.ScheduleConfig{
 			FromDate:   fromDate,
 			ToDate:     toDate,
 			DigestTime: req.DigestTime,
+			Timezone:   req.Timezone,
 		}
 
 		if err := s.digestStarter.UpsertSchedule(ctx, userID, config); err != nil {

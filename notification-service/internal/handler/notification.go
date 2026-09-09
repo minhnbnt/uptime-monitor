@@ -41,6 +41,7 @@ func (h *NotificationHandler) GetNotificationConfig(ctx context.Context) (*api.N
 
 	resp := &api.NotificationConfig{
 		DigestTime: api.NewOptString(cfg.DigestTime),
+		Timezone:   api.NewOptString(cfg.Timezone),
 	}
 
 	if cfg.FromDate != "" {
@@ -73,6 +74,9 @@ func (h *NotificationHandler) UpdateNotificationConfig(ctx context.Context, req 
 	}
 	if req.DigestTime.Set {
 		dtoReq.DigestTime = req.DigestTime.Value
+	}
+	if req.Timezone.Set {
+		dtoReq.Timezone = req.Timezone.Value
 	}
 
 	if err := h.notificationService.UpdateNotificationConfig(ctx, userID, dtoReq); err != nil {
